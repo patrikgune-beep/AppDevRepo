@@ -21,6 +21,11 @@ function saveData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data));
 }
 
+// GET /health
+app.get('/health', function(req, res) {
+  res.json({ ok: true });
+});
+
 // GET /api/profiles
 app.get('/api/profiles', function(req, res) {
   var data = loadData();

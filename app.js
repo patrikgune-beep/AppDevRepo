@@ -1556,6 +1556,7 @@ document.getElementById("bg-file-input").addEventListener("change", function(e) 
 
 
 // Init
+fetch(SYNC_URL + '/health').then(function() { console.log('Backend vaken'); }).catch(function() { console.log('Väcker backend...'); });
 migrateOldProfile();
 applyBgImage();
 updateProfileBar();
