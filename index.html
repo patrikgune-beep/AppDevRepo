@@ -113,13 +113,36 @@
 
   <div class="modal-overlay" id="profile-modal" style="display:none">
     <div class="modal">
-      <h2>Skapa profil</h2>
-      <p>Ange ditt namn för att spara träningsresultat och se dina senaste resultat som guide.</p>
-      <input type="text" id="profile-name-input" placeholder="Ditt namn" maxlength="50" autocomplete="off">
-      <div class="modal-actions">
-        <button class="modal-submit-btn" id="profile-submit-btn">Spara profil</button>
-        <button class="modal-skip-btn" id="profile-skip-btn">Hoppa över</button>
+
+      <div id="profile-list-view">
+        <h2>Profiler</h2>
+        <div id="profile-list-container" class="profile-list-container"></div>
+        <button class="modal-action-btn" id="show-create-profile-btn">+ Skapa ny profil</button>
+        <div class="modal-footer-row">
+          <button class="modal-skip-btn" id="profile-close-btn">Stäng</button>
+        </div>
       </div>
+
+      <div id="profile-create-view" style="display:none">
+        <h2>Ny profil</h2>
+        <p>Ange ett namn för den nya profilen.</p>
+        <input type="text" id="profile-name-input" placeholder="Ditt namn" maxlength="50" autocomplete="off">
+        <div class="modal-actions">
+          <button class="modal-submit-btn" id="profile-submit-btn">Skapa profil</button>
+          <button class="modal-skip-btn" id="profile-create-cancel-btn">Tillbaka</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="stats-modal" style="display:none">
+    <div class="modal modal-wide">
+      <div class="stats-modal-header">
+        <h2 id="stats-title">Statistik</h2>
+        <button class="modal-close-btn" id="stats-close-btn">✕</button>
+      </div>
+      <div id="stats-content" class="stats-content"></div>
     </div>
   </div>
 

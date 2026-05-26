@@ -278,11 +278,25 @@ let currentExercises = [];
 
 // ── Profile & History ────────────────────────────────────────────────────────
 
-function loadProfile() {
-  try { return JSON.parse(localStorage.getItem('tg_profile_v1')) || null; } catch { return null; }
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
-function saveProfile(profile) {
-  localStorage.setItem('tg_profile_v1', JSON.stringify(profile));
+function loadProfiles() {
+  try { return JSON.parse(localStorage.getItem('tg_profiles_v2')) || []; } catch { return []; }
+}
+function saveProfiles(profiles) {
+  localStorage.setItem('tg_profiles_v2', JSON.stringify(profiles));
+}
+function getActiveProfileId() {
+  return localStorage.getItem('tg_active_v2') || null;
+}
+function setActiveProfileId(id) {
+  if (id) localStorage.setItem('tg_active_v2', id);
+  else localStorage.removeItem('tg_active_v2');
+}
+function getActiveProfile() {
+  const id = getActiveProfileId();
+  return loadProfiles().find(p => p.id === id) || null;
 }
 function loadHistory() {
   try { return JSON.parse(localStorage.getItem('tg_history_v1')) || []; } catch { return []; }
@@ -291,10 +305,31 @@ function saveHistory(history) {
   localStorage.setItem('tg_history_v1', JSON.stringify(history));
 }
 
+function migrateOldProfile() {
+  if (loadProfiles().length > 0) return;
+  try {
+    const old = JSON.parse(localStorage.getItem('tg_profile_v1'));
+    if (old && old.name) {
+      const newId = generateId();
+      saveProfiles([{ id: newId, name: old.name, createdAt: new Date().toISOString() }]);
+      setActiveProfileId(newId);
+      saveHistory(loadHistory().map(w => w.profileId ? w : { ...w, profileId: newId }));
+      localStorage.removeItem('tg_profile_v1');
+    }
+  } catch {}
+}
+
 function getLastResult(exerciseName) {
-  const history = loadHistory();
+  const activeId = getActiveProfileId();
+  const profile = getActiveProfile();
+  const history = loadHistory().filter(w =>
+    w.profileId === activeId ||
+    (!w.profileId && w.profileName === profile?.name)
+  );
   for (const workout of history) {
-    const found = (workout.exercises || []).find(e => e.name === exerciseName && e.logged && Object.keys(e.logged).length > 0);
+    const found = (workout.exercises || []).find(e =>
+      e.name === exerciseName && e.logged && Object.keys(e.logged).length > 0
+    );
     if (found) return { ...found.logged, date: workout.date };
   }
   return null;
@@ -357,8 +392,10 @@ function renderLogRow(logType) {
   </div>`;
 }
 
+// ── Profile UI ───────────────────────────────────────────────────────────────
+
 function updateProfileBar() {
-  const profile = loadProfile();
+  const profile = getActiveProfile();
   const bar = document.getElementById('profile-bar');
   bar.innerHTML = '';
   if (profile) {
@@ -368,45 +405,259 @@ function updateProfileBar() {
     const strong = document.createElement('strong');
     strong.textContent = profile.name;
     greeting.appendChild(strong);
+
+    const statsBtn = document.createElement('button');
+    statsBtn.className = 'profile-link-btn';
+    statsBtn.textContent = '📊 Statistik';
+    statsBtn.addEventListener('click', openStatsModal);
+
     const changeBtn = document.createElement('button');
     changeBtn.className = 'profile-link-btn';
     changeBtn.textContent = 'Byt profil';
-    changeBtn.addEventListener('click', openProfileModal);
+    changeBtn.addEventListener('click', () => openProfileModal('list'));
+
     bar.appendChild(greeting);
+    bar.appendChild(statsBtn);
     bar.appendChild(changeBtn);
   } else {
     const createBtn = document.createElement('button');
     createBtn.className = 'profile-link-btn';
     createBtn.textContent = '+ Skapa profil';
-    createBtn.addEventListener('click', openProfileModal);
+    createBtn.addEventListener('click', () => openProfileModal('create'));
     bar.appendChild(createBtn);
   }
 }
 
-function openProfileModal() {
-  const input = document.getElementById('profile-name-input');
-  const profile = loadProfile();
-  if (profile) input.value = profile.name;
+function openProfileModal(view = 'list') {
   document.getElementById('profile-modal').style.display = 'flex';
-  input.focus();
+  showProfileView(view);
 }
 
 function closeProfileModal() {
   document.getElementById('profile-modal').style.display = 'none';
 }
 
-function submitProfile() {
-  const input = document.getElementById('profile-name-input');
-  const name = input.value.trim();
-  if (!name) { input.focus(); return; }
-  saveProfile({ name });
-  closeProfileModal();
+function showProfileView(view) {
+  document.getElementById('profile-list-view').style.display  = view === 'list'   ? '' : 'none';
+  document.getElementById('profile-create-view').style.display = view === 'create' ? '' : 'none';
+  if (view === 'list') renderProfileList();
+  if (view === 'create') {
+    const input = document.getElementById('profile-name-input');
+    input.value = '';
+    setTimeout(() => input.focus(), 50);
+  }
+}
+
+function renderProfileList() {
+  const profiles = loadProfiles();
+  const activeId = getActiveProfileId();
+  const container = document.getElementById('profile-list-container');
+  container.innerHTML = '';
+  if (profiles.length === 0) {
+    container.innerHTML = '<p class="profile-empty">Inga profiler ännu. Skapa din första profil.</p>';
+    return;
+  }
+  profiles.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'profile-card' + (p.id === activeId ? ' active' : '');
+
+    const nameBtn = document.createElement('button');
+    nameBtn.className = 'profile-card-name';
+    nameBtn.textContent = p.name;
+    nameBtn.addEventListener('click', () => {
+      setActiveProfileId(p.id);
+      closeProfileModal();
+      updateProfileBar();
+    });
+
+    card.appendChild(nameBtn);
+
+    if (p.id === activeId) {
+      const badge = document.createElement('span');
+      badge.className = 'profile-card-active-badge';
+      badge.textContent = 'Aktiv';
+      card.appendChild(badge);
+    }
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'profile-card-delete';
+    delBtn.title = 'Radera profil';
+    delBtn.textContent = '✕';
+    delBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      confirmDeleteProfile(p.id, p.name);
+    });
+    card.appendChild(delBtn);
+    container.appendChild(card);
+  });
+}
+
+function confirmDeleteProfile(id, name) {
+  if (!confirm(`Radera profilen "${name}"?\nAll sparad träningshistorik för denna profil tas bort.`)) return;
+  const profiles = loadProfiles().filter(p => p.id !== id);
+  saveProfiles(profiles);
+  saveHistory(loadHistory().filter(w => w.profileId !== id));
+  if (getActiveProfileId() === id) {
+    setActiveProfileId(profiles.length > 0 ? profiles[0].id : null);
+  }
+  renderProfileList();
   updateProfileBar();
 }
 
+function submitNewProfile() {
+  const input = document.getElementById('profile-name-input');
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  const newProfile = { id: generateId(), name, createdAt: new Date().toISOString() };
+  const profiles = loadProfiles();
+  profiles.push(newProfile);
+  saveProfiles(profiles);
+  setActiveProfileId(newProfile.id);
+  showProfileView('list');
+  updateProfileBar();
+}
+
+// ── Stats ────────────────────────────────────────────────────────────────────
+
+function getExerciseInfo(name) {
+  for (const [type, list] of Object.entries(EXERCISES)) {
+    const found = list.find(e => e.name === name);
+    if (found) return { ...found, type };
+  }
+  return null;
+}
+
+const TYPE_COLORS = {
+  vikter: '#a78bfa', kropp: '#60a5fa', kondition: '#34d399',
+  rorlighet: '#fbbf24', core: '#f87171', tennis: '#22d3ee',
+};
+const MUSCLE_LABELS = {
+  bröst: 'Bröst', rygg: 'Rygg', axlar: 'Axlar', armar: 'Armar',
+  lår: 'Lår', rumpa: 'Rumpa', vader: 'Vader', mage: 'Mage', core: 'Core', höfter: 'Höfter',
+};
+
+function computeStats() {
+  const activeId = getActiveProfileId();
+  const profile = getActiveProfile();
+  const history = loadHistory().filter(w =>
+    w.profileId === activeId ||
+    (!w.profileId && w.profileName === profile?.name)
+  );
+  const allLogged = history.flatMap(w =>
+    (w.exercises || []).filter(e => Object.keys(e.logged || {}).length > 0)
+  );
+
+  const byType = {};
+  allLogged.forEach(e => { byType[e.type] = (byType[e.type] || 0) + 1; });
+
+  const byMuscle = {};
+  const mainAreas = ['bröst','rygg','axlar','armar','lår','rumpa','vader','mage','core','höfter'];
+  allLogged.forEach(e => {
+    const info = getExerciseInfo(e.name);
+    if (!info) return;
+    const parts = getBodyParts(info.muscle);
+    mainAreas.forEach(area => {
+      if (parts.has(area)) byMuscle[area] = (byMuscle[area] || 0) + 1;
+    });
+  });
+
+  const byName = {};
+  allLogged.forEach(e => { byName[e.name] = (byName[e.name] || 0) + 1; });
+  const topExercises = Object.entries(byName).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+  return {
+    profile,
+    workoutCount: history.length,
+    loggedCount: allLogged.length,
+    byType: Object.entries(byType).sort((a, b) => b[1] - a[1]),
+    byMuscle: Object.entries(byMuscle).sort((a, b) => b[1] - a[1]).slice(0, 10),
+    topExercises,
+    recent: history.slice(0, 8),
+  };
+}
+
+function statBarHtml(label, value, max, color) {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+  return `<div class="stat-bar-row">
+    <span class="stat-bar-label">${label}</span>
+    <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    <span class="stat-bar-count">${value}</span>
+  </div>`;
+}
+
+function renderStats() {
+  const stats = computeStats();
+  const content = document.getElementById('stats-content');
+  if (!stats.profile) {
+    content.innerHTML = '<p class="stats-empty">Välj eller skapa en profil för att se statistik.</p>';
+    return;
+  }
+  document.getElementById('stats-title').textContent = `Statistik – ${stats.profile.name}`;
+  if (stats.workoutCount === 0) {
+    content.innerHTML = '<p class="stats-empty">Inga sparade pass ännu. Generera ett pass, fyll i dina resultat och tryck "Spara pass".</p>';
+    return;
+  }
+
+  let html = `<div class="stats-overview">
+    <div class="stats-kpi"><span class="stats-kpi-value">${stats.workoutCount}</span><span class="stats-kpi-label">Pass totalt</span></div>
+    <div class="stats-kpi"><span class="stats-kpi-value">${stats.loggedCount}</span><span class="stats-kpi-label">Loggade övn.</span></div>
+  </div>`;
+
+  if (stats.byType.length > 0) {
+    const typeMax = stats.byType[0][1];
+    html += `<div class="stats-section"><h3>Träningstyper</h3>`;
+    stats.byType.forEach(([t, v]) => {
+      html += statBarHtml(TYPE_LABELS[t] || t, v, typeMax, TYPE_COLORS[t] || '#a78bfa');
+    });
+    html += `</div>`;
+  }
+
+  if (stats.byMuscle.length > 0) {
+    const muscleMax = stats.byMuscle[0][1];
+    html += `<div class="stats-section"><h3>Muskelgrupper</h3>`;
+    stats.byMuscle.forEach(([m, v]) => {
+      html += statBarHtml(MUSCLE_LABELS[m] || m, v, muscleMax, '#60a5fa');
+    });
+    html += `</div>`;
+  }
+
+  if (stats.topExercises.length > 0) {
+    html += `<div class="stats-section"><h3>Vanligaste övningar</h3><ol class="stats-top-list">`;
+    stats.topExercises.forEach(([name, count]) => {
+      html += `<li><span class="stats-ex-name">${name}</span><span class="stats-ex-count">${count}×</span></li>`;
+    });
+    html += `</ol></div>`;
+  }
+
+  if (stats.recent.length > 0) {
+    const months = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+    html += `<div class="stats-section"><h3>Senaste pass</h3><ul class="stats-recent-list">`;
+    stats.recent.forEach(w => {
+      const d = new Date(w.date);
+      const dateStr = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+      const count = (w.exercises || []).length;
+      const types = [...new Set((w.exercises || []).map(e => TYPE_LABELS[e.type] || e.type))].join(', ');
+      html += `<li><span class="stats-recent-date">${dateStr}</span><span class="stats-recent-info">${count} övn · ${types}</span></li>`;
+    });
+    html += `</ul></div>`;
+  }
+
+  content.innerHTML = html;
+}
+
+function openStatsModal() {
+  document.getElementById('stats-modal').style.display = 'flex';
+  renderStats();
+}
+function closeStatsModal() {
+  document.getElementById('stats-modal').style.display = 'none';
+}
+
+// ── Save workout ──────────────────────────────────────────────────────────────
+
 function saveWorkout() {
-  const profile = loadProfile();
-  if (!profile) { openProfileModal(); return; }
+  const profile = getActiveProfile();
+  if (!profile) { openProfileModal('create'); return; }
 
   const cards = document.querySelectorAll('.exercise-card');
   const logged = [];
@@ -433,7 +684,7 @@ function saveWorkout() {
   }
 
   const history = loadHistory();
-  history.unshift({ date: new Date().toISOString(), profileName: profile.name, exercises: logged });
+  history.unshift({ date: new Date().toISOString(), profileId: profile.id, profileName: profile.name, exercises: logged });
   if (history.length > 200) history.splice(200);
   saveHistory(history);
 
@@ -692,15 +943,24 @@ document.getElementById("generate-btn").addEventListener("click", generate);
 document.getElementById("regenerate-btn").addEventListener("click", generate);
 document.getElementById("save-btn").addEventListener("click", saveWorkout);
 
-document.getElementById("profile-submit-btn").addEventListener("click", submitProfile);
-document.getElementById("profile-skip-btn").addEventListener("click", closeProfileModal);
+document.getElementById("profile-submit-btn").addEventListener("click", submitNewProfile);
 document.getElementById("profile-name-input").addEventListener("keydown", e => {
-  if (e.key === "Enter") submitProfile();
+  if (e.key === "Enter") submitNewProfile();
 });
+document.getElementById("profile-create-cancel-btn").addEventListener("click", () => {
+  loadProfiles().length > 0 ? showProfileView('list') : closeProfileModal();
+});
+document.getElementById("show-create-profile-btn").addEventListener("click", () => showProfileView('create'));
+document.getElementById("profile-close-btn").addEventListener("click", closeProfileModal);
 document.getElementById("profile-modal").addEventListener("click", e => {
   if (e.target === e.currentTarget) closeProfileModal();
 });
+document.getElementById("stats-close-btn").addEventListener("click", closeStatsModal);
+document.getElementById("stats-modal").addEventListener("click", e => {
+  if (e.target === e.currentTarget) closeStatsModal();
+});
 
 // Init
+migrateOldProfile();
 updateProfileBar();
-if (!loadProfile()) openProfileModal();
+if (!getActiveProfile()) openProfileModal(loadProfiles().length > 0 ? 'list' : 'create');
