@@ -14,17 +14,6 @@
     </header>
 
     <section class="form-section">
-      <div class="form-group">
-        <label for="exercise-count">Antal övningar</label>
-        <input
-          type="number"
-          id="exercise-count"
-          min="1"
-          max="20"
-          value="5"
-          placeholder="T.ex. 5"
-        />
-      </div>
 
       <div class="form-group">
         <label>Typ av träning</label>
@@ -56,10 +45,36 @@
         </div>
       </div>
 
+      <div class="form-group">
+        <label>Passlängd <span class="label-hint">(väljer antal övningar automatiskt)</span></label>
+        <div class="duration-grid">
+          <button class="duration-btn" data-duration="30">30 min</button>
+          <button class="duration-btn" data-duration="45">45 min</button>
+          <button class="duration-btn" data-duration="60">60 min</button>
+          <button class="duration-btn" data-duration="90">90 min</button>
+        </div>
+      </div>
+
+      <div class="divider">
+        <span>eller ange manuellt</span>
+      </div>
+
+      <div class="form-group">
+        <label for="exercise-count">Antal övningar</label>
+        <input
+          type="number"
+          id="exercise-count"
+          min="1"
+          max="20"
+          value="6"
+          placeholder="1–20"
+        />
+      </div>
+
       <button class="generate-btn" id="generate-btn">Generera träningspass</button>
     </section>
 
-    <section class="results-section" id="results" hidden>
+    <section class="results-section" id="results" style="display:none">
       <div class="results-header">
         <h2 id="results-title">Ditt träningspass</h2>
         <button class="regenerate-btn" id="regenerate-btn">Ny variation</button>
