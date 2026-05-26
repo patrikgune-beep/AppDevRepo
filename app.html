@@ -276,13 +276,41 @@ input[type="number"]:focus {
   flex: 1;
 }
 
+.exercise-name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
 .exercise-name {
   font-size: 1rem;
   font-weight: 700;
   color: #e8e8f0;
-  margin-bottom: 0.35rem;
   line-height: 1.3;
+  flex: 1;
 }
+.card-actions {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  padding-top: 0.1rem;
+}
+.card-action-btn {
+  padding: 0.15rem 0.45rem;
+  background: transparent;
+  border: 1px solid #22223a;
+  border-radius: 5px;
+  color: #44446a;
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+.card-replace:hover    { border-color: #60a5fa; color: #60a5fa; }
+.card-replace-del:hover { border-color: #f87171; color: #f87171; }
 
 .exercise-tag {
   display: inline-block;
@@ -1237,6 +1265,12 @@ function loadHistory() {
 function saveHistory(history) {
   localStorage.setItem('tg_history_v1', JSON.stringify(history));
 }
+function loadBlacklist() {
+  try { return new Set(JSON.parse(localStorage.getItem('tg_blacklist_v1')) || []); } catch { return new Set(); }
+}
+function saveBlacklist(set) {
+  localStorage.setItem('tg_blacklist_v1', JSON.stringify([...set]));
+}
 
 function migrateOldProfile() {
   if (loadProfiles().length > 0) return;
@@ -1716,14 +1750,51 @@ function getAdjustedSets(exercise, minutesPerExercise) {
 }
 
 function pickExercises(types, count) {
+  const blacklist = loadBlacklist();
   let pool = [];
   for (const t of types) {
     pool = pool.concat(EXERCISES[t].map(e => ({ ...e, type: t })));
   }
-  if (selectedFocus.size > 0) {
-    pool = pool.filter(exerciseMatchesFocus);
-  }
+  pool = pool.filter(e => !blacklist.has(e.name));
+  if (selectedFocus.size > 0) pool = pool.filter(exerciseMatchesFocus);
   return shuffle(pool).slice(0, count);
+}
+
+function buildCardHtml(ex, index, minutesPerExercise) {
+  const setsLabel = getAdjustedSets(ex, minutesPerExercise);
+  const logType = getLogType(ex);
+  const lastResult = getLastResult(ex.name);
+  const lastHtml = lastResult
+    ? `<div class="last-result">↩ Senast: ${formatLastResult(lastResult)}</div>`
+    : '';
+  return `
+    <div class="exercise-number">${index + 1}</div>
+    <div class="exercise-info">
+      <div class="exercise-name-row">
+        <div class="exercise-name">
+          ${ex.name}
+          <span class="exercise-tag tag-${ex.type}">${TYPE_LABELS[ex.type]}</span>
+        </div>
+        <div class="card-actions">
+          <button class="card-action-btn card-replace" title="Ersätt med annan övning">Ny</button>
+          <button class="card-action-btn card-replace-del" title="Ersätt och dölj permanent">Ny + Del</button>
+        </div>
+      </div>
+      <div class="exercise-how">${ex.how}</div>
+      <div class="exercise-meta">
+        <span class="meta-sets">${setsLabel}</span>
+        <span class="meta-sep">·</span>
+        <span class="meta-muscle">${ex.muscle}</span>
+      </div>
+      ${lastHtml}
+      ${renderLogRow(logType)}
+    </div>
+  `;
+}
+
+function attachCardButtons(card, index) {
+  card.querySelector('.card-replace').addEventListener('click', () => replaceExercise(index, false));
+  card.querySelector('.card-replace-del').addEventListener('click', () => replaceExercise(index, true));
 }
 
 function renderExercises(exercises, minutesPerExercise) {
@@ -1731,35 +1802,55 @@ function renderExercises(exercises, minutesPerExercise) {
   const list = document.getElementById("exercise-list");
   list.innerHTML = "";
   exercises.forEach((ex, i) => {
-    const setsLabel = getAdjustedSets(ex, minutesPerExercise);
-    const logType = getLogType(ex);
-    const lastResult = getLastResult(ex.name);
-    const lastHtml = lastResult
-      ? `<div class="last-result">↩ Senast: ${formatLastResult(lastResult)}</div>`
-      : '';
     const card = document.createElement("div");
     card.className = "exercise-card";
-    card.dataset.exerciseIndex = i;
     card.style.animationDelay = `${i * 50}ms`;
-    card.innerHTML = `
-      <div class="exercise-number">${i + 1}</div>
-      <div class="exercise-info">
-        <div class="exercise-name">
-          ${ex.name}
-          <span class="exercise-tag tag-${ex.type}">${TYPE_LABELS[ex.type]}</span>
-        </div>
-        <div class="exercise-how">${ex.how}</div>
-        <div class="exercise-meta">
-          <span class="meta-sets">${setsLabel}</span>
-          <span class="meta-sep">·</span>
-          <span class="meta-muscle">${ex.muscle}</span>
-        </div>
-        ${lastHtml}
-        ${renderLogRow(logType)}
-      </div>
-    `;
+    card.innerHTML = buildCardHtml(ex, i, minutesPerExercise);
+    attachCardButtons(card, i);
     list.appendChild(card);
   });
+}
+
+function replaceExercise(index, deleteFromLibrary) {
+  const oldEx = currentExercises[index];
+  if (!oldEx) return;
+
+  const blacklist = loadBlacklist();
+  if (deleteFromLibrary) blacklist.add(oldEx.name);
+
+  const currentNames = new Set(currentExercises.filter((_, i) => i !== index).map(e => e.name));
+
+  let pool = [];
+  for (const t of selectedTypes) {
+    pool = pool.concat(EXERCISES[t].map(e => ({ ...e, type: t })));
+  }
+  pool = pool.filter(e => !currentNames.has(e.name) && !blacklist.has(e.name));
+
+  const focused = selectedFocus.size > 0 ? pool.filter(exerciseMatchesFocus) : pool;
+  const available = focused.length > 0 ? focused : pool;
+
+  if (deleteFromLibrary) saveBlacklist(blacklist);
+
+  if (available.length === 0) {
+    alert(deleteFromLibrary
+      ? `"${oldEx.name}" är borttagen från biblioteket. Inga fler övningar tillgängliga för valda typer.`
+      : 'Inga fler övningar att byta till för valda typer och fokusområden.');
+    return;
+  }
+
+  const newEx = shuffle(available)[0];
+  currentExercises[index] = newEx;
+
+  const cards = document.querySelectorAll('.exercise-card');
+  const card = cards[index];
+  if (!card) return;
+
+  const mpe = selectedDuration ? selectedDuration / currentExercises.length : null;
+  card.innerHTML = buildCardHtml(newEx, index, mpe);
+  attachCardButtons(card, index);
+  card.style.animation = 'none';
+  void card.offsetWidth;
+  card.style.animation = 'slideIn 0.3s ease both';
 }
 
 function renderSummary(exercises, duration) {
@@ -1799,10 +1890,12 @@ function generate() {
   }
 
   // Build filtered pool to check availability
+  const blacklist = loadBlacklist();
   let checkPool = [];
   for (const t of selectedTypes) {
     checkPool = checkPool.concat(EXERCISES[t].map(e => ({ ...e, type: t })));
   }
+  checkPool = checkPool.filter(e => !blacklist.has(e.name));
   if (selectedFocus.size > 0) checkPool = checkPool.filter(exerciseMatchesFocus);
 
   if (checkPool.length === 0) {

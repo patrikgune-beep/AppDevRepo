@@ -269,13 +269,41 @@ input[type="number"]:focus {
   flex: 1;
 }
 
+.exercise-name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
 .exercise-name {
   font-size: 1rem;
   font-weight: 700;
   color: #e8e8f0;
-  margin-bottom: 0.35rem;
   line-height: 1.3;
+  flex: 1;
 }
+.card-actions {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  padding-top: 0.1rem;
+}
+.card-action-btn {
+  padding: 0.15rem 0.45rem;
+  background: transparent;
+  border: 1px solid #22223a;
+  border-radius: 5px;
+  color: #44446a;
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+.card-replace:hover    { border-color: #60a5fa; color: #60a5fa; }
+.card-replace-del:hover { border-color: #f87171; color: #f87171; }
 
 .exercise-tag {
   display: inline-block;
