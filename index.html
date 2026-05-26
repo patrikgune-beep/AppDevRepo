@@ -11,6 +11,7 @@
     <header>
       <h1>Träningsgenerator</h1>
       <p class="subtitle">Generera ett anpassat träningspass</p>
+      <div class="profile-bar" id="profile-bar"></div>
     </header>
 
     <section class="form-section">
@@ -37,6 +38,10 @@
           <button class="type-btn" data-type="core">
             <span class="type-icon">⚡</span>
             <span>Core</span>
+          </button>
+          <button class="type-btn" data-type="tennis">
+            <span class="type-icon">🎾</span>
+            <span>Tennis</span>
           </button>
         </div>
       </div>
@@ -100,7 +105,22 @@
       </div>
       <div class="exercise-list" id="exercise-list"></div>
       <div class="summary" id="summary"></div>
+      <div class="results-footer">
+        <button class="save-btn" id="save-btn">Spara pass</button>
+      </div>
     </section>
+  </div>
+
+  <div class="modal-overlay" id="profile-modal" style="display:none">
+    <div class="modal">
+      <h2>Skapa profil</h2>
+      <p>Ange ditt namn för att spara träningsresultat och se dina senaste resultat som guide.</p>
+      <input type="text" id="profile-name-input" placeholder="Ditt namn" maxlength="50" autocomplete="off">
+      <div class="modal-actions">
+        <button class="modal-submit-btn" id="profile-submit-btn">Spara profil</button>
+        <button class="modal-skip-btn" id="profile-skip-btn">Hoppa över</button>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

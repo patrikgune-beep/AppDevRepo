@@ -209,6 +209,48 @@ const EXERCISES = {
     { name: "Superman plank", sets: "3 set × 30–40 sek", muscle: "Ländrygg, rumpa, core", how: "Ligg magen ner med armarna framåt. Lyft armar och ben som i Superman men håll positionen istället för att gunga." },
     { name: "Ab wheel pike", sets: "3 set × 8 reps", muscle: "Core, axlar", how: "Knästå med ab wheel. Rulla ut, sedan istället för att dra tillbaka rakt – lyft höfterna upp och dra hjulet mot knäna." },
   ],
+  tennis: [
+    { name: "Extern rotation (rotatorkuff)", sets: "3 set × 15 reps/sida", muscle: "Rotatorkuff, bakre axel", how: "Armbågen böjd i 90° mot sidan med ett band/kabel. Rotera underarmen utåt från kroppen. Grundövning för att förebygga de axelskador som är vanligast i tennis." },
+    { name: "Intern rotation (rotatorkuff)", sets: "3 set × 15 reps/sida", muscle: "Rotatorkuff, axlar", how: "Som extern rotation men inåt. Armbågen i 90°, rotera underarmen mot magen mot bandets motstånd. Balanserar axelmusklerna och motverkar överbelastning." },
+    { name: "Shoulder Y-raise", sets: "3 set × 12 reps", muscle: "Övre trapezius, serratus, axlar", how: "Ligg magen ner eller böjd framåt. Lyft armarna diagonalt i Y-form (ca 45° ut). Tummen upp. Stärker övre trapezius som är avgörande för serv och smash." },
+    { name: "Shoulder T-raise", sets: "3 set × 12 reps", muscle: "Bakre axel, rhomboids", how: "Ligg magen ner. Lyft armarna rakt ut åt sidan i T-form. Tummen upp. Stärker bakre axel för balanserad axelstyrka och förebygger impingement." },
+    { name: "Shoulder W-raise", sets: "3 set × 12 reps", muscle: "Bakre axel, rotatorkuff", how: "Ligg magen ner med armarna i W-form. Kläm skulderbladen och externrotera. YTW-serien är standardrekommendation för tennisspelarens axelhälsa." },
+    { name: "Face pull", sets: "3 set × 15 reps", muscle: "Bakre axel, rotatorkuff", how: "Kabeln i ansiktshöjd, dra mot ansiktet med höga armbågar. Externrotera i slutposition. Motverkar den inåtrotation av axlar som tennisträning ger upphov till." },
+    { name: "Medicinbollskast mot vägg (rotation)", sets: "4 set × 10 reps/sida", muscle: "Obliques, core, axlar", how: "Stå vid en vägg med sidan mot den. Rotera explosivt och kasta medicinbollen i väggen. Fånga och upprepa. Tränar den explosiva rotationsstyrka som driver alla tennisslag." },
+    { name: "Kabelchop (hög till låg)", sets: "3 set × 12 reps/sida", muscle: "Obliques, core, axlar", how: "Kabeln högt. Stå med sidan mot maskinen. Dra diagonalt ner och tvärs kroppen med sträckta armar. Simulerar forhands- och backhandsrörelsen. Kärnövning för tenniskraft." },
+    { name: "Kabelchop (låg till hög)", sets: "3 set × 12 reps/sida", muscle: "Obliques, core, axlar", how: "Kabeln lågt. Dra diagonalt upp och tvärs kroppen. Simulerar lobben och servrörelsens uppåtgående fas. Tränar rotationsstyrka från höft till axel." },
+    { name: "Pallof press", sets: "3 set × 10 reps/sida", muscle: "Core, obliques", how: "Stå med sidan mot kabel. Pressa handtaget rakt ut, håll 2 sek. Motstå rotationen. Anti-rotationsstyrka ger dig en stabil bas att slå från oavsett balansläge på banan." },
+    { name: "Landmine rotation", sets: "3 set × 10 reps/sida", muscle: "Obliques, core, axlar", how: "Håll stångändan med sträckta armar. Sväng explosivt från sida till sida med höften som motor. Liknar tennisservens slagrörelse – kraft från marken upp." },
+    { name: "Russian twist med medicinboll", sets: "3 set × 20 reps", muscle: "Obliques, core", how: "Sitt med böjda ben, luta bakåt. Rotera överkroppen med medicinboll och rör golvet på varje sida. Stärker obliques som driver alla slag, särskilt vid öppen ståndsfot." },
+    { name: "Lateral shuffle (10 m)", sets: "5 × 10 m/riktning", muscle: "Lår, rumpa, vader, kondition", how: "Spring sidledes 10 m med låg tyngdpunkt och korsade armar. Byt riktning snabbt. Tränar det specifika laterala rörelsemönstret du använder varje poäng på tennisbanan." },
+    { name: "Carioca (kors-steg)", sets: "3 × 20 m/riktning", muscle: "Höfter, lår, koordination", how: "Spring sidledes med korsande steg – en fot framför och en bakom alternativt. Tränar höftrörlighet och koordination för snabba riktningsbyten på banan." },
+    { name: "Split step", sets: "3 set × 20 reps", muscle: "Vader, lår, reaktion", how: "Hoppa isär med båda fötterna simultant och landa lätt i redo-position (böjda knän, lätt framåtlutad). Klassisk startrörelse i tennis – tränar reaktion och explosivitet." },
+    { name: "Lateral lunge", sets: "3 set × 10 reps/sida", muscle: "Lår, höfter, rumpa", how: "Tag ett stort steg åt sidan. Böj det stegande benet djupt medan det andra är rakt. Pressa tillbaka. Speglar rörelsemönstret vid wide balls – bra balans och höftstyrka." },
+    { name: "Lateral band walk", sets: "3 set × 15 steg/riktning", muscle: "Höftabduktorer, rumpa", how: "Gummiband runt knäna eller anklar. Gå sidledes med konstant spänning i banden. Stärker höftabduktorerna som stabiliserar knäet vid snabba laterala byten." },
+    { name: "Box jump lateral", sets: "4 set × 8 reps/sida", muscle: "Lår, rumpa, vader", how: "Stå vid sidan av en box. Hoppa lateralt upp på boxen och kliv ner på andra sidan. Tränar explosiv lateral kraft – samma kraft du behöver för att täcka banan." },
+    { name: "Nordic hamstring curl", sets: "3 set × 5–8 reps", muscle: "Baksida lår", how: "Knästå med fötterna fixerade av partner. Sänk överkroppen framåt så sakta som möjligt. Stöd med händerna. Förebygger hamstringsskador som drabbar tennisspelare ofta vid snabba stopp." },
+    { name: "Squat jump med rotation", sets: "3 set × 10 reps", muscle: "Lår, rumpa, core", how: "Knäböj och hoppa upp med en 90° rotation i luften. Landa mjukt med böjda knän. Kombinerar benstyrka med luftrotation – specifikt för tennisserven och smash-landningen." },
+    { name: "Snabba calf raises", sets: "4 set × 20 reps", muscle: "Vader", how: "Snabba, rytmiska tåhävningar på ett eller två ben. Imiterar de reaktiva fotarbetsrörelserna. Tränar elastisk kraft i vader för snabba split steps och riktningsbyten." },
+    { name: "Agility stege – kors-steg", sets: "4 × 15 m", muscle: "Koordination, fötter, lår", how: "Stega snabbt med kors-steg in och ut ur varje ruta i en agilitetsstege. Fokus på snabba fottag och god hållning. Tränar tennisspecifikt fotarbete och koordination." },
+    { name: "Wrist curl (handled, flexion)", sets: "3 set × 20 reps", muscle: "Underarm (flexorer)", how: "Sitt med underarmen stödd mot låret, handflatorna uppåt. Curl handleden upp och ner med lätt hantel. Stärker greppet och underarmsflexorerna för slagkontroll." },
+    { name: "Wrist extension (handled)", sets: "3 set × 20 reps", muscle: "Underarm (extensorer)", how: "Som wrist curl men handflatorna nedåt. Sträck handleden uppåt mot motståndet. Förebygger tennisarmbåge (lateral epikondylit) – det vanligaste tennisrelaterade skadeproblemet." },
+    { name: "Supination/pronation (underarm)", sets: "3 set × 15 reps/sida", muscle: "Underarm, handled", how: "Håll en hammarpinne eller liten hantel. Rotera underarmen från pronerat (nedåt) till supinerat (uppåt) läge. Stärker de underarmsrotatorer som styr racketpositionen vid slag." },
+    { name: "Forhands-simulering (gummiband)", sets: "3 set × 15 reps", muscle: "Bröst, obliques, axlar", how: "Fäst gummiband bakom dig. Utför forhands-rörelsen explosivt – rotation och arm korsas kroppen framåt. Specifik muskelprogrammering för tennisforhanden med rätt rörelsekedja." },
+    { name: "Backhands-simulering (gummiband)", sets: "3 set × 15 reps", muscle: "Axlar, obliques, rygg", how: "Fäst gummiband framför dig. Rotera bort och dra armen i backhandsriktning. Tränar de specifika muskelkedjorna för backhanden. Bra komplement till banträning." },
+    { name: "Single arm axelpress (stående)", sets: "3 set × 10 reps/sida", muscle: "Axlar, core", how: "Stå och pressa en hantel med ett arm rakt upp. Motstå lateralt läckage med core. Tränar axelstabilitet och core-integration – kritiskt för den asymmetriska servrörelsen." },
+    { name: "TRX-rodd med rotation", sets: "3 set × 10 reps/sida", muscle: "Rygg, axlar, core", how: "Dra i TRX (inverted row) och rotera överkroppen med fri hand mot taket i toppositionen. Kombinerar ryggstyrka med rotationsrörlighet för bättre backhandsrörelse." },
+    { name: "Sittande kabeldrag med rotation", sets: "3 set × 12 reps/sida", muscle: "Rygg, obliques, biceps", how: "Dra kabeln och rotera överkroppen i slutpositionen. Kombinerar dragstyrka med rotation – relevant för de backhandsslag och returer som kräver rotationskraft." },
+    { name: "Single leg balance + kast", sets: "3 set × 10 kast/sida", muscle: "Balans, vader, core", how: "Stå på ett ben. En partner kastar en boll i olika riktningar och du fångar och kastar tillbaka. Tränar dynamisk balans och proprioception för stabila slag i instabila lägen." },
+    { name: "Single leg RDL (hantel)", sets: "3 set × 10 reps/sida", muscle: "Baksida lår, rumpa, balans", how: "Stå på ett ben, böj framåt med rak rygg och lyft bakre benet. Håll hantel i motsatt hand. Stärker stabilisatorerna kring fotled och knä för snabb, stabil rörelse på banan." },
+    { name: "Lunge med rotation", sets: "3 set × 10 reps/sida", muscle: "Lår, rumpa, obliques", how: "Gå i utfall framåt och rotera överkroppen mot framfoten i botten. Kombinerar benstyrka med rotationsförmåga. Speglar rörelsemönstret vid wide balls och öppna forhänder." },
+    { name: "Hip 90/90 stretch", sets: "3 × 45 sek/sida", muscle: "Höfter, piriformis", how: "Sitt med båda benen i 90° men i olika riktningar (ett framåt, ett åt sidan). Luta mot frambenet. Öppnar höftlederna för bättre rörlighet och förebygger höftskador i tennis." },
+    { name: "Bröstöppning på skumrulle", sets: "3 × 1 min", muscle: "Bröstrygg, bröst, axlar", how: "Ligg med en skumrulle längs ryggraden och armarna ut åt sidan. Koppla av och låt bröstet sjunka. Motverkar den framåtlutna hållning som drabbar många tennisspelare." },
+    { name: "Thorax rotation (knästående)", sets: "3 × 10 reps/sida", muscle: "Bröstrygg, axlar", how: "Knästå med en hand bakom huvudet. Rotera överkroppen uppåt. Ökar rörligheten i bröstryggen som är kritisk för servens rörelseomfång och slagteknik." },
+    { name: "Höft intern rotation (golv)", sets: "3 × 30 sek/sida", muscle: "Höfter, höftabduktorer", how: "Sitt på golvet, böj ett knä och för det inåt mot golvet. Bättre höftintern rotation ger smidigare split steps och lungerörelser utan kompensatorisk belastning på knä och ländrygg." },
+    { name: "Ankelmobilitet (knästående mot vägg)", sets: "3 × 15 reps/sida", muscle: "Fotled, vader", how: "Knästå nära en vägg. Skjut knäet framåt och ut mot väggen utan att hälen lyfter. Bättre ankelmobilitet förbättrar alla positions- och rörelsemönster på banan." },
+    { name: "Sprint 10–15–20 m", sets: "3 omgångar", muscle: "Lår, rumpa, vader, kondition", how: "Sprinta 10 m, gå tillbaka. Sprint 15 m, gå tillbaka. Sprint 20 m, gå tillbaka. Tennisspecifik acceleration – de flesta poäng avgörs på distanser under 5 m." },
+    { name: "Medicinbolls slam med rotation", sets: "4 set × 8 reps/sida", muscle: "Core, obliques, axlar", how: "Lyft en medicinboll ovanför ena axeln och kasta ner den explosivt i golvet med full rotationsrörelse. Plocka upp och upprepa. Maximal explosiv rotationskraft för tennisslagets acceleration." },
+  ],
 };
 
 const TYPE_LABELS = {
@@ -217,6 +259,7 @@ const TYPE_LABELS = {
   kondition: "Kondition",
   rorlighet: "Rörlighet",
   core: "Core",
+  tennis: "Tennis",
 };
 
 const MIN_PER_EXERCISE = {
@@ -225,11 +268,180 @@ const MIN_PER_EXERCISE = {
   kondition: 14,
   rorlighet: 3,
   core: 4,
+  tennis: 5,
 };
 
 let selectedTypes = new Set(["vikter"]);
 let selectedDuration = null;
 let selectedFocus = new Set();
+let currentExercises = [];
+
+// ── Profile & History ────────────────────────────────────────────────────────
+
+function loadProfile() {
+  try { return JSON.parse(localStorage.getItem('tg_profile_v1')) || null; } catch { return null; }
+}
+function saveProfile(profile) {
+  localStorage.setItem('tg_profile_v1', JSON.stringify(profile));
+}
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem('tg_history_v1')) || []; } catch { return []; }
+}
+function saveHistory(history) {
+  localStorage.setItem('tg_history_v1', JSON.stringify(history));
+}
+
+function getLastResult(exerciseName) {
+  const history = loadHistory();
+  for (const workout of history) {
+    const found = (workout.exercises || []).find(e => e.name === exerciseName && e.logged && Object.keys(e.logged).length > 0);
+    if (found) return { ...found.logged, date: workout.date };
+  }
+  return null;
+}
+
+function formatLastResult(logged) {
+  const d = new Date(logged.date);
+  const months = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+  const dateStr = `${d.getDate()} ${months[d.getMonth()]}`;
+  const parts = [];
+  if (logged.reps)    parts.push(`${logged.reps} reps`);
+  if (logged.weight)  parts.push(`${logged.weight} kg`);
+  if (logged.minutes) parts.push(`${logged.minutes} min`);
+  if (logged.seconds) parts.push(`${logged.seconds} sek`);
+  if (logged.done)    parts.push('utförd');
+  return parts.join(' × ') + ' · ' + dateStr;
+}
+
+function getLogType(exercise) {
+  if (exercise.type === 'vikter') return 'strength';
+  if (exercise.type === 'kondition') return 'time';
+  if (exercise.type === 'rorlighet') return 'check';
+  if (/\bsek\b/i.test(exercise.sets)) return 'seconds';
+  if (/\bmin\b/i.test(exercise.sets)) return 'time';
+  return 'reps';
+}
+
+function renderLogRow(logType) {
+  if (logType === 'strength') {
+    return `<div class="log-row">
+      <span class="log-label">Logg</span>
+      <input class="log-input" type="number" placeholder="Reps" data-log="reps" min="0">
+      <span class="log-sep">×</span>
+      <input class="log-input" type="number" placeholder="kg" data-log="weight" min="0" step="0.5">
+    </div>`;
+  }
+  if (logType === 'time') {
+    return `<div class="log-row">
+      <span class="log-label">Logg</span>
+      <input class="log-input" type="number" placeholder="0" data-log="minutes" min="0">
+      <span class="log-unit">min</span>
+    </div>`;
+  }
+  if (logType === 'seconds') {
+    return `<div class="log-row">
+      <span class="log-label">Logg</span>
+      <input class="log-input" type="number" placeholder="0" data-log="seconds" min="0">
+      <span class="log-unit">sek</span>
+    </div>`;
+  }
+  if (logType === 'check') {
+    return `<div class="log-row">
+      <span class="log-label">Logg</span>
+      <label class="log-check-label"><input type="checkbox" data-log="done"> Utförd</label>
+    </div>`;
+  }
+  return `<div class="log-row">
+    <span class="log-label">Logg</span>
+    <input class="log-input" type="number" placeholder="Reps" data-log="reps" min="0">
+  </div>`;
+}
+
+function updateProfileBar() {
+  const profile = loadProfile();
+  const bar = document.getElementById('profile-bar');
+  bar.innerHTML = '';
+  if (profile) {
+    const greeting = document.createElement('span');
+    greeting.className = 'profile-greeting';
+    greeting.textContent = 'Hej, ';
+    const strong = document.createElement('strong');
+    strong.textContent = profile.name;
+    greeting.appendChild(strong);
+    const changeBtn = document.createElement('button');
+    changeBtn.className = 'profile-link-btn';
+    changeBtn.textContent = 'Byt profil';
+    changeBtn.addEventListener('click', openProfileModal);
+    bar.appendChild(greeting);
+    bar.appendChild(changeBtn);
+  } else {
+    const createBtn = document.createElement('button');
+    createBtn.className = 'profile-link-btn';
+    createBtn.textContent = '+ Skapa profil';
+    createBtn.addEventListener('click', openProfileModal);
+    bar.appendChild(createBtn);
+  }
+}
+
+function openProfileModal() {
+  const input = document.getElementById('profile-name-input');
+  const profile = loadProfile();
+  if (profile) input.value = profile.name;
+  document.getElementById('profile-modal').style.display = 'flex';
+  input.focus();
+}
+
+function closeProfileModal() {
+  document.getElementById('profile-modal').style.display = 'none';
+}
+
+function submitProfile() {
+  const input = document.getElementById('profile-name-input');
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  saveProfile({ name });
+  closeProfileModal();
+  updateProfileBar();
+}
+
+function saveWorkout() {
+  const profile = loadProfile();
+  if (!profile) { openProfileModal(); return; }
+
+  const cards = document.querySelectorAll('.exercise-card');
+  const logged = [];
+  cards.forEach((card, i) => {
+    const ex = currentExercises[i];
+    if (!ex) return;
+    const entry = { name: ex.name, type: ex.type, logged: {} };
+    const repsEl    = card.querySelector('[data-log="reps"]');
+    const weightEl  = card.querySelector('[data-log="weight"]');
+    const minutesEl = card.querySelector('[data-log="minutes"]');
+    const secondsEl = card.querySelector('[data-log="seconds"]');
+    const doneEl    = card.querySelector('[data-log="done"]');
+    if (repsEl    && repsEl.value)    entry.logged.reps    = parseFloat(repsEl.value);
+    if (weightEl  && weightEl.value)  entry.logged.weight  = parseFloat(weightEl.value);
+    if (minutesEl && minutesEl.value) entry.logged.minutes = parseFloat(minutesEl.value);
+    if (secondsEl && secondsEl.value) entry.logged.seconds = parseFloat(secondsEl.value);
+    if (doneEl    && doneEl.checked)  entry.logged.done    = true;
+    if (Object.keys(entry.logged).length > 0) logged.push(entry);
+  });
+
+  if (logged.length === 0) {
+    alert('Inga resultat att spara – fyll i minst en övning.');
+    return;
+  }
+
+  const history = loadHistory();
+  history.unshift({ date: new Date().toISOString(), profileName: profile.name, exercises: logged });
+  if (history.length > 200) history.splice(200);
+  saveHistory(history);
+
+  const btn = document.getElementById('save-btn');
+  btn.textContent = '✓ Sparat!';
+  btn.disabled = true;
+  setTimeout(() => { btn.textContent = 'Spara pass'; btn.disabled = false; }, 2000);
+}
 
 const FOCUS_TAG_MAP = {
   "helkropp":  ["helkropp"],
@@ -331,12 +543,19 @@ function pickExercises(types, count) {
 }
 
 function renderExercises(exercises, minutesPerExercise) {
+  currentExercises = exercises;
   const list = document.getElementById("exercise-list");
   list.innerHTML = "";
   exercises.forEach((ex, i) => {
     const setsLabel = getAdjustedSets(ex, minutesPerExercise);
+    const logType = getLogType(ex);
+    const lastResult = getLastResult(ex.name);
+    const lastHtml = lastResult
+      ? `<div class="last-result">↩ Senast: ${formatLastResult(lastResult)}</div>`
+      : '';
     const card = document.createElement("div");
     card.className = "exercise-card";
+    card.dataset.exerciseIndex = i;
     card.style.animationDelay = `${i * 50}ms`;
     card.innerHTML = `
       <div class="exercise-number">${i + 1}</div>
@@ -351,6 +570,8 @@ function renderExercises(exercises, minutesPerExercise) {
           <span class="meta-sep">·</span>
           <span class="meta-muscle">${ex.muscle}</span>
         </div>
+        ${lastHtml}
+        ${renderLogRow(logType)}
       </div>
     `;
     list.appendChild(card);
@@ -469,3 +690,17 @@ document.querySelectorAll(".focus-btn").forEach(btn => {
 
 document.getElementById("generate-btn").addEventListener("click", generate);
 document.getElementById("regenerate-btn").addEventListener("click", generate);
+document.getElementById("save-btn").addEventListener("click", saveWorkout);
+
+document.getElementById("profile-submit-btn").addEventListener("click", submitProfile);
+document.getElementById("profile-skip-btn").addEventListener("click", closeProfileModal);
+document.getElementById("profile-name-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") submitProfile();
+});
+document.getElementById("profile-modal").addEventListener("click", e => {
+  if (e.target === e.currentTarget) closeProfileModal();
+});
+
+// Init
+updateProfileBar();
+if (!loadProfile()) openProfileModal();

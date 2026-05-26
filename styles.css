@@ -85,7 +85,7 @@ input[type="number"]:focus {
 
 .type-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.75rem;
 }
 
@@ -294,6 +294,7 @@ input[type="number"]:focus {
 .tag-kondition { background: #1a4a2e; color: #34d399; }
 .tag-rorlighet { background: #4a3a1a; color: #fbbf24; }
 .tag-core      { background: #4a1a1a; color: #f87171; }
+.tag-tennis    { background: #0e2d35; color: #22d3ee; }
 
 .exercise-how {
   font-size: 0.9rem;
@@ -384,6 +385,168 @@ input[type="number"]:focus {
   font-size: 0.9rem;
   margin-top: 0.5rem;
 }
+
+.profile-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  color: #8888aa;
+  min-height: 22px;
+}
+.profile-greeting strong { color: #a78bfa; }
+.profile-link-btn {
+  background: transparent;
+  border: none;
+  color: #5555aa;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 5px;
+  transition: color 0.2s;
+}
+.profile-link-btn:hover { color: #a78bfa; }
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+.modal {
+  background: #1a1a2e;
+  border: 1px solid #3a3a5c;
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 400px;
+  width: 100%;
+}
+.modal h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #e8e8f0;
+  margin-bottom: 0.4rem;
+  background: none;
+  -webkit-text-fill-color: #e8e8f0;
+}
+.modal p {
+  color: #7070a0;
+  font-size: 0.88rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
+.modal input[type="text"] {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: #0f0f1a;
+  border: 1px solid #3a3a5c;
+  border-radius: 10px;
+  color: #e8e8f0;
+  font-size: 1rem;
+  outline: none;
+  margin-bottom: 1rem;
+  transition: border-color 0.2s;
+}
+.modal input[type="text"]:focus { border-color: #a78bfa; }
+.modal-actions { display: flex; gap: 0.75rem; }
+.modal-submit-btn {
+  flex: 1;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.modal-submit-btn:hover { opacity: 0.9; }
+.modal-skip-btn {
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: 1px solid #2a2a45;
+  border-radius: 10px;
+  color: #55556a;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.modal-skip-btn:hover { border-color: #55556a; color: #8888aa; }
+
+.last-result {
+  font-size: 0.78rem;
+  color: #34d399;
+  margin-top: 0.35rem;
+  font-weight: 500;
+}
+
+.log-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+.log-label {
+  font-size: 0.72rem;
+  color: #44446a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.log-input {
+  width: 68px;
+  padding: 0.28rem 0.45rem;
+  background: #0a0a14;
+  border: 1px solid #22223a;
+  border-radius: 6px;
+  color: #c0c0d8;
+  font-size: 0.85rem;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.log-input:focus { border-color: #7c3aed; }
+.log-sep { color: #33334a; font-size: 0.85rem; }
+.log-unit { font-size: 0.78rem; color: #44446a; }
+.log-check-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #7070a0;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.results-footer {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #1e1e38;
+}
+.save-btn {
+  padding: 0.65rem 1.5rem;
+  background: transparent;
+  border: 1px solid #34d399;
+  border-radius: 10px;
+  color: #34d399;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.save-btn:hover { background: #0e2a20; }
+.save-btn:disabled { opacity: 0.55; cursor: default; }
 
 @media (max-width: 480px) {
   h1 { font-size: 1.7rem; }
