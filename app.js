@@ -962,6 +962,19 @@ function generate() {
   results.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function suggestCount() {
+  const hintEl = document.getElementById('count-hint');
+  if (!selectedDuration) {
+    if (hintEl) hintEl.textContent = '';
+    return;
+  }
+  const types = [...selectedTypes];
+  const avgMin = types.reduce((s, t) => s + (MIN_PER_EXERCISE[t] || 5), 0) / types.length;
+  const suggested = Math.max(1, Math.min(20, Math.round(selectedDuration / avgMin)));
+  document.getElementById('exercise-count').value = suggested;
+  if (hintEl) hintEl.textContent = `Förslag baserat på ${selectedDuration} min – ändra gärna`;
+}
+
 document.querySelectorAll(".type-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     const type = btn.dataset.type;
@@ -974,6 +987,7 @@ document.querySelectorAll(".type-btn").forEach(btn => {
       selectedTypes.add(type);
       btn.classList.add("active");
     }
+    suggestCount();
   });
 });
 
@@ -988,6 +1002,7 @@ document.querySelectorAll(".duration-btn").forEach(btn => {
       btn.classList.add("active");
       selectedDuration = val;
     }
+    suggestCount();
   });
 });
 
