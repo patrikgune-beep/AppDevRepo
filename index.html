@@ -128,15 +128,17 @@
 
       <div id="profile-create-view" style="display:none">
         <h2>Logga in</h2>
-        <p>Ange din e-postadress. Finns ett befintligt konto loggas du in automatiskt.</p>
+        <p>Ange ditt alias och din e-postadress. Finns ett befintligt konto loggas du in automatiskt.</p>
+        <input type="text" id="profile-alias-input" placeholder="Alias / Visningsnamn" maxlength="50" autocomplete="nickname">
         <input type="email" id="profile-email-input" placeholder="din@epost.se" maxlength="100" autocomplete="email" inputmode="email">
-        <div id="profile-alias-row" style="display:none">
-          <input type="text" id="profile-alias-input" placeholder="Alias / Visningsnamn" maxlength="50" autocomplete="nickname">
-        </div>
         <p class="profile-create-error" id="profile-create-error"></p>
         <div class="modal-actions">
           <button class="modal-submit-btn" id="profile-submit-btn">Logga in</button>
           <button class="modal-skip-btn" id="profile-create-cancel-btn">Tillbaka</button>
+        </div>
+        <div class="profile-retry-row" id="profile-retry-row" style="display:none">
+          <button class="modal-skip-btn" id="profile-retry-btn">Försök igen</button>
+          <button class="modal-skip-btn" id="profile-create-anyway-btn">Skapa ny profil</button>
         </div>
       </div>
 

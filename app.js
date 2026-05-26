@@ -500,7 +500,7 @@ function loadServerProfilesIntoList() {
 }
 
 function closeProfileModal() {
-  _cancelLoginAttempt();
+  _cancelLoginCheck();
   document.getElementById('profile-modal').style.display = 'none';
   document.body.style.overflow = '';
 }
@@ -510,16 +510,17 @@ function showProfileView(view) {
   document.getElementById('profile-create-view').style.display = view === 'create' ? '' : 'none';
   if (view === 'list') renderProfileList();
   if (view === 'create') {
-    _cancelLoginAttempt();
-    profileLoginPhase = 'check';
-    document.getElementById('profile-email-input').value = '';
+    _cancelLoginCheck();
     document.getElementById('profile-alias-input').value = '';
-    document.getElementById('profile-alias-row').style.display = 'none';
+    document.getElementById('profile-email-input').value = '';
+    document.getElementById('profile-retry-row').style.display = 'none';
     const errEl = document.getElementById('profile-create-error');
     errEl.textContent = '';
     errEl.className = 'profile-create-error';
-    document.getElementById('profile-submit-btn').textContent = 'Logga in';
-    setTimeout(() => document.getElementById('profile-email-input').focus(), 50);
+    const btn = document.getElementById('profile-submit-btn');
+    btn.textContent = 'Logga in';
+    btn.disabled = false;
+    setTimeout(() => document.getElementById('profile-alias-input').focus(), 50);
   }
 }
 
@@ -589,112 +590,89 @@ function confirmDeleteProfile(id, name) {
   updateProfileBar();
 }
 
+var _loginCheckCancelled = false;
+
+function _cancelLoginCheck() {
+  _loginCheckCancelled = true;
+}
+
 function submitNewProfile() {
-  if (profileLoginPhase === 'check') { _loginCheckPhase(); }
-  else { _createAccountPhase(); }
+  _startLoginCheck();
 }
 
-var _loginAttempt = null;
-
-function _cancelLoginAttempt() {
-  if (_loginAttempt) {
-    _loginAttempt.cancelled = true;
-    clearInterval(_loginAttempt.countdownTimer);
-    _loginAttempt = null;
-  }
-}
-
-function _loginCheckPhase() {
+function _startLoginCheck() {
+  var aliasInput = document.getElementById('profile-alias-input');
   var emailInput = document.getElementById('profile-email-input');
-  var errorEl   = document.getElementById('profile-create-error');
-  var submitBtn = document.getElementById('profile-submit-btn');
+  var errorEl    = document.getElementById('profile-create-error');
+  var submitBtn  = document.getElementById('profile-submit-btn');
+  var alias = aliasInput.value.trim();
   var email = emailInput.value.trim().toLowerCase();
 
   errorEl.textContent = '';
   errorEl.className = 'profile-create-error';
+  document.getElementById('profile-retry-row').style.display = 'none';
+
+  if (!alias) { errorEl.textContent = 'Ange ett alias.'; aliasInput.focus(); return; }
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errorEl.textContent = 'Ange en giltig e-postadress.';
-    emailInput.focus();
-    return;
+    errorEl.textContent = 'Ange en giltig e-postadress.'; emailInput.focus(); return;
   }
 
-  _cancelLoginAttempt();
-
-  var TOTAL_SECS = 60;
-  var remaining = TOTAL_SECS;
-  var attempt = { cancelled: false, countdownTimer: null };
-  _loginAttempt = attempt;
-
+  _loginCheckCancelled = false;
   submitBtn.disabled = true;
   submitBtn.textContent = '...';
 
-  function showCountdown() {
-    errorEl.className = 'profile-create-error profile-create-connecting';
-    errorEl.textContent = 'Ansluter till server… (' + remaining + ' sek)';
-  }
-  showCountdown();
-
-  attempt.countdownTimer = setInterval(function() {
-    if (attempt.cancelled) { clearInterval(attempt.countdownTimer); return; }
-    remaining--;
-    if (remaining <= 0) {
-      clearInterval(attempt.countdownTimer);
-      attempt.cancelled = true;
-      _loginAttempt = null;
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Logga in';
-      errorEl.className = 'profile-create-error';
-      errorEl.textContent = 'Servern svarar inte – kontrollera din anslutning och f\xf6rs\xf6k igen.';
-    } else {
-      showCountdown();
-    }
-  }, 1000);
-
-  function doAttempt() {
-    if (attempt.cancelled) return;
-    var ctrl = new AbortController();
-    var timer = setTimeout(function() { ctrl.abort(); }, 6000);
-    fetch(SYNC_URL + '/api/profiles', { signal: ctrl.signal })
-      .then(function(r) {
-        clearTimeout(timer);
-        if (attempt.cancelled) return;
-        if (!r || !r.ok) { scheduleRetry(); return; }
-        return r.json().then(function(serverProfiles) {
-          if (attempt.cancelled) return;
-          attempt.cancelled = true;
-          clearInterval(attempt.countdownTimer);
-          _loginAttempt = null;
-          _processLoginProfiles(serverProfiles, email, submitBtn, errorEl);
+  apiFetch('/api/profiles')
+    .then(function(r) {
+      if (_loginCheckCancelled) return;
+      if (!r || !r.ok) { _showRetryOptions(alias, email, submitBtn, errorEl); return; }
+      return r.json().then(function(serverProfiles) {
+        if (_loginCheckCancelled) return;
+        var all = serverProfiles ? serverProfiles.slice() : [];
+        loadProfiles().forEach(function(lp) {
+          if (!all.find(function(sp) { return sp.id === lp.id; })) all.push(lp);
         });
-      })
-      .catch(function() { clearTimeout(timer); scheduleRetry(); });
-  }
-
-  function scheduleRetry() {
-    if (attempt.cancelled || remaining <= 0) return;
-    setTimeout(doAttempt, 1000);
-  }
-
-  doAttempt();
+        var found = all.find(function(p) { return p.email && p.email.toLowerCase() === email; });
+        if (found) {
+          _adoptProfile(found, submitBtn, errorEl);
+        } else {
+          _doCreateProfile(alias, email, submitBtn, errorEl);
+        }
+      });
+    })
+    .catch(function() {
+      if (_loginCheckCancelled) return;
+      _showRetryOptions(alias, email, submitBtn, errorEl);
+    });
 }
 
-function _processLoginProfiles(serverProfiles, email, submitBtn, errorEl) {
-  var all = serverProfiles ? serverProfiles.slice() : [];
-  loadProfiles().forEach(function(lp) {
-    if (!all.find(function(sp) { return sp.id === lp.id; })) all.push(lp);
+function _showRetryOptions(alias, email, submitBtn, errorEl) {
+  submitBtn.disabled = false;
+  submitBtn.textContent = 'Logga in';
+  errorEl.textContent = 'Kunde inte n\xe5 servern (10 sek). V\xe4lj ett alternativ:';
+  var retryRow = document.getElementById('profile-retry-row');
+  retryRow.style.display = '';
+  document.getElementById('profile-retry-btn').onclick = function() {
+    _startLoginCheck();
+  };
+  document.getElementById('profile-create-anyway-btn').onclick = function() {
+    document.getElementById('profile-retry-row').style.display = 'none';
+    errorEl.textContent = '';
+    _doCreateProfile(alias, email, submitBtn, errorEl);
+  };
+}
+
+function _doCreateProfile(alias, email, submitBtn, errorEl) {
+  submitBtn.disabled = true;
+  submitBtn.textContent = '...';
+  var newProfile = { id: generateId(), alias: alias, email: email, createdAt: new Date().toISOString() };
+  pushProfileToServer(newProfile).then(function(result) {
+    if (_loginCheckCancelled) return;
+    if (result.conflict) {
+      _adoptProfile(result.existing, submitBtn, errorEl);
+    } else {
+      _createProfileLocally(newProfile);
+    }
   });
-  var found = all.find(function(p) { return p.email && p.email.toLowerCase() === email; });
-  if (found) {
-    _adoptProfile(found, submitBtn, errorEl);
-  } else {
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Skapa konto';
-    document.getElementById('profile-alias-row').style.display = '';
-    errorEl.className = 'profile-create-error';
-    errorEl.textContent = 'Ingen profil hittades – ange ett alias f\xf6r att skapa nytt konto.';
-    setTimeout(function() { document.getElementById('profile-alias-input').focus(); }, 50);
-    profileLoginPhase = 'create';
-  }
 }
 
 function _adoptProfile(found, submitBtn, errorEl) {
@@ -704,35 +682,10 @@ function _adoptProfile(found, submitBtn, errorEl) {
     saveProfiles(profiles);
   }
   setActiveProfileId(found.id);
-  if (errorEl) { errorEl.className = 'profile-create-error profile-create-ok'; errorEl.textContent = 'Välkommen, ' + (found.alias || found.name || found.email) + '!'; }
+  if (errorEl) { errorEl.className = 'profile-create-error profile-create-ok'; errorEl.textContent = 'V\xe4lkommen, ' + (found.alias || found.name || found.email) + '!'; }
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '✓'; }
   syncProfileHistory(found.id).then(function() {
     setTimeout(function() { closeProfileModal(); updateProfileBar(); }, 600);
-  });
-}
-
-function _createAccountPhase() {
-  var aliasInput = document.getElementById('profile-alias-input');
-  var emailInput = document.getElementById('profile-email-input');
-  var errorEl   = document.getElementById('profile-create-error');
-  var submitBtn = document.getElementById('profile-submit-btn');
-  var alias = aliasInput.value.trim();
-  var email = emailInput.value.trim().toLowerCase();
-
-  errorEl.textContent = '';
-  errorEl.className = 'profile-create-error';
-  if (!alias) { aliasInput.focus(); return; }
-
-  submitBtn.disabled = true;
-  submitBtn.textContent = '...';
-
-  var newProfile = { id: generateId(), alias: alias, email: email, createdAt: new Date().toISOString() };
-  pushProfileToServer(newProfile).then(function(result) {
-    if (result.conflict) {
-      _adoptProfile(result.existing, submitBtn, errorEl);
-    } else {
-      _createProfileLocally(newProfile);
-    }
   });
 }
 
@@ -752,7 +705,6 @@ var SYNC_URL = 'https://personalgymcoachweb.onrender.com';
 function getSyncUrl() { return SYNC_URL; }
 
 var syncStatus = 'none';
-var profileLoginPhase = 'check';
 
 function updateSyncDot() {
   var dot = document.getElementById('sync-dot');
@@ -761,11 +713,53 @@ function updateSyncDot() {
 
 function apiFetch(path, options) {
   var controller = new AbortController();
-  var timer = setTimeout(function() { controller.abort(); }, 8000);
+  var timer = setTimeout(function() { controller.abort(); }, 10000);
   var opts = Object.assign({}, options || {}, { signal: controller.signal });
   return fetch(SYNC_URL + path, opts)
     .then(function(r) { clearTimeout(timer); return r; })
     .catch(function() { clearTimeout(timer); return null; });
+}
+
+function mergeProfileDuplicates(profiles, history) {
+  var byEmail = {};
+  profiles.forEach(function(p) {
+    if (!p.email) return;
+    var key = p.email.toLowerCase();
+    if (!byEmail[key]) byEmail[key] = [];
+    byEmail[key].push(p);
+  });
+
+  var remap = {};
+  var result = [];
+  var handled = {};
+
+  profiles.forEach(function(p) {
+    if (!p.email) { result.push(p); return; }
+    var key = p.email.toLowerCase();
+    if (handled[key]) return;
+    handled[key] = true;
+    var group = byEmail[key];
+    if (group.length === 1) { result.push(group[0]); return; }
+    group.sort(function(a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
+    result.push(group[0]);
+    group.slice(1).forEach(function(dup) { remap[dup.id] = group[0].id; });
+  });
+
+  if (!Object.keys(remap).length) return { profiles: profiles, history: history, changed: false };
+
+  var seen = {};
+  var newHistory = history
+    .map(function(w) {
+      return w.profileId && remap[w.profileId] ? Object.assign({}, w, { profileId: remap[w.profileId] }) : w;
+    })
+    .filter(function(w) {
+      if (!w.id) return true;
+      if (seen[w.id]) return false;
+      seen[w.id] = true;
+      return true;
+    });
+
+  return { profiles: result, history: newHistory, remap: remap, changed: true };
 }
 
 function syncFromServer() {
@@ -779,10 +773,17 @@ function syncFromServer() {
       var localProfiles = loadProfiles();
       var merged = serverProfiles.slice();
       localProfiles.forEach(function(lp) {
-        if (!merged.find(function(sp) { return sp.id === lp.id; })) {
-          merged.push(lp);
-        }
+        if (!merged.find(function(sp) { return sp.id === lp.id; })) merged.push(lp);
       });
+
+      var dedup = mergeProfileDuplicates(merged, loadHistory());
+      if (dedup.changed) {
+        saveHistory(dedup.history);
+        merged = dedup.profiles;
+        var activeId = getActiveProfileId();
+        if (activeId && dedup.remap[activeId]) setActiveProfileId(dedup.remap[activeId]);
+      }
+
       saveProfiles(merged);
       var activeId = getActiveProfileId();
       if (activeId && !merged.find(function(p) { return p.id === activeId; })) {
@@ -819,17 +820,21 @@ function syncProfileHistory(profileId) {
 }
 
 function pushProfileToServer(profile) {
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 10000);
   return fetch(SYNC_URL + '/api/profiles', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(profile)
+    body: JSON.stringify(profile),
+    signal: controller.signal
   })
   .then(function(r) {
+    clearTimeout(timer);
     if (r.status === 409) return r.json().then(function(d) { return { conflict: true, existing: d.profile }; });
     if (!r.ok) return { error: true };
     return { ok: true };
   })
-  .catch(function() { return { offline: true }; });
+  .catch(function() { clearTimeout(timer); return { offline: true }; });
 }
 
 function deleteProfileFromServer(id) {
