@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const DATA_FILE = path.join(__dirname, 'data.json');
+const DATA_FILE = process.env.DATA_PATH || path.join(__dirname, 'data.json');
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: '2mb' }));
@@ -30,7 +30,7 @@ app.get('/api/profiles', function(req, res) {
 // POST /api/profiles
 app.post('/api/profiles', function(req, res) {
   var body = req.body;
-  if (!body || !body.id || !body.name) {
+  if (!body || !body.id || !body.alias || !body.email) {
     return res.status(400).json({ error: 'missing_fields' });
   }
   var data = loadData();
