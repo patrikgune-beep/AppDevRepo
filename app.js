@@ -406,19 +406,6 @@ function renderLogRow(logType) {
 
 // ── Profile UI ───────────────────────────────────────────────────────────────
 
-function makeSyncBtn() {
-  var btn = document.createElement('button');
-  btn.className = 'profile-link-btn';
-  btn.title = 'Synka mot server nu';
-  var dot = document.createElement('span');
-  dot.id = 'sync-dot';
-  dot.className = 'sync-dot sync-dot-' + syncStatus;
-  btn.appendChild(dot);
-  btn.appendChild(document.createTextNode(' Synka'));
-  btn.addEventListener('click', function() { syncFromServer(); });
-  return btn;
-}
-
 function updateProfileBar() {
   const profile = getActiveProfile();
   const bar = document.getElementById('profile-bar');
@@ -445,14 +432,12 @@ function updateProfileBar() {
     bar.appendChild(greeting);
     bar.appendChild(statsBtn);
     bar.appendChild(changeBtn);
-    bar.appendChild(makeSyncBtn());
   } else {
     const createBtn = document.createElement('button');
     createBtn.className = 'profile-link-btn';
     createBtn.textContent = '+ Skapa profil';
     createBtn.addEventListener('click', () => openProfileModal('create'));
     bar.appendChild(createBtn);
-    bar.appendChild(makeSyncBtn());
   }
 
   const bgBtn = document.createElement('button');
@@ -480,27 +465,9 @@ function openProfileModal(view) {
   document.getElementById('profile-modal').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   showProfileView(view);
-  if (view === 'list') loadServerProfilesIntoList();
-}
-
-function loadServerProfilesIntoList() {
-  apiFetch('/api/profiles')
-    .then(function(r) { return r && r.ok ? r.json() : null; })
-    .then(function(serverProfiles) {
-      if (!serverProfiles) return;
-      var local = loadProfiles();
-      var merged = serverProfiles.slice();
-      local.forEach(function(lp) {
-        if (!merged.find(function(sp) { return sp.id === lp.id; })) merged.push(lp);
-      });
-      if (merged.length !== local.length) { saveProfiles(merged); renderProfileList(); }
-      syncStatus = 'ok'; updateSyncDot();
-    })
-    .catch(function() { syncStatus = 'error'; updateSyncDot(); });
 }
 
 function closeProfileModal() {
-  _cancelLoginCheck();
   document.getElementById('profile-modal').style.display = 'none';
   document.body.style.overflow = '';
 }
@@ -510,15 +477,12 @@ function showProfileView(view) {
   document.getElementById('profile-create-view').style.display = view === 'create' ? '' : 'none';
   if (view === 'list') renderProfileList();
   if (view === 'create') {
-    _cancelLoginCheck();
     document.getElementById('profile-alias-input').value = '';
-    document.getElementById('profile-email-input').value = '';
-    document.getElementById('profile-retry-row').style.display = 'none';
     const errEl = document.getElementById('profile-create-error');
     errEl.textContent = '';
     errEl.className = 'profile-create-error';
     const btn = document.getElementById('profile-submit-btn');
-    btn.textContent = 'Logga in';
+    btn.textContent = 'Skapa profil';
     btn.disabled = false;
     setTimeout(() => document.getElementById('profile-alias-input').focus(), 50);
   }
@@ -552,7 +516,6 @@ function renderProfileList() {
       setActiveProfileId(p.id);
       closeProfileModal();
       updateProfileBar();
-      if (getSyncUrl()) syncProfileHistory(p.id);
     });
 
     card.appendChild(nameBtn);
@@ -582,7 +545,6 @@ function confirmDeleteProfile(id, name) {
   const profiles = loadProfiles().filter(p => p.id !== id);
   saveProfiles(profiles);
   saveHistory(loadHistory().filter(w => w.profileId !== id));
-  deleteProfileFromServer(id);
   if (getActiveProfileId() === id) {
     setActiveProfileId(profiles.length > 0 ? profiles[0].id : null);
   }
@@ -590,263 +552,20 @@ function confirmDeleteProfile(id, name) {
   updateProfileBar();
 }
 
-var _loginCheckCancelled = false;
-
-function _cancelLoginCheck() {
-  _loginCheckCancelled = true;
-}
-
 function submitNewProfile() {
-  _startLoginCheck();
-}
-
-function _startLoginCheck() {
   var aliasInput = document.getElementById('profile-alias-input');
-  var emailInput = document.getElementById('profile-email-input');
-  var errorEl    = document.getElementById('profile-create-error');
-  var submitBtn  = document.getElementById('profile-submit-btn');
+  var errorEl = document.getElementById('profile-create-error');
   var alias = aliasInput.value.trim();
-  var email = emailInput.value.trim().toLowerCase();
-
   errorEl.textContent = '';
   errorEl.className = 'profile-create-error';
-  document.getElementById('profile-retry-row').style.display = 'none';
-
-  if (!alias) { errorEl.textContent = 'Ange ett alias.'; aliasInput.focus(); return; }
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errorEl.textContent = 'Ange en giltig e-postadress.'; emailInput.focus(); return;
-  }
-
-  _loginCheckCancelled = false;
-  submitBtn.disabled = true;
-  submitBtn.textContent = '...';
-
-  apiFetch('/api/profiles')
-    .then(function(r) {
-      if (_loginCheckCancelled) return;
-      if (!r || !r.ok) { _showRetryOptions(alias, email, submitBtn, errorEl); return; }
-      return r.json().then(function(serverProfiles) {
-        if (_loginCheckCancelled) return;
-        var all = serverProfiles ? serverProfiles.slice() : [];
-        loadProfiles().forEach(function(lp) {
-          if (!all.find(function(sp) { return sp.id === lp.id; })) all.push(lp);
-        });
-        var found = all.find(function(p) { return p.email && p.email.toLowerCase() === email; });
-        if (found) {
-          _adoptProfile(found, submitBtn, errorEl);
-        } else {
-          _doCreateProfile(alias, email, submitBtn, errorEl);
-        }
-      });
-    })
-    .catch(function() {
-      if (_loginCheckCancelled) return;
-      _showRetryOptions(alias, email, submitBtn, errorEl);
-    });
-}
-
-function _showRetryOptions(alias, email, submitBtn, errorEl) {
-  submitBtn.disabled = false;
-  submitBtn.textContent = 'Logga in';
-  errorEl.textContent = 'Kunde inte n\xe5 servern (10 sek). V\xe4lj ett alternativ:';
-  var retryRow = document.getElementById('profile-retry-row');
-  retryRow.style.display = '';
-  document.getElementById('profile-retry-btn').onclick = function() {
-    _startLoginCheck();
-  };
-  document.getElementById('profile-create-anyway-btn').onclick = function() {
-    document.getElementById('profile-retry-row').style.display = 'none';
-    errorEl.textContent = '';
-    _doCreateProfile(alias, email, submitBtn, errorEl);
-  };
-}
-
-function _doCreateProfile(alias, email, submitBtn, errorEl) {
-  submitBtn.disabled = true;
-  submitBtn.textContent = '...';
-  var newProfile = { id: generateId(), alias: alias, email: email, createdAt: new Date().toISOString() };
-  pushProfileToServer(newProfile).then(function(result) {
-    if (_loginCheckCancelled) return;
-    if (result.conflict) {
-      _adoptProfile(result.existing, submitBtn, errorEl);
-    } else {
-      _createProfileLocally(newProfile);
-    }
-  });
-}
-
-function _adoptProfile(found, submitBtn, errorEl) {
-  var profiles = loadProfiles();
-  if (!profiles.find(function(p) { return p.id === found.id; })) {
-    profiles.push(found);
-    saveProfiles(profiles);
-  }
-  setActiveProfileId(found.id);
-  if (errorEl) { errorEl.className = 'profile-create-error profile-create-ok'; errorEl.textContent = 'V\xe4lkommen, ' + (found.alias || found.name || found.email) + '!'; }
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '✓'; }
-  syncProfileHistory(found.id).then(function() {
-    setTimeout(function() { closeProfileModal(); updateProfileBar(); }, 600);
-  });
-}
-
-function _createProfileLocally(profile) {
+  if (!alias) { errorEl.textContent = 'Ange ett namn.'; aliasInput.focus(); return; }
+  var profile = { id: generateId(), alias: alias, createdAt: new Date().toISOString() };
   var profiles = loadProfiles();
   profiles.push(profile);
   saveProfiles(profiles);
   setActiveProfileId(profile.id);
   closeProfileModal();
   updateProfileBar();
-}
-
-// ── Sync ─────────────────────────────────────────────────────────────────────
-
-var SYNC_URL = 'https://personalgymcoachweb.onrender.com';
-
-function getSyncUrl() { return SYNC_URL; }
-
-var syncStatus = 'none';
-
-function updateSyncDot() {
-  var dot = document.getElementById('sync-dot');
-  if (dot) dot.className = 'sync-dot sync-dot-' + syncStatus;
-}
-
-function apiFetch(path, options) {
-  var controller = new AbortController();
-  var timer = setTimeout(function() { controller.abort(); }, 10000);
-  var opts = Object.assign({}, options || {}, { signal: controller.signal });
-  return fetch(SYNC_URL + path, opts)
-    .then(function(r) { clearTimeout(timer); return r; })
-    .catch(function() { clearTimeout(timer); return null; });
-}
-
-function mergeProfileDuplicates(profiles, history) {
-  var byEmail = {};
-  profiles.forEach(function(p) {
-    if (!p.email) return;
-    var key = p.email.toLowerCase();
-    if (!byEmail[key]) byEmail[key] = [];
-    byEmail[key].push(p);
-  });
-
-  var remap = {};
-  var result = [];
-  var handled = {};
-
-  profiles.forEach(function(p) {
-    if (!p.email) { result.push(p); return; }
-    var key = p.email.toLowerCase();
-    if (handled[key]) return;
-    handled[key] = true;
-    var group = byEmail[key];
-    if (group.length === 1) { result.push(group[0]); return; }
-    group.sort(function(a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
-    result.push(group[0]);
-    group.slice(1).forEach(function(dup) { remap[dup.id] = group[0].id; });
-  });
-
-  if (!Object.keys(remap).length) return { profiles: profiles, history: history, changed: false };
-
-  var seen = {};
-  var newHistory = history
-    .map(function(w) {
-      return w.profileId && remap[w.profileId] ? Object.assign({}, w, { profileId: remap[w.profileId] }) : w;
-    })
-    .filter(function(w) {
-      if (!w.id) return true;
-      if (seen[w.id]) return false;
-      seen[w.id] = true;
-      return true;
-    });
-
-  return { profiles: result, history: newHistory, remap: remap, changed: true };
-}
-
-function syncFromServer() {
-  apiFetch('/api/profiles')
-    .then(function(r) {
-      if (!r || !r.ok) { syncStatus = 'error'; updateSyncDot(); return null; }
-      return r.json();
-    })
-    .then(function(serverProfiles) {
-      if (!serverProfiles) return null;
-      var localProfiles = loadProfiles();
-      var merged = serverProfiles.slice();
-      localProfiles.forEach(function(lp) {
-        if (!merged.find(function(sp) { return sp.id === lp.id; })) merged.push(lp);
-      });
-
-      var dedup = mergeProfileDuplicates(merged, loadHistory());
-      if (dedup.changed) {
-        saveHistory(dedup.history);
-        merged = dedup.profiles;
-        var activeId = getActiveProfileId();
-        if (activeId && dedup.remap[activeId]) setActiveProfileId(dedup.remap[activeId]);
-      }
-
-      saveProfiles(merged);
-      var activeId = getActiveProfileId();
-      if (activeId && !merged.find(function(p) { return p.id === activeId; })) {
-        setActiveProfileId(merged.length > 0 ? merged[0].id : null);
-      }
-      updateProfileBar();
-      var currentActiveId = getActiveProfileId();
-      if (currentActiveId) return syncProfileHistory(currentActiveId);
-      return null;
-    })
-    .then(function() { syncStatus = 'ok'; updateSyncDot(); })
-    .catch(function() { syncStatus = 'error'; updateSyncDot(); });
-}
-
-function syncProfileHistory(profileId) {
-  return apiFetch('/api/history/' + profileId)
-    .then(function(r) {
-      if (!r || !r.ok) return;
-      return r.json();
-    })
-    .then(function(serverHistory) {
-      if (!serverHistory) return;
-      var localHistory = loadHistory();
-      var otherHistory = localHistory.filter(function(w) { return w.profileId !== profileId; });
-      var localForProfile = localHistory.filter(function(w) { return w.profileId === profileId; });
-      var serverIds = {};
-      serverHistory.forEach(function(w) { if (w.id) serverIds[w.id] = true; });
-      var localUnsynced = localForProfile.filter(function(w) { return !w.id || !serverIds[w.id]; });
-      var profileHistory = serverHistory.concat(localUnsynced);
-      profileHistory.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
-      if (profileHistory.length > 200) profileHistory.splice(200);
-      saveHistory(otherHistory.concat(profileHistory));
-    });
-}
-
-function pushProfileToServer(profile) {
-  var controller = new AbortController();
-  var timer = setTimeout(function() { controller.abort(); }, 10000);
-  return fetch(SYNC_URL + '/api/profiles', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(profile),
-    signal: controller.signal
-  })
-  .then(function(r) {
-    clearTimeout(timer);
-    if (r.status === 409) return r.json().then(function(d) { return { conflict: true, existing: d.profile }; });
-    if (!r.ok) return { error: true };
-    return { ok: true };
-  })
-  .catch(function() { clearTimeout(timer); return { offline: true }; });
-}
-
-function deleteProfileFromServer(id) {
-  fetch(SYNC_URL + '/api/profiles/' + id, { method: 'DELETE' }).catch(function() {});
-}
-
-function pushWorkoutToServer(workout) {
-  fetch(SYNC_URL + '/api/history/' + workout.profileId, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(workout)
-  }).catch(function() {});
 }
 
 // ── Stats ────────────────────────────────────────────────────────────────────
@@ -1013,16 +732,8 @@ function confirmDeleteWorkout(id) {
 }
 
 function deleteWorkout(id) {
-  var history = loadHistory();
-  var workout = history.find(function(w) { return w.id === id; });
-  saveHistory(history.filter(function(w) { return w.id !== id; }));
-  if (workout && workout.profileId) deleteWorkoutFromServer(workout.profileId, id);
+  saveHistory(loadHistory().filter(function(w) { return w.id !== id; }));
   renderStats();
-}
-
-function deleteWorkoutFromServer(profileId, workoutId) {
-  if (!getSyncUrl() || !profileId) return;
-  fetch(getSyncUrl() + '/api/history/' + profileId + '/' + workoutId, { method: 'DELETE' }).catch(function() {});
 }
 
 function openEditWorkoutModal(id) {
@@ -1130,7 +841,6 @@ function saveEditedWorkout() {
   workout.exercises = exercises;
   history[idx] = workout;
   saveHistory(history);
-  pushWorkoutToServer(workout);
   closeEditWorkoutModal();
   renderStats();
 }
@@ -1170,7 +880,6 @@ function saveWorkout() {
   history.unshift(workout);
   if (history.length > 200) history.splice(200);
   saveHistory(history);
-  pushWorkoutToServer(workout);
 
   const btn = document.getElementById('save-btn');
   btn.textContent = '✓ Sparat!';
@@ -1505,9 +1214,6 @@ document.getElementById("profile-submit-btn").addEventListener("click", submitNe
 document.getElementById("profile-alias-input").addEventListener("keydown", e => {
   if (e.key === "Enter") submitNewProfile();
 });
-document.getElementById("profile-email-input").addEventListener("keydown", e => {
-  if (e.key === "Enter") submitNewProfile();
-});
 document.getElementById("profile-create-cancel-btn").addEventListener("click", () => {
   loadProfiles().length > 0 ? showProfileView('list') : closeProfileModal();
 });
@@ -1556,9 +1262,7 @@ document.getElementById("bg-file-input").addEventListener("change", function(e) 
 
 
 // Init
-fetch(SYNC_URL + '/health').then(function() { console.log('Backend vaken'); }).catch(function() { console.log('Väcker backend...'); });
 migrateOldProfile();
 applyBgImage();
 updateProfileBar();
 if (!getActiveProfile()) openProfileModal(loadProfiles().length > 0 ? 'list' : 'create');
-syncFromServer();
