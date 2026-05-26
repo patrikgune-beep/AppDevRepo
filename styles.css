@@ -896,6 +896,66 @@ input[type="number"] {
 .save-btn:hover { background: #ecfdf5; }
 .save-btn:disabled { opacity: 0.55; cursor: default; }
 
+/* ── Sync ── */
+.sync-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 2px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+.sync-dot-none  { background: #d0d0e4; }
+.sync-dot-ok    { background: #10b981; }
+.sync-dot-error { background: #ef4444; }
+
+.sync-status-msg {
+  font-size: 0.82rem;
+  color: #9999bb;
+  min-height: 18px;
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+.sync-status-msg.sync-ok    { color: #059669; }
+.sync-status-msg.sync-error { color: #dc2626; }
+
+.sync-remove-row { margin-top: 1rem; text-align: center; }
+
+.sync-remove-btn {
+  background: transparent;
+  border: none;
+  color: #cc4444;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0.2rem 0.4rem;
+}
+.sync-remove-btn:hover { color: #dc2626; }
+
+.modal input[type="url"] {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: #f4f4fb;
+  border: 1px solid #d8d8ee;
+  border-radius: 10px;
+  color: #1a1a2e;
+  font-size: 1rem;
+  outline: none;
+  margin-bottom: 0.5rem;
+  transition: border-color 0.2s;
+}
+.modal input[type="url"]:focus { border-color: #7c3aed; }
+
+.modal code {
+  background: #f4f4fb;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  color: #555577;
+}
+
 @media (max-width: 480px) {
   h1 { font-size: 1.7rem; }
   .type-grid { grid-template-columns: repeat(3, 1fr); }

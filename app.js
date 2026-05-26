@@ -400,6 +400,18 @@ function renderLogRow(logType) {
 
 // ── Profile UI ───────────────────────────────────────────────────────────────
 
+function makeSyncBtn() {
+  var btn = document.createElement('button');
+  btn.className = 'profile-link-btn';
+  var dot = document.createElement('span');
+  dot.id = 'sync-dot';
+  dot.className = 'sync-dot sync-dot-' + syncStatus;
+  btn.appendChild(dot);
+  btn.appendChild(document.createTextNode(' Sync'));
+  btn.addEventListener('click', openSyncModal);
+  return btn;
+}
+
 function updateProfileBar() {
   const profile = getActiveProfile();
   const bar = document.getElementById('profile-bar');
@@ -425,12 +437,14 @@ function updateProfileBar() {
     bar.appendChild(greeting);
     bar.appendChild(statsBtn);
     bar.appendChild(changeBtn);
+    bar.appendChild(makeSyncBtn());
   } else {
     const createBtn = document.createElement('button');
     createBtn.className = 'profile-link-btn';
     createBtn.textContent = '+ Skapa profil';
     createBtn.addEventListener('click', () => openProfileModal('create'));
     bar.appendChild(createBtn);
+    bar.appendChild(makeSyncBtn());
   }
 }
 
@@ -477,6 +491,7 @@ function renderProfileList() {
       setActiveProfileId(p.id);
       closeProfileModal();
       updateProfileBar();
+      if (getSyncUrl()) syncProfileHistory(p.id);
     });
 
     card.appendChild(nameBtn);
@@ -506,6 +521,7 @@ function confirmDeleteProfile(id, name) {
   const profiles = loadProfiles().filter(p => p.id !== id);
   saveProfiles(profiles);
   saveHistory(loadHistory().filter(w => w.profileId !== id));
+  deleteProfileFromServer(id);
   if (getActiveProfileId() === id) {
     setActiveProfileId(profiles.length > 0 ? profiles[0].id : null);
   }
@@ -518,11 +534,215 @@ function submitNewProfile() {
   const name = input.value.trim();
   if (!name) { input.focus(); return; }
   const newProfile = { id: generateId(), name, createdAt: new Date().toISOString() };
-  const profiles = loadProfiles();
-  profiles.push(newProfile);
+
+  if (!getSyncUrl()) {
+    _createProfileLocally(newProfile);
+    return;
+  }
+
+  const submitBtn = document.getElementById('profile-submit-btn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = '...';
+
+  pushProfileToServer(newProfile).then(function(result) {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Skapa profil';
+    if (result.ok || result.offline || result.local) {
+      _createProfileLocally(newProfile);
+    } else if (result.conflict) {
+      var existing = result.existing;
+      if (confirm(
+        '"' + name + '" finns redan på servern.\n' +
+        'Vill du synka och använda den befintliga profilen?'
+      )) {
+        var profiles = loadProfiles();
+        if (!profiles.find(function(p) { return p.id === existing.id; })) {
+          profiles.push(existing);
+          saveProfiles(profiles);
+        }
+        setActiveProfileId(existing.id);
+        syncProfileHistory(existing.id).then(function() {
+          showProfileView('list');
+          updateProfileBar();
+        });
+      }
+    } else {
+      _createProfileLocally(newProfile);
+    }
+  });
+}
+
+function _createProfileLocally(profile) {
+  var profiles = loadProfiles();
+  profiles.push(profile);
   saveProfiles(profiles);
-  setActiveProfileId(newProfile.id);
+  setActiveProfileId(profile.id);
   showProfileView('list');
+  updateProfileBar();
+}
+
+// ── Sync ─────────────────────────────────────────────────────────────────────
+
+function getSyncUrl() {
+  return localStorage.getItem('tg_sync_url') || '';
+}
+function setSyncUrl(url) {
+  if (url) localStorage.setItem('tg_sync_url', url.replace(/\/$/, ''));
+  else localStorage.removeItem('tg_sync_url');
+}
+
+var syncStatus = 'none';
+
+function updateSyncDot() {
+  var dot = document.getElementById('sync-dot');
+  if (dot) dot.className = 'sync-dot sync-dot-' + syncStatus;
+}
+
+function apiFetch(path, options) {
+  var base = getSyncUrl();
+  if (!base) return Promise.resolve(null);
+  return fetch(base + path, options || {}).catch(function() { return null; });
+}
+
+function syncFromServer() {
+  var base = getSyncUrl();
+  if (!base) return;
+
+  apiFetch('/api/profiles')
+    .then(function(r) {
+      if (!r || !r.ok) { syncStatus = 'error'; updateSyncDot(); return null; }
+      return r.json();
+    })
+    .then(function(serverProfiles) {
+      if (!serverProfiles) return null;
+      var localProfiles = loadProfiles();
+      var merged = serverProfiles.slice();
+      localProfiles.forEach(function(lp) {
+        if (!merged.find(function(sp) { return sp.id === lp.id; })) {
+          merged.push(lp);
+        }
+      });
+      saveProfiles(merged);
+      var activeId = getActiveProfileId();
+      if (activeId && !merged.find(function(p) { return p.id === activeId; })) {
+        setActiveProfileId(merged.length > 0 ? merged[0].id : null);
+      }
+      updateProfileBar();
+      var currentActiveId = getActiveProfileId();
+      if (currentActiveId) return syncProfileHistory(currentActiveId);
+      return null;
+    })
+    .then(function() { syncStatus = 'ok'; updateSyncDot(); })
+    .catch(function() { syncStatus = 'error'; updateSyncDot(); });
+}
+
+function syncProfileHistory(profileId) {
+  return apiFetch('/api/history/' + profileId)
+    .then(function(r) {
+      if (!r || !r.ok) return;
+      return r.json();
+    })
+    .then(function(serverHistory) {
+      if (!serverHistory) return;
+      var localHistory = loadHistory();
+      var otherHistory = localHistory.filter(function(w) { return w.profileId !== profileId; });
+      var localForProfile = localHistory.filter(function(w) { return w.profileId === profileId; });
+      var serverIds = {};
+      serverHistory.forEach(function(w) { if (w.id) serverIds[w.id] = true; });
+      var localUnsynced = localForProfile.filter(function(w) { return !w.id || !serverIds[w.id]; });
+      var profileHistory = serverHistory.concat(localUnsynced);
+      profileHistory.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+      if (profileHistory.length > 200) profileHistory.splice(200);
+      saveHistory(otherHistory.concat(profileHistory));
+    });
+}
+
+function pushProfileToServer(profile) {
+  var base = getSyncUrl();
+  if (!base) return Promise.resolve({ local: true });
+  return fetch(base + '/api/profiles', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profile)
+  })
+  .then(function(r) {
+    if (r.status === 409) return r.json().then(function(d) { return { conflict: true, existing: d.profile }; });
+    if (!r.ok) return { error: true };
+    return { ok: true };
+  })
+  .catch(function() { return { offline: true }; });
+}
+
+function deleteProfileFromServer(id) {
+  var base = getSyncUrl();
+  if (!base) return;
+  fetch(base + '/api/profiles/' + id, { method: 'DELETE' }).catch(function() {});
+}
+
+function pushWorkoutToServer(workout) {
+  var base = getSyncUrl();
+  if (!base) return;
+  fetch(base + '/api/history/' + workout.profileId, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(workout)
+  }).catch(function() {});
+}
+
+function openSyncModal() {
+  var modal = document.getElementById('sync-modal');
+  if (!modal) return;
+  document.getElementById('sync-url-input').value = getSyncUrl();
+  var removeRow = document.getElementById('sync-remove-row');
+  if (removeRow) removeRow.style.display = getSyncUrl() ? '' : 'none';
+  var msgEl = document.getElementById('sync-status-msg');
+  msgEl.textContent = '';
+  msgEl.className = 'sync-status-msg';
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSyncModal() {
+  var modal = document.getElementById('sync-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function saveSyncUrl() {
+  var input = document.getElementById('sync-url-input');
+  var url = input.value.trim();
+  var msg = document.getElementById('sync-status-msg');
+  if (!url) { msg.textContent = 'Ange en server-URL.'; msg.className = 'sync-status-msg sync-error'; return; }
+  try { new URL(url); } catch(e) { msg.textContent = 'Ogiltig URL-format.'; msg.className = 'sync-status-msg sync-error'; return; }
+  msg.textContent = 'Ansluter...';
+  msg.className = 'sync-status-msg';
+  fetch(url.replace(/\/$/, '') + '/api/profiles')
+    .then(function(r) {
+      if (!r.ok) throw new Error('http ' + r.status);
+      return r.json();
+    })
+    .then(function() {
+      setSyncUrl(url);
+      syncStatus = 'ok';
+      updateSyncDot();
+      msg.textContent = 'Ansluten!';
+      msg.className = 'sync-status-msg sync-ok';
+      var removeRow = document.getElementById('sync-remove-row');
+      if (removeRow) removeRow.style.display = '';
+      setTimeout(function() { closeSyncModal(); syncFromServer(); updateProfileBar(); }, 700);
+    })
+    .catch(function() {
+      msg.textContent = 'Kunde inte ansluta. Kontrollera URL och att servern körs.';
+      msg.className = 'sync-status-msg sync-error';
+    });
+}
+
+function removeSyncConfig() {
+  if (!confirm('Ta bort synkinställningar?\nLokal data behålls.')) return;
+  setSyncUrl('');
+  syncStatus = 'none';
+  updateSyncDot();
+  closeSyncModal();
   updateProfileBar();
 }
 
@@ -696,10 +916,12 @@ function saveWorkout() {
     return;
   }
 
+  const workout = { id: generateId(), date: new Date().toISOString(), profileId: profile.id, profileName: profile.name, exercises: logged };
   const history = loadHistory();
-  history.unshift({ date: new Date().toISOString(), profileId: profile.id, profileName: profile.name, exercises: logged });
+  history.unshift(workout);
   if (history.length > 200) history.splice(200);
   saveHistory(history);
+  pushWorkoutToServer(workout);
 
   const btn = document.getElementById('save-btn');
   btn.textContent = '✓ Sparat!';
@@ -1047,7 +1269,18 @@ document.getElementById("stats-modal").addEventListener("click", e => {
   if (e.target === e.currentTarget) closeStatsModal();
 });
 
+document.getElementById("sync-save-btn").addEventListener("click", saveSyncUrl);
+document.getElementById("sync-close-btn").addEventListener("click", closeSyncModal);
+document.getElementById("sync-remove-btn").addEventListener("click", removeSyncConfig);
+document.getElementById("sync-modal").addEventListener("click", function(e) {
+  if (e.target === e.currentTarget) closeSyncModal();
+});
+document.getElementById("sync-url-input").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") saveSyncUrl();
+});
+
 // Init
 migrateOldProfile();
 updateProfileBar();
 if (!getActiveProfile()) openProfileModal(loadProfiles().length > 0 ? 'list' : 'create');
+syncFromServer();

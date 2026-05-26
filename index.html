@@ -149,6 +149,22 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="sync-modal" style="display:none">
+    <div class="modal">
+      <h2>Synkinställningar</h2>
+      <p>Ange URL till din server för att synka profiler och träningshistorik mellan enheter. Servern körs med <code>npm start</code> i projektmappen.</p>
+      <input type="url" id="sync-url-input" placeholder="https://din-server.com" autocomplete="off">
+      <div id="sync-status-msg" class="sync-status-msg"></div>
+      <div class="modal-actions">
+        <button class="modal-submit-btn" id="sync-save-btn">Anslut</button>
+        <button class="modal-skip-btn" id="sync-close-btn">Stäng</button>
+      </div>
+      <div id="sync-remove-row" class="sync-remove-row" style="display:none">
+        <button class="sync-remove-btn" id="sync-remove-btn">Ta bort synkinställningar</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
