@@ -500,6 +500,7 @@ function loadServerProfilesIntoList() {
 }
 
 function closeProfileModal() {
+  _cancelLoginAttempt();
   document.getElementById('profile-modal').style.display = 'none';
   document.body.style.overflow = '';
 }
@@ -509,6 +510,7 @@ function showProfileView(view) {
   document.getElementById('profile-create-view').style.display = view === 'create' ? '' : 'none';
   if (view === 'list') renderProfileList();
   if (view === 'create') {
+    _cancelLoginAttempt();
     profileLoginPhase = 'check';
     document.getElementById('profile-email-input').value = '';
     document.getElementById('profile-alias-input').value = '';
@@ -592,6 +594,16 @@ function submitNewProfile() {
   else { _createAccountPhase(); }
 }
 
+var _loginAttempt = null;
+
+function _cancelLoginAttempt() {
+  if (_loginAttempt) {
+    _loginAttempt.cancelled = true;
+    clearInterval(_loginAttempt.countdownTimer);
+    _loginAttempt = null;
+  }
+}
+
 function _loginCheckPhase() {
   var emailInput = document.getElementById('profile-email-input');
   var errorEl   = document.getElementById('profile-create-error');
@@ -606,42 +618,83 @@ function _loginCheckPhase() {
     return;
   }
 
+  _cancelLoginAttempt();
+
+  var TOTAL_SECS = 60;
+  var remaining = TOTAL_SECS;
+  var attempt = { cancelled: false, countdownTimer: null };
+  _loginAttempt = attempt;
+
   submitBtn.disabled = true;
   submitBtn.textContent = '...';
 
-  apiFetch('/api/profiles')
-    .then(function(r) {
-      if (!r || !r.ok) return { serverOk: false, profiles: null };
-      return r.json().then(function(p) { return { serverOk: true, profiles: p }; });
-    })
-    .then(function(result) {
-      var serverOk = result.serverOk;
-      var serverProfiles = result.profiles;
-      var all = serverProfiles ? serverProfiles.slice() : [];
-      loadProfiles().forEach(function(lp) {
-        if (!all.find(function(sp) { return sp.id === lp.id; })) all.push(lp);
-      });
-      var found = all.find(function(p) { return p.email && p.email.toLowerCase() === email; });
-      if (found) {
-        _adoptProfile(found, submitBtn, errorEl);
-      } else if (!serverOk) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Logga in';
-        errorEl.textContent = 'Servern svarar inte – kontrollera din anslutning och f\xf6rs\xf6k igen.';
-      } else {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Skapa konto';
-        document.getElementById('profile-alias-row').style.display = '';
-        errorEl.textContent = 'Ingen profil hittades – ange ett alias f\xf6r att skapa nytt konto.';
-        setTimeout(function() { document.getElementById('profile-alias-input').focus(); }, 50);
-        profileLoginPhase = 'create';
-      }
-    })
-    .catch(function() {
+  function showCountdown() {
+    errorEl.className = 'profile-create-error profile-create-connecting';
+    errorEl.textContent = 'Ansluter till server… (' + remaining + ' sek)';
+  }
+  showCountdown();
+
+  attempt.countdownTimer = setInterval(function() {
+    if (attempt.cancelled) { clearInterval(attempt.countdownTimer); return; }
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(attempt.countdownTimer);
+      attempt.cancelled = true;
+      _loginAttempt = null;
       submitBtn.disabled = false;
       submitBtn.textContent = 'Logga in';
-      errorEl.textContent = 'N\xe5got gick fel – f\xf6rs\xf6k igen.';
-    });
+      errorEl.className = 'profile-create-error';
+      errorEl.textContent = 'Servern svarar inte – kontrollera din anslutning och f\xf6rs\xf6k igen.';
+    } else {
+      showCountdown();
+    }
+  }, 1000);
+
+  function doAttempt() {
+    if (attempt.cancelled) return;
+    var ctrl = new AbortController();
+    var timer = setTimeout(function() { ctrl.abort(); }, 6000);
+    fetch(SYNC_URL + '/api/profiles', { signal: ctrl.signal })
+      .then(function(r) {
+        clearTimeout(timer);
+        if (attempt.cancelled) return;
+        if (!r || !r.ok) { scheduleRetry(); return; }
+        return r.json().then(function(serverProfiles) {
+          if (attempt.cancelled) return;
+          attempt.cancelled = true;
+          clearInterval(attempt.countdownTimer);
+          _loginAttempt = null;
+          _processLoginProfiles(serverProfiles, email, submitBtn, errorEl);
+        });
+      })
+      .catch(function() { clearTimeout(timer); scheduleRetry(); });
+  }
+
+  function scheduleRetry() {
+    if (attempt.cancelled || remaining <= 0) return;
+    setTimeout(doAttempt, 1000);
+  }
+
+  doAttempt();
+}
+
+function _processLoginProfiles(serverProfiles, email, submitBtn, errorEl) {
+  var all = serverProfiles ? serverProfiles.slice() : [];
+  loadProfiles().forEach(function(lp) {
+    if (!all.find(function(sp) { return sp.id === lp.id; })) all.push(lp);
+  });
+  var found = all.find(function(p) { return p.email && p.email.toLowerCase() === email; });
+  if (found) {
+    _adoptProfile(found, submitBtn, errorEl);
+  } else {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Skapa konto';
+    document.getElementById('profile-alias-row').style.display = '';
+    errorEl.className = 'profile-create-error';
+    errorEl.textContent = 'Ingen profil hittades – ange ett alias f\xf6r att skapa nytt konto.';
+    setTimeout(function() { document.getElementById('profile-alias-input').focus(); }, 50);
+    profileLoginPhase = 'create';
+  }
 }
 
 function _adoptProfile(found, submitBtn, errorEl) {

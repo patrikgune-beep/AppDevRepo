@@ -645,7 +645,8 @@ input[type="number"] {
 }
 .modal input[type="email"]:focus { border-color: #7c3aed; }
 
-.profile-create-error.profile-create-ok { color: #059669; }
+.profile-create-error.profile-create-ok         { color: #059669; }
+.profile-create-error.profile-create-connecting { color: #7c3aed; }
 
 #profile-alias-row input { margin-top: 0; }
 
