@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Träningsgenerator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Träningsgenerator</h1>
+      <p class="subtitle">Generera ett anpassat träningspass</p>
+    </header>
+
+    <section class="form-section">
+      <div class="form-group">
+        <label for="exercise-count">Antal övningar</label>
+        <input
+          type="number"
+          id="exercise-count"
+          min="1"
+          max="20"
+          value="5"
+          placeholder="T.ex. 5"
+        />
+      </div>
+
+      <div class="form-group">
+        <label>Typ av träning</label>
+        <div class="type-grid">
+          <button class="type-btn active" data-type="vikter">
+            <span class="type-icon">🏋️</span>
+            <span>Vikter</span>
+          </button>
+          <button class="type-btn" data-type="kropp">
+            <span class="type-icon">💪</span>
+            <span>Kropp</span>
+          </button>
+          <button class="type-btn" data-type="kondition">
+            <span class="type-icon">🏃</span>
+            <span>Kondition</span>
+          </button>
+          <button class="type-btn" data-type="rorlighet">
+            <span class="type-icon">🧘</span>
+            <span>Rörlighet</span>
+          </button>
+          <button class="type-btn" data-type="core">
+            <span class="type-icon">⚡</span>
+            <span>Core</span>
+          </button>
+          <button class="type-btn" data-type="blandat">
+            <span class="type-icon">🎯</span>
+            <span>Blandat</span>
+          </button>
+        </div>
+      </div>
+
+      <button class="generate-btn" id="generate-btn">Generera träningspass</button>
+    </section>
+
+    <section class="results-section" id="results" hidden>
+      <div class="results-header">
+        <h2 id="results-title">Ditt träningspass</h2>
+        <button class="regenerate-btn" id="regenerate-btn">Ny variation</button>
+      </div>
+      <div class="exercise-list" id="exercise-list"></div>
+      <div class="summary" id="summary"></div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
