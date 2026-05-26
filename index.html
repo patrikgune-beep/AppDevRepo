@@ -128,8 +128,10 @@
 
       <div id="profile-create-view" style="display:none">
         <h2>Ny profil</h2>
-        <p>Ange ett namn för den nya profilen.</p>
-        <input type="text" id="profile-name-input" placeholder="Ditt namn" maxlength="50" autocomplete="off">
+        <p>Ange ett alias (visningsnamn) och en e-postadress. E-postadressen används som unikt id vid synkronisering.</p>
+        <input type="text" id="profile-alias-input" placeholder="Alias / Visningsnamn" maxlength="50" autocomplete="nickname">
+        <input type="email" id="profile-email-input" placeholder="din@epost.se" maxlength="100" autocomplete="email" inputmode="email">
+        <p class="profile-create-error" id="profile-create-error"></p>
         <div class="modal-actions">
           <button class="modal-submit-btn" id="profile-submit-btn">Skapa profil</button>
           <button class="modal-skip-btn" id="profile-create-cancel-btn">Tillbaka</button>
@@ -165,6 +167,7 @@
     </div>
   </div>
 
+  <input type="file" id="bg-file-input" accept="image/*" style="display:none">
   <script src="app.js"></script>
 </body>
 </html>

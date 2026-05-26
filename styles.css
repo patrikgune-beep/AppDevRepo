@@ -616,6 +616,35 @@ input[type="number"] {
 }
 .profile-card.active .profile-card-name { color: #1a1a2e; }
 
+.profile-card-email {
+  display: block;
+  font-size: 0.72rem;
+  color: #9999bb;
+  font-weight: 400;
+  margin-top: 0.1rem;
+}
+
+.profile-create-error {
+  color: #dc2626;
+  font-size: 0.82rem;
+  min-height: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.modal input[type="email"] {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: #f4f4fb;
+  border: 1px solid #d8d8ee;
+  border-radius: 10px;
+  color: #1a1a2e;
+  font-size: 1rem;
+  outline: none;
+  margin-bottom: 1rem;
+  transition: border-color 0.2s;
+}
+.modal input[type="email"]:focus { border-color: #7c3aed; }
+
 .profile-card-active-badge {
   font-size: 0.68rem;
   background: #ede9fe;
@@ -895,6 +924,24 @@ input[type="number"] {
 }
 .save-btn:hover { background: #ecfdf5; }
 .save-btn:disabled { opacity: 0.55; cursor: default; }
+
+/* ── Background image ── */
+body.has-bg-image {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+body.has-bg-image .form-section,
+body.has-bg-image .results-section {
+  background: rgba(255, 255, 255, 0.93);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+body.has-bg-image .modal {
+  background: rgba(255, 255, 255, 0.97);
+}
 
 /* ── Sync ── */
 .sync-dot {

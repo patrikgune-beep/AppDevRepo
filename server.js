@@ -36,12 +36,12 @@ app.post('/api/profiles', function(req, res) {
   var data = loadData();
   data.profiles = data.profiles || [];
   var existing = data.profiles.find(function(p) {
-    return p.name.toLowerCase() === body.name.toLowerCase();
+    return p.email && body.email && p.email.toLowerCase() === body.email.toLowerCase();
   });
   if (existing) {
     return res.status(409).json({ error: 'profile_exists', profile: existing });
   }
-  data.profiles.push({ id: body.id, name: body.name, createdAt: body.createdAt });
+  data.profiles.push({ id: body.id, alias: body.alias, email: body.email, createdAt: body.createdAt });
   saveData(data);
   res.json({ ok: true });
 });

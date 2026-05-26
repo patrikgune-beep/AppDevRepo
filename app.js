@@ -312,12 +312,18 @@ function saveBlacklist(set) {
 }
 
 function migrateOldProfile() {
-  if (loadProfiles().length > 0) return;
+  const profiles = loadProfiles();
+  if (profiles.length > 0) {
+    if (profiles.some(p => !p.alias && p.name)) {
+      saveProfiles(profiles.map(p => p.alias ? p : { ...p, alias: p.name }));
+    }
+    return;
+  }
   try {
     const old = JSON.parse(localStorage.getItem('tg_profile_v1'));
     if (old && old.name) {
       const newId = generateId();
-      saveProfiles([{ id: newId, name: old.name, createdAt: new Date().toISOString() }]);
+      saveProfiles([{ id: newId, alias: old.name, name: old.name, createdAt: new Date().toISOString() }]);
       setActiveProfileId(newId);
       saveHistory(loadHistory().map(w => w.profileId ? w : { ...w, profileId: newId }));
       localStorage.removeItem('tg_profile_v1');
@@ -330,7 +336,7 @@ function getLastResult(exerciseName) {
   const profile = getActiveProfile();
   const history = loadHistory().filter(w =>
     w.profileId === activeId ||
-    (!w.profileId && profile && w.profileName === profile.name)
+    (!w.profileId && profile && w.profileName === (profile.alias || profile.name))
   );
   for (const workout of history) {
     const found = (workout.exercises || []).find(e =>
@@ -415,13 +421,14 @@ function makeSyncBtn() {
 function updateProfileBar() {
   const profile = getActiveProfile();
   const bar = document.getElementById('profile-bar');
+  const hasBg = !!localStorage.getItem('tg_bg_image_v1');
   bar.innerHTML = '';
   if (profile) {
     const greeting = document.createElement('span');
     greeting.className = 'profile-greeting';
     greeting.textContent = 'Hej, ';
     const strong = document.createElement('strong');
-    strong.textContent = profile.name;
+    strong.textContent = profile.alias || profile.name;
     greeting.appendChild(strong);
 
     const statsBtn = document.createElement('button');
@@ -446,6 +453,25 @@ function updateProfileBar() {
     bar.appendChild(createBtn);
     bar.appendChild(makeSyncBtn());
   }
+
+  const bgBtn = document.createElement('button');
+  bgBtn.className = 'profile-link-btn';
+  bgBtn.title = hasBg ? 'Ta bort bakgrundsbild' : 'Lägg till bakgrundsbild';
+  bgBtn.textContent = hasBg ? '🖼 ✕' : '🖼';
+  if (hasBg) {
+    bgBtn.addEventListener('click', function() {
+      if (confirm('Ta bort bakgrundsbilden?')) {
+        localStorage.removeItem('tg_bg_image_v1');
+        applyBgImage();
+        updateProfileBar();
+      }
+    });
+  } else {
+    bgBtn.addEventListener('click', function() {
+      document.getElementById('bg-file-input').click();
+    });
+  }
+  bar.appendChild(bgBtn);
 }
 
 function openProfileModal(view) {
@@ -465,9 +491,12 @@ function showProfileView(view) {
   document.getElementById('profile-create-view').style.display = view === 'create' ? '' : 'none';
   if (view === 'list') renderProfileList();
   if (view === 'create') {
-    const input = document.getElementById('profile-name-input');
-    input.value = '';
-    setTimeout(() => input.focus(), 50);
+    const aliasInput = document.getElementById('profile-alias-input');
+    const emailInput = document.getElementById('profile-email-input');
+    aliasInput.value = '';
+    emailInput.value = '';
+    document.getElementById('profile-create-error').textContent = '';
+    setTimeout(() => aliasInput.focus(), 50);
   }
 }
 
@@ -486,7 +515,15 @@ function renderProfileList() {
 
     const nameBtn = document.createElement('button');
     nameBtn.className = 'profile-card-name';
-    nameBtn.textContent = p.name;
+    const aliasSpan = document.createElement('span');
+    aliasSpan.textContent = p.alias || p.name || '?';
+    nameBtn.appendChild(aliasSpan);
+    if (p.email) {
+      const emailSpan = document.createElement('span');
+      emailSpan.className = 'profile-card-email';
+      emailSpan.textContent = p.email;
+      nameBtn.appendChild(emailSpan);
+    }
     nameBtn.addEventListener('click', () => {
       setActiveProfileId(p.id);
       closeProfileModal();
@@ -530,10 +567,27 @@ function confirmDeleteProfile(id, name) {
 }
 
 function submitNewProfile() {
-  const input = document.getElementById('profile-name-input');
-  const name = input.value.trim();
-  if (!name) { input.focus(); return; }
-  const newProfile = { id: generateId(), name, createdAt: new Date().toISOString() };
+  const aliasInput = document.getElementById('profile-alias-input');
+  const emailInput = document.getElementById('profile-email-input');
+  const errorEl = document.getElementById('profile-create-error');
+  const alias = aliasInput.value.trim();
+  const email = emailInput.value.trim().toLowerCase();
+
+  errorEl.textContent = '';
+  if (!alias) { aliasInput.focus(); return; }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errorEl.textContent = 'Ange en giltig e-postadress.';
+    emailInput.focus();
+    return;
+  }
+  const existingLocal = loadProfiles().find(p => p.email && p.email.toLowerCase() === email);
+  if (existingLocal) {
+    errorEl.textContent = 'En profil med den e-postadressen finns redan.';
+    emailInput.focus();
+    return;
+  }
+
+  const newProfile = { id: generateId(), alias, email, createdAt: new Date().toISOString() };
 
   if (!getSyncUrl()) {
     _createProfileLocally(newProfile);
@@ -552,7 +606,7 @@ function submitNewProfile() {
     } else if (result.conflict) {
       var existing = result.existing;
       if (confirm(
-        '"' + name + '" finns redan på servern.\n' +
+        '"' + alias + '" (' + email + ') finns redan på servern.\n' +
         'Vill du synka och använda den befintliga profilen?'
       )) {
         var profiles = loadProfiles();
@@ -770,7 +824,7 @@ function computeStats() {
   const profile = getActiveProfile();
   const history = loadHistory().filter(w =>
     w.profileId === activeId ||
-    (!w.profileId && profile && w.profileName === profile.name)
+    (!w.profileId && profile && w.profileName === (profile.alias || profile.name))
   );
   const allLogged = history.reduce(function(acc, w) {
     return acc.concat((w.exercises || []).filter(function(e) {
@@ -823,7 +877,7 @@ function renderStats() {
     content.innerHTML = '<p class="stats-empty">Välj eller skapa en profil för att se statistik.</p>';
     return;
   }
-  document.getElementById('stats-title').textContent = `Statistik – ${stats.profile.name}`;
+  document.getElementById('stats-title').textContent = `Statistik – ${stats.profile.alias || stats.profile.name}`;
   if (stats.workoutCount === 0) {
     content.innerHTML = '<p class="stats-empty">Inga sparade pass ännu. Generera ett pass, fyll i dina resultat och tryck "Spara pass".</p>';
     return;
@@ -916,7 +970,7 @@ function saveWorkout() {
     return;
   }
 
-  const workout = { id: generateId(), date: new Date().toISOString(), profileId: profile.id, profileName: profile.name, exercises: logged };
+  const workout = { id: generateId(), date: new Date().toISOString(), profileId: profile.id, profileName: profile.alias || profile.name, exercises: logged };
   const history = loadHistory();
   history.unshift(workout);
   if (history.length > 200) history.splice(200);
@@ -1253,7 +1307,10 @@ document.getElementById("regenerate-btn").addEventListener("click", generate);
 document.getElementById("save-btn").addEventListener("click", saveWorkout);
 
 document.getElementById("profile-submit-btn").addEventListener("click", submitNewProfile);
-document.getElementById("profile-name-input").addEventListener("keydown", e => {
+document.getElementById("profile-alias-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("profile-email-input").focus();
+});
+document.getElementById("profile-email-input").addEventListener("keydown", e => {
   if (e.key === "Enter") submitNewProfile();
 });
 document.getElementById("profile-create-cancel-btn").addEventListener("click", () => {
@@ -1269,6 +1326,32 @@ document.getElementById("stats-modal").addEventListener("click", e => {
   if (e.target === e.currentTarget) closeStatsModal();
 });
 
+// ── Background image ─────────────────────────────────────────────────────────
+
+function applyBgImage() {
+  var img = localStorage.getItem('tg_bg_image_v1') || '';
+  if (img) {
+    document.body.style.backgroundImage = 'url(' + img + ')';
+    document.body.classList.add('has-bg-image');
+  } else {
+    document.body.style.backgroundImage = '';
+    document.body.classList.remove('has-bg-image');
+  }
+}
+
+document.getElementById("bg-file-input").addEventListener("change", function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    localStorage.setItem('tg_bg_image_v1', ev.target.result);
+    applyBgImage();
+    updateProfileBar();
+    e.target.value = '';
+  };
+  reader.readAsDataURL(file);
+});
+
 document.getElementById("sync-save-btn").addEventListener("click", saveSyncUrl);
 document.getElementById("sync-close-btn").addEventListener("click", closeSyncModal);
 document.getElementById("sync-remove-btn").addEventListener("click", removeSyncConfig);
@@ -1281,6 +1364,7 @@ document.getElementById("sync-url-input").addEventListener("keydown", function(e
 
 // Init
 migrateOldProfile();
+applyBgImage();
 updateProfileBar();
 if (!getActiveProfile()) openProfileModal(loadProfiles().length > 0 ? 'list' : 'create');
 syncFromServer();
