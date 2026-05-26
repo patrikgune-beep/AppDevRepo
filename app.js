@@ -239,13 +239,27 @@ function shuffle(arr) {
   return a;
 }
 
-function avgMinPerExercise(types) {
-  const sum = [...types].reduce((s, t) => s + (MIN_PER_EXERCISE[t] || 5), 0);
-  return sum / types.size;
-}
+function getAdjustedSets(exercise, minutesPerExercise) {
+  if (!minutesPerExercise) return exercise.sets;
 
-function calcCountFromDuration(types, minutes) {
-  return Math.max(1, Math.floor(minutes / avgMinPerExercise(types)));
+  const base = MIN_PER_EXERCISE[exercise.type] || 5;
+  const scale = minutesPerExercise / base;
+
+  if (exercise.type === 'kondition') {
+    return `${exercise.sets} · ca ${Math.round(minutesPerExercise)} min`;
+  }
+
+  const m = exercise.sets.match(/^(\d+)/);
+  if (!m) return exercise.sets;
+  const baseNum = parseInt(m[1]);
+  let adjusted;
+  if (scale < 0.55)      adjusted = Math.max(1, baseNum - 1);
+  else if (scale < 1.45) adjusted = baseNum;
+  else if (scale < 2.2)  adjusted = baseNum + 1;
+  else                   adjusted = baseNum + 2;
+  return adjusted === baseNum
+    ? exercise.sets
+    : exercise.sets.replace(/^\d+/, String(adjusted));
 }
 
 function pickExercises(types, count) {
@@ -256,10 +270,11 @@ function pickExercises(types, count) {
   return shuffle(pool).slice(0, count);
 }
 
-function renderExercises(exercises) {
+function renderExercises(exercises, minutesPerExercise) {
   const list = document.getElementById("exercise-list");
   list.innerHTML = "";
   exercises.forEach((ex, i) => {
+    const setsLabel = getAdjustedSets(ex, minutesPerExercise);
     const card = document.createElement("div");
     card.className = "exercise-card";
     card.style.animationDelay = `${i * 50}ms`;
@@ -272,7 +287,7 @@ function renderExercises(exercises) {
         </div>
         <div class="exercise-how">${ex.how}</div>
         <div class="exercise-meta">
-          <span class="meta-sets">${ex.sets}</span>
+          <span class="meta-sets">${setsLabel}</span>
           <span class="meta-sep">·</span>
           <span class="meta-muscle">${ex.muscle}</span>
         </div>
@@ -304,35 +319,23 @@ function renderSummary(exercises, duration) {
   `;
 }
 
-function updateCount() {
-  if (selectedDuration) {
-    document.getElementById("exercise-count").value =
-      calcCountFromDuration(selectedTypes, selectedDuration);
-  }
-}
-
 function generate() {
   const countInput = document.getElementById("exercise-count");
   const errorEl = document.querySelector(".error-msg");
   if (errorEl) errorEl.remove();
 
-  let count;
-  if (selectedDuration) {
-    count = calcCountFromDuration(selectedTypes, selectedDuration);
-    countInput.value = count;
-  } else {
-    count = parseInt(countInput.value, 10);
-    if (!count || count < 1 || count > 30) {
-      const msg = document.createElement("p");
-      msg.className = "error-msg";
-      msg.textContent = "Ange ett antal mellan 1 och 30, eller välj en passlängd.";
-      countInput.after(msg);
-      return;
-    }
+  const count = parseInt(countInput.value, 10);
+  if (!count || count < 1 || count > 30) {
+    const msg = document.createElement("p");
+    msg.className = "error-msg";
+    msg.textContent = "Ange ett antal mellan 1 och 30.";
+    countInput.after(msg);
+    return;
   }
 
   const totalAvail = [...selectedTypes].reduce((s, t) => s + EXERCISES[t].length, 0);
   const actualCount = Math.min(count, totalAvail);
+  const minutesPerExercise = selectedDuration ? selectedDuration / actualCount : null;
 
   const typeNames = [...selectedTypes].map(t => TYPE_LABELS[t]).join(" + ");
   const durationLabel = selectedDuration ? ` · ${selectedDuration} min` : "";
@@ -340,7 +343,7 @@ function generate() {
     `${typeNames}${durationLabel} – ${actualCount} övningar`;
 
   const exercises = pickExercises(selectedTypes, actualCount);
-  renderExercises(exercises);
+  renderExercises(exercises, minutesPerExercise);
   renderSummary(exercises, selectedDuration);
 
   const results = document.getElementById("results");
@@ -360,7 +363,6 @@ document.querySelectorAll(".type-btn").forEach(btn => {
       selectedTypes.add(type);
       btn.classList.add("active");
     }
-    updateCount();
   });
 });
 
@@ -374,16 +376,8 @@ document.querySelectorAll(".duration-btn").forEach(btn => {
       document.querySelectorAll(".duration-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       selectedDuration = val;
-      updateCount();
     }
   });
-});
-
-document.getElementById("exercise-count").addEventListener("input", () => {
-  if (selectedDuration) {
-    selectedDuration = null;
-    document.querySelectorAll(".duration-btn").forEach(b => b.classList.remove("active"));
-  }
 });
 
 document.getElementById("generate-btn").addEventListener("click", generate);
