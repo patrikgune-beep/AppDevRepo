@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Träningsgenerator</title>
+  <style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #0f0f1a;
+  color: #e8e8f0;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+}
+
+.container {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+h1 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #a78bfa, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.4rem;
+}
+
+.subtitle {
+  color: #8888aa;
+  font-size: 1rem;
+}
+
+.form-section {
+  background: #1a1a2e;
+  border: 1px solid #2a2a45;
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.form-group {
+  margin-bottom: 1.6rem;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+  color: #c0c0d8;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.label-hint {
+  font-weight: 400;
+  font-size: 0.8rem;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #5555aa;
+}
+
+input[type="number"] {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: #0f0f1a;
+  border: 1px solid #3a3a5c;
+  border-radius: 10px;
+  color: #e8e8f0;
+  font-size: 1.1rem;
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+input[type="number"]:focus {
+  border-color: #a78bfa;
+}
+
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.type-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1rem 0.5rem;
+  background: #0f0f1a;
+  border: 1px solid #3a3a5c;
+  border-radius: 12px;
+  color: #8888aa;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.type-btn:hover {
+  border-color: #a78bfa;
+  color: #e8e8f0;
+}
+
+.type-btn.active {
+  background: linear-gradient(135deg, #3d2b7a, #1e3a6e);
+  border-color: #a78bfa;
+  color: #e8e8f0;
+  box-shadow: 0 0 16px rgba(167, 139, 250, 0.2);
+}
+
+.type-icon {
+  font-size: 1.6rem;
+}
+
+.duration-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.duration-btn {
+  padding: 0.75rem 0.5rem;
+  background: #0f0f1a;
+  border: 1px solid #3a3a5c;
+  border-radius: 10px;
+  color: #8888aa;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.duration-btn:hover {
+  border-color: #60a5fa;
+  color: #e8e8f0;
+}
+
+.duration-btn.active {
+  background: linear-gradient(135deg, #1e3a6e, #0d2a50);
+  border-color: #60a5fa;
+  color: #93c5fd;
+  box-shadow: 0 0 14px rgba(96, 165, 250, 0.2);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  color: #44446a;
+  font-size: 0.85rem;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #2a2a45;
+}
+
+.generate-btn {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.generate-btn:hover { opacity: 0.92; }
+.generate-btn:active { transform: scale(0.98); }
+
+.results-section {
+  background: #1a1a2e;
+  border: 1px solid #2a2a45;
+  border-radius: 16px;
+  padding: 2rem;
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.results-header h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #c0c0d8;
+}
+
+.regenerate-btn {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid #3a3a5c;
+  border-radius: 8px;
+  color: #8888aa;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.regenerate-btn:hover {
+  border-color: #a78bfa;
+  color: #a78bfa;
+}
+
+.exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.exercise-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background: #0f0f1a;
+  border: 1px solid #2a2a45;
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+  animation: slideIn 0.3s ease both;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.exercise-number {
+  min-width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.exercise-info {
+  flex: 1;
+}
+
+.exercise-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e8e8f0;
+  margin-bottom: 0.35rem;
+  line-height: 1.3;
+}
+
+.exercise-tag {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+.tag-vikter    { background: #3d1a6e; color: #c084fc; }
+.tag-kropp     { background: #1a3d6e; color: #60a5fa; }
+.tag-kondition { background: #1a4a2e; color: #34d399; }
+.tag-rorlighet { background: #4a3a1a; color: #fbbf24; }
+.tag-core      { background: #4a1a1a; color: #f87171; }
+
+.exercise-how {
+  font-size: 0.9rem;
+  color: #b0b0cc;
+  line-height: 1.55;
+  margin-bottom: 0.5rem;
+}
+
+.exercise-meta {
+  font-size: 0.82rem;
+  color: #55556a;
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.meta-sets { color: #7070a0; font-weight: 600; }
+.meta-sep  { color: #33334a; }
+.meta-muscle { color: #55557a; font-style: italic; }
+
+.summary {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #2a2a45;
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.summary-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8888aa;
+}
+
+.summary-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #a78bfa;
+}
+
+.error-msg {
+  color: #f87171;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 480px) {
+  h1 { font-size: 1.7rem; }
+  .type-grid { grid-template-columns: repeat(2, 1fr); }
+  .duration-grid { grid-template-columns: repeat(2, 1fr); }
+  .form-section, .results-section { padding: 1.25rem; }
+  .results-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+}
+
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Träningsgenerator</h1>
+      <p class="subtitle">Generera ett anpassat träningspass</p>
+    </header>
+
+    <section class="form-section">
+
+      <div class="form-group">
+        <label>Typ av träning</label>
+        <div class="type-grid">
+          <button class="type-btn active" data-type="vikter">
+            <span class="type-icon">🏋️</span>
+            <span>Vikter</span>
+          </button>
+          <button class="type-btn" data-type="kropp">
+            <span class="type-icon">💪</span>
+            <span>Kropp</span>
+          </button>
+          <button class="type-btn" data-type="kondition">
+            <span class="type-icon">🏃</span>
+            <span>Kondition</span>
+          </button>
+          <button class="type-btn" data-type="rorlighet">
+            <span class="type-icon">🧘</span>
+            <span>Rörlighet</span>
+          </button>
+          <button class="type-btn" data-type="core">
+            <span class="type-icon">⚡</span>
+            <span>Core</span>
+          </button>
+          <button class="type-btn" data-type="blandat">
+            <span class="type-icon">🎯</span>
+            <span>Blandat</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Passlängd <span class="label-hint">(väljer antal övningar automatiskt)</span></label>
+        <div class="duration-grid">
+          <button class="duration-btn" data-duration="30">30 min</button>
+          <button class="duration-btn" data-duration="45">45 min</button>
+          <button class="duration-btn" data-duration="60">60 min</button>
+          <button class="duration-btn" data-duration="90">90 min</button>
+        </div>
+      </div>
+
+      <div class="divider">
+        <span>eller ange manuellt</span>
+      </div>
+
+      <div class="form-group">
+        <label for="exercise-count">Antal övningar</label>
+        <input
+          type="number"
+          id="exercise-count"
+          min="1"
+          max="20"
+          value="6"
+          placeholder="1–20"
+        />
+      </div>
+
+      <button class="generate-btn" id="generate-btn">Generera träningspass</button>
+    </section>
+
+    <section class="results-section" id="results" style="display:none">
+      <div class="results-header">
+        <h2 id="results-title">Ditt träningspass</h2>
+        <button class="regenerate-btn" id="regenerate-btn">Ny variation</button>
+      </div>
+      <div class="exercise-list" id="exercise-list"></div>
+      <div class="summary" id="summary"></div>
+    </section>
+  </div>
+
+  <script>
+const EXERCISES = {
+  vikter: [
+    {
+      name: "Bänkpress",
+      sets: "3 set × 8–10 reps",
+      muscle: "Bröst, triceps",
+      how: "Ligg på bänken med fötterna i golvet. Sänk stången kontrollerat till bröstet, håll armbågarna ca 45° från kroppen. Pressa upp till raka armar."
+    },
+    {
+      name: "Knäböj",
+      sets: "4 set × 6–8 reps",
+      muscle: "Lår, rumpa",
+      how: "Stå axelbrett med stången på övre ryggen. Böj knäna och höfterna tills låren är parallella med golvet. Håll ryggen rak och pressa upp genom hälen."
+    },
+    {
+      name: "Marklyft",
+      sets: "3 set × 5 reps",
+      muscle: "Rygg, lår, rumpa",
+      how: "Stå med fötterna höftbrett, stången ovanför mitten av foten. Håll ryggen rak, spann magen och lyft med benen. Dra stången nära kroppen hela vägen upp."
+    },
+    {
+      name: "Axelpress (stående)",
+      sets: "3 set × 10 reps",
+      muscle: "Axlar, triceps",
+      how: "Håll stången i axelhöjd med brett grepp. Spänn magen och pressa stången rakt upp ovanför huvudet tills armarna är helt sträckta."
+    },
+    {
+      name: "Skivstångsrodd",
+      sets: "3 set × 10 reps",
+      muscle: "Rygg, biceps",
+      how: "Böj överkroppen ca 45° framåt med rak rygg. Dra stången mot naveln med armbågarna längs sidan. Pressa ihop skulderbladen högst upp."
+    },
+    {
+      name: "Incline bänkpress",
+      sets: "3 set × 10 reps",
+      muscle: "Övre bröst",
+      how: "Ställ bänken på 30–45°. Utför bänkpress på lutad bänk – sänk stången mot övre bröstet och pressa upp."
+    },
+    {
+      name: "Benpress",
+      sets: "4 set × 12 reps",
+      muscle: "Lår, rumpa",
+      how: "Sitt i maskinen med fötterna axelbrett på plattan. Sänk plattan tills knäna är 90°, pressa sedan ifrån med hälen."
+    },
+    {
+      name: "Hantelbicep curl",
+      sets: "3 set × 12 reps",
+      muscle: "Biceps",
+      how: "Stå upp med hantlarna vid sidorna. Håll armbågarna stilla mot kroppen och curl hantlarna upp mot axlarna. Sänk kontrollerat."
+    },
+    {
+      name: "Triceps pushdown",
+      sets: "3 set × 12–15 reps",
+      muscle: "Triceps",
+      how: "Stå vid kabelmaskin. Håll armbågarna still mot sidan och tryck handtaget neråt tills armarna är raka. Sänk kontrollerat."
+    },
+    {
+      name: "Lateral raise",
+      sets: "3 set × 15 reps",
+      muscle: "Axlar",
+      how: "Stå med hantlarna vid sidorna och lätt böjda armar. Lyft ut hantlarna till axelhöjd utan att gunga. Sänk sakta."
+    },
+    {
+      name: "Facepull",
+      sets: "3 set × 15 reps",
+      muscle: "Bakre axel, rotatorkuff",
+      how: "Ställ kabeln i ansiktshöjd. Dra handtaget mot ansiktet med höga armbågar och externa rotera axlarna. Håll ca 1 sek."
+    },
+    {
+      name: "Rumänsk marklyft",
+      sets: "3 set × 10 reps",
+      muscle: "Baksida lår, rumpa",
+      how: "Stå upp med stången. Böj höfterna bakåt med nästan raka knän och sänk stången längs framsidan av benen. Känn sträcket i baksida lår."
+    },
+    {
+      name: "Goblet squat",
+      sets: "3 set × 12 reps",
+      muscle: "Lår, rumpa, core",
+      how: "Håll en hantel vertikalt mot bröstet. Stå med bred fotposition, knäböj djupt och håll överkroppen upprätt."
+    },
+    {
+      name: "Overhead triceps extension",
+      sets: "3 set × 12 reps",
+      muscle: "Triceps",
+      how: "Håll en hantel med båda händerna bakom huvudet. Sträck armarna rakt upp, håll armbågarna stilla. Böj sedan tillbaka."
+    },
+    {
+      name: "Hammer curl",
+      sets: "3 set × 12 reps",
+      muscle: "Biceps, underarm",
+      how: "Curl hantlarna med tummen upp (neutralgrepp). Armbågarna still mot kroppen. Bra för underarmarna och bicepshuvudet."
+    },
+    {
+      name: "Leg curl",
+      sets: "3 set × 12 reps",
+      muscle: "Baksida lår",
+      how: "Ligg i maskinen med hälen mot kudden. Böj knäna och dra hälen mot rumpan. Sänk kontrollerat."
+    },
+    {
+      name: "Leg extension",
+      sets: "3 set × 15 reps",
+      muscle: "Framsida lår",
+      how: "Sitt i maskinen med kudden mot vristerna. Sträck benen rakt ut och håll en sekund. Sänk kontrollerat."
+    },
+    {
+      name: "Kabeldrag (lat pulldown)",
+      sets: "3 set × 10 reps",
+      muscle: "Rygg, biceps",
+      how: "Sitt med låren under stödet. Greppa stången brett, luta lätt bakåt och dra ner mot övre bröstet med armbågarna neråt."
+    },
+    {
+      name: "Seated row",
+      sets: "3 set × 10 reps",
+      muscle: "Rygg, biceps",
+      how: "Sitt upprätt vid kabelmaskin. Dra handtaget mot magen och pressa ihop skulderbladen. Sträck ut armarna kontrollerat."
+    },
+    {
+      name: "Shrugs",
+      sets: "3 set × 15 reps",
+      muscle: "Trapezius",
+      how: "Håll hantlarna eller stången vid sidorna. Lyft axlarna rakt upp mot öronen, håll 1 sek och sänk."
+    },
+  ],
+  kropp: [
+    {
+      name: "Armhävningar",
+      sets: "3 set × 15–20 reps",
+      muscle: "Bröst, triceps",
+      how: "Plankposition med händerna axelbrett. Böj armbågarna och sänk bröstet mot golvet, håll kroppen rak. Pressa sedan upp."
+    },
+    {
+      name: "Chin-ups",
+      sets: "3 set × 6–10 reps",
+      muscle: "Rygg, biceps",
+      how: "Häng i stången med handflator mot dig, händer axelbrett. Dra upp tills hakan passerar stången, sänk kontrollerat."
+    },
+    {
+      name: "Dips",
+      sets: "3 set × 10–15 reps",
+      muscle: "Bröst, triceps",
+      how: "Stöd på parallella stänger med raka armar. Sänk kroppen tills armbågarna är ca 90°. Pressa upp till raka armar."
+    },
+    {
+      name: "Pistol squat",
+      sets: "3 set × 5–8 reps/sida",
+      muscle: "Lår, rumpa",
+      how: "Stå på ett ben med det andra rakt fram. Sänk höften mot golvet med kontroll. Håll ryggen rak och pressa upp."
+    },
+    {
+      name: "Bulgariansk split squat",
+      sets: "3 set × 10 reps/sida",
+      muscle: "Lår, rumpa",
+      how: "Bakre foten vilar på en bänk. Sänk bakre knät rakt mot golvet. Håll överkroppen upprätt och pressa upp genom framfoten."
+    },
+    {
+      name: "Pike push-up",
+      sets: "3 set × 10 reps",
+      muscle: "Axlar, triceps",
+      how: "Start i inverterat V med höfterna högt. Böj armbågarna och sänk huvudet mot golvet mellan händerna. Pressa upp."
+    },
+    {
+      name: "Archer push-up",
+      sets: "3 set × 8 reps/sida",
+      muscle: "Bröst, triceps",
+      how: "Bred handposition. Böj ena armen och sänk mot den sidan medan den andra hålls rak ut åt sidan. Alternera sidor."
+    },
+    {
+      name: "Inverted row",
+      sets: "3 set × 10 reps",
+      muscle: "Rygg, biceps",
+      how: "Ligg under en horisontell stång. Greppa den med händerna ovanför bröstet och dra bröstet upp mot stången. Håll kroppen rak."
+    },
+    {
+      name: "Diamond push-up",
+      sets: "3 set × 12 reps",
+      muscle: "Triceps, bröst",
+      how: "Placera händerna nära varandra i en diamantform under bröstet. Utför armhävning – belastar triceps mer."
+    },
+    {
+      name: "Wide grip pull-up",
+      sets: "3 set × 6–8 reps",
+      muscle: "Rygg, axlar",
+      how: "Greppa stången med brett grepp och handflator från dig. Dra upp tills bröstet nuddar stången. Fokus på ryggen."
+    },
+    {
+      name: "Hollow body hold",
+      sets: "3 set × 30 sek",
+      muscle: "Core, hela kroppen",
+      how: "Ligg på rygg. Lyft axlar och raka ben en liten bit. Pressa ländryggen mot golvet och håll formen."
+    },
+    {
+      name: "L-sit",
+      sets: "3 set × 15 sek",
+      muscle: "Core, triceps, axlar",
+      how: "Stöd på händerna (paralleltstänger/golv), lyft kroppen och sträck benen vågrätt framåt. Håll skuldrorna nere."
+    },
+    {
+      name: "Jump squat",
+      sets: "3 set × 15 reps",
+      muscle: "Lår, rumpa, vader",
+      how: "Knäböj tills låren är parallella, hoppa sedan explosivt upp så högt du kan. Landa mjukt med böjda knän."
+    },
+    {
+      name: "Explosive push-up",
+      sets: "3 set × 8 reps",
+      muscle: "Bröst, triceps",
+      how: "Utför en armhävning med explosiv press i uppfasen så att händerna lyfter från golvet. Landa mjukt och upprepa."
+    },
+    {
+      name: "Single-leg deadlift",
+      sets: "3 set × 10 reps/sida",
+      muscle: "Baksida lår, rumpa",
+      how: "Stå på ett ben med lätt böjt knä. Böj framåt med rak rygg och lyft bakre benet bakåt tills kroppen är horisontell. Återgå."
+    },
+  ],
+  kondition: [
+    {
+      name: "Löpning",
+      sets: "20–30 min, måttlig intensitet",
+      muscle: "Hela kroppen",
+      how: "Jogga i ett tempo där du kan prata i korta meningar. Håll upprätt hållning, avslappnade axlar och jämnt andningsmönster."
+    },
+    {
+      name: "Intervallträning (HIIT)",
+      sets: "8 × 20 sek sprint / 10 sek vila",
+      muscle: "Hela kroppen",
+      how: "Spring maximalt i 20 sek, vila aktivt 10 sek. Upprepa 8 gånger. Värm upp 5 min innan och kyl ner efteråt."
+    },
+    {
+      name: "Cykling",
+      sets: "30 min, jämn takt",
+      muscle: "Ben, hjärta",
+      how: "Cykla i ett jämnt tempo med kadens runt 80–90 rpm. Justera motståndet så pulsen håller sig på måttlig nivå."
+    },
+    {
+      name: "Rodd (maskin)",
+      sets: "15 min, konstant tempo",
+      muscle: "Rygg, ben, armar",
+      how: "Tryck ifrån med benen, luta bakåt och dra handtaget mot magen. Återgå i omvänd ordning. Håll ryggen rak hela tiden."
+    },
+    {
+      name: "Hopprep",
+      sets: "3 set × 3 min",
+      muscle: "Vader, koordination",
+      how: "Håll handtagen avslappnat, vrid med handlederna. Hoppa precis så högt att repet passerar under fötterna. Landa på framfoten."
+    },
+    {
+      name: "Boxhopp",
+      sets: "4 set × 10 reps",
+      muscle: "Lår, rumpa, vader",
+      how: "Stå framför en box, gör en kort svingrörelse med armarna och hoppa upp med båda fötterna. Landa mjukt med böjda knän. Kliv ner."
+    },
+    {
+      name: "Burpees",
+      sets: "3 set × 15 reps",
+      muscle: "Hela kroppen",
+      how: "Stå, hoppa ner i plankposition, gör en armhävning, hoppa fötterna mot händerna och hoppa upp med armarna ovanför huvudet."
+    },
+    {
+      name: "Backlöpning",
+      sets: "6 × ca 60 m uppförsbacke",
+      muscle: "Ben, rumpa, kondition",
+      how: "Luta överkroppen lätt framåt, kör med höga knän och kraftiga armrörelser. Jogga ner för vila. Maximalt i uppförsbacken."
+    },
+    {
+      name: "Skipping (höga knän)",
+      sets: "3 set × 1 min",
+      muscle: "Ben, core",
+      how: "Spring på stället med knäna högt mot bröstet i snabbt tempo. Koordinera med armarna. Håll magen spänd."
+    },
+    {
+      name: "Elliptical",
+      sets: "25 min, varierande motstånd",
+      muscle: "Ben, armar, hjärta",
+      how: "Stå upprätt på maskinen. Skjut med benen i elliptisk rörelse och dra/skjut med armarna. Variera motstånd var 5:e minut."
+    },
+    {
+      name: "Simning",
+      sets: "500–1000 m frisim",
+      muscle: "Hela kroppen",
+      how: "Ta långa tag med armarna, rotera kroppen och sparka jämnt med benen. Andas var 3:e tag för jämn syresättning."
+    },
+    {
+      name: "Mountain climbers",
+      sets: "3 set × 30 sek",
+      muscle: "Core, axlar, ben",
+      how: "Plankposition med raka armar. Dra ett knä i taget snabbt mot bröstet i ett löpliknande mönster. Håll höfterna nere."
+    },
+    {
+      name: "Trappklättring",
+      sets: "10 min intervaller",
+      muscle: "Ben, kondition",
+      how: "Kliv upp för trappstegen med hela foten. Håll god hållning och driv med armarna. Springa varannan trappa för högre intensitet."
+    },
+  ],
+  rorlighet: [
+    {
+      name: "Nedre rygg – liggande vridning",
+      sets: "3 × 30 sek/sida",
+      muscle: "Ländrygg, höfter",
+      how: "Ligg på rygg med armarna ut åt sidan. Dra ett knä upp och vrid det över kroppen åt sidan. Håll axeln i golvet."
+    },
+    {
+      name: "Hip flexor stretch",
+      sets: "3 × 45 sek/sida",
+      muscle: "Höftböjare, lår",
+      how: "Knästå med ett ben framåt i utfallsposition. Skjut höften rakt framåt och nedåt. Håll ryggen rak och känn sträcket i framsida höft."
+    },
+    {
+      name: "Bröstsöppning (dörrkarmsstretch)",
+      sets: "3 × 30 sek",
+      muscle: "Bröst, axlar",
+      how: "Stå i en dörröppning med underarmarna mot karmen. Luta kroppen sakta framåt tills du känner sträcket i bröstet."
+    },
+    {
+      name: "Hamstring stretch",
+      sets: "3 × 40 sek/sida",
+      muscle: "Baksida lår",
+      how: "Ligg på rygg, lyft ett ben och håll bakom låret eller med ett band. Sträck benet rakt och dra mot dig tills du känner sträcket."
+    },
+    {
+      name: "Pigeon pose",
+      sets: "3 × 1 min/sida",
+      muscle: "Höfter, rumpa",
+      how: "Från plankposition, för ett knä framåt bakom handleden och sträck det andra benet rakt bakåt. Sänk höfterna mot golvet."
+    },
+    {
+      name: "Cat-cow",
+      sets: "2 × 10 repetitioner",
+      muscle: "Ryggrad, mage",
+      how: "På händer och knän. Andas in och svanka ryggen (ko), andas ut och rundra ryggen mot taket (katt). Rör mjukt och kontrollerat."
+    },
+    {
+      name: "Axelstretch tvärs bröstet",
+      sets: "3 × 30 sek/sida",
+      muscle: "Axlar, övre rygg",
+      how: "Dra en rak arm tvärs framför bröstet. Håll den på plats med andra armen strax ovan armbågen. Känn sträcket i bakre axeln."
+    },
+    {
+      name: "Vadstretching (väggstöd)",
+      sets: "3 × 40 sek/sida",
+      muscle: "Vader",
+      how: "Stå med händerna mot väggen. Sträck ett ben bakåt med hälen i golvet och böj det främre knät. Känn sträcket i vaden."
+    },
+    {
+      name: "Nackstretching",
+      sets: "3 × 20 sek/sida",
+      muscle: "Nacke, axlar",
+      how: "Luta huvudet åt sidan mot axeln. Förstärk lätt med handen ovanpå huvudet. Håll axeln nere på motstående sida."
+    },
+    {
+      name: "Seated forward fold",
+      sets: "3 × 1 min",
+      muscle: "Baksida ben, ländrygg",
+      how: "Sitt med raka ben. Böj från höften (inte ryggen) och nå mot fötterna. Håll ryggen så rak du kan och andas djupt."
+    },
+    {
+      name: "World's greatest stretch",
+      sets: "2 × 5 rep/sida",
+      muscle: "Hela kroppen",
+      how: "Utfall framåt, placera samma sidas hand vid foten. Rotera sedan överkroppen uppåt och sträck armen mot taket. Gå igenom hela rörelsen."
+    },
+    {
+      name: "Thoracic rotation",
+      sets: "3 × 10 rep/sida",
+      muscle: "Övre rygg",
+      how: "Knästå med en hand bakom huvudet och den andra i golvet. Rotera överkroppen uppåt så armbågen pekar mot taket. Gå tillbaka."
+    },
+    {
+      name: "Figure-four stretch",
+      sets: "3 × 45 sek/sida",
+      muscle: "Rumpa, piriformis",
+      how: "Ligg på rygg med böjda knän. Kors ett ben och lägg vristbenet mot det andra låret. Dra det undre knät mot bröstet tills du känner sträcket."
+    },
+  ],
+  core: [
+    {
+      name: "Planka",
+      sets: "3 set × 45–60 sek",
+      muscle: "Core, axlar",
+      how: "Vila på underarmar och tår. Håll kroppen rak som en bräda – spänn magen, rumpa och lår. Undvik att höfterna sjunker eller höjs."
+    },
+    {
+      name: "Sidoplanka",
+      sets: "3 set × 30 sek/sida",
+      muscle: "Sidor, obliques",
+      how: "Stöd på en underarm med sidan av foten. Lyft höften och håll kroppen rak. Kärnan ska hålla dig uppe, inte axeln."
+    },
+    {
+      name: "Dead bug",
+      sets: "3 set × 10 rep/sida",
+      muscle: "Core, ländrygg",
+      how: "Ligg på rygg med armar upp och höfter/knän i 90°. Sänk motsatt arm och ben mot golvet och pressa ländryggen mot golvet hela tiden."
+    },
+    {
+      name: "Russian twist",
+      sets: "3 set × 20 reps",
+      muscle: "Obliques, core",
+      how: "Sitt med böjda ben och luta överkroppen 45° bakåt. Håll händerna ihop och rotera överkroppen från sida till sida."
+    },
+    {
+      name: "Hanging knee raise",
+      sets: "3 set × 12 reps",
+      muscle: "Mage, höftböjare",
+      how: "Häng i en stång. Spänn magen och dra knäna kontrollerat upp mot bröstet. Sänk sakta utan att svinga."
+    },
+    {
+      name: "Ab wheel rollout",
+      sets: "3 set × 8–10 reps",
+      muscle: "Hela core",
+      how: "Knästående med hjulet framför. Rulla sakta ut med raka armar tills du nästan når golvet. Dra tillbaka med magen – inte ryggen."
+    },
+    {
+      name: "Bird dog",
+      sets: "3 set × 10 rep/sida",
+      muscle: "Core, ländrygg",
+      how: "På händer och knän. Sträck ett ben och motsatt arm rakt ut. Håll ryggen plan och höfterna i nivå. Sänk och byt sida."
+    },
+    {
+      name: "Pallof press",
+      sets: "3 set × 10 reps/sida",
+      muscle: "Anti-rotation, core",
+      how: "Stå med sidan mot kabelmaskin, håll handtaget vid bröstet. Pressa rakt ut, håll 2 sek och dra tillbaka. Motstå rotationskraften."
+    },
+    {
+      name: "Toe touch crunch",
+      sets: "3 set × 15 reps",
+      muscle: "Raka magen",
+      how: "Ligg på rygg med benen rakt upp. Nå med händerna mot tårna och lyft överkroppen med magen – inte med nacken."
+    },
+    {
+      name: "Flutter kicks",
+      sets: "3 set × 30 sek",
+      muscle: "Nedre mage, höftböjare",
+      how: "Ligg på rygg med händerna under rumpan och benen raka. Flytta benen alternativt upp och ner i liten rörelse. Håll ländryggen nere."
+    },
+    {
+      name: "Dragon flag (negativ)",
+      sets: "3 set × 5 reps",
+      muscle: "Hela core",
+      how: "Ligg på en bänk och håll fast bakom huvudet. Lyft hela kroppen rakt upp och sänk sedan kontrollerat med rak kropp. Fokus på nedfasen."
+    },
+    {
+      name: "Landmine rotation",
+      sets: "3 set × 10 rep/sida",
+      muscle: "Obliques, axlar",
+      how: "Håll stångändan med båda händerna framför bröstet. Rotera överkroppen och sväng stången ned mot ena sidan, sedan tillbaka. Håll armarna nästan raka."
+    },
+    {
+      name: "Copenhagen plank",
+      sets: "3 set × 20 sek/sida",
+      muscle: "Adduktorer, core",
+      how: "Sidoplanka med insidan av foten på en bänk. Lyft höften och håll kroppen rak. Det inre låret håller dig uppe."
+    },
+  ],
+};
+
+const TYPE_LABELS = {
+  vikter: "Vikter",
+  kropp: "Kropp",
+  kondition: "Kondition",
+  rorlighet: "Rörlighet",
+  core: "Core",
+  blandat: "Blandat",
+};
+
+// Minutes per exercise including rest
+const MIN_PER_EXERCISE = {
+  vikter: 6,
+  kropp: 5,
+  kondition: 14,
+  rorlighet: 3,
+  core: 4,
+  blandat: 6,
+};
+
+const DURATIONS = [30, 45, 60, 90];
+
+let selectedType = "vikter";
+let selectedDuration = null;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function calcCountFromDuration(type, minutes) {
+  const mpe = MIN_PER_EXERCISE[type === "blandat" ? "blandat" : type] || 6;
+  return Math.max(1, Math.floor(minutes / mpe));
+}
+
+function pickExercises(type, count) {
+  if (type === "blandat") {
+    const allTypes = Object.keys(EXERCISES);
+    let pool = [];
+    for (const t of allTypes) {
+      pool = pool.concat(EXERCISES[t].map(e => ({ ...e, type: t })));
+    }
+    return shuffle(pool).slice(0, count);
+  }
+  const pool = EXERCISES[type].map(e => ({ ...e, type }));
+  return shuffle(pool).slice(0, count);
+}
+
+function renderExercises(exercises) {
+  const list = document.getElementById("exercise-list");
+  list.innerHTML = "";
+  exercises.forEach((ex, i) => {
+    const card = document.createElement("div");
+    card.className = "exercise-card";
+    card.style.animationDelay = `${i * 60}ms`;
+    card.innerHTML = `
+      <div class="exercise-number">${i + 1}</div>
+      <div class="exercise-info">
+        <div class="exercise-name">
+          ${ex.name}
+          <span class="exercise-tag tag-${ex.type}">${TYPE_LABELS[ex.type]}</span>
+        </div>
+        <div class="exercise-how">${ex.how}</div>
+        <div class="exercise-meta">
+          <span class="meta-sets">${ex.sets}</span>
+          <span class="meta-sep">·</span>
+          <span class="meta-muscle">${ex.muscle}</span>
+        </div>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function renderSummary(exercises, duration) {
+  const summary = document.getElementById("summary");
+  const totalMin = duration
+    ? duration
+    : exercises.reduce((s, e) => s + (MIN_PER_EXERCISE[e.type] || 6), 0);
+  const types = [...new Set(exercises.map(e => TYPE_LABELS[e.type]))].join(", ");
+  summary.innerHTML = `
+    <div class="summary-item">
+      <span class="summary-label">Antal övningar</span>
+      <span class="summary-value">${exercises.length}</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">Passlängd</span>
+      <span class="summary-value">~${totalMin} min</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">Kategori</span>
+      <span class="summary-value">${types}</span>
+    </div>
+  `;
+}
+
+function generate() {
+  const countInput = document.getElementById("exercise-count");
+  const errorEl = document.querySelector(".error-msg");
+  if (errorEl) errorEl.remove();
+
+  let count;
+  if (selectedDuration) {
+    count = calcCountFromDuration(selectedType, selectedDuration);
+    countInput.value = count;
+  } else {
+    count = parseInt(countInput.value, 10);
+    if (!count || count < 1 || count > 20) {
+      const msg = document.createElement("p");
+      msg.className = "error-msg";
+      msg.textContent = "Ange ett antal mellan 1 och 20, eller välj en passlängd.";
+      countInput.after(msg);
+      return;
+    }
+  }
+
+  const maxAvailable = selectedType === "blandat"
+    ? Object.values(EXERCISES).flat().length
+    : EXERCISES[selectedType].length;
+
+  const actualCount = Math.min(count, maxAvailable);
+  const exercises = pickExercises(selectedType, actualCount);
+
+  const durationLabel = selectedDuration ? ` · ${selectedDuration} min` : "";
+  document.getElementById("results-title").textContent =
+    `${TYPE_LABELS[selectedType]}${durationLabel} – ${actualCount} övningar`;
+
+  renderExercises(exercises);
+  renderSummary(exercises, selectedDuration);
+
+  const results = document.getElementById("results");
+  results.style.display = "block";
+  results.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Type buttons
+document.querySelectorAll(".type-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".type-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    selectedType = btn.dataset.type;
+    if (selectedDuration) {
+      document.getElementById("exercise-count").value =
+        calcCountFromDuration(selectedType, selectedDuration);
+    }
+  });
+});
+
+// Duration buttons
+document.querySelectorAll(".duration-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const val = parseInt(btn.dataset.duration, 10);
+    if (selectedDuration === val) {
+      selectedDuration = null;
+      btn.classList.remove("active");
+    } else {
+      document.querySelectorAll(".duration-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      selectedDuration = val;
+      document.getElementById("exercise-count").value =
+        calcCountFromDuration(selectedType, selectedDuration);
+    }
+  });
+});
+
+document.getElementById("generate-btn").addEventListener("click", generate);
+document.getElementById("regenerate-btn").addEventListener("click", generate);
+
+</script>
+</body>
+</html>
