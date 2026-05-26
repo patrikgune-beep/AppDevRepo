@@ -229,6 +229,63 @@ const MIN_PER_EXERCISE = {
 
 let selectedTypes = new Set(["vikter"]);
 let selectedDuration = null;
+let selectedFocus = new Set();
+
+const FOCUS_TAG_MAP = {
+  "helkropp":  ["helkropp"],
+  "överkropp": ["överkropp"],
+  "underkropp":["underkropp"],
+  "mage-rygg": ["mage/rygg"],
+  "bröst":     ["bröst"],
+  "rygg":      ["rygg"],
+  "axlar":     ["axlar"],
+  "armar":     ["biceps", "triceps", "armar"],
+  "lår":       ["lår"],
+  "rumpa":     ["rumpa", "höfter"],
+  "vader":     ["vader"],
+  "mage":      ["mage", "core"],
+};
+
+function getBodyParts(muscle) {
+  const m = muscle.toLowerCase();
+  const p = new Set();
+  if (m.includes("bröst"))                                             p.add("bröst");
+  if ((m.includes("rygg") && !m.includes("ländrygg")) ||
+       m.includes("latissimus") || m.includes("trapezius") ||
+       m.includes("rotatorkuff") || m.includes("övre rygg"))          p.add("rygg");
+  if (m.includes("axlar") || m.includes("axel") ||
+      m.includes("bakre axel"))                                        p.add("axlar");
+  if (m.includes("biceps"))                                            p.add("biceps");
+  if (m.includes("triceps"))                                           p.add("triceps");
+  if (m.includes("underarm") || m.includes("grepp"))                  p.add("armar");
+  if (m.includes("lår"))                                               p.add("lår");
+  if (m.includes("rumpa"))                                             p.add("rumpa");
+  if (m.includes("vader"))                                             p.add("vader");
+  if (m.includes("höfter") || m.includes("höft") ||
+      m.includes("adduktorer") || m.includes("höftböjare") ||
+      m.includes("piriformis"))                                        p.add("höfter");
+  if (m.includes("mage") || m.includes("obliques"))                   p.add("mage");
+  if (m.includes("core") || m.includes("anti-rotation"))              p.add("core");
+  if (m.includes("ländrygg"))                                          p.add("ländrygg");
+
+  const upper = ["bröst","rygg","axlar","biceps","triceps","armar"];
+  const lower = ["lår","rumpa","vader","höfter"];
+  const mid   = ["mage","core","ländrygg"];
+  if (upper.some(t => p.has(t))) p.add("överkropp");
+  if (lower.some(t => p.has(t))) p.add("underkropp");
+  if (mid.some(t => p.has(t)))   p.add("mage/rygg");
+  if (m.includes("hela kroppen") ||
+      (p.has("överkropp") && p.has("underkropp")))  p.add("helkropp");
+  return p;
+}
+
+function exerciseMatchesFocus(exercise) {
+  if (selectedFocus.size === 0) return true;
+  const exParts = getBodyParts(exercise.muscle);
+  return [...selectedFocus].some(key =>
+    (FOCUS_TAG_MAP[key] || [key]).some(tag => exParts.has(tag))
+  );
+}
 
 function shuffle(arr) {
   const a = [...arr];
@@ -266,6 +323,9 @@ function pickExercises(types, count) {
   let pool = [];
   for (const t of types) {
     pool = pool.concat(EXERCISES[t].map(e => ({ ...e, type: t })));
+  }
+  if (selectedFocus.size > 0) {
+    pool = pool.filter(exerciseMatchesFocus);
   }
   return shuffle(pool).slice(0, count);
 }
@@ -333,8 +393,22 @@ function generate() {
     return;
   }
 
-  const totalAvail = [...selectedTypes].reduce((s, t) => s + EXERCISES[t].length, 0);
-  const actualCount = Math.min(count, totalAvail);
+  // Build filtered pool to check availability
+  let checkPool = [];
+  for (const t of selectedTypes) {
+    checkPool = checkPool.concat(EXERCISES[t].map(e => ({ ...e, type: t })));
+  }
+  if (selectedFocus.size > 0) checkPool = checkPool.filter(exerciseMatchesFocus);
+
+  if (checkPool.length === 0) {
+    const msg = document.createElement("p");
+    msg.className = "error-msg";
+    msg.textContent = "Inga övningar matchar kombinationen av träningstyp och fokusområde. Prova ett annat urval.";
+    countInput.after(msg);
+    return;
+  }
+
+  const actualCount = Math.min(count, checkPool.length);
   const minutesPerExercise = selectedDuration ? selectedDuration / actualCount : null;
 
   const typeNames = [...selectedTypes].map(t => TYPE_LABELS[t]).join(" + ");
@@ -376,6 +450,19 @@ document.querySelectorAll(".duration-btn").forEach(btn => {
       document.querySelectorAll(".duration-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       selectedDuration = val;
+    }
+  });
+});
+
+document.querySelectorAll(".focus-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const key = btn.dataset.focus;
+    if (selectedFocus.has(key)) {
+      selectedFocus.delete(key);
+      btn.classList.remove("active");
+    } else {
+      selectedFocus.add(key);
+      btn.classList.add("active");
     }
   });
 });
