@@ -127,13 +127,15 @@
       </div>
 
       <div id="profile-create-view" style="display:none">
-        <h2>Ny profil</h2>
-        <p>Ange ett alias (visningsnamn) och en e-postadress. E-postadressen används som unikt id vid synkronisering.</p>
-        <input type="text" id="profile-alias-input" placeholder="Alias / Visningsnamn" maxlength="50" autocomplete="nickname">
+        <h2>Logga in</h2>
+        <p>Ange din e-postadress. Finns ett befintligt konto loggas du in automatiskt.</p>
         <input type="email" id="profile-email-input" placeholder="din@epost.se" maxlength="100" autocomplete="email" inputmode="email">
+        <div id="profile-alias-row" style="display:none">
+          <input type="text" id="profile-alias-input" placeholder="Alias / Visningsnamn" maxlength="50" autocomplete="nickname">
+        </div>
         <p class="profile-create-error" id="profile-create-error"></p>
         <div class="modal-actions">
-          <button class="modal-submit-btn" id="profile-submit-btn">Skapa profil</button>
+          <button class="modal-submit-btn" id="profile-submit-btn">Logga in</button>
           <button class="modal-skip-btn" id="profile-create-cancel-btn">Tillbaka</button>
         </div>
       </div>
@@ -148,22 +150,6 @@
         <button class="modal-close-btn" id="stats-close-btn">✕</button>
       </div>
       <div id="stats-content" class="stats-content"></div>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="sync-modal" style="display:none">
-    <div class="modal">
-      <h2>Synkinställningar</h2>
-      <p>Ange URL till din server för att synka profiler och träningshistorik mellan enheter. Servern körs med <code>npm start</code> i projektmappen.</p>
-      <input type="url" id="sync-url-input" placeholder="https://din-server.com" autocomplete="off">
-      <div id="sync-status-msg" class="sync-status-msg"></div>
-      <div class="modal-actions">
-        <button class="modal-submit-btn" id="sync-save-btn">Anslut</button>
-        <button class="modal-skip-btn" id="sync-close-btn">Stäng</button>
-      </div>
-      <div id="sync-remove-row" class="sync-remove-row" style="display:none">
-        <button class="sync-remove-btn" id="sync-remove-btn">Ta bort synkinställningar</button>
-      </div>
     </div>
   </div>
 

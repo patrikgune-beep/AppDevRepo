@@ -645,6 +645,10 @@ input[type="number"] {
 }
 .modal input[type="email"]:focus { border-color: #7c3aed; }
 
+.profile-create-error.profile-create-ok { color: #059669; }
+
+#profile-alias-row input { margin-top: 0; }
+
 .profile-card-active-badge {
   font-size: 0.68rem;
   background: #ede9fe;

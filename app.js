@@ -409,12 +409,13 @@ function renderLogRow(logType) {
 function makeSyncBtn() {
   var btn = document.createElement('button');
   btn.className = 'profile-link-btn';
+  btn.title = 'Synka mot server nu';
   var dot = document.createElement('span');
   dot.id = 'sync-dot';
   dot.className = 'sync-dot sync-dot-' + syncStatus;
   btn.appendChild(dot);
-  btn.appendChild(document.createTextNode(' Sync'));
-  btn.addEventListener('click', openSyncModal);
+  btn.appendChild(document.createTextNode(' Synka'));
+  btn.addEventListener('click', function() { syncFromServer(); });
   return btn;
 }
 
@@ -479,6 +480,23 @@ function openProfileModal(view) {
   document.getElementById('profile-modal').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   showProfileView(view);
+  if (view === 'list') loadServerProfilesIntoList();
+}
+
+function loadServerProfilesIntoList() {
+  apiFetch('/api/profiles')
+    .then(function(r) { return r && r.ok ? r.json() : null; })
+    .then(function(serverProfiles) {
+      if (!serverProfiles) return;
+      var local = loadProfiles();
+      var merged = serverProfiles.slice();
+      local.forEach(function(lp) {
+        if (!merged.find(function(sp) { return sp.id === lp.id; })) merged.push(lp);
+      });
+      if (merged.length !== local.length) { saveProfiles(merged); renderProfileList(); }
+      syncStatus = 'ok'; updateSyncDot();
+    })
+    .catch(function() { syncStatus = 'error'; updateSyncDot(); });
 }
 
 function closeProfileModal() {
@@ -491,12 +509,15 @@ function showProfileView(view) {
   document.getElementById('profile-create-view').style.display = view === 'create' ? '' : 'none';
   if (view === 'list') renderProfileList();
   if (view === 'create') {
-    const aliasInput = document.getElementById('profile-alias-input');
-    const emailInput = document.getElementById('profile-email-input');
-    aliasInput.value = '';
-    emailInput.value = '';
-    document.getElementById('profile-create-error').textContent = '';
-    setTimeout(() => aliasInput.focus(), 50);
+    profileLoginPhase = 'check';
+    document.getElementById('profile-email-input').value = '';
+    document.getElementById('profile-alias-input').value = '';
+    document.getElementById('profile-alias-row').style.display = 'none';
+    const errEl = document.getElementById('profile-create-error');
+    errEl.textContent = '';
+    errEl.className = 'profile-create-error';
+    document.getElementById('profile-submit-btn').textContent = 'Logga in';
+    setTimeout(() => document.getElementById('profile-email-input').focus(), 50);
   }
 }
 
@@ -567,59 +588,94 @@ function confirmDeleteProfile(id, name) {
 }
 
 function submitNewProfile() {
-  const aliasInput = document.getElementById('profile-alias-input');
-  const emailInput = document.getElementById('profile-email-input');
-  const errorEl = document.getElementById('profile-create-error');
-  const alias = aliasInput.value.trim();
-  const email = emailInput.value.trim().toLowerCase();
+  if (profileLoginPhase === 'check') { _loginCheckPhase(); }
+  else { _createAccountPhase(); }
+}
+
+function _loginCheckPhase() {
+  var emailInput = document.getElementById('profile-email-input');
+  var errorEl   = document.getElementById('profile-create-error');
+  var submitBtn = document.getElementById('profile-submit-btn');
+  var email = emailInput.value.trim().toLowerCase();
 
   errorEl.textContent = '';
-  if (!alias) { aliasInput.focus(); return; }
+  errorEl.className = 'profile-create-error';
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errorEl.textContent = 'Ange en giltig e-postadress.';
     emailInput.focus();
     return;
   }
-  const existingLocal = loadProfiles().find(p => p.email && p.email.toLowerCase() === email);
-  if (existingLocal) {
-    errorEl.textContent = 'En profil med den e-postadressen finns redan.';
-    emailInput.focus();
-    return;
-  }
 
-  const newProfile = { id: generateId(), alias, email, createdAt: new Date().toISOString() };
-
-  if (!getSyncUrl()) {
-    _createProfileLocally(newProfile);
-    return;
-  }
-
-  const submitBtn = document.getElementById('profile-submit-btn');
   submitBtn.disabled = true;
   submitBtn.textContent = '...';
 
-  pushProfileToServer(newProfile).then(function(result) {
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Skapa profil';
-    if (result.ok || result.offline || result.local) {
-      _createProfileLocally(newProfile);
-    } else if (result.conflict) {
-      var existing = result.existing;
-      if (confirm(
-        '"' + alias + '" (' + email + ') finns redan på servern.\n' +
-        'Vill du synka och använda den befintliga profilen?'
-      )) {
-        var profiles = loadProfiles();
-        if (!profiles.find(function(p) { return p.id === existing.id; })) {
-          profiles.push(existing);
-          saveProfiles(profiles);
-        }
-        setActiveProfileId(existing.id);
-        syncProfileHistory(existing.id).then(function() {
-          showProfileView('list');
-          updateProfileBar();
-        });
+  apiFetch('/api/profiles')
+    .then(function(r) { return r && r.ok ? r.json() : null; })
+    .then(function(serverProfiles) {
+      var all = serverProfiles ? serverProfiles.slice() : [];
+      loadProfiles().forEach(function(lp) {
+        if (!all.find(function(sp) { return sp.id === lp.id; })) all.push(lp);
+      });
+      var found = all.find(function(p) { return p.email && p.email.toLowerCase() === email; });
+      if (found) {
+        _adoptProfile(found, submitBtn, errorEl);
+      } else {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Skapa konto';
+        document.getElementById('profile-alias-row').style.display = '';
+        errorEl.textContent = 'Ingen profil hittades – ange ett alias för att skapa nytt konto.';
+        setTimeout(function() { document.getElementById('profile-alias-input').focus(); }, 50);
+        profileLoginPhase = 'create';
       }
+    })
+    .catch(function() {
+      var localFound = loadProfiles().find(function(p) { return p.email && p.email.toLowerCase() === email; });
+      if (localFound) {
+        _adoptProfile(localFound, submitBtn, errorEl);
+      } else {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Skapa konto';
+        document.getElementById('profile-alias-row').style.display = '';
+        errorEl.textContent = 'Servern ej nåbar – ange alias för att skapa lokalt konto.';
+        setTimeout(function() { document.getElementById('profile-alias-input').focus(); }, 50);
+        profileLoginPhase = 'create';
+      }
+    });
+}
+
+function _adoptProfile(found, submitBtn, errorEl) {
+  var profiles = loadProfiles();
+  if (!profiles.find(function(p) { return p.id === found.id; })) {
+    profiles.push(found);
+    saveProfiles(profiles);
+  }
+  setActiveProfileId(found.id);
+  if (errorEl) { errorEl.className = 'profile-create-error profile-create-ok'; errorEl.textContent = 'Välkommen, ' + (found.alias || found.name || found.email) + '!'; }
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '✓'; }
+  syncProfileHistory(found.id).then(function() {
+    setTimeout(function() { closeProfileModal(); updateProfileBar(); }, 600);
+  });
+}
+
+function _createAccountPhase() {
+  var aliasInput = document.getElementById('profile-alias-input');
+  var emailInput = document.getElementById('profile-email-input');
+  var errorEl   = document.getElementById('profile-create-error');
+  var submitBtn = document.getElementById('profile-submit-btn');
+  var alias = aliasInput.value.trim();
+  var email = emailInput.value.trim().toLowerCase();
+
+  errorEl.textContent = '';
+  errorEl.className = 'profile-create-error';
+  if (!alias) { aliasInput.focus(); return; }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = '...';
+
+  var newProfile = { id: generateId(), alias: alias, email: email, createdAt: new Date().toISOString() };
+  pushProfileToServer(newProfile).then(function(result) {
+    if (result.conflict) {
+      _adoptProfile(result.existing, submitBtn, errorEl);
     } else {
       _createProfileLocally(newProfile);
     }
@@ -631,21 +687,18 @@ function _createProfileLocally(profile) {
   profiles.push(profile);
   saveProfiles(profiles);
   setActiveProfileId(profile.id);
-  showProfileView('list');
+  closeProfileModal();
   updateProfileBar();
 }
 
 // ── Sync ─────────────────────────────────────────────────────────────────────
 
-function getSyncUrl() {
-  return localStorage.getItem('tg_sync_url') || '';
-}
-function setSyncUrl(url) {
-  if (url) localStorage.setItem('tg_sync_url', url.replace(/\/$/, ''));
-  else localStorage.removeItem('tg_sync_url');
-}
+var SYNC_URL = 'https://personalgymcoachweb.onrender.com';
+
+function getSyncUrl() { return SYNC_URL; }
 
 var syncStatus = 'none';
+var profileLoginPhase = 'check';
 
 function updateSyncDot() {
   var dot = document.getElementById('sync-dot');
@@ -653,15 +706,10 @@ function updateSyncDot() {
 }
 
 function apiFetch(path, options) {
-  var base = getSyncUrl();
-  if (!base) return Promise.resolve(null);
-  return fetch(base + path, options || {}).catch(function() { return null; });
+  return fetch(SYNC_URL + path, options || {}).catch(function() { return null; });
 }
 
 function syncFromServer() {
-  var base = getSyncUrl();
-  if (!base) return;
-
   apiFetch('/api/profiles')
     .then(function(r) {
       if (!r || !r.ok) { syncStatus = 'error'; updateSyncDot(); return null; }
@@ -712,9 +760,7 @@ function syncProfileHistory(profileId) {
 }
 
 function pushProfileToServer(profile) {
-  var base = getSyncUrl();
-  if (!base) return Promise.resolve({ local: true });
-  return fetch(base + '/api/profiles', {
+  return fetch(SYNC_URL + '/api/profiles', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(profile)
@@ -728,76 +774,15 @@ function pushProfileToServer(profile) {
 }
 
 function deleteProfileFromServer(id) {
-  var base = getSyncUrl();
-  if (!base) return;
-  fetch(base + '/api/profiles/' + id, { method: 'DELETE' }).catch(function() {});
+  fetch(SYNC_URL + '/api/profiles/' + id, { method: 'DELETE' }).catch(function() {});
 }
 
 function pushWorkoutToServer(workout) {
-  var base = getSyncUrl();
-  if (!base) return;
-  fetch(base + '/api/history/' + workout.profileId, {
+  fetch(SYNC_URL + '/api/history/' + workout.profileId, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(workout)
   }).catch(function() {});
-}
-
-function openSyncModal() {
-  var modal = document.getElementById('sync-modal');
-  if (!modal) return;
-  document.getElementById('sync-url-input').value = getSyncUrl();
-  var removeRow = document.getElementById('sync-remove-row');
-  if (removeRow) removeRow.style.display = getSyncUrl() ? '' : 'none';
-  var msgEl = document.getElementById('sync-status-msg');
-  msgEl.textContent = '';
-  msgEl.className = 'sync-status-msg';
-  modal.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-}
-
-function closeSyncModal() {
-  var modal = document.getElementById('sync-modal');
-  if (modal) modal.style.display = 'none';
-  document.body.style.overflow = '';
-}
-
-function saveSyncUrl() {
-  var input = document.getElementById('sync-url-input');
-  var url = input.value.trim();
-  var msg = document.getElementById('sync-status-msg');
-  if (!url) { msg.textContent = 'Ange en server-URL.'; msg.className = 'sync-status-msg sync-error'; return; }
-  try { new URL(url); } catch(e) { msg.textContent = 'Ogiltig URL-format.'; msg.className = 'sync-status-msg sync-error'; return; }
-  msg.textContent = 'Ansluter...';
-  msg.className = 'sync-status-msg';
-  fetch(url.replace(/\/$/, '') + '/api/profiles')
-    .then(function(r) {
-      if (!r.ok) throw new Error('http ' + r.status);
-      return r.json();
-    })
-    .then(function() {
-      setSyncUrl(url);
-      syncStatus = 'ok';
-      updateSyncDot();
-      msg.textContent = 'Ansluten!';
-      msg.className = 'sync-status-msg sync-ok';
-      var removeRow = document.getElementById('sync-remove-row');
-      if (removeRow) removeRow.style.display = '';
-      setTimeout(function() { closeSyncModal(); syncFromServer(); updateProfileBar(); }, 700);
-    })
-    .catch(function() {
-      msg.textContent = 'Kunde inte ansluta. Kontrollera URL och att servern körs.';
-      msg.className = 'sync-status-msg sync-error';
-    });
-}
-
-function removeSyncConfig() {
-  if (!confirm('Ta bort synkinställningar?\nLokal data behålls.')) return;
-  setSyncUrl('');
-  syncStatus = 'none';
-  updateSyncDot();
-  closeSyncModal();
-  updateProfileBar();
 }
 
 // ── Stats ────────────────────────────────────────────────────────────────────
@@ -1308,7 +1293,7 @@ document.getElementById("save-btn").addEventListener("click", saveWorkout);
 
 document.getElementById("profile-submit-btn").addEventListener("click", submitNewProfile);
 document.getElementById("profile-alias-input").addEventListener("keydown", e => {
-  if (e.key === "Enter") document.getElementById("profile-email-input").focus();
+  if (e.key === "Enter") submitNewProfile();
 });
 document.getElementById("profile-email-input").addEventListener("keydown", e => {
   if (e.key === "Enter") submitNewProfile();
@@ -1352,15 +1337,6 @@ document.getElementById("bg-file-input").addEventListener("change", function(e) 
   reader.readAsDataURL(file);
 });
 
-document.getElementById("sync-save-btn").addEventListener("click", saveSyncUrl);
-document.getElementById("sync-close-btn").addEventListener("click", closeSyncModal);
-document.getElementById("sync-remove-btn").addEventListener("click", removeSyncConfig);
-document.getElementById("sync-modal").addEventListener("click", function(e) {
-  if (e.target === e.currentTarget) closeSyncModal();
-});
-document.getElementById("sync-url-input").addEventListener("keydown", function(e) {
-  if (e.key === "Enter") saveSyncUrl();
-});
 
 // Init
 migrateOldProfile();
