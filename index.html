@@ -4,14 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#7c3aed" />
-  <title>Träningsgenerator</title>
+  <title>Personal Gym Coach</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>Träningsgenerator</h1>
-      <p class="subtitle">Generera ett anpassat träningspass</p>
+      <h1>Personal Gym Coach</h1>
+      <p class="subtitle">Din personliga gymcoach</p>
       <div class="profile-bar" id="profile-bar"></div>
     </header>
 
@@ -150,6 +150,20 @@
         <button class="modal-close-btn" id="stats-close-btn">✕</button>
       </div>
       <div id="stats-content" class="stats-content"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="edit-workout-modal" style="display:none">
+    <div class="modal modal-wide">
+      <div class="stats-modal-header">
+        <h2 id="edit-workout-title">Redigera pass</h2>
+        <button class="modal-close-btn" id="edit-workout-close-btn">✕</button>
+      </div>
+      <div id="edit-workout-content" class="edit-workout-content stats-content"></div>
+      <div class="modal-actions" style="margin-top:1rem">
+        <button class="modal-submit-btn" id="edit-workout-save-btn">Spara ändringar</button>
+        <button class="modal-skip-btn" id="edit-workout-cancel-btn">Avbryt</button>
+      </div>
     </div>
   </div>
 

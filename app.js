@@ -842,7 +842,7 @@ function computeStats() {
     byType: Object.entries(byType).sort((a, b) => b[1] - a[1]),
     byMuscle: Object.entries(byMuscle).sort((a, b) => b[1] - a[1]).slice(0, 10),
     topExercises,
-    recent: history.slice(0, 8),
+    recent: history.slice(0, 30),
   };
 }
 
@@ -901,18 +901,32 @@ function renderStats() {
 
   if (stats.recent.length > 0) {
     const months = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
-    html += `<div class="stats-section"><h3>Senaste pass</h3><ul class="stats-recent-list">`;
+    html += `<div class="stats-section"><h3>Historik</h3><ul class="stats-recent-list">`;
     stats.recent.forEach(w => {
       const d = new Date(w.date);
       const dateStr = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
       const count = (w.exercises || []).length;
       const types = [...new Set((w.exercises || []).map(e => TYPE_LABELS[e.type] || e.type))].join(', ');
-      html += `<li><span class="stats-recent-date">${dateStr}</span><span class="stats-recent-info">${count} övn · ${types}</span></li>`;
+      html += `<li>
+        <span class="stats-recent-date">${dateStr}</span>
+        <span class="stats-recent-info">${count} övn · ${types}</span>
+        ${w.id ? `<span class="history-actions">
+          <button class="history-action-btn history-edit-btn" data-id="${w.id}" title="Redigera pass">✎</button>
+          <button class="history-action-btn history-delete-btn" data-id="${w.id}" title="Radera pass">✕</button>
+        </span>` : ''}
+      </li>`;
     });
     html += `</ul></div>`;
   }
 
   content.innerHTML = html;
+
+  content.querySelectorAll('.history-edit-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() { openEditWorkoutModal(this.dataset.id); });
+  });
+  content.querySelectorAll('.history-delete-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() { confirmDeleteWorkout(this.dataset.id); });
+  });
 }
 
 function openStatsModal() {
@@ -923,6 +937,138 @@ function openStatsModal() {
 function closeStatsModal() {
   document.getElementById('stats-modal').style.display = 'none';
   document.body.style.overflow = '';
+}
+
+// ── Edit / Delete workout ─────────────────────────────────────────────────────
+
+var editingWorkoutId = null;
+
+function confirmDeleteWorkout(id) {
+  if (!confirm('Radera detta gympass?\nDetta går inte att ångra.')) return;
+  deleteWorkout(id);
+}
+
+function deleteWorkout(id) {
+  var history = loadHistory();
+  var workout = history.find(function(w) { return w.id === id; });
+  saveHistory(history.filter(function(w) { return w.id !== id; }));
+  if (workout && workout.profileId) deleteWorkoutFromServer(workout.profileId, id);
+  renderStats();
+}
+
+function deleteWorkoutFromServer(profileId, workoutId) {
+  if (!getSyncUrl() || !profileId) return;
+  fetch(getSyncUrl() + '/api/history/' + profileId + '/' + workoutId, { method: 'DELETE' }).catch(function() {});
+}
+
+function openEditWorkoutModal(id) {
+  var history = loadHistory();
+  var workout = history.find(function(w) { return w.id === id; });
+  if (!workout) return;
+  editingWorkoutId = id;
+  renderEditWorkoutContent(workout);
+  document.getElementById('edit-workout-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEditWorkoutModal() {
+  document.getElementById('edit-workout-modal').style.display = 'none';
+  document.body.style.overflow = '';
+  editingWorkoutId = null;
+}
+
+function renderEditWorkoutContent(workout) {
+  var months = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+  var d = new Date(workout.date);
+  var dateStr = d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  document.getElementById('edit-workout-title').textContent = 'Redigera – ' + dateStr;
+  var exercises = workout.exercises || [];
+  var html = '';
+  exercises.forEach(function(ex, i) {
+    var typeLabel = TYPE_LABELS[ex.type] || ex.type || '';
+    html += '<div class="edit-exercise-row" data-index="' + i + '">'
+      + '<div class="edit-exercise-name">' + ex.name
+      + (typeLabel ? ' <span class="exercise-tag tag-' + (ex.type || '') + '">' + typeLabel + '</span>' : '')
+      + '</div>'
+      + renderEditLogInputs(ex, i)
+      + '</div>';
+  });
+  if (!html) html = '<p class="stats-empty">Inga \xf6vningar loggade i detta pass.</p>';
+  document.getElementById('edit-workout-content').innerHTML = html;
+}
+
+function renderEditLogInputs(ex, i) {
+  var logged = ex.logged || {};
+  var logType;
+  if ('weight' in logged) logType = 'strength';
+  else if ('minutes' in logged) logType = 'time';
+  else if ('seconds' in logged) logType = 'seconds';
+  else if ('done' in logged) logType = 'check';
+  else logType = getLogType(ex);
+
+  if (logType === 'strength') {
+    return '<div class="log-row">'
+      + '<span class="log-label">Logg</span>'
+      + '<input class="log-input" type="number" inputmode="numeric" placeholder="Reps" data-log="reps" value="' + (logged.reps !== undefined ? logged.reps : '') + '" min="0">'
+      + '<span class="log-sep">\xd7</span>'
+      + '<input class="log-input" type="number" inputmode="decimal" placeholder="kg" data-log="weight" value="' + (logged.weight !== undefined ? logged.weight : '') + '" min="0" step="0.5">'
+      + '</div>';
+  }
+  if (logType === 'time') {
+    return '<div class="log-row">'
+      + '<span class="log-label">Logg</span>'
+      + '<input class="log-input" type="number" inputmode="numeric" placeholder="0" data-log="minutes" value="' + (logged.minutes !== undefined ? logged.minutes : '') + '" min="0">'
+      + '<span class="log-unit">min</span>'
+      + '</div>';
+  }
+  if (logType === 'seconds') {
+    return '<div class="log-row">'
+      + '<span class="log-label">Logg</span>'
+      + '<input class="log-input" type="number" inputmode="numeric" placeholder="0" data-log="seconds" value="' + (logged.seconds !== undefined ? logged.seconds : '') + '" min="0">'
+      + '<span class="log-unit">sek</span>'
+      + '</div>';
+  }
+  if (logType === 'check') {
+    return '<div class="log-row">'
+      + '<span class="log-label">Logg</span>'
+      + '<label class="log-check-label"><input type="checkbox" data-log="done"' + (logged.done ? ' checked' : '') + '> Utf\xf6rd</label>'
+      + '</div>';
+  }
+  return '<div class="log-row">'
+    + '<span class="log-label">Logg</span>'
+    + '<input class="log-input" type="number" inputmode="numeric" placeholder="Reps" data-log="reps" value="' + (logged.reps !== undefined ? logged.reps : '') + '" min="0">'
+    + '</div>';
+}
+
+function saveEditedWorkout() {
+  if (!editingWorkoutId) return;
+  var history = loadHistory();
+  var idx = history.findIndex(function(w) { return w.id === editingWorkoutId; });
+  if (idx < 0) return;
+  var workout = history[idx];
+  var exercises = workout.exercises || [];
+  var rows = document.querySelectorAll('#edit-workout-content .edit-exercise-row');
+  rows.forEach(function(row, i) {
+    if (!exercises[i]) return;
+    var logged = {};
+    var repsEl    = row.querySelector('[data-log="reps"]');
+    var weightEl  = row.querySelector('[data-log="weight"]');
+    var minutesEl = row.querySelector('[data-log="minutes"]');
+    var secondsEl = row.querySelector('[data-log="seconds"]');
+    var doneEl    = row.querySelector('[data-log="done"]');
+    if (repsEl    && repsEl.value)    logged.reps    = parseFloat(repsEl.value);
+    if (weightEl  && weightEl.value)  logged.weight  = parseFloat(weightEl.value);
+    if (minutesEl && minutesEl.value) logged.minutes = parseFloat(minutesEl.value);
+    if (secondsEl && secondsEl.value) logged.seconds = parseFloat(secondsEl.value);
+    if (doneEl    && doneEl.checked)  logged.done    = true;
+    exercises[i].logged = logged;
+  });
+  workout.exercises = exercises;
+  history[idx] = workout;
+  saveHistory(history);
+  pushWorkoutToServer(workout);
+  closeEditWorkoutModal();
+  renderStats();
 }
 
 // ── Save workout ──────────────────────────────────────────────────────────────
@@ -1309,6 +1455,13 @@ document.getElementById("profile-modal").addEventListener("click", e => {
 document.getElementById("stats-close-btn").addEventListener("click", closeStatsModal);
 document.getElementById("stats-modal").addEventListener("click", e => {
   if (e.target === e.currentTarget) closeStatsModal();
+});
+
+document.getElementById("edit-workout-close-btn").addEventListener("click", closeEditWorkoutModal);
+document.getElementById("edit-workout-cancel-btn").addEventListener("click", closeEditWorkoutModal);
+document.getElementById("edit-workout-save-btn").addEventListener("click", saveEditedWorkout);
+document.getElementById("edit-workout-modal").addEventListener("click", function(e) {
+  if (e.target === e.currentTarget) closeEditWorkoutModal();
 });
 
 // ── Background image ─────────────────────────────────────────────────────────

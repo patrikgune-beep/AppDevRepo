@@ -84,6 +84,16 @@ app.post('/api/history/:profileId', function(req, res) {
   res.json({ ok: true });
 });
 
+// DELETE /api/history/:profileId/:workoutId
+app.delete('/api/history/:profileId/:workoutId', function(req, res) {
+  var data = loadData();
+  data.history = (data.history || []).filter(function(w) {
+    return !(w.profileId === req.params.profileId && w.id === req.params.workoutId);
+  });
+  saveData(data);
+  res.json({ ok: true });
+});
+
 app.listen(PORT, function() {
-  console.log('Traningsgenerator server running on port ' + PORT);
+  console.log('Personal Gym Coach server running on port ' + PORT);
 });

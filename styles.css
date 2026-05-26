@@ -843,8 +843,49 @@ input[type="number"] {
   border-bottom: 1px solid #f0f0f8;
 }
 
-.stats-recent-date { color: #9999bb; min-width: 100px; flex-shrink: 0; }
-.stats-recent-info { color: #555577; }
+.stats-recent-date { color: #9999bb; min-width: 90px; flex-shrink: 0; }
+.stats-recent-info { color: #555577; flex: 1; }
+
+.history-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+}
+
+.history-action-btn {
+  background: transparent;
+  border: 1px solid #e0e0ee;
+  border-radius: 5px;
+  color: #c0c0d8;
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.4rem;
+  transition: all 0.18s;
+  line-height: 1.5;
+}
+.history-edit-btn:hover   { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+.history-delete-btn:hover { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
+
+.edit-exercise-row {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #f0f0f8;
+}
+.edit-exercise-row:last-child { border-bottom: none; }
+
+.edit-exercise-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333355;
+  margin-bottom: 0.3rem;
+}
+
+.edit-workout-content {
+  max-height: 55vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 0.2rem;
+}
 
 .stats-empty {
   color: #aaaacc;
