@@ -123,7 +123,7 @@ input[type="number"]:focus {
 
 .duration-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 0.75rem;
 }
 
@@ -351,7 +351,7 @@ input[type="number"]:focus {
 @media (max-width: 480px) {
   h1 { font-size: 1.7rem; }
   .type-grid { grid-template-columns: repeat(3, 1fr); }
-  .duration-grid { grid-template-columns: repeat(2, 1fr); }
+  .duration-grid { grid-template-columns: repeat(3, 1fr); }
   .form-section, .results-section { padding: 1.25rem; }
   .results-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
 }
