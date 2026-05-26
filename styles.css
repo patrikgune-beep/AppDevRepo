@@ -4,6 +4,16 @@
   padding: 0;
 }
 
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   background: #f0f0f8;
@@ -82,6 +92,17 @@ input[type="number"] {
 
 input[type="number"]:focus {
   border-color: #7c3aed;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .count-hint {
@@ -303,6 +324,7 @@ input[type="number"]:focus {
   flex-shrink: 0;
   padding-top: 0.1rem;
 }
+.card-actions > * + * { margin-left: 0.3rem; }
 
 .card-action-btn {
   padding: 0.15rem 0.45rem;
@@ -460,7 +482,10 @@ input[type="number"]:focus {
 /* ── Modal overlay ── */
 .modal-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background: rgba(40, 30, 80, 0.3);
   display: flex;
   align-items: center;
@@ -510,6 +535,7 @@ input[type="number"]:focus {
 .modal input[type="text"]:focus { border-color: #7c3aed; }
 
 .modal-actions { display: flex; gap: 0.75rem; }
+.modal-actions > * + * { margin-left: 0.75rem; }
 
 .modal-submit-btn {
   flex: 1;
@@ -561,7 +587,9 @@ input[type="number"]:focus {
   margin-bottom: 1rem;
   max-height: 280px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
+.profile-list-container > * + * { margin-top: 0.5rem; }
 
 .profile-card {
   display: flex;
@@ -649,6 +677,7 @@ input[type="number"]:focus {
 .stats-content {
   max-height: 62vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding-right: 0.2rem;
 }
 

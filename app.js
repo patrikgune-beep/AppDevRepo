@@ -330,7 +330,7 @@ function getLastResult(exerciseName) {
   const profile = getActiveProfile();
   const history = loadHistory().filter(w =>
     w.profileId === activeId ||
-    (!w.profileId && w.profileName === profile?.name)
+    (!w.profileId && profile && w.profileName === profile.name)
   );
   for (const workout of history) {
     const found = (workout.exercises || []).find(e =>
@@ -365,37 +365,37 @@ function getLogType(exercise) {
 
 function renderLogRow(logType) {
   if (logType === 'strength') {
-    return `<div class="log-row">
-      <span class="log-label">Logg</span>
-      <input class="log-input" type="number" placeholder="Reps" data-log="reps" min="0">
-      <span class="log-sep">×</span>
-      <input class="log-input" type="number" placeholder="kg" data-log="weight" min="0" step="0.5">
-    </div>`;
+    return '<div class="log-row">'
+      + '<span class="log-label">Logg</span>'
+      + '<input class="log-input" type="number" inputmode="numeric" placeholder="Reps" data-log="reps" min="0">'
+      + '<span class="log-sep">\xd7</span>'
+      + '<input class="log-input" type="number" inputmode="decimal" placeholder="kg" data-log="weight" min="0" step="0.5">'
+      + '</div>';
   }
   if (logType === 'time') {
-    return `<div class="log-row">
-      <span class="log-label">Logg</span>
-      <input class="log-input" type="number" placeholder="0" data-log="minutes" min="0">
-      <span class="log-unit">min</span>
-    </div>`;
+    return '<div class="log-row">'
+      + '<span class="log-label">Logg</span>'
+      + '<input class="log-input" type="number" inputmode="numeric" placeholder="0" data-log="minutes" min="0">'
+      + '<span class="log-unit">min</span>'
+      + '</div>';
   }
   if (logType === 'seconds') {
-    return `<div class="log-row">
-      <span class="log-label">Logg</span>
-      <input class="log-input" type="number" placeholder="0" data-log="seconds" min="0">
-      <span class="log-unit">sek</span>
-    </div>`;
+    return '<div class="log-row">'
+      + '<span class="log-label">Logg</span>'
+      + '<input class="log-input" type="number" inputmode="numeric" placeholder="0" data-log="seconds" min="0">'
+      + '<span class="log-unit">sek</span>'
+      + '</div>';
   }
   if (logType === 'check') {
-    return `<div class="log-row">
-      <span class="log-label">Logg</span>
-      <label class="log-check-label"><input type="checkbox" data-log="done"> Utförd</label>
-    </div>`;
+    return '<div class="log-row">'
+      + '<span class="log-label">Logg</span>'
+      + '<label class="log-check-label"><input type="checkbox" data-log="done"> Utf\xf6rd</label>'
+      + '</div>';
   }
-  return `<div class="log-row">
-    <span class="log-label">Logg</span>
-    <input class="log-input" type="number" placeholder="Reps" data-log="reps" min="0">
-  </div>`;
+  return '<div class="log-row">'
+    + '<span class="log-label">Logg</span>'
+    + '<input class="log-input" type="number" inputmode="numeric" placeholder="Reps" data-log="reps" min="0">'
+    + '</div>';
 }
 
 // ── Profile UI ───────────────────────────────────────────────────────────────
@@ -434,13 +434,16 @@ function updateProfileBar() {
   }
 }
 
-function openProfileModal(view = 'list') {
+function openProfileModal(view) {
+  view = view || 'list';
   document.getElementById('profile-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
   showProfileView(view);
 }
 
 function closeProfileModal() {
   document.getElementById('profile-modal').style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 function showProfileView(view) {
@@ -547,11 +550,13 @@ function computeStats() {
   const profile = getActiveProfile();
   const history = loadHistory().filter(w =>
     w.profileId === activeId ||
-    (!w.profileId && w.profileName === profile?.name)
+    (!w.profileId && profile && w.profileName === profile.name)
   );
-  const allLogged = history.flatMap(w =>
-    (w.exercises || []).filter(e => Object.keys(e.logged || {}).length > 0)
-  );
+  const allLogged = history.reduce(function(acc, w) {
+    return acc.concat((w.exercises || []).filter(function(e) {
+      return Object.keys(e.logged || {}).length > 0;
+    }));
+  }, []);
 
   const byType = {};
   allLogged.forEach(e => { byType[e.type] = (byType[e.type] || 0) + 1; });
@@ -653,10 +658,12 @@ function renderStats() {
 
 function openStatsModal() {
   document.getElementById('stats-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
   renderStats();
 }
 function closeStatsModal() {
   document.getElementById('stats-modal').style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 // ── Save workout ──────────────────────────────────────────────────────────────

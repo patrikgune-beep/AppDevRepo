@@ -2,13 +2,24 @@
 <html lang="sv">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#7c3aed" />
   <title>Träningsgenerator</title>
   <style>
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+a {
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -89,6 +100,17 @@ input[type="number"] {
 
 input[type="number"]:focus {
   border-color: #7c3aed;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .count-hint {
@@ -310,6 +332,7 @@ input[type="number"]:focus {
   flex-shrink: 0;
   padding-top: 0.1rem;
 }
+.card-actions > * + * { margin-left: 0.3rem; }
 
 .card-action-btn {
   padding: 0.15rem 0.45rem;
@@ -467,7 +490,10 @@ input[type="number"]:focus {
 /* ── Modal overlay ── */
 .modal-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background: rgba(40, 30, 80, 0.3);
   display: flex;
   align-items: center;
@@ -517,6 +543,7 @@ input[type="number"]:focus {
 .modal input[type="text"]:focus { border-color: #7c3aed; }
 
 .modal-actions { display: flex; gap: 0.75rem; }
+.modal-actions > * + * { margin-left: 0.75rem; }
 
 .modal-submit-btn {
   flex: 1;
@@ -568,7 +595,9 @@ input[type="number"]:focus {
   margin-bottom: 1rem;
   max-height: 280px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
+.profile-list-container > * + * { margin-top: 0.5rem; }
 
 .profile-card {
   display: flex;
@@ -656,6 +685,7 @@ input[type="number"]:focus {
 .stats-content {
   max-height: 62vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding-right: 0.2rem;
 }
 
@@ -969,6 +999,7 @@ input[type="number"]:focus {
           max="30"
           value="8"
           placeholder="1–30"
+          inputmode="numeric"
           autocomplete="off"
         />
         <p class="count-hint" id="count-hint"></p>
@@ -1358,7 +1389,7 @@ function getLastResult(exerciseName) {
   const profile = getActiveProfile();
   const history = loadHistory().filter(w =>
     w.profileId === activeId ||
-    (!w.profileId && w.profileName === profile?.name)
+    (!w.profileId && profile && w.profileName === profile.name)
   );
   for (const workout of history) {
     const found = (workout.exercises || []).find(e =>
@@ -1393,37 +1424,37 @@ function getLogType(exercise) {
 
 function renderLogRow(logType) {
   if (logType === 'strength') {
-    return `<div class="log-row">
-      <span class="log-label">Logg</span>
-      <input class="log-input" type="number" placeholder="Reps" data-log="reps" min="0">
-      <span class="log-sep">×</span>
-      <input class="log-input" type="number" placeholder="kg" data-log="weight" min="0" step="0.5">
-    </div>`;
+    return '<div class="log-row">'
+      + '<span class="log-label">Logg</span>'
+      + '<input class="log-input" type="number" inputmode="numeric" placeholder="Reps" data-log="reps" min="0">'
+      + '<span class="log-sep">\xd7</span>'
+      + '<input class="log-input" type="number" inputmode="decimal" placeholder="kg" data-log="weight" min="0" step="0.5">'
+      + '</div>';
   }
   if (logType === 'time') {
-    return `<div class="log-row">
-      <span class="log-label">Logg</span>
-      <input class="log-input" type="number" placeholder="0" data-log="minutes" min="0">
-      <span class="log-unit">min</span>
-    </div>`;
+    return '<div class="log-row">'
+      + '<span class="log-label">Logg</span>'
+      + '<input class="log-input" type="number" inputmode="numeric" placeholder="0" data-log="minutes" min="0">'
+      + '<span class="log-unit">min</span>'
+      + '</div>';
   }
   if (logType === 'seconds') {
-    return `<div class="log-row">
-      <span class="log-label">Logg</span>
-      <input class="log-input" type="number" placeholder="0" data-log="seconds" min="0">
-      <span class="log-unit">sek</span>
-    </div>`;
+    return '<div class="log-row">'
+      + '<span class="log-label">Logg</span>'
+      + '<input class="log-input" type="number" inputmode="numeric" placeholder="0" data-log="seconds" min="0">'
+      + '<span class="log-unit">sek</span>'
+      + '</div>';
   }
   if (logType === 'check') {
-    return `<div class="log-row">
-      <span class="log-label">Logg</span>
-      <label class="log-check-label"><input type="checkbox" data-log="done"> Utförd</label>
-    </div>`;
+    return '<div class="log-row">'
+      + '<span class="log-label">Logg</span>'
+      + '<label class="log-check-label"><input type="checkbox" data-log="done"> Utf\xf6rd</label>'
+      + '</div>';
   }
-  return `<div class="log-row">
-    <span class="log-label">Logg</span>
-    <input class="log-input" type="number" placeholder="Reps" data-log="reps" min="0">
-  </div>`;
+  return '<div class="log-row">'
+    + '<span class="log-label">Logg</span>'
+    + '<input class="log-input" type="number" inputmode="numeric" placeholder="Reps" data-log="reps" min="0">'
+    + '</div>';
 }
 
 // ── Profile UI ───────────────────────────────────────────────────────────────
@@ -1462,13 +1493,16 @@ function updateProfileBar() {
   }
 }
 
-function openProfileModal(view = 'list') {
+function openProfileModal(view) {
+  view = view || 'list';
   document.getElementById('profile-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
   showProfileView(view);
 }
 
 function closeProfileModal() {
   document.getElementById('profile-modal').style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 function showProfileView(view) {
@@ -1575,11 +1609,13 @@ function computeStats() {
   const profile = getActiveProfile();
   const history = loadHistory().filter(w =>
     w.profileId === activeId ||
-    (!w.profileId && w.profileName === profile?.name)
+    (!w.profileId && profile && w.profileName === profile.name)
   );
-  const allLogged = history.flatMap(w =>
-    (w.exercises || []).filter(e => Object.keys(e.logged || {}).length > 0)
-  );
+  const allLogged = history.reduce(function(acc, w) {
+    return acc.concat((w.exercises || []).filter(function(e) {
+      return Object.keys(e.logged || {}).length > 0;
+    }));
+  }, []);
 
   const byType = {};
   allLogged.forEach(e => { byType[e.type] = (byType[e.type] || 0) + 1; });
@@ -1681,10 +1717,12 @@ function renderStats() {
 
 function openStatsModal() {
   document.getElementById('stats-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
   renderStats();
 }
 function closeStatsModal() {
   document.getElementById('stats-modal').style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 // ── Save workout ──────────────────────────────────────────────────────────────
