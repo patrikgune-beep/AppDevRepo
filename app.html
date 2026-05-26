@@ -422,7 +422,8 @@ input[type="number"]:focus {
           min="1"
           max="30"
           value="8"
-          placeholder="1–20"
+          placeholder="1–30"
+          autocomplete="off"
         />
       </div>
 
@@ -819,6 +820,13 @@ document.querySelectorAll(".duration-btn").forEach(btn => {
       updateCount();
     }
   });
+});
+
+document.getElementById("exercise-count").addEventListener("input", () => {
+  if (selectedDuration) {
+    selectedDuration = null;
+    document.querySelectorAll(".duration-btn").forEach(b => b.classList.remove("active"));
+  }
 });
 
 document.getElementById("generate-btn").addEventListener("click", generate);

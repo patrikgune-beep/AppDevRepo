@@ -379,5 +379,12 @@ document.querySelectorAll(".duration-btn").forEach(btn => {
   });
 });
 
+document.getElementById("exercise-count").addEventListener("input", () => {
+  if (selectedDuration) {
+    selectedDuration = null;
+    document.querySelectorAll(".duration-btn").forEach(b => b.classList.remove("active"));
+  }
+});
+
 document.getElementById("generate-btn").addEventListener("click", generate);
 document.getElementById("regenerate-btn").addEventListener("click", generate);
