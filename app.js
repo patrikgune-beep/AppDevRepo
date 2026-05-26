@@ -610,8 +610,13 @@ function _loginCheckPhase() {
   submitBtn.textContent = '...';
 
   apiFetch('/api/profiles')
-    .then(function(r) { return r && r.ok ? r.json() : null; })
-    .then(function(serverProfiles) {
+    .then(function(r) {
+      if (!r || !r.ok) return { serverOk: false, profiles: null };
+      return r.json().then(function(p) { return { serverOk: true, profiles: p }; });
+    })
+    .then(function(result) {
+      var serverOk = result.serverOk;
+      var serverProfiles = result.profiles;
       var all = serverProfiles ? serverProfiles.slice() : [];
       loadProfiles().forEach(function(lp) {
         if (!all.find(function(sp) { return sp.id === lp.id; })) all.push(lp);
@@ -619,27 +624,23 @@ function _loginCheckPhase() {
       var found = all.find(function(p) { return p.email && p.email.toLowerCase() === email; });
       if (found) {
         _adoptProfile(found, submitBtn, errorEl);
+      } else if (!serverOk) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Logga in';
+        errorEl.textContent = 'Servern svarar inte – kontrollera din anslutning och f\xf6rs\xf6k igen.';
       } else {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Skapa konto';
         document.getElementById('profile-alias-row').style.display = '';
-        errorEl.textContent = 'Ingen profil hittades – ange ett alias för att skapa nytt konto.';
+        errorEl.textContent = 'Ingen profil hittades – ange ett alias f\xf6r att skapa nytt konto.';
         setTimeout(function() { document.getElementById('profile-alias-input').focus(); }, 50);
         profileLoginPhase = 'create';
       }
     })
     .catch(function() {
-      var localFound = loadProfiles().find(function(p) { return p.email && p.email.toLowerCase() === email; });
-      if (localFound) {
-        _adoptProfile(localFound, submitBtn, errorEl);
-      } else {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Skapa konto';
-        document.getElementById('profile-alias-row').style.display = '';
-        errorEl.textContent = 'Servern ej nåbar – ange alias för att skapa lokalt konto.';
-        setTimeout(function() { document.getElementById('profile-alias-input').focus(); }, 50);
-        profileLoginPhase = 'create';
-      }
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Logga in';
+      errorEl.textContent = 'N\xe5got gick fel – f\xf6rs\xf6k igen.';
     });
 }
 
@@ -706,7 +707,12 @@ function updateSyncDot() {
 }
 
 function apiFetch(path, options) {
-  return fetch(SYNC_URL + path, options || {}).catch(function() { return null; });
+  var controller = new AbortController();
+  var timer = setTimeout(function() { controller.abort(); }, 8000);
+  var opts = Object.assign({}, options || {}, { signal: controller.signal });
+  return fetch(SYNC_URL + path, opts)
+    .then(function(r) { clearTimeout(timer); return r; })
+    .catch(function() { clearTimeout(timer); return null; });
 }
 
 function syncFromServer() {
