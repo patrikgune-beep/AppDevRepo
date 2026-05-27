@@ -977,13 +977,19 @@ function getAdjustedSets(exercise, minutesPerExercise) {
 
 function pickExercises(types, count) {
   const blacklist = loadBlacklist();
-  let pool = [];
-  for (const t of types) {
-    pool = pool.concat(EXERCISES[t].map(e => ({ ...e, type: t })));
-  }
-  pool = pool.filter(e => !blacklist.has(e.name));
-  if (selectedFocus.size > 0) pool = pool.filter(exerciseMatchesFocus);
-  return shuffle(pool).slice(0, count);
+  const typeArr = [...types];
+  const base = Math.floor(count / typeArr.length);
+  const remainder = count % typeArr.length;
+
+  const result = [];
+  typeArr.forEach((t, i) => {
+    let pool = EXERCISES[t].map(e => ({ ...e, type: t }));
+    pool = pool.filter(e => !blacklist.has(e.name));
+    if (selectedFocus.size > 0) pool = pool.filter(exerciseMatchesFocus);
+    const n = base + (i < remainder ? 1 : 0);
+    result.push(...shuffle(pool).slice(0, n));
+  });
+  return result;
 }
 
 function buildCardHtml(ex, index, minutesPerExercise) {
@@ -1027,7 +1033,17 @@ function renderExercises(exercises, minutesPerExercise) {
   currentExercises = exercises;
   const list = document.getElementById("exercise-list");
   list.innerHTML = "";
+  const distinctTypes = new Set(exercises.map(e => e.type));
+  const showHeaders = distinctTypes.size > 1;
+  let lastType = null;
   exercises.forEach((ex, i) => {
+    if (showHeaders && ex.type !== lastType) {
+      const header = document.createElement("div");
+      header.className = "exercise-type-header";
+      header.textContent = TYPE_LABELS[ex.type] || ex.type;
+      list.appendChild(header);
+      lastType = ex.type;
+    }
     const card = document.createElement("div");
     card.className = "exercise-card";
     card.style.animationDelay = `${i * 50}ms`;
@@ -1046,10 +1062,7 @@ function replaceExercise(index, deleteFromLibrary) {
 
   const currentNames = new Set(currentExercises.filter((_, i) => i !== index).map(e => e.name));
 
-  let pool = [];
-  for (const t of selectedTypes) {
-    pool = pool.concat(EXERCISES[t].map(e => ({ ...e, type: t })));
-  }
+  let pool = (EXERCISES[oldEx.type] || []).map(e => ({ ...e, type: oldEx.type }));
   pool = pool.filter(e => !currentNames.has(e.name) && !blacklist.has(e.name));
 
   const focused = selectedFocus.size > 0 ? pool.filter(exerciseMatchesFocus) : pool;
@@ -1059,8 +1072,8 @@ function replaceExercise(index, deleteFromLibrary) {
 
   if (available.length === 0) {
     alert(deleteFromLibrary
-      ? `"${oldEx.name}" är borttagen från biblioteket. Inga fler övningar tillgängliga för valda typer.`
-      : 'Inga fler övningar att byta till för valda typer och fokusområden.');
+      ? `"${oldEx.name}" är borttagen från biblioteket. Inga fler övningar tillgängliga för ${TYPE_LABELS[oldEx.type] || oldEx.type}.`
+      : `Inga fler övningar att byta till för ${TYPE_LABELS[oldEx.type] || oldEx.type}.`);
     return;
   }
 

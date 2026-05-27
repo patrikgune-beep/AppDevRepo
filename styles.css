@@ -36,7 +36,7 @@ h1 {
   font-size: 2.2rem;
   font-weight: 800;
   color: #000000;
-  font-style: italic;
+  font-family: 'Arial Narrow', Arial, sans-serif;
   margin-bottom: 0.4rem;
 }
 
@@ -263,6 +263,22 @@ input[type="number"] {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+}
+
+.exercise-type-header {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #7c3aed;
+  padding: 0.6rem 0 0.1rem;
+  margin-top: 0.3rem;
+  border-top: 1px solid #ede9fe;
+}
+.exercise-type-header:first-child {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .exercise-card {
