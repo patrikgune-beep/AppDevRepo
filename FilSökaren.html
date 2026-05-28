@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="FilSökaren">
+  <title>FilSökaren</title>
+  <style>
+    :root {
+      --blue: #007AFF;
+      --red: #FF3B30;
+      --green: #34C759;
+      --orange: #FF9500;
+      --purple: #AF52DE;
+      --teal: #5AC8FA;
+      --indigo: #5856D6;
+      --yellow: #FFCC00;
+      --bg: #F2F2F7;
+      --card: #FFFFFF;
+      --text: #000000;
+      --text2: #3C3C43;
+      --text3: #6C6C70;
+      --text4: #AEAEB2;
+      --sep: rgba(60,60,67,0.18);
+      --safe-top: env(safe-area-inset-top, 44px);
+      --safe-bottom: env(safe-area-inset-bottom, 34px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #000000;
+        --card: #1C1C1E;
+        --text: #FFFFFF;
+        --text2: rgba(235,235,245,0.85);
+        --text3: rgba(235,235,245,0.55);
+        --text4: rgba(235,235,245,0.3);
+        --sep: rgba(84,84,88,0.65);
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+    #app { height: 100%; display: flex; flex-direction: column; }
+
+    /* ── Views ── */
+    .view { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .view.active { display: flex; }
+
+    /* ── Nav bar ── */
+    .nav-bar {
+      padding: calc(var(--safe-top) + 10px) 16px 10px;
+      background: rgba(242,242,247,0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 0.5px solid var(--sep);
+      flex-shrink: 0;
+    }
+    @media (prefers-color-scheme: dark) {
+      .nav-bar { background: rgba(0,0,0,0.92); }
+    }
+    .nav-bar h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; }
+    .nav-bar h1 span { color: var(--blue); }
+    .nav-bar p { font-size: 15px; color: var(--text3); margin-top: 2px; }
+    .nav-row { display: flex; align-items: center; justify-content: space-between; }
+    .nav-title { font-size: 17px; font-weight: 600; }
+    .nav-btn { background: none; border: none; color: var(--blue); font-size: 17px; cursor: pointer; padding: 4px 0; }
+    .nav-btn:disabled { color: var(--text4); }
+
+    /* ── Scroll area ── */
+    .scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(var(--safe-bottom) + 80px); }
+    .scroll-inner { padding: 16px; }
+
+    /* ── Cards ── */
+    .card { background: var(--card); border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+    .card-row { display: flex; align-items: center; padding: 12px 16px; gap: 12px; position: relative; }
+    .card-row + .card-row { border-top: 0.5px solid var(--sep); }
+    .card-row-label { flex: 1; }
+    .card-row-label .title { font-size: 17px; }
+    .card-row-label .sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
+    .card-header { font-size: 13px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.4px; padding: 6px 16px 4px; }
+
+    /* ── Checkboxes ── */
+    .toggle-row { display: flex; align-items: center; padding: 12px 16px; gap: 12px; }
+    .toggle-row + .toggle-row { border-top: 0.5px solid var(--sep); }
+    .cat-icon { font-size: 28px; width: 36px; text-align: center; }
+    .toggle-info { flex: 1; }
+    .toggle-info .name { font-size: 17px; }
+    .toggle-info .exts { font-size: 12px; color: var(--text3); margin-top: 2px; }
+    .toggle { width: 51px; height: 31px; background: var(--sep); border-radius: 16px; cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0; border: none; appearance: none; -webkit-appearance: none; }
+    .toggle.on { background: var(--green); }
+    .toggle::after { content: ''; position: absolute; width: 27px; height: 27px; background: white; border-radius: 50%; top: 2px; left: 2px; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+    .toggle.on::after { transform: translateX(20px); }
+
+    /* ── Welcome screen ── */
+    .welcome-hero { text-align: center; padding: 40px 24px 24px; }
+    .welcome-hero .icon { font-size: 80px; margin-bottom: 16px; display: block; }
+    .welcome-hero h2 { font-size: 28px; font-weight: 700; }
+    .welcome-hero p { font-size: 16px; color: var(--text3); margin-top: 8px; line-height: 1.5; }
+    .features { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 16px 24px; }
+    .feature { background: var(--card); border-radius: 12px; padding: 14px; }
+    .feature .f-icon { font-size: 24px; margin-bottom: 6px; }
+    .feature .f-name { font-size: 13px; font-weight: 600; }
+    .feature .f-desc { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+    /* ── Buttons ── */
+    .btn { display: block; width: calc(100% - 32px); margin: 0 16px 12px; padding: 16px; border-radius: 12px; border: none; font-size: 17px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+    .btn:active { opacity: 0.75; }
+    .btn-primary { background: var(--blue); color: white; }
+    .btn-danger { background: var(--red); color: white; }
+    .btn-secondary { background: rgba(120,120,128,0.18); color: var(--blue); }
+    .btn-sm { font-size: 15px; padding: 10px 20px; width: auto; margin: 0; border-radius: 10px; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Scanning screen ── */
+    .scan-hero { text-align: center; padding: 60px 24px 40px; }
+    .scan-hero .spinner { font-size: 60px; animation: spin 2s linear infinite; display: block; margin-bottom: 20px; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .scan-hero h2 { font-size: 24px; font-weight: 700; }
+    .scan-hero .scan-file { font-size: 13px; color: var(--text3); margin-top: 8px; max-width: 280px; margin-left: auto; margin-right: auto; word-break: break-all; line-height: 1.4; min-height: 36px; }
+    .progress-bar-wrap { height: 4px; background: var(--sep); border-radius: 2px; margin: 20px 32px; overflow: hidden; }
+    .progress-bar { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.3s; width: 0%; }
+    .scan-stats { display: flex; justify-content: center; gap: 40px; margin: 20px 0; }
+    .scan-stat { text-align: center; }
+    .scan-stat .num { font-size: 32px; font-weight: 700; color: var(--blue); }
+    .scan-stat .lbl { font-size: 13px; color: var(--text3); }
+
+    /* ── Results ── */
+    .tab-bar { display: flex; background: var(--card); border-bottom: 0.5px solid var(--sep); flex-shrink: 0; }
+    .tab { flex: 1; padding: 12px; text-align: center; font-size: 14px; font-weight: 500; color: var(--text3); border-bottom: 2px solid transparent; cursor: pointer; }
+    .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+    .toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--card); border-bottom: 0.5px solid var(--sep); flex-shrink: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .toolbar::-webkit-scrollbar { display: none; }
+    .pill { background: rgba(120,120,128,0.14); color: var(--text); border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; border: none; flex-shrink: 0; }
+    .pill.active { background: var(--blue); color: white; }
+    .sort-seg { display: flex; background: rgba(120,120,128,0.14); border-radius: 8px; padding: 2px; gap: 2px; }
+    .sort-seg button { background: none; border: none; padding: 5px 10px; font-size: 12px; color: var(--text3); border-radius: 6px; cursor: pointer; font-weight: 500; }
+    .sort-seg button.active { background: var(--card); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+
+    /* ── File list ── */
+    .section-header { font-size: 13px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.4px; padding: 16px 16px 6px; display: flex; align-items: center; justify-content: space-between; }
+    .section-header .select-all-btn { font-size: 13px; font-weight: 500; color: var(--blue); background: none; border: none; cursor: pointer; text-transform: none; letter-spacing: 0; }
+    .file-row { display: flex; align-items: center; padding: 10px 16px; gap: 12px; background: var(--card); position: relative; cursor: pointer; }
+    .file-row + .file-row { border-top: 0.5px solid var(--sep); }
+    .file-row:first-of-type { border-radius: 12px 12px 0 0; }
+    .file-row:last-of-type { border-radius: 0 0 12px 12px; }
+    .file-row:only-of-type { border-radius: 12px; }
+    .file-check { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--sep); background: var(--bg); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .file-row.selected .file-check { background: var(--blue); border-color: var(--blue); }
+    .file-row.selected .file-check::after { content: ''; width: 12px; height: 7px; border-left: 2px solid white; border-bottom: 2px solid white; transform: rotate(-45deg) translate(1px, -1px); display: block; }
+    .file-ext-badge { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; flex-shrink: 0; text-transform: uppercase; }
+    .file-info { flex: 1; min-width: 0; }
+    .file-info .fname { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-info .fmeta { font-size: 12px; color: var(--text3); margin-top: 2px; }
+    .file-info .fpath { font-size: 11px; color: var(--text4); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-size { font-size: 13px; color: var(--text3); text-align: right; flex-shrink: 0; }
+
+    /* ── Cluster header ── */
+    .cluster-head { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: rgba(120,120,128,0.08); border-top: 0.5px solid var(--sep); cursor: pointer; }
+    .cluster-head:first-child { border-top: none; }
+    .cluster-head .ch-icon { font-size: 18px; }
+    .cluster-head .ch-info { flex: 1; }
+    .cluster-head .ch-name { font-size: 14px; font-weight: 600; }
+    .cluster-head .ch-sub { font-size: 12px; color: var(--text3); }
+    .cluster-head .ch-sel { font-size: 13px; color: var(--blue); font-weight: 500; background: none; border: none; cursor: pointer; }
+    .cluster-block { }
+    .cluster-block.collapsed .file-row { display: none; }
+
+    /* ── Delete bar ── */
+    .delete-bar { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 16px calc(var(--safe-bottom) + 12px); background: rgba(242,242,247,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 0.5px solid var(--sep); display: none; align-items: center; gap: 12px; z-index: 100; }
+    @media (prefers-color-scheme: dark) { .delete-bar { background: rgba(28,28,30,0.95); } }
+    .delete-bar.visible { display: flex; }
+    .delete-bar .del-info { flex: 1; }
+    .delete-bar .del-info .count { font-size: 15px; font-weight: 600; }
+    .delete-bar .del-info .size { font-size: 13px; color: var(--text3); }
+    .delete-bar .del-btn { background: var(--red); color: white; border: none; border-radius: 10px; padding: 12px 20px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .delete-bar .cancel-btn { background: rgba(120,120,128,0.14); border: none; border-radius: 10px; padding: 12px 16px; font-size: 15px; cursor: pointer; color: var(--text); }
+
+    /* ── Report ── */
+    .report-total { text-align: center; padding: 24px 16px 16px; }
+    .report-total .rt-num { font-size: 48px; font-weight: 700; color: var(--blue); }
+    .report-total .rt-lbl { font-size: 15px; color: var(--text3); }
+    .report-total .rt-size { font-size: 22px; font-weight: 600; margin-top: 4px; }
+    .report-cat { background: var(--card); border-radius: 12px; margin: 0 16px 10px; padding: 16px; }
+    .report-cat .rc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .report-cat .rc-icon { font-size: 24px; }
+    .report-cat .rc-name { font-size: 17px; font-weight: 600; flex: 1; }
+    .report-cat .rc-count { font-size: 14px; color: var(--text3); }
+    .report-cat .rc-size { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .report-cat .rc-pct { font-size: 13px; color: var(--text3); margin-bottom: 10px; }
+    .report-cat .rc-bar-wrap { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+    .report-cat .rc-bar { height: 100%; border-radius: 3px; }
+    .report-top { margin: 4px 0 0; }
+    .report-top-item { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; border-top: 0.5px solid var(--sep); color: var(--text2); }
+    .report-top-item .ri-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
+    .report-top-item .ri-size { color: var(--text3); flex-shrink: 0; }
+
+    /* ── Modal ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: flex-end; justify-content: center; z-index: 200; padding-bottom: var(--safe-bottom); }
+    .modal-overlay.visible { display: flex; }
+    .modal-sheet { background: var(--card); border-radius: 20px 20px 0 0; width: 100%; max-height: 70vh; padding: 24px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .modal-sheet h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .modal-sheet p { font-size: 15px; color: var(--text2); margin-bottom: 6px; line-height: 1.5; }
+    .modal-sheet .warn { color: var(--red); font-weight: 600; }
+    .modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+    .modal-actions .btn { margin: 0; width: 100%; }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; padding: 60px 24px; color: var(--text3); }
+    .empty .e-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty h3 { font-size: 18px; font-weight: 600; color: var(--text); }
+    .empty p { font-size: 15px; margin-top: 6px; }
+
+    /* ── Notices ── */
+    .notice { background: rgba(255,149,0,0.12); border-radius: 10px; padding: 12px 14px; margin: 0 16px 12px; font-size: 13px; color: var(--orange); line-height: 1.5; }
+
+    /* ── Utils ── */
+    .mt8 { margin-top: 8px; }
+    .mb0 { margin-bottom: 0; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════════════════════════════════════════════
+       VIEW: Welcome
+  ═══════════════════════════════════════════════════ -->
+  <div class="view active" id="view-welcome">
+    <div class="scroll">
+      <div class="welcome-hero">
+        <span class="icon">🔍</span>
+        <h2>FilSökaren</h2>
+        <p>Sök, analysera och rensa filer i dina Apple Files. Välj en mapp, filtrera filtyper och ta kontrollen.</p>
+      </div>
+      <div class="features">
+        <div class="feature"><div class="f-icon">🗂️</div><div class="f-name">Kategorier</div><div class="f-desc">Bilder, video, ljud, dokument m.m.</div></div>
+        <div class="feature"><div class="f-icon">📊</div><div class="f-name">Rapport</div><div class="f-desc">Antal och storlek per kategori</div></div>
+        <div class="feature"><div class="f-icon">🧹</div><div class="f-name">Radera</div><div class="f-desc">Markera kluster och enskilda filer</div></div>
+        <div class="feature"><div class="f-icon">⚡</div><div class="f-name">Snabb</div><div class="f-desc">Rekursiv sökning på alla nivåer</div></div>
+      </div>
+      <div id="fallback-notice" class="notice" style="display:none">
+        ⚠️ Din webbläsare stöder inte fullt mappval. Filradering kan vara begränsad. Prova Safari 16+ på iOS/macOS för bästa upplevelse.
+      </div>
+      <button class="btn btn-primary" id="btn-pick-dir">📁 Välj mapp att söka i</button>
+      <input type="file" id="file-input-fallback" webkitdirectory multiple style="display:none">
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       VIEW: Filters
+  ═══════════════════════════════════════════════════ -->
+  <div class="view" id="view-filters">
+    <div class="nav-bar">
+      <div class="nav-row">
+        <button class="nav-btn" id="btn-back-welcome">‹ Tillbaka</button>
+        <span class="nav-title">Filtrera</span>
+        <div style="width:60px"></div>
+      </div>
+      <p style="font-size:13px;color:var(--text3);margin-top:4px" id="filter-dir-name">Vald mapp: –</p>
+    </div>
+    <div class="scroll">
+      <div class="scroll-inner">
+        <div class="card-header">Välj filtyper att söka</div>
+        <div class="card" id="cat-toggles">
+          <!-- Populated by JS -->
+        </div>
+        <div class="card-header mt8">Sökdjup</div>
+        <div class="card">
+          <div class="card-row">
+            <div class="card-row-label">
+              <div class="title">Maximalt djup</div>
+              <div class="sub">Antal mappar att gå ner. 0 = obegränsat</div>
+            </div>
+            <input type="number" id="max-depth" value="0" min="0" max="99" style="width:60px;text-align:center;font-size:17px;border:none;background:transparent;color:var(--blue);font-weight:600">
+          </div>
+          <div class="card-row">
+            <div class="card-row-label">
+              <div class="title">Inkludera dolda filer</div>
+              <div class="sub">Filer som börjar med punkt (.)</div>
+            </div>
+            <button class="toggle" id="toggle-hidden" aria-checked="false" role="switch"></button>
+          </div>
+        </div>
+        <div class="card-header mt8">Storleksfilter</div>
+        <div class="card">
+          <div class="card-row">
+            <div class="card-row-label"><div class="title">Minsta filstorlek (MB)</div></div>
+            <input type="number" id="min-size-mb" value="0" min="0" step="0.1" style="width:70px;text-align:center;font-size:17px;border:none;background:transparent;color:var(--blue);font-weight:600">
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="position:sticky;bottom:calc(var(--safe-bottom)+8px);margin-bottom:0;z-index:10" id="btn-start-scan">🔍 Starta sökning</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       VIEW: Scanning
+  ═══════════════════════════════════════════════════ -->
+  <div class="view" id="view-scanning">
+    <div class="scroll">
+      <div class="scan-hero">
+        <span class="spinner">🔍</span>
+        <h2>Söker igenom filer…</h2>
+        <div class="scan-file" id="scan-current-file">Förbereder…</div>
+        <div class="progress-bar-wrap"><div class="progress-bar" id="scan-progress-bar"></div></div>
+      </div>
+      <div class="scan-stats">
+        <div class="scan-stat"><div class="num" id="scan-count">0</div><div class="lbl">filer hittade</div></div>
+        <div class="scan-stat"><div class="num" id="scan-dirs">0</div><div class="lbl">mappar</div></div>
+        <div class="scan-stat"><div class="num" id="scan-size">0</div><div class="lbl">MB totalt</div></div>
+      </div>
+      <div class="card" style="margin:0 16px">
+        <div id="scan-cat-preview">
+          <!-- Live category counts -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       VIEW: Results
+  ═══════════════════════════════════════════════════ -->
+  <div class="view" id="view-results">
+    <div class="nav-bar">
+      <div class="nav-row">
+        <button class="nav-btn" id="btn-back-filters">‹ Ny sökning</button>
+        <span class="nav-title" id="results-nav-title">Resultat</span>
+        <button class="nav-btn btn-sm" id="btn-select-all-nav">Välj alla</button>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <div class="tab active" data-tab="files">Filer</div>
+      <div class="tab" data-tab="report">Rapport</div>
+    </div>
+
+    <!-- Files tab -->
+    <div id="tab-files" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+      <div class="toolbar">
+        <div class="sort-seg" id="sort-seg">
+          <button class="active" data-sort="size">Storlek</button>
+          <button data-sort="type">Typ</button>
+          <button data-sort="date">Datum</button>
+          <button data-sort="name">Namn</button>
+        </div>
+        <button class="pill sort-dir-btn" id="sort-dir-btn" title="Ändra ordning">↓ Störst</button>
+      </div>
+      <div class="toolbar" id="cat-pills">
+        <!-- Category filter pills -->
+      </div>
+      <div class="scroll" id="file-list-scroll">
+        <div id="file-list"></div>
+      </div>
+    </div>
+
+    <!-- Report tab -->
+    <div id="tab-report" style="display:none;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--safe-bottom)+16px)">
+      <div class="report-total">
+        <div class="rt-num" id="report-total-count">0</div>
+        <div class="rt-lbl">filer totalt</div>
+        <div class="rt-size" id="report-total-size">0 MB</div>
+      </div>
+      <div id="report-cats"></div>
+    </div>
+  </div>
+
+  <!-- Delete bar -->
+  <div class="delete-bar" id="delete-bar">
+    <div class="del-info">
+      <div class="count" id="del-count">0 filer valda</div>
+      <div class="size" id="del-size">0 MB</div>
+    </div>
+    <button class="cancel-btn" id="del-cancel-btn">Avmarkera</button>
+    <button class="del-btn" id="del-btn">🗑️ Radera</button>
+  </div>
+
+  <!-- Delete confirm modal -->
+  <div class="modal-overlay" id="delete-modal">
+    <div class="modal-sheet">
+      <h2>Radera filer?</h2>
+      <p>Du har valt att radera <strong id="modal-del-count">0 filer</strong> med en total storlek på <strong id="modal-del-size">0 MB</strong>.</p>
+      <p class="warn">⚠️ Filerna tas bort permanent och kan inte återställas.</p>
+      <div id="modal-del-list" style="max-height:200px;overflow-y:auto;margin-top:12px;font-size:13px;color:var(--text3)"></div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="modal-confirm-del">🗑️ Radera permanent</button>
+        <button class="btn btn-secondary" id="modal-cancel-del">Avbryt</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+'use strict';
+// ─────────────────────────────────────────────────
+// CATEGORIES
+// ─────────────────────────────────────────────────
+const CATS = {
+  images: {
+    label: 'Bilder', icon: '🖼️', color: '#FF9500',
+    exts: new Set(['jpg','jpeg','png','gif','webp','heic','heif','tiff','tif','bmp','svg','raw','cr2','nef','arw','dng','orf','rw2','psd','ai','eps','ico','avif'])
+  },
+  office: {
+    label: 'MS Office / Dokument', icon: '📝', color: '#007AFF',
+    exts: new Set(['doc','docx','xls','xlsx','ppt','pptx','one','pub','vsd','vsdx','odt','ods','odp','rtf','pages','numbers','key','txt','csv','xml','json','yaml','yml'])
+  },
+  pdf: {
+    label: 'PDF', icon: '📋', color: '#FF3B30',
+    exts: new Set(['pdf'])
+  },
+  video: {
+    label: 'Video', icon: '🎬', color: '#5856D6',
+    exts: new Set(['mp4','mov','avi','mkv','wmv','flv','m4v','webm','ts','mts','m2ts','3gp','vob','mpg','mpeg','divx','rmvb'])
+  },
+  audio: {
+    label: 'Ljud', icon: '🎵', color: '#34C759',
+    exts: new Set(['mp3','aac','wav','flac','ogg','m4a','wma','aiff','alac','opus','amr','mid','midi','ape'])
+  },
+  archives: {
+    label: 'Arkiv & Paket', icon: '📦', color: '#FF6B35',
+    exts: new Set(['zip','rar','7z','tar','gz','bz2','xz','pkg','dmg','iso','cab','deb','rpm','sit','sitx'])
+  },
+  code: {
+    label: 'Kod & Skript', icon: '💻', color: '#5AC8FA',
+    exts: new Set(['js','ts','jsx','tsx','html','css','scss','less','py','rb','java','kt','swift','go','rs','cpp','c','h','php','sh','bash','zsh','ps1','bat','sql','r','m','mm'])
+  },
+  other: {
+    label: 'Övrigt', icon: '📁', color: '#8E8E93',
+    exts: new Set()
+  }
+};
+
+function getCategory(ext) {
+  const e = ext.toLowerCase();
+  for (const [key, cat] of Object.entries(CATS)) {
+    if (key === 'other') continue;
+    if (cat.exts.has(e)) return key;
+  }
+  return 'other';
+}
+
+function extColor(ext) {
+  const catKey = getCategory(ext);
+  return CATS[catKey].color;
+}
+
+// ─────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────
+const state = {
+  view: 'welcome',
+  dirHandle: null,
+  dirName: '',
+  useFileInput: false,
+  selectedCats: new Set(Object.keys(CATS)),
+  includeHidden: false,
+  maxDepth: 0,
+  minSizeMb: 0,
+  files: [],
+  selectedFiles: new Set(),
+  sortBy: 'size',
+  sortDir: 'desc',
+  filterCat: 'all',
+  scanning: false,
+  scanStats: { count: 0, dirs: 0, totalBytes: 0, catCounts: {} },
+};
+
+// ─────────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────────
+function fmtSize(bytes) {
+  if (bytes === 0) return '0 B';
+  const units = ['B','KB','MB','GB'];
+  const i = Math.min(3, Math.floor(Math.log(bytes) / Math.log(1024)));
+  const v = bytes / Math.pow(1024, i);
+  return (i >= 2 ? v.toFixed(1) : Math.round(v)) + ' ' + units[i];
+}
+function fmtDate(ms) {
+  if (!ms) return '–';
+  return new Date(ms).toLocaleDateString('sv-SE', { year:'numeric', month:'short', day:'numeric' });
+}
+function fmtCount(n) { return n.toLocaleString('sv-SE'); }
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+  state.view = id;
+}
+
+// ─────────────────────────────────────────────────
+// WELCOME
+// ─────────────────────────────────────────────────
+const btnPickDir = document.getElementById('btn-pick-dir');
+const fileInputFallback = document.getElementById('file-input-fallback');
+const fallbackNotice = document.getElementById('fallback-notice');
+
+btnPickDir.addEventListener('click', async () => {
+  if ('showDirectoryPicker' in window) {
+    try {
+      state.dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      state.dirName = state.dirHandle.name;
+      state.useFileInput = false;
+      goToFilters();
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        fallbackToFileInput();
+      }
+    }
+  } else {
+    fallbackToFileInput();
+  }
+});
+
+function fallbackToFileInput() {
+  state.useFileInput = true;
+  fallbackNotice.style.display = 'block';
+  fileInputFallback.click();
+}
+
+fileInputFallback.addEventListener('change', (e) => {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  state.fallbackFiles = files;
+  state.dirName = files[0]?.webkitRelativePath?.split('/')[0] || 'Vald mapp';
+  state.dirHandle = null;
+  goToFilters();
+});
+
+document.getElementById('btn-back-welcome').addEventListener('click', () => showView('welcome'));
+
+// ─────────────────────────────────────────────────
+// FILTERS
+// ─────────────────────────────────────────────────
+function goToFilters() {
+  document.getElementById('filter-dir-name').textContent = 'Vald mapp: ' + state.dirName;
+  buildCatToggles();
+  showView('filters');
+}
+
+function buildCatToggles() {
+  const wrap = document.getElementById('cat-toggles');
+  wrap.innerHTML = '';
+  for (const [key, cat] of Object.entries(CATS)) {
+    const row = document.createElement('div');
+    row.className = 'toggle-row';
+    const extsPreview = key === 'other' ? 'Allt annat' :
+      [...cat.exts].slice(0, 8).join(', ') + (cat.exts.size > 8 ? '…' : '');
+    row.innerHTML = `
+      <div class="cat-icon">${cat.icon}</div>
+      <div class="toggle-info">
+        <div class="name">${cat.label}</div>
+        <div class="exts">${extsPreview}</div>
+      </div>
+      <button class="toggle ${state.selectedCats.has(key) ? 'on' : ''}" data-cat="${key}" role="switch" aria-checked="${state.selectedCats.has(key)}"></button>
+    `;
+    wrap.appendChild(row);
+  }
+  wrap.querySelectorAll('.toggle').forEach(t => {
+    t.addEventListener('click', () => {
+      const k = t.dataset.cat;
+      if (state.selectedCats.has(k)) { state.selectedCats.delete(k); t.classList.remove('on'); t.setAttribute('aria-checked','false'); }
+      else { state.selectedCats.add(k); t.classList.add('on'); t.setAttribute('aria-checked','true'); }
+    });
+  });
+}
+
+// Hidden toggle
+const toggleHidden = document.getElementById('toggle-hidden');
+toggleHidden.addEventListener('click', () => {
+  state.includeHidden = !state.includeHidden;
+  toggleHidden.classList.toggle('on', state.includeHidden);
+  toggleHidden.setAttribute('aria-checked', state.includeHidden);
+});
+
+document.getElementById('btn-start-scan').addEventListener('click', () => {
+  state.maxDepth = parseInt(document.getElementById('max-depth').value) || 0;
+  state.minSizeMb = parseFloat(document.getElementById('min-size-mb').value) || 0;
+  startScan();
+});
+
+// ─────────────────────────────────────────────────
+// SCANNING
+// ─────────────────────────────────────────────────
+async function startScan() {
+  state.files = [];
+  state.selectedFiles.clear();
+  state.scanStats = { count: 0, dirs: 0, totalBytes: 0, catCounts: {} };
+  for (const k of Object.keys(CATS)) state.scanStats.catCounts[k] = { count: 0, bytes: 0 };
+  showView('scanning');
+  updateScanUI('Startar…', 0);
+
+  try {
+    if (state.useFileInput) {
+      await scanFallbackFiles();
+    } else {
+      await scanDirectory(state.dirHandle, '', 0);
+    }
+  } catch (err) {
+    console.error('Scan error:', err);
+  }
+
+  showResults();
+}
+
+async function scanDirectory(dirHandle, path, depth) {
+  const maxD = state.maxDepth;
+  if (maxD > 0 && depth >= maxD) return;
+
+  for await (const [name, handle] of dirHandle.entries()) {
+    if (!state.includeHidden && name.startsWith('.')) continue;
+
+    if (handle.kind === 'directory') {
+      state.scanStats.dirs++;
+      updateScanUI('📂 ' + (path ? path + '/' + name : name), null);
+      await scanDirectory(handle, path ? path + '/' + name : name, depth + 1);
+    } else if (handle.kind === 'file') {
+      await processFileHandle(handle, name, path);
+    }
+  }
+}
+
+async function processFileHandle(handle, name, path) {
+  try {
+    const file = await handle.getFile();
+    const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+    const cat = getCategory(ext);
+    if (!state.selectedCats.has(cat)) return;
+    const sizeMb = file.size / (1024 * 1024);
+    if (sizeMb < state.minSizeMb) return;
+
+    const entry = {
+      name, ext, cat,
+      path: path ? path + '/' + name : name,
+      size: file.size,
+      lastModified: file.lastModified,
+      handle,
+      parentHandle: null,
+    };
+    state.files.push(entry);
+    state.scanStats.count++;
+    state.scanStats.totalBytes += file.size;
+    state.scanStats.catCounts[cat].count++;
+    state.scanStats.catCounts[cat].bytes += file.size;
+
+    if (state.scanStats.count % 10 === 0 || state.scanStats.count < 10) {
+      updateScanUI(name, null);
+    }
+  } catch (_) {}
+}
+
+async function scanFallbackFiles() {
+  const files = state.fallbackFiles || [];
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const parts = file.webkitRelativePath.split('/');
+    const name = parts[parts.length - 1];
+    const path = parts.slice(1, -1).join('/');
+    if (!state.includeHidden && name.startsWith('.')) continue;
+    const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+    const cat = getCategory(ext);
+    if (!state.selectedCats.has(cat)) continue;
+    const sizeMb = file.size / (1024 * 1024);
+    if (sizeMb < state.minSizeMb) continue;
+
+    state.files.push({
+      name, ext, cat, path: path ? path + '/' + name : name,
+      size: file.size, lastModified: file.lastModified,
+      handle: null, parentHandle: null,
+    });
+    state.scanStats.count++;
+    state.scanStats.totalBytes += file.size;
+    state.scanStats.catCounts[cat].count++;
+    state.scanStats.catCounts[cat].bytes += file.size;
+
+    if (i % 50 === 0) {
+      updateScanUI(name, (i / files.length) * 100);
+      await yieldToUI();
+    }
+  }
+}
+
+function updateScanUI(filename, pct) {
+  document.getElementById('scan-current-file').textContent = filename;
+  document.getElementById('scan-count').textContent = fmtCount(state.scanStats.count);
+  document.getElementById('scan-dirs').textContent = fmtCount(state.scanStats.dirs);
+  document.getElementById('scan-size').textContent = (state.scanStats.totalBytes / (1024*1024)).toFixed(1);
+  if (pct !== null) document.getElementById('scan-progress-bar').style.width = pct + '%';
+
+  const prev = document.getElementById('scan-cat-preview');
+  const lines = Object.entries(state.scanStats.catCounts)
+    .filter(([,v]) => v.count > 0)
+    .map(([k,v]) => {
+      const cat = CATS[k];
+      return `<div class="card-row"><span style="font-size:20px">${cat.icon}</span><div class="card-row-label"><div class="title">${cat.label}</div></div><div style="font-size:13px;color:var(--text3)">${fmtCount(v.count)} filer · ${fmtSize(v.bytes)}</div></div>`;
+    });
+  prev.innerHTML = lines.join('') || '<div class="card-row" style="color:var(--text3);font-size:15px">Söker…</div>';
+}
+
+function yieldToUI() {
+  return new Promise(r => setTimeout(r, 0));
+}
+
+// ─────────────────────────────────────────────────
+// RESULTS
+// ─────────────────────────────────────────────────
+function showResults() {
+  state.selectedFiles.clear();
+  document.getElementById('results-nav-title').textContent = fmtCount(state.files.length) + ' filer';
+  buildCatPills();
+  renderFileList();
+  renderReport();
+  updateDeleteBar();
+  showView('results');
+  switchTab('files');
+}
+
+function buildCatPills() {
+  const wrap = document.getElementById('cat-pills');
+  const activeCats = Object.keys(CATS).filter(k => (state.scanStats.catCounts[k]?.count || 0) > 0);
+  const pills = [{ key: 'all', label: 'Alla', icon: '🗂️' }].concat(
+    activeCats.map(k => ({ key: k, label: CATS[k].label, icon: CATS[k].icon }))
+  );
+  wrap.innerHTML = pills.map(p =>
+    `<button class="pill ${state.filterCat === p.key ? 'active' : ''}" data-cat="${p.key}">${p.icon} ${p.label}</button>`
+  ).join('');
+  wrap.querySelectorAll('.pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.filterCat = btn.dataset.cat;
+      wrap.querySelectorAll('.pill').forEach(b => b.classList.toggle('active', b.dataset.cat === state.filterCat));
+      renderFileList();
+    });
+  });
+}
+
+function getFilteredSorted() {
+  let files = state.filterCat === 'all' ? state.files : state.files.filter(f => f.cat === state.filterCat);
+  const dir = state.sortDir === 'desc' ? -1 : 1;
+  files = [...files].sort((a, b) => {
+    switch (state.sortBy) {
+      case 'size': return dir * (a.size - b.size);
+      case 'type': return dir * a.ext.localeCompare(b.ext);
+      case 'date': return dir * (a.lastModified - b.lastModified);
+      case 'name': return dir * a.name.localeCompare(b.name, 'sv-SE');
+    }
+    return 0;
+  });
+  return files;
+}
+
+function renderFileList() {
+  const list = document.getElementById('file-list');
+  const files = getFilteredSorted();
+
+  if (!files.length) {
+    list.innerHTML = `<div class="empty"><div class="e-icon">🔍</div><h3>Inga filer hittades</h3><p>Prova att ändra filter eller välj en annan mapp.</p></div>`;
+    return;
+  }
+
+  // Group into clusters
+  const clusters = buildClusters(files);
+  let html = '';
+  for (const cluster of clusters) {
+    const selCount = cluster.files.filter(f => state.selectedFiles.has(f.path)).length;
+    html += `<div class="cluster-block" id="cluster-${cluster.id}">`;
+    html += `<div class="section-header"><span>${cluster.icon} ${escapeHtml(cluster.label)} <span style="font-weight:400;color:var(--text4)">(${fmtCount(cluster.files.length)} filer · ${fmtSize(cluster.bytes)})</span></span>`;
+    html += `<button class="select-all-btn" data-cluster="${cluster.id}">Välj alla</button></div>`;
+    for (const f of cluster.files) {
+      const sel = state.selectedFiles.has(f.path);
+      const col = extColor(f.ext);
+      html += `<div class="file-row${sel ? ' selected' : ''}" data-path="${escapeAttr(f.path)}">`;
+      html += `<div class="file-check"></div>`;
+      html += `<div class="file-ext-badge" style="background:${col}">${escapeHtml(f.ext || '?')}</div>`;
+      html += `<div class="file-info">`;
+      html += `<div class="fname">${escapeHtml(f.name)}</div>`;
+      html += `<div class="fmeta">${fmtDate(f.lastModified)}</div>`;
+      if (f.path.includes('/')) html += `<div class="fpath">📂 ${escapeHtml(f.path.substring(0, f.path.lastIndexOf('/')))}</div>`;
+      html += `</div>`;
+      html += `<div class="file-size">${fmtSize(f.size)}</div>`;
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+  list.innerHTML = html;
+
+  list.querySelectorAll('.file-row').forEach(row => {
+    row.addEventListener('click', () => toggleFileSelect(row.dataset.path));
+  });
+  list.querySelectorAll('.select-all-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cluster = clusters.find(c => c.id === btn.dataset.cluster);
+      if (!cluster) return;
+      const allSel = cluster.files.every(f => state.selectedFiles.has(f.path));
+      cluster.files.forEach(f => { if (allSel) state.selectedFiles.delete(f.path); else state.selectedFiles.add(f.path); });
+      renderFileList();
+      updateDeleteBar();
+    });
+  });
+}
+
+function buildClusters(files) {
+  if (state.sortBy === 'type') {
+    const groups = {};
+    for (const f of files) {
+      const k = f.ext || 'ingen';
+      if (!groups[k]) groups[k] = [];
+      groups[k].push(f);
+    }
+    return Object.entries(groups).map(([ext, fs], i) => ({
+      id: 'ext-' + i,
+      icon: CATS[getCategory(ext)].icon,
+      label: ext.toUpperCase() + '-filer',
+      files: fs,
+      bytes: fs.reduce((s, f) => s + f.size, 0)
+    }));
+  }
+
+  if (state.sortBy === 'date') {
+    const groups = {};
+    for (const f of files) {
+      const d = f.lastModified ? new Date(f.lastModified) : null;
+      const k = d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` : 'Okänt datum';
+      if (!groups[k]) groups[k] = [];
+      groups[k].push(f);
+    }
+    return Object.entries(groups).sort((a,b) => b[0].localeCompare(a[0])).map(([ym, fs], i) => {
+      const label = ym === 'Okänt datum' ? ym : new Date(ym + '-01').toLocaleDateString('sv-SE', { year:'numeric', month:'long' });
+      return {
+        id: 'date-' + i,
+        icon: '📅',
+        label,
+        files: fs,
+        bytes: fs.reduce((s, f) => s + f.size, 0)
+      };
+    });
+  }
+
+  if (state.sortBy === 'size') {
+    const brackets = [
+      { min: 1073741824, label: 'Mycket stora (>1 GB)', icon: '🔴' },
+      { min: 104857600,  label: 'Stora (>100 MB)',      icon: '🟠' },
+      { min: 10485760,   label: 'Medelstora (>10 MB)',  icon: '🟡' },
+      { min: 1048576,    label: 'Normala (>1 MB)',       icon: '🟢' },
+      { min: 0,          label: 'Små (<1 MB)',           icon: '⚪' },
+    ];
+    const groups = brackets.map(b => ({ ...b, files: [] }));
+    for (const f of files) {
+      const g = groups.find(b => f.size >= b.min);
+      if (g) g.files.push(f);
+    }
+    return groups.filter(g => g.files.length > 0).map((g, i) => ({
+      id: 'size-' + i,
+      icon: g.icon,
+      label: g.label,
+      files: g.files,
+      bytes: g.files.reduce((s, f) => s + f.size, 0)
+    }));
+  }
+
+  // name / default: one cluster per category
+  const groups = {};
+  for (const f of files) {
+    if (!groups[f.cat]) groups[f.cat] = [];
+    groups[f.cat].push(f);
+  }
+  return Object.entries(groups).map(([cat, fs], i) => ({
+    id: 'cat-' + i,
+    icon: CATS[cat].icon,
+    label: CATS[cat].label,
+    files: fs,
+    bytes: fs.reduce((s, f) => s + f.size, 0)
+  }));
+}
+
+function toggleFileSelect(path) {
+  if (state.selectedFiles.has(path)) state.selectedFiles.delete(path);
+  else state.selectedFiles.add(path);
+  const row = document.querySelector(`.file-row[data-path="${CSS.escape(path)}"]`);
+  if (row) row.classList.toggle('selected', state.selectedFiles.has(path));
+  const chk = row?.querySelector('.file-check');
+  if (chk) { /* class handles visuals */ }
+  updateDeleteBar();
+}
+
+// Select all / deselect all
+document.getElementById('btn-select-all-nav').addEventListener('click', () => {
+  const filtered = getFilteredSorted();
+  const allSel = filtered.every(f => state.selectedFiles.has(f.path));
+  filtered.forEach(f => { if (allSel) state.selectedFiles.delete(f.path); else state.selectedFiles.add(f.path); });
+  renderFileList();
+  updateDeleteBar();
+});
+
+function updateDeleteBar() {
+  const bar = document.getElementById('delete-bar');
+  const n = state.selectedFiles.size;
+  if (n === 0) { bar.classList.remove('visible'); return; }
+  bar.classList.add('visible');
+  let totalBytes = 0;
+  state.selectedFiles.forEach(path => {
+    const f = state.files.find(x => x.path === path);
+    if (f) totalBytes += f.size;
+  });
+  document.getElementById('del-count').textContent = fmtCount(n) + ' ' + (n === 1 ? 'fil vald' : 'filer valda');
+  document.getElementById('del-size').textContent = fmtSize(totalBytes);
+}
+
+document.getElementById('del-cancel-btn').addEventListener('click', () => {
+  state.selectedFiles.clear();
+  renderFileList();
+  updateDeleteBar();
+});
+
+document.getElementById('del-btn').addEventListener('click', () => {
+  if (!state.selectedFiles.size) return;
+  let totalBytes = 0;
+  const selFiles = [];
+  state.selectedFiles.forEach(path => {
+    const f = state.files.find(x => x.path === path);
+    if (f) { totalBytes += f.size; selFiles.push(f); }
+  });
+  document.getElementById('modal-del-count').textContent = fmtCount(state.selectedFiles.size) + ' filer';
+  document.getElementById('modal-del-size').textContent = fmtSize(totalBytes);
+  document.getElementById('modal-del-list').innerHTML = selFiles.slice(0, 30).map(f =>
+    `<div style="padding:3px 0;border-top:0.5px solid var(--sep)">${escapeHtml(f.path)} <span style="color:var(--text4)">(${fmtSize(f.size)})</span></div>`
+  ).join('') + (selFiles.length > 30 ? `<div style="padding:3px 0;color:var(--text4)">…och ${selFiles.length - 30} till</div>` : '');
+  document.getElementById('delete-modal').classList.add('visible');
+});
+
+document.getElementById('modal-cancel-del').addEventListener('click', () => {
+  document.getElementById('delete-modal').classList.remove('visible');
+});
+
+document.getElementById('modal-confirm-del').addEventListener('click', async () => {
+  document.getElementById('delete-modal').classList.remove('visible');
+  await deleteSelectedFiles();
+});
+
+async function deleteSelectedFiles() {
+  if (state.useFileInput) {
+    alert('Radering är inte tillgänglig i kompatibilitetsläget. Starta om och välj mapp med "Välj mapp"-knappen i Safari 16+ för att aktivera radering.');
+    return;
+  }
+
+  const toDelete = [];
+  state.selectedFiles.forEach(path => {
+    const f = state.files.find(x => x.path === path);
+    if (f) toDelete.push(f);
+  });
+
+  let deleted = 0, failed = 0;
+  for (const f of toDelete) {
+    try {
+      const parentPath = f.path.includes('/') ? f.path.split('/').slice(0, -1) : [];
+      let dir = state.dirHandle;
+      for (const seg of parentPath) {
+        dir = await dir.getDirectoryHandle(seg);
+      }
+      await dir.removeEntry(f.name);
+      state.files = state.files.filter(x => x.path !== f.path);
+      state.scanStats.catCounts[f.cat].count--;
+      state.scanStats.catCounts[f.cat].bytes -= f.size;
+      state.scanStats.totalBytes -= f.size;
+      state.scanStats.count--;
+      deleted++;
+    } catch (e) {
+      console.warn('Failed to delete', f.path, e);
+      failed++;
+    }
+  }
+
+  state.selectedFiles.clear();
+  document.getElementById('results-nav-title').textContent = fmtCount(state.files.length) + ' filer';
+  buildCatPills();
+  renderFileList();
+  renderReport();
+  updateDeleteBar();
+
+  if (failed > 0) {
+    alert(`✅ ${deleted} filer raderades.\n⚠️ ${failed} filer kunde inte raderas (kanske saknas behörighet).`);
+  }
+}
+
+// ─────────────────────────────────────────────────
+// REPORT
+// ─────────────────────────────────────────────────
+function renderReport() {
+  const totalFiles = state.files.length;
+  const totalBytes = state.files.reduce((s, f) => s + f.size, 0);
+
+  document.getElementById('report-total-count').textContent = fmtCount(totalFiles);
+  document.getElementById('report-total-size').textContent = fmtSize(totalBytes);
+
+  const wrap = document.getElementById('report-cats');
+  const cats = Object.entries(CATS)
+    .map(([key, cat]) => {
+      const stats = state.scanStats.catCounts[key] || { count: 0, bytes: 0 };
+      return { key, cat, count: stats.count, bytes: stats.bytes };
+    })
+    .filter(x => x.count > 0)
+    .sort((a, b) => b.bytes - a.bytes);
+
+  wrap.innerHTML = cats.map(({ key, cat, count, bytes }) => {
+    const pct = totalBytes > 0 ? (bytes / totalBytes * 100).toFixed(1) : 0;
+    const topFiles = state.files.filter(f => f.cat === key).sort((a, b) => b.size - a.size).slice(0, 3);
+    return `
+      <div class="report-cat">
+        <div class="rc-head">
+          <div class="rc-icon">${cat.icon}</div>
+          <div class="rc-name">${cat.label}</div>
+          <div class="rc-count">${fmtCount(count)} filer</div>
+        </div>
+        <div class="rc-size">${fmtSize(bytes)}</div>
+        <div class="rc-pct">${pct}% av total storlek</div>
+        <div class="rc-bar-wrap"><div class="rc-bar" style="width:${pct}%;background:${cat.color}"></div></div>
+        ${topFiles.length ? '<div class="report-top">' + topFiles.map(f => `
+          <div class="report-top-item">
+            <span class="ri-name">${escapeHtml(f.name)}</span>
+            <span class="ri-size">${fmtSize(f.size)}</span>
+          </div>`).join('') + '</div>' : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────────
+// SORTING
+// ─────────────────────────────────────────────────
+document.getElementById('sort-seg').querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.sortBy = btn.dataset.sort;
+    document.querySelectorAll('#sort-seg button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    updateSortDirBtn();
+    renderFileList();
+  });
+});
+
+const sortDirBtn = document.getElementById('sort-dir-btn');
+const sortDirLabels = { desc: { size: '↓ Störst', type: 'A→Ö', date: '↓ Nyast', name: 'A→Ö' }, asc: { size: '↑ Minst', type: 'Ö→A', date: '↑ Äldst', name: 'Ö→A' } };
+function updateSortDirBtn() {
+  sortDirBtn.textContent = sortDirLabels[state.sortDir][state.sortBy] || (state.sortDir === 'desc' ? '↓' : '↑');
+}
+sortDirBtn.addEventListener('click', () => {
+  state.sortDir = state.sortDir === 'desc' ? 'asc' : 'desc';
+  updateSortDirBtn();
+  renderFileList();
+});
+
+// ─────────────────────────────────────────────────
+// TABS
+// ─────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+});
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.getElementById('tab-files').style.display = name === 'files' ? 'flex' : 'none';
+  document.getElementById('tab-report').style.display = name === 'report' ? 'block' : 'none';
+}
+
+document.getElementById('btn-back-filters').addEventListener('click', () => {
+  state.files = [];
+  state.selectedFiles.clear();
+  goToFilters();
+});
+
+// ─────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escapeAttr(s) {
+  return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Check API support on load
+if (!('showDirectoryPicker' in window)) {
+  document.getElementById('fallback-notice').style.display = 'block';
+}
+</script>
+</body>
+</html>
