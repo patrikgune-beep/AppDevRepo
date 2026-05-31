@@ -242,15 +242,24 @@
         </div>
       </div>
 
-      <!-- Alltid synlig: välj filer med label (fungerar direkt på iOS) -->
       <!-- label + input är den enda metod som fungerar tillförlitligt på iOS -->
-      <label class="btn btn-label btn-label-primary" id="label-pick-files" for="file-input-fallback">
-        📄 Välj filer att analysera
+      <!-- webkitdirectory öppnar mappväljare i Safari/Files på iOS 13+ -->
+      <label class="btn btn-label btn-label-primary" for="file-input-folder">
+        📁 Välj mapp att analysera
       </label>
-      <input type="file" id="file-input-fallback" multiple style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
+      <input type="file" id="file-input-folder" webkitdirectory
+        style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
 
-      <div class="info-box orange" style="margin-top:4px">
-        <strong>Hur du väljer filer:</strong> Tryck på knappen ovan → bläddra i Files-appen → håll ned på en fil och tryck "Välj" för att markera flera → tryck "Öppna". Du kan välja filer från valfri mapp, iCloud Drive, Dropbox m.m.
+      <div class="or-sep">eller välj enskilda filer</div>
+
+      <label class="btn btn-label btn-label-secondary" for="file-input-files">
+        📄 Välj enskilda filer
+      </label>
+      <input type="file" id="file-input-files" multiple
+        style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
+
+      <div class="info-box blue" style="margin-top:4px">
+        <strong>Välj mapp:</strong> Tryck "Välj mapp" → navigera till din mapp i Files → tryck på mappen för att öppna den → tryck "Välj" (uppe till höger). Appen läser bara filnamn och storlek, inte innehållet.
       </div>
     </div>
   </div>
@@ -445,7 +454,6 @@ function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 function escA(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function $(id) { return document.getElementById(id); }
 function showView(id) { document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); $('view-'+id).classList.add('active'); }
-function yield_() { return new Promise(r=>setTimeout(r,0)); }
 
 // ── Init: detect capabilities ────────────────────────────
 const isHttps = location.protocol === 'https:';
@@ -474,54 +482,88 @@ if (hasPickerAPI) {
   });
 }
 
-// ── File input (label → input, direkt iOS-klick) ─────────
-// OBS: <label for="file-input-fallback"> i HTML triggar input utan JS .click()
-$('file-input-fallback').addEventListener('change', async function() {
-  const files = Array.from(this.files || []);
+// ── File inputs ──────────────────────────────────────────
+// label + input i HTML = direkt iOS-klick, inget JS .click() behövs.
+// File-objekt har .size och .lastModified synkront – vi läser INTE filinnehåll.
+function processInputFiles(fileList) {
+  const files = Array.from(fileList || []);
   if (!files.length) return;
   S.canDelete = false;
   S.files = [];
   S.selectedFiles.clear();
-  for (let i=0; i<files.length; i++) {
-    const f = files[i];
-    const parts = f.webkitRelativePath ? f.webkitRelativePath.split('/') : [f.name];
-    const name = parts[parts.length-1];
-    const path = parts.slice(0,-1).join('/');
-    const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
-    S.files.push({ name, ext, cat:getCat(ext), path:path?path+'/'+name:name, size:f.size, lastModified:f.lastModified, handle:null });
-    if (i%200===0) await yield_();
-  }
+
+  // Visa scanning-vy medan vi bearbetar (ger visuell feedback)
+  $('scan-current-file').textContent = 'Bearbetar ' + fmtN(files.length) + ' filer…';
+  $('scan-count').textContent = '…';
+  $('scan-dirs').textContent = '–';
+  $('scan-size-mb').textContent = '…';
+  $('scan-cat-live').innerHTML = '';
+  showView('scanning');
+
+  // setTimeout låter webbläsaren rita scanning-vyn innan synkron loop startar
+  setTimeout(() => {
+    let dirs = new Set();
+    for (const f of files) {
+      const parts = f.webkitRelativePath ? f.webkitRelativePath.split('/') : [f.name];
+      const name = parts[parts.length - 1];
+      const dirPath = parts.slice(0, -1).join('/');
+      if (dirPath) dirs.add(dirPath);
+      const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+      S.files.push({
+        name, ext, cat: getCat(ext),
+        path: dirPath ? dirPath + '/' + name : name,
+        size: f.size,
+        lastModified: f.lastModified,
+        handle: null
+      });
+    }
+    // Visa snabb sammanfattning i scanning-vyn en kort stund
+    const totalBytes = S.files.reduce((s, f) => s + f.size, 0);
+    $('scan-count').textContent = fmtN(S.files.length);
+    $('scan-dirs').textContent = fmtN(dirs.size);
+    $('scan-size-mb').textContent = (totalBytes / 1048576).toFixed(1);
+    $('scan-current-file').textContent = 'Klart! Visar filteralternativ…';
+    setTimeout(finishLoad, 400);
+  }, 50);
+}
+
+$('file-input-folder').addEventListener('change', function() {
+  processInputFiles(this.files);
   this.value = '';
-  finishLoad();
+});
+$('file-input-files').addEventListener('change', function() {
+  processInputFiles(this.files);
+  this.value = '';
 });
 
-// ── Directory scanning ───────────────────────────────────
+// ── Directory scanning (HTTPS / showDirectoryPicker) ─────
+// handle.getFile() läser bara metadata (storlek, datum) – inte filinnehållet.
 let scanStats = {};
 async function scanDir(dirHandle, path) {
   for await (const [name, handle] of dirHandle.entries()) {
     if (name.startsWith('.')) continue;
     if (handle.kind === 'directory') {
       scanStats.dirs++;
-      updateScanUI('📂 '+name, null);
-      await scanDir(handle, path ? path+'/'+name : name);
+      updateScanUI('📂 ' + name);
+      await scanDir(handle, path ? path + '/' + name : name);
     } else {
       try {
-        const file = await handle.getFile();
+        const file = await handle.getFile();   // hämtar metadata, läser ej innehåll
         const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
         const cat = getCat(ext);
-        S.files.push({ name, ext, cat, path:path?path+'/'+name:name, size:file.size, lastModified:file.lastModified, handle, parentHandle:dirHandle });
+        S.files.push({ name, ext, cat, path: path ? path+'/'+name : name, size: file.size, lastModified: file.lastModified, handle, parentHandle: dirHandle });
         scanStats.count++;
         scanStats.bytes += file.size;
-        if (scanStats.count%20===0) updateScanUI(name, null);
+        if (scanStats.count % 30 === 0) updateScanUI(name);
       } catch(_) {}
     }
   }
 }
-function updateScanUI(label, pct) {
+function updateScanUI(label) {
   $('scan-current-file').textContent = label;
-  $('scan-count').textContent = fmtN(scanStats.count||0);
-  $('scan-dirs').textContent = fmtN(scanStats.dirs||0);
-  $('scan-size-mb').textContent = ((scanStats.bytes||0)/(1024*1024)).toFixed(1);
+  $('scan-count').textContent = fmtN(scanStats.count || 0);
+  $('scan-dirs').textContent = fmtN(scanStats.dirs || 0);
+  $('scan-size-mb').textContent = ((scanStats.bytes || 0) / 1048576).toFixed(1);
 }
 
 // ── Finish loading → show filters ───────────────────────
