@@ -15,7 +15,6 @@
       --orange: #FF9500;
       --purple: #AF52DE;
       --teal: #5AC8FA;
-      --indigo: #5856D6;
       --yellow: #FFCC00;
       --bg: #F2F2F7;
       --card: #FFFFFF;
@@ -26,62 +25,42 @@
       --sep: rgba(60,60,67,0.18);
       --safe-top: env(safe-area-inset-top, 44px);
       --safe-bottom: env(safe-area-inset-bottom, 34px);
-      --safe-left: env(safe-area-inset-left, 0px);
-      --safe-right: env(safe-area-inset-right, 0px);
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #000000;
-        --card: #1C1C1E;
-        --text: #FFFFFF;
-        --text2: rgba(235,235,245,0.85);
-        --text3: rgba(235,235,245,0.55);
-        --text4: rgba(235,235,245,0.3);
-        --sep: rgba(84,84,88,0.65);
+        --bg: #000000; --card: #1C1C1E; --text: #FFFFFF;
+        --text2: rgba(235,235,245,0.85); --text3: rgba(235,235,245,0.55);
+        --text4: rgba(235,235,245,0.3); --sep: rgba(84,84,88,0.65);
       }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
     #app { height: 100%; display: flex; flex-direction: column; }
 
-    /* ── Views ── */
     .view { display: none; flex: 1; flex-direction: column; overflow: hidden; }
     .view.active { display: flex; }
 
-    /* ── Nav bar ── */
-    .nav-bar {
-      padding: calc(var(--safe-top) + 10px) 16px 10px;
-      background: rgba(242,242,247,0.92);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 0.5px solid var(--sep);
-      flex-shrink: 0;
-    }
-    @media (prefers-color-scheme: dark) {
-      .nav-bar { background: rgba(0,0,0,0.92); }
-    }
-    .nav-bar h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; }
-    .nav-bar h1 span { color: var(--blue); }
-    .nav-bar p { font-size: 15px; color: var(--text3); margin-top: 2px; }
+    /* Nav bar */
+    .nav-bar { padding: calc(var(--safe-top) + 10px) 16px 10px; background: rgba(242,242,247,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 0.5px solid var(--sep); flex-shrink: 0; }
+    @media (prefers-color-scheme: dark) { .nav-bar { background: rgba(0,0,0,0.92); } }
     .nav-row { display: flex; align-items: center; justify-content: space-between; }
     .nav-title { font-size: 17px; font-weight: 600; }
-    .nav-btn { background: none; border: none; color: var(--blue); font-size: 17px; cursor: pointer; padding: 4px 0; }
-    .nav-btn:disabled { color: var(--text4); }
+    .nav-btn { background: none; border: none; color: var(--blue); font-size: 17px; cursor: pointer; padding: 6px 0; min-width: 60px; }
 
-    /* ── Scroll area ── */
+    /* Scroll */
     .scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(var(--safe-bottom) + 80px); }
     .scroll-inner { padding: 16px; }
 
-    /* ── Cards ── */
+    /* Cards */
     .card { background: var(--card); border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
-    .card-row { display: flex; align-items: center; padding: 12px 16px; gap: 12px; position: relative; }
+    .card-row { display: flex; align-items: center; padding: 12px 16px; gap: 12px; }
     .card-row + .card-row { border-top: 0.5px solid var(--sep); }
     .card-row-label { flex: 1; }
     .card-row-label .title { font-size: 17px; }
     .card-row-label .sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
-    .card-header { font-size: 13px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.4px; padding: 6px 16px 4px; }
+    .card-header { font-size: 13px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.4px; padding: 16px 16px 6px; }
 
-    /* ── Checkboxes ── */
+    /* Toggle switch */
     .toggle-row { display: flex; align-items: center; padding: 12px 16px; gap: 12px; }
     .toggle-row + .toggle-row { border-top: 0.5px solid var(--sep); }
     .cat-icon { font-size: 28px; width: 36px; text-align: center; }
@@ -93,163 +72,192 @@
     .toggle::after { content: ''; position: absolute; width: 27px; height: 27px; background: white; border-radius: 50%; top: 2px; left: 2px; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
     .toggle.on::after { transform: translateX(20px); }
 
-    /* ── Welcome screen ── */
-    .welcome-hero { text-align: center; padding: 40px 24px 24px; }
-    .welcome-hero .icon { font-size: 80px; margin-bottom: 16px; display: block; }
-    .welcome-hero h2 { font-size: 28px; font-weight: 700; }
-    .welcome-hero p { font-size: 16px; color: var(--text3); margin-top: 8px; line-height: 1.5; }
-    .features { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 16px 24px; }
+    /* Buttons & Labels */
+    .btn, .btn-label {
+      display: block; width: calc(100% - 32px); margin: 0 16px 12px;
+      padding: 16px; border-radius: 14px; border: none; font-size: 17px;
+      font-weight: 600; cursor: pointer; text-align: center;
+      transition: opacity 0.1s; text-decoration: none;
+      -webkit-user-select: none; user-select: none;
+    }
+    .btn:active, .btn-label:active { opacity: 0.72; }
+    .btn-primary, .btn-label-primary { background: var(--blue); color: white; }
+    .btn-secondary, .btn-label-secondary { background: rgba(120,120,128,0.18); color: var(--blue); }
+    .btn-danger { background: var(--red); color: white; }
+    .btn:disabled { opacity: 0.4; }
+
+    /* Welcome */
+    .welcome-top { padding: calc(var(--safe-top) + 16px) 16px 0; }
+    .hero { text-align: center; padding: 32px 24px 24px; }
+    .hero .icon { font-size: 72px; display: block; margin-bottom: 12px; }
+    .hero h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; }
+    .hero p { font-size: 16px; color: var(--text3); margin-top: 8px; line-height: 1.5; }
+    .features { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 16px 20px; }
     .feature { background: var(--card); border-radius: 12px; padding: 14px; }
-    .feature .f-icon { font-size: 24px; margin-bottom: 6px; }
+    .feature .f-icon { font-size: 22px; margin-bottom: 6px; }
     .feature .f-name { font-size: 13px; font-weight: 600; }
     .feature .f-desc { font-size: 12px; color: var(--text3); margin-top: 2px; }
 
-    /* ── Buttons ── */
-    .btn { display: block; width: calc(100% - 32px); margin: 0 16px 12px; padding: 16px; border-radius: 12px; border: none; font-size: 17px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
-    .btn:active { opacity: 0.75; }
-    .btn-primary { background: var(--blue); color: white; }
-    .btn-danger { background: var(--red); color: white; }
-    .btn-secondary { background: rgba(120,120,128,0.18); color: var(--blue); }
-    .btn-sm { font-size: 15px; padding: 10px 20px; width: auto; margin: 0; border-radius: 10px; }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    /* Info boxes */
+    .info-box { border-radius: 12px; padding: 14px 16px; margin: 0 16px 12px; font-size: 14px; line-height: 1.55; }
+    .info-box.blue { background: rgba(0,122,255,0.1); color: var(--blue); }
+    .info-box.orange { background: rgba(255,149,0,0.12); color: #C8760A; }
+    @media (prefers-color-scheme: dark) {
+      .info-box.blue { color: #5AC8FA; }
+      .info-box.orange { color: var(--orange); }
+    }
+    .info-box strong { font-weight: 700; }
 
-    /* ── Scanning screen ── */
-    .scan-hero { text-align: center; padding: 60px 24px 40px; }
-    .scan-hero .spinner { font-size: 60px; animation: spin 2s linear infinite; display: block; margin-bottom: 20px; }
-    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    .scan-hero h2 { font-size: 24px; font-weight: 700; }
-    .scan-hero .scan-file { font-size: 13px; color: var(--text3); margin-top: 8px; max-width: 280px; margin-left: auto; margin-right: auto; word-break: break-all; line-height: 1.4; min-height: 36px; }
-    .progress-bar-wrap { height: 4px; background: var(--sep); border-radius: 2px; margin: 20px 32px; overflow: hidden; }
-    .progress-bar { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.3s; width: 0%; }
-    .scan-stats { display: flex; justify-content: center; gap: 40px; margin: 20px 0; }
-    .scan-stat { text-align: center; }
-    .scan-stat .num { font-size: 32px; font-weight: 700; color: var(--blue); }
-    .scan-stat .lbl { font-size: 13px; color: var(--text3); }
+    /* Mode badge */
+    .mode-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(52,199,89,0.12); color: var(--green); border-radius: 20px; padding: 5px 12px; font-size: 13px; font-weight: 600; margin: 0 16px 12px; }
+    .mode-badge.limited { background: rgba(255,149,0,0.12); color: #C8760A; }
+    @media (prefers-color-scheme: dark) { .mode-badge.limited { color: var(--orange); } }
 
-    /* ── Results ── */
+    /* Separator */
+    .or-sep { display: flex; align-items: center; gap: 10px; margin: 4px 16px 4px; color: var(--text4); font-size: 14px; }
+    .or-sep::before, .or-sep::after { content: ''; flex: 1; height: 0.5px; background: var(--sep); }
+
+    /* Scanning */
+    .scan-hero { text-align: center; padding: 50px 24px 30px; }
+    .scan-hero .spin { font-size: 56px; animation: spin 1.8s linear infinite; display: block; margin-bottom: 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .scan-hero h2 { font-size: 22px; font-weight: 700; }
+    .scan-file { font-size: 13px; color: var(--text3); margin-top: 8px; padding: 0 24px; word-break: break-all; min-height: 32px; line-height: 1.4; }
+    .progress-wrap { height: 4px; background: var(--sep); border-radius: 2px; margin: 18px 32px; overflow: hidden; }
+    .progress-bar { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.3s; }
+    .scan-stats { display: flex; justify-content: center; gap: 36px; margin: 16px 0; }
+    .scan-stat .num { font-size: 30px; font-weight: 700; color: var(--blue); text-align: center; }
+    .scan-stat .lbl { font-size: 12px; color: var(--text3); text-align: center; }
+
+    /* Tabs */
     .tab-bar { display: flex; background: var(--card); border-bottom: 0.5px solid var(--sep); flex-shrink: 0; }
-    .tab { flex: 1; padding: 12px; text-align: center; font-size: 14px; font-weight: 500; color: var(--text3); border-bottom: 2px solid transparent; cursor: pointer; }
+    .tab { flex: 1; padding: 11px; text-align: center; font-size: 14px; font-weight: 500; color: var(--text3); border-bottom: 2px solid transparent; cursor: pointer; }
     .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
-    .toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--card); border-bottom: 0.5px solid var(--sep); flex-shrink: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+
+    /* Toolbar */
+    .toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--card); border-bottom: 0.5px solid var(--sep); flex-shrink: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
     .toolbar::-webkit-scrollbar { display: none; }
     .pill { background: rgba(120,120,128,0.14); color: var(--text); border-radius: 20px; padding: 6px 14px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; border: none; flex-shrink: 0; }
     .pill.active { background: var(--blue); color: white; }
-    .sort-seg { display: flex; background: rgba(120,120,128,0.14); border-radius: 8px; padding: 2px; gap: 2px; }
-    .sort-seg button { background: none; border: none; padding: 5px 10px; font-size: 12px; color: var(--text3); border-radius: 6px; cursor: pointer; font-weight: 500; }
+    .sort-seg { display: flex; background: rgba(120,120,128,0.14); border-radius: 8px; padding: 2px; }
+    .sort-seg button { background: none; border: none; padding: 5px 9px; font-size: 12px; color: var(--text3); border-radius: 6px; cursor: pointer; font-weight: 500; white-space: nowrap; }
     .sort-seg button.active { background: var(--card); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
 
-    /* ── File list ── */
-    .section-header { font-size: 13px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.4px; padding: 16px 16px 6px; display: flex; align-items: center; justify-content: space-between; }
-    .section-header .select-all-btn { font-size: 13px; font-weight: 500; color: var(--blue); background: none; border: none; cursor: pointer; text-transform: none; letter-spacing: 0; }
-    .file-row { display: flex; align-items: center; padding: 10px 16px; gap: 12px; background: var(--card); position: relative; cursor: pointer; }
+    /* File list */
+    .section-header { font-size: 13px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.4px; padding: 14px 16px 5px; display: flex; justify-content: space-between; align-items: center; }
+    .sel-all-btn { font-size: 13px; font-weight: 500; color: var(--blue); background: none; border: none; cursor: pointer; text-transform: none; letter-spacing: 0; }
+    .file-row { display: flex; align-items: center; padding: 10px 16px; gap: 12px; background: var(--card); cursor: pointer; }
     .file-row + .file-row { border-top: 0.5px solid var(--sep); }
-    .file-row:first-of-type { border-radius: 12px 12px 0 0; }
-    .file-row:last-of-type { border-radius: 0 0 12px 12px; }
-    .file-row:only-of-type { border-radius: 12px; }
-    .file-check { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--sep); background: var(--bg); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .cluster-first { border-radius: 12px 12px 0 0; }
+    .cluster-last { border-radius: 0 0 12px 12px; }
+    .cluster-only { border-radius: 12px; }
+    .file-check { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--sep); flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); }
     .file-row.selected .file-check { background: var(--blue); border-color: var(--blue); }
-    .file-row.selected .file-check::after { content: ''; width: 12px; height: 7px; border-left: 2px solid white; border-bottom: 2px solid white; transform: rotate(-45deg) translate(1px, -1px); display: block; }
-    .file-ext-badge { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; flex-shrink: 0; text-transform: uppercase; }
+    .file-row.selected .file-check::after { content: ''; width: 11px; height: 6px; border-left: 2px solid white; border-bottom: 2px solid white; transform: rotate(-45deg) translate(1px,-1px); display: block; }
+    .ext-badge { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.3px; }
     .file-info { flex: 1; min-width: 0; }
-    .file-info .fname { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .file-info .fmeta { font-size: 12px; color: var(--text3); margin-top: 2px; }
-    .file-info .fpath { font-size: 11px; color: var(--text4); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .file-size { font-size: 13px; color: var(--text3); text-align: right; flex-shrink: 0; }
+    .file-info .fname { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-info .fmeta { font-size: 12px; color: var(--text3); margin-top: 1px; }
+    .file-info .fpath { font-size: 11px; color: var(--text4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+    .file-size { font-size: 13px; color: var(--text3); flex-shrink: 0; text-align: right; }
 
-    /* ── Cluster header ── */
-    .cluster-head { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: rgba(120,120,128,0.08); border-top: 0.5px solid var(--sep); cursor: pointer; }
-    .cluster-head:first-child { border-top: none; }
-    .cluster-head .ch-icon { font-size: 18px; }
-    .cluster-head .ch-info { flex: 1; }
-    .cluster-head .ch-name { font-size: 14px; font-weight: 600; }
-    .cluster-head .ch-sub { font-size: 12px; color: var(--text3); }
-    .cluster-head .ch-sel { font-size: 13px; color: var(--blue); font-weight: 500; background: none; border: none; cursor: pointer; }
-    .cluster-block { }
-    .cluster-block.collapsed .file-row { display: none; }
-
-    /* ── Delete bar ── */
-    .delete-bar { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 16px calc(var(--safe-bottom) + 12px); background: rgba(242,242,247,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 0.5px solid var(--sep); display: none; align-items: center; gap: 12px; z-index: 100; }
-    @media (prefers-color-scheme: dark) { .delete-bar { background: rgba(28,28,30,0.95); } }
+    /* Delete bar */
+    .delete-bar { position: fixed; bottom: 0; left: 0; right: 0; padding: 10px 16px calc(var(--safe-bottom) + 10px); background: rgba(242,242,247,0.96); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 0.5px solid var(--sep); display: none; align-items: center; gap: 10px; z-index: 100; }
+    @media (prefers-color-scheme: dark) { .delete-bar { background: rgba(28,28,30,0.96); } }
     .delete-bar.visible { display: flex; }
-    .delete-bar .del-info { flex: 1; }
-    .delete-bar .del-info .count { font-size: 15px; font-weight: 600; }
-    .delete-bar .del-info .size { font-size: 13px; color: var(--text3); }
-    .delete-bar .del-btn { background: var(--red); color: white; border: none; border-radius: 10px; padding: 12px 20px; font-size: 15px; font-weight: 600; cursor: pointer; }
-    .delete-bar .cancel-btn { background: rgba(120,120,128,0.14); border: none; border-radius: 10px; padding: 12px 16px; font-size: 15px; cursor: pointer; color: var(--text); }
+    .del-info { flex: 1; }
+    .del-info .count { font-size: 15px; font-weight: 600; }
+    .del-info .size { font-size: 13px; color: var(--text3); }
+    .del-btn { background: var(--red); color: white; border: none; border-radius: 10px; padding: 11px 18px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .cancel-btn { background: rgba(120,120,128,0.14); border: none; border-radius: 10px; padding: 11px 14px; font-size: 15px; cursor: pointer; color: var(--text); }
 
-    /* ── Report ── */
-    .report-total { text-align: center; padding: 24px 16px 16px; }
+    /* Report */
+    .report-total { text-align: center; padding: 24px 16px 12px; }
     .report-total .rt-num { font-size: 48px; font-weight: 700; color: var(--blue); }
     .report-total .rt-lbl { font-size: 15px; color: var(--text3); }
     .report-total .rt-size { font-size: 22px; font-weight: 600; margin-top: 4px; }
     .report-cat { background: var(--card); border-radius: 12px; margin: 0 16px 10px; padding: 16px; }
-    .report-cat .rc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-    .report-cat .rc-icon { font-size: 24px; }
-    .report-cat .rc-name { font-size: 17px; font-weight: 600; flex: 1; }
-    .report-cat .rc-count { font-size: 14px; color: var(--text3); }
-    .report-cat .rc-size { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
-    .report-cat .rc-pct { font-size: 13px; color: var(--text3); margin-bottom: 10px; }
-    .report-cat .rc-bar-wrap { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
-    .report-cat .rc-bar { height: 100%; border-radius: 3px; }
-    .report-top { margin: 4px 0 0; }
-    .report-top-item { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; border-top: 0.5px solid var(--sep); color: var(--text2); }
-    .report-top-item .ri-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
-    .report-top-item .ri-size { color: var(--text3); flex-shrink: 0; }
+    .rc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .rc-icon { font-size: 24px; }
+    .rc-name { font-size: 17px; font-weight: 600; flex: 1; }
+    .rc-count { font-size: 14px; color: var(--text3); }
+    .rc-size { font-size: 22px; font-weight: 700; }
+    .rc-pct { font-size: 13px; color: var(--text3); margin: 2px 0 10px; }
+    .rc-bar-wrap { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+    .rc-bar { height: 100%; border-radius: 3px; }
+    .top-item { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; border-top: 0.5px solid var(--sep); }
+    .top-item .ti-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; color: var(--text2); }
+    .top-item .ti-size { color: var(--text3); flex-shrink: 0; }
 
-    /* ── Modal ── */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: flex-end; justify-content: center; z-index: 200; padding-bottom: var(--safe-bottom); }
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: flex-end; z-index: 200; }
     .modal-overlay.visible { display: flex; }
-    .modal-sheet { background: var(--card); border-radius: 20px 20px 0 0; width: 100%; max-height: 70vh; padding: 24px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-    .modal-sheet h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
-    .modal-sheet p { font-size: 15px; color: var(--text2); margin-bottom: 6px; line-height: 1.5; }
+    .modal-sheet { background: var(--card); border-radius: 20px 20px 0 0; width: 100%; max-height: 75vh; padding: 24px 20px calc(var(--safe-bottom) + 20px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .modal-sheet h2 { font-size: 20px; font-weight: 700; margin-bottom: 10px; }
+    .modal-sheet p { font-size: 15px; color: var(--text2); line-height: 1.5; margin-bottom: 6px; }
     .modal-sheet .warn { color: var(--red); font-weight: 600; }
     .modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
     .modal-actions .btn { margin: 0; width: 100%; }
 
-    /* ── Empty state ── */
-    .empty { text-align: center; padding: 60px 24px; color: var(--text3); }
+    /* Empty */
+    .empty { text-align: center; padding: 60px 24px; }
     .empty .e-icon { font-size: 48px; margin-bottom: 12px; }
-    .empty h3 { font-size: 18px; font-weight: 600; color: var(--text); }
-    .empty p { font-size: 15px; margin-top: 6px; }
-
-    /* ── Notices ── */
-    .notice { background: rgba(255,149,0,0.12); border-radius: 10px; padding: 12px 14px; margin: 0 16px 12px; font-size: 13px; color: var(--orange); line-height: 1.5; }
-
-    /* ── Utils ── */
-    .mt8 { margin-top: 8px; }
-    .mb0 { margin-bottom: 0; }
+    .empty h3 { font-size: 18px; font-weight: 600; }
+    .empty p { font-size: 15px; color: var(--text3); margin-top: 6px; }
   </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- ═══════════════════════════════════════════════════
-       VIEW: Welcome
-  ═══════════════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════
+       WELCOME
+  ══════════════════════════════════════ -->
   <div class="view active" id="view-welcome">
-    <div class="scroll">
-      <div class="welcome-hero">
+    <div class="scroll" style="padding-bottom:calc(var(--safe-bottom)+16px)">
+      <div class="welcome-top"></div>
+      <div class="hero">
         <span class="icon">🔍</span>
-        <h2>FilSökaren</h2>
-        <p>Sök, analysera och rensa filer i dina Apple Files. Välj en mapp, filtrera filtyper och ta kontrollen.</p>
+        <h1>FilSökaren</h1>
+        <p>Analysera och städa filer på din iPad eller iPhone</p>
       </div>
       <div class="features">
-        <div class="feature"><div class="f-icon">🗂️</div><div class="f-name">Kategorier</div><div class="f-desc">Bilder, video, ljud, dokument m.m.</div></div>
+        <div class="feature"><div class="f-icon">🗂️</div><div class="f-name">8 kategorier</div><div class="f-desc">Bilder, video, ljud, dokument m.m.</div></div>
         <div class="feature"><div class="f-icon">📊</div><div class="f-name">Rapport</div><div class="f-desc">Antal och storlek per kategori</div></div>
-        <div class="feature"><div class="f-icon">🧹</div><div class="f-name">Radera</div><div class="f-desc">Markera kluster och enskilda filer</div></div>
-        <div class="feature"><div class="f-icon">⚡</div><div class="f-name">Snabb</div><div class="f-desc">Rekursiv sökning på alla nivåer</div></div>
+        <div class="feature"><div class="f-icon">🧹</div><div class="f-name">Radera</div><div class="f-desc">Välj kluster eller enskilda filer</div></div>
+        <div class="feature"><div class="f-icon">⚡</div><div class="f-name">Snabb analys</div><div class="f-desc">Alla valda filer direkt</div></div>
       </div>
-      <div id="fallback-notice" class="notice" style="display:none">
-        ⚠️ Din webbläsare stöder inte fullt mappval. Filradering kan vara begränsad. Prova Safari 16+ på iOS/macOS för bästa upplevelse.
+
+      <!-- Mode A: Full (showDirectoryPicker på HTTPS) -->
+      <div id="mode-full" style="display:none">
+        <div class="mode-badge">✅ Fullständigt läge – rekursiv mappskanning aktiv</div>
+        <button class="btn btn-label-primary btn" id="btn-pick-dir" style="margin-bottom:8px">📁 Välj mapp att söka igenom</button>
+        <div class="or-sep">eller välj enskilda filer</div>
       </div>
-      <button class="btn btn-primary" id="btn-pick-dir">📁 Välj mapp att söka i</button>
-      <input type="file" id="file-input-fallback" webkitdirectory multiple style="display:none">
+
+      <!-- Mode B: Info om local file-mode -->
+      <div id="mode-local" style="display:none">
+        <div class="info-box blue" style="margin-bottom:12px">
+          <strong>💡 Tips för full mappskanning:</strong><br>
+          Safari kan söka rekursivt i mappar när appen öppnas via en webblänk (https://). Spara filen på iCloud och öppna via länk, eller välj filer direkt nedan.
+        </div>
+      </div>
+
+      <!-- Alltid synlig: välj filer med label (fungerar direkt på iOS) -->
+      <!-- label + input är den enda metod som fungerar tillförlitligt på iOS -->
+      <label class="btn btn-label btn-label-primary" id="label-pick-files" for="file-input-fallback">
+        📄 Välj filer att analysera
+      </label>
+      <input type="file" id="file-input-fallback" multiple style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
+
+      <div class="info-box orange" style="margin-top:4px">
+        <strong>Hur du väljer filer:</strong> Tryck på knappen ovan → bläddra i Files-appen → håll ned på en fil och tryck "Välj" för att markera flera → tryck "Öppna". Du kan välja filer från valfri mapp, iCloud Drive, Dropbox m.m.
+      </div>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════
-       VIEW: Filters
-  ═══════════════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════
+       FILTER
+  ══════════════════════════════════════ -->
   <div class="view" id="view-filters">
     <div class="nav-bar">
       <div class="nav-row">
@@ -257,826 +265,532 @@
         <span class="nav-title">Filtrera</span>
         <div style="width:60px"></div>
       </div>
-      <p style="font-size:13px;color:var(--text3);margin-top:4px" id="filter-dir-name">Vald mapp: –</p>
+      <div style="font-size:13px;color:var(--text3);margin-top:4px" id="filter-summary">– filer inlästa</div>
     </div>
     <div class="scroll">
       <div class="scroll-inner">
-        <div class="card-header">Välj filtyper att söka</div>
-        <div class="card" id="cat-toggles">
-          <!-- Populated by JS -->
-        </div>
-        <div class="card-header mt8">Sökdjup</div>
+        <div class="card-header">Visa kategorier</div>
+        <div class="card" id="cat-toggles"></div>
+
+        <div class="card-header">Storleksfilter</div>
         <div class="card">
           <div class="card-row">
-            <div class="card-row-label">
-              <div class="title">Maximalt djup</div>
-              <div class="sub">Antal mappar att gå ner. 0 = obegränsat</div>
-            </div>
-            <input type="number" id="max-depth" value="0" min="0" max="99" style="width:60px;text-align:center;font-size:17px;border:none;background:transparent;color:var(--blue);font-weight:600">
-          </div>
-          <div class="card-row">
-            <div class="card-row-label">
-              <div class="title">Inkludera dolda filer</div>
-              <div class="sub">Filer som börjar med punkt (.)</div>
-            </div>
-            <button class="toggle" id="toggle-hidden" aria-checked="false" role="switch"></button>
+            <div class="card-row-label"><div class="title">Minsta filstorlek (MB)</div><div class="sub">0 = visa alla storlekar</div></div>
+            <input type="number" id="min-size-mb" value="0" min="0" step="0.1" inputmode="decimal"
+              style="width:72px;text-align:center;font-size:18px;border:1px solid var(--sep);border-radius:8px;padding:6px;background:var(--bg);color:var(--blue);font-weight:600">
           </div>
         </div>
-        <div class="card-header mt8">Storleksfilter</div>
+
+        <div class="card-header">Sortering</div>
         <div class="card">
           <div class="card-row">
-            <div class="card-row-label"><div class="title">Minsta filstorlek (MB)</div></div>
-            <input type="number" id="min-size-mb" value="0" min="0" step="0.1" style="width:70px;text-align:center;font-size:17px;border:none;background:transparent;color:var(--blue);font-weight:600">
+            <div class="card-row-label"><div class="title">Sortera på</div></div>
+            <select id="sort-select" style="font-size:15px;border:none;background:transparent;color:var(--blue);font-weight:500">
+              <option value="size">Storlek</option>
+              <option value="type">Filtyp</option>
+              <option value="date">Datum</option>
+              <option value="name">Namn</option>
+            </select>
+          </div>
+          <div class="card-row">
+            <div class="card-row-label"><div class="title">Ordning</div></div>
+            <select id="dir-select" style="font-size:15px;border:none;background:transparent;color:var(--blue);font-weight:500">
+              <option value="desc">Störst / Nyast först</option>
+              <option value="asc">Minst / Äldst först</option>
+            </select>
           </div>
         </div>
       </div>
     </div>
-    <button class="btn btn-primary" style="position:sticky;bottom:calc(var(--safe-bottom)+8px);margin-bottom:0;z-index:10" id="btn-start-scan">🔍 Starta sökning</button>
+    <button class="btn btn-primary" style="flex-shrink:0;margin-bottom:calc(var(--safe-bottom)+8px)" id="btn-apply-filters">Visa resultat</button>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════
-       VIEW: Scanning
-  ═══════════════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════
+       SCANNING (används bara i fullständigt läge)
+  ══════════════════════════════════════ -->
   <div class="view" id="view-scanning">
     <div class="scroll">
       <div class="scan-hero">
-        <span class="spinner">🔍</span>
+        <span class="spin">🔍</span>
         <h2>Söker igenom filer…</h2>
         <div class="scan-file" id="scan-current-file">Förbereder…</div>
-        <div class="progress-bar-wrap"><div class="progress-bar" id="scan-progress-bar"></div></div>
+        <div class="progress-wrap"><div class="progress-bar" id="scan-progress-bar" style="width:0%"></div></div>
       </div>
       <div class="scan-stats">
-        <div class="scan-stat"><div class="num" id="scan-count">0</div><div class="lbl">filer hittade</div></div>
+        <div class="scan-stat"><div class="num" id="scan-count">0</div><div class="lbl">filer</div></div>
         <div class="scan-stat"><div class="num" id="scan-dirs">0</div><div class="lbl">mappar</div></div>
-        <div class="scan-stat"><div class="num" id="scan-size">0</div><div class="lbl">MB totalt</div></div>
+        <div class="scan-stat"><div class="num" id="scan-size-mb">0</div><div class="lbl">MB</div></div>
       </div>
-      <div class="card" style="margin:0 16px">
-        <div id="scan-cat-preview">
-          <!-- Live category counts -->
-        </div>
-      </div>
+      <div class="card" style="margin:0 16px" id="scan-cat-live"></div>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════
-       VIEW: Results
-  ═══════════════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════
+       RESULTS
+  ══════════════════════════════════════ -->
   <div class="view" id="view-results">
     <div class="nav-bar">
       <div class="nav-row">
-        <button class="nav-btn" id="btn-back-filters">‹ Ny sökning</button>
+        <button class="nav-btn" id="btn-back-results">‹ Ny sökning</button>
         <span class="nav-title" id="results-nav-title">Resultat</span>
-        <button class="nav-btn btn-sm" id="btn-select-all-nav">Välj alla</button>
+        <button class="nav-btn" id="btn-sel-all-nav" style="text-align:right">Välj alla</button>
       </div>
     </div>
+
     <div class="tab-bar">
-      <div class="tab active" data-tab="files">Filer</div>
-      <div class="tab" data-tab="report">Rapport</div>
+      <div class="tab active" data-tab="files">📄 Filer</div>
+      <div class="tab" data-tab="report">📊 Rapport</div>
     </div>
 
     <!-- Files tab -->
     <div id="tab-files" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
-      <div class="toolbar">
+      <div class="toolbar" id="cat-pills"></div>
+      <div class="toolbar" style="gap:6px">
         <div class="sort-seg" id="sort-seg">
           <button class="active" data-sort="size">Storlek</button>
           <button data-sort="type">Typ</button>
           <button data-sort="date">Datum</button>
           <button data-sort="name">Namn</button>
         </div>
-        <button class="pill sort-dir-btn" id="sort-dir-btn" title="Ändra ordning">↓ Störst</button>
-      </div>
-      <div class="toolbar" id="cat-pills">
-        <!-- Category filter pills -->
+        <button class="pill" id="sort-dir-btn" style="margin-left:auto">↓ Störst</button>
       </div>
       <div class="scroll" id="file-list-scroll">
-        <div id="file-list"></div>
+        <div id="file-list" style="padding:8px 16px 0"></div>
       </div>
     </div>
 
     <!-- Report tab -->
     <div id="tab-report" style="display:none;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--safe-bottom)+16px)">
       <div class="report-total">
-        <div class="rt-num" id="report-total-count">0</div>
-        <div class="rt-lbl">filer totalt</div>
-        <div class="rt-size" id="report-total-size">0 MB</div>
+        <div class="rt-num" id="rep-total-count">0</div>
+        <div class="rt-lbl">filer analyserade</div>
+        <div class="rt-size" id="rep-total-size">0 B</div>
       </div>
-      <div id="report-cats"></div>
+      <div id="rep-cats"></div>
     </div>
   </div>
 
   <!-- Delete bar -->
   <div class="delete-bar" id="delete-bar">
     <div class="del-info">
-      <div class="count" id="del-count">0 filer valda</div>
-      <div class="size" id="del-size">0 MB</div>
+      <div class="count" id="del-count-lbl">0 filer</div>
+      <div class="size" id="del-size-lbl">0 B</div>
     </div>
-    <button class="cancel-btn" id="del-cancel-btn">Avmarkera</button>
+    <button class="cancel-btn" id="del-cancel">Avmarkera</button>
     <button class="del-btn" id="del-btn">🗑️ Radera</button>
   </div>
 
-  <!-- Delete confirm modal -->
-  <div class="modal-overlay" id="delete-modal">
+  <!-- Delete modal -->
+  <div class="modal-overlay" id="del-modal">
     <div class="modal-sheet">
       <h2>Radera filer?</h2>
-      <p>Du har valt att radera <strong id="modal-del-count">0 filer</strong> med en total storlek på <strong id="modal-del-size">0 MB</strong>.</p>
+      <p>Du har valt <strong id="mdl-count">0 filer</strong>, totalt <strong id="mdl-size">0 B</strong>.</p>
       <p class="warn">⚠️ Filerna tas bort permanent och kan inte återställas.</p>
-      <div id="modal-del-list" style="max-height:200px;overflow-y:auto;margin-top:12px;font-size:13px;color:var(--text3)"></div>
+      <div id="mdl-list" style="max-height:180px;overflow-y:auto;margin-top:10px;font-size:13px;color:var(--text3)"></div>
+      <div id="mdl-no-delete" class="info-box orange" style="display:none;margin:12px 0 0">
+        Radering är inte tillgänglig när appen öppnas som lokal fil. Öppna appen via en https://-länk för att aktivera radering.
+      </div>
       <div class="modal-actions">
-        <button class="btn btn-danger" id="modal-confirm-del">🗑️ Radera permanent</button>
-        <button class="btn btn-secondary" id="modal-cancel-del">Avbryt</button>
+        <button class="btn btn-danger" id="mdl-confirm">🗑️ Radera permanent</button>
+        <button class="btn btn-secondary" id="mdl-cancel">Avbryt</button>
       </div>
     </div>
   </div>
 
-</div>
+</div><!-- #app -->
+
 <script>
 'use strict';
-// ─────────────────────────────────────────────────
-// CATEGORIES
-// ─────────────────────────────────────────────────
+
+// ── Kategorier ──────────────────────────────────────────
 const CATS = {
-  images: {
-    label: 'Bilder', icon: '🖼️', color: '#FF9500',
-    exts: new Set(['jpg','jpeg','png','gif','webp','heic','heif','tiff','tif','bmp','svg','raw','cr2','nef','arw','dng','orf','rw2','psd','ai','eps','ico','avif'])
-  },
-  office: {
-    label: 'MS Office / Dokument', icon: '📝', color: '#007AFF',
-    exts: new Set(['doc','docx','xls','xlsx','ppt','pptx','one','pub','vsd','vsdx','odt','ods','odp','rtf','pages','numbers','key','txt','csv','xml','json','yaml','yml'])
-  },
-  pdf: {
-    label: 'PDF', icon: '📋', color: '#FF3B30',
-    exts: new Set(['pdf'])
-  },
-  video: {
-    label: 'Video', icon: '🎬', color: '#5856D6',
-    exts: new Set(['mp4','mov','avi','mkv','wmv','flv','m4v','webm','ts','mts','m2ts','3gp','vob','mpg','mpeg','divx','rmvb'])
-  },
-  audio: {
-    label: 'Ljud', icon: '🎵', color: '#34C759',
-    exts: new Set(['mp3','aac','wav','flac','ogg','m4a','wma','aiff','alac','opus','amr','mid','midi','ape'])
-  },
-  archives: {
-    label: 'Arkiv & Paket', icon: '📦', color: '#FF6B35',
-    exts: new Set(['zip','rar','7z','tar','gz','bz2','xz','pkg','dmg','iso','cab','deb','rpm','sit','sitx'])
-  },
-  code: {
-    label: 'Kod & Skript', icon: '💻', color: '#5AC8FA',
-    exts: new Set(['js','ts','jsx','tsx','html','css','scss','less','py','rb','java','kt','swift','go','rs','cpp','c','h','php','sh','bash','zsh','ps1','bat','sql','r','m','mm'])
-  },
-  other: {
-    label: 'Övrigt', icon: '📁', color: '#8E8E93',
-    exts: new Set()
-  }
+  images:   { label:'Bilder',               icon:'🖼️',  color:'#FF9500', exts:new Set(['jpg','jpeg','png','gif','webp','heic','heif','tiff','tif','bmp','svg','raw','cr2','nef','arw','dng','orf','rw2','psd','ai','eps','ico','avif','jfif']) },
+  office:   { label:'Dokument & Office',    icon:'📝',  color:'#007AFF', exts:new Set(['doc','docx','xls','xlsx','ppt','pptx','one','pub','odt','ods','odp','rtf','pages','numbers','key','txt','csv','xml','json','yaml','yml','md']) },
+  pdf:      { label:'PDF',                  icon:'📋',  color:'#FF3B30', exts:new Set(['pdf']) },
+  video:    { label:'Video',                icon:'🎬',  color:'#5856D6', exts:new Set(['mp4','mov','avi','mkv','wmv','flv','m4v','webm','ts','mts','m2ts','3gp','vob','mpg','mpeg','divx','rmvb']) },
+  audio:    { label:'Ljud',                 icon:'🎵',  color:'#34C759', exts:new Set(['mp3','aac','wav','flac','ogg','m4a','wma','aiff','alac','opus','amr','mid','midi']) },
+  archives: { label:'Arkiv & Paket',        icon:'📦',  color:'#FF6B35', exts:new Set(['zip','rar','7z','tar','gz','bz2','xz','pkg','dmg','iso','cab','deb','sit','sitx']) },
+  code:     { label:'Kod & Skript',         icon:'💻',  color:'#5AC8FA', exts:new Set(['js','ts','jsx','tsx','html','css','scss','py','rb','java','kt','swift','go','rs','cpp','c','h','php','sh','bash','sql']) },
+  other:    { label:'Övrigt',               icon:'📁',  color:'#8E8E93', exts:new Set() },
 };
 
-function getCategory(ext) {
-  const e = ext.toLowerCase();
-  for (const [key, cat] of Object.entries(CATS)) {
-    if (key === 'other') continue;
-    if (cat.exts.has(e)) return key;
-  }
+function getCat(ext) {
+  const e = (ext||'').toLowerCase();
+  for (const [k,c] of Object.entries(CATS)) { if (k!=='other' && c.exts.has(e)) return k; }
   return 'other';
 }
 
-function extColor(ext) {
-  const catKey = getCategory(ext);
-  return CATS[catKey].color;
-}
-
-// ─────────────────────────────────────────────────
-// STATE
-// ─────────────────────────────────────────────────
-const state = {
-  view: 'welcome',
-  dirHandle: null,
-  dirName: '',
-  useFileInput: false,
-  selectedCats: new Set(Object.keys(CATS)),
-  includeHidden: false,
-  maxDepth: 0,
-  minSizeMb: 0,
-  files: [],
+// ── State ───────────────────────────────────────────────
+const S = {
+  files: [],          // [{name,ext,cat,path,size,lastModified,handle,parentHandle}]
   selectedFiles: new Set(),
+  selectedCats: new Set(Object.keys(CATS)),
   sortBy: 'size',
   sortDir: 'desc',
   filterCat: 'all',
-  scanning: false,
-  scanStats: { count: 0, dirs: 0, totalBytes: 0, catCounts: {} },
+  minSizeMb: 0,
+  canDelete: false,   // true only when using showDirectoryPicker (HTTPS)
+  dirHandle: null,
 };
 
-// ─────────────────────────────────────────────────
-// UTILS
-// ─────────────────────────────────────────────────
-function fmtSize(bytes) {
-  if (bytes === 0) return '0 B';
-  const units = ['B','KB','MB','GB'];
-  const i = Math.min(3, Math.floor(Math.log(bytes) / Math.log(1024)));
-  const v = bytes / Math.pow(1024, i);
-  return (i >= 2 ? v.toFixed(1) : Math.round(v)) + ' ' + units[i];
+// ── Utils ───────────────────────────────────────────────
+function fmtSz(b) {
+  if (!b) return '0 B';
+  const u=['B','KB','MB','GB']; const i=Math.min(3,Math.floor(Math.log(b)/Math.log(1024)));
+  return (b/Math.pow(1024,i)).toFixed(i>=2?1:0)+' '+u[i];
 }
-function fmtDate(ms) {
-  if (!ms) return '–';
-  return new Date(ms).toLocaleDateString('sv-SE', { year:'numeric', month:'short', day:'numeric' });
+function fmtDate(ms) { return ms ? new Date(ms).toLocaleDateString('sv-SE',{year:'numeric',month:'short',day:'numeric'}) : '–'; }
+function fmtN(n) { return n.toLocaleString('sv-SE'); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escA(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function $(id) { return document.getElementById(id); }
+function showView(id) { document.querySelectorAll('.view').forEach(v=>v.classList.remove('active')); $('view-'+id).classList.add('active'); }
+function yield_() { return new Promise(r=>setTimeout(r,0)); }
+
+// ── Init: detect capabilities ────────────────────────────
+const isHttps = location.protocol === 'https:';
+const hasPickerAPI = 'showDirectoryPicker' in window && isHttps;
+
+if (hasPickerAPI) {
+  $('mode-full').style.display = 'block';
+} else {
+  $('mode-local').style.display = 'block';
 }
-function fmtCount(n) { return n.toLocaleString('sv-SE'); }
 
-function showView(id) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('view-' + id).classList.add('active');
-  state.view = id;
-}
-
-// ─────────────────────────────────────────────────
-// WELCOME
-// ─────────────────────────────────────────────────
-const btnPickDir = document.getElementById('btn-pick-dir');
-const fileInputFallback = document.getElementById('file-input-fallback');
-const fallbackNotice = document.getElementById('fallback-notice');
-
-btnPickDir.addEventListener('click', async () => {
-  if ('showDirectoryPicker' in window) {
+// ── Directory picker (HTTPS only) ────────────────────────
+if (hasPickerAPI) {
+  $('btn-pick-dir').addEventListener('click', async () => {
     try {
-      state.dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-      state.dirName = state.dirHandle.name;
-      state.useFileInput = false;
-      goToFilters();
-    } catch (e) {
-      if (e.name !== 'AbortError') {
-        fallbackToFileInput();
-      }
+      S.dirHandle = await window.showDirectoryPicker({ mode:'readwrite' });
+      S.canDelete = true;
+      S.files = [];
+      S.selectedFiles.clear();
+      showView('scanning');
+      await scanDir(S.dirHandle, '');
+      finishLoad();
+    } catch(e) {
+      if (e.name !== 'AbortError') alert('Kunde inte öppna mappen: '+e.message);
     }
-  } else {
-    fallbackToFileInput();
-  }
-});
-
-function fallbackToFileInput() {
-  state.useFileInput = true;
-  fallbackNotice.style.display = 'block';
-  fileInputFallback.click();
+  });
 }
 
-fileInputFallback.addEventListener('change', (e) => {
-  const files = Array.from(e.target.files || []);
+// ── File input (label → input, direkt iOS-klick) ─────────
+// OBS: <label for="file-input-fallback"> i HTML triggar input utan JS .click()
+$('file-input-fallback').addEventListener('change', async function() {
+  const files = Array.from(this.files || []);
   if (!files.length) return;
-  state.fallbackFiles = files;
-  state.dirName = files[0]?.webkitRelativePath?.split('/')[0] || 'Vald mapp';
-  state.dirHandle = null;
-  goToFilters();
+  S.canDelete = false;
+  S.files = [];
+  S.selectedFiles.clear();
+  for (let i=0; i<files.length; i++) {
+    const f = files[i];
+    const parts = f.webkitRelativePath ? f.webkitRelativePath.split('/') : [f.name];
+    const name = parts[parts.length-1];
+    const path = parts.slice(0,-1).join('/');
+    const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+    S.files.push({ name, ext, cat:getCat(ext), path:path?path+'/'+name:name, size:f.size, lastModified:f.lastModified, handle:null });
+    if (i%200===0) await yield_();
+  }
+  this.value = '';
+  finishLoad();
 });
 
-document.getElementById('btn-back-welcome').addEventListener('click', () => showView('welcome'));
+// ── Directory scanning ───────────────────────────────────
+let scanStats = {};
+async function scanDir(dirHandle, path) {
+  for await (const [name, handle] of dirHandle.entries()) {
+    if (name.startsWith('.')) continue;
+    if (handle.kind === 'directory') {
+      scanStats.dirs++;
+      updateScanUI('📂 '+name, null);
+      await scanDir(handle, path ? path+'/'+name : name);
+    } else {
+      try {
+        const file = await handle.getFile();
+        const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+        const cat = getCat(ext);
+        S.files.push({ name, ext, cat, path:path?path+'/'+name:name, size:file.size, lastModified:file.lastModified, handle, parentHandle:dirHandle });
+        scanStats.count++;
+        scanStats.bytes += file.size;
+        if (scanStats.count%20===0) updateScanUI(name, null);
+      } catch(_) {}
+    }
+  }
+}
+function updateScanUI(label, pct) {
+  $('scan-current-file').textContent = label;
+  $('scan-count').textContent = fmtN(scanStats.count||0);
+  $('scan-dirs').textContent = fmtN(scanStats.dirs||0);
+  $('scan-size-mb').textContent = ((scanStats.bytes||0)/(1024*1024)).toFixed(1);
+}
 
-// ─────────────────────────────────────────────────
-// FILTERS
-// ─────────────────────────────────────────────────
-function goToFilters() {
-  document.getElementById('filter-dir-name').textContent = 'Vald mapp: ' + state.dirName;
+// ── Finish loading → show filters ───────────────────────
+function finishLoad() {
+  const total = S.files.length;
+  $('filter-summary').textContent = fmtN(total)+' filer inlästa – välj vad du vill se';
   buildCatToggles();
   showView('filters');
 }
 
+$('btn-back-welcome').addEventListener('click', () => { S.files=[]; showView('welcome'); });
+
+// ── Category toggles ────────────────────────────────────
 function buildCatToggles() {
-  const wrap = document.getElementById('cat-toggles');
+  const counts = {};
+  for (const f of S.files) counts[f.cat] = (counts[f.cat]||0)+1;
+  const wrap = $('cat-toggles');
   wrap.innerHTML = '';
   for (const [key, cat] of Object.entries(CATS)) {
+    const n = counts[key]||0;
+    if (!n) continue;
+    const on = S.selectedCats.has(key);
     const row = document.createElement('div');
     row.className = 'toggle-row';
-    const extsPreview = key === 'other' ? 'Allt annat' :
-      [...cat.exts].slice(0, 8).join(', ') + (cat.exts.size > 8 ? '…' : '');
-    row.innerHTML = `
-      <div class="cat-icon">${cat.icon}</div>
-      <div class="toggle-info">
-        <div class="name">${cat.label}</div>
-        <div class="exts">${extsPreview}</div>
-      </div>
-      <button class="toggle ${state.selectedCats.has(key) ? 'on' : ''}" data-cat="${key}" role="switch" aria-checked="${state.selectedCats.has(key)}"></button>
-    `;
+    const exts = key==='other' ? 'Allt annat' : [...cat.exts].slice(0,6).join(', ')+(cat.exts.size>6?'…':'');
+    row.innerHTML = `<div class="cat-icon">${cat.icon}</div><div class="toggle-info"><div class="name">${cat.label} <span style="color:var(--text3);font-size:14px">(${fmtN(n)})</span></div><div class="exts">${exts}</div></div><button class="toggle${on?' on':''}" data-cat="${key}" role="switch" aria-checked="${on}"></button>`;
     wrap.appendChild(row);
   }
   wrap.querySelectorAll('.toggle').forEach(t => {
     t.addEventListener('click', () => {
       const k = t.dataset.cat;
-      if (state.selectedCats.has(k)) { state.selectedCats.delete(k); t.classList.remove('on'); t.setAttribute('aria-checked','false'); }
-      else { state.selectedCats.add(k); t.classList.add('on'); t.setAttribute('aria-checked','true'); }
+      const on = S.selectedCats.has(k);
+      on ? S.selectedCats.delete(k) : S.selectedCats.add(k);
+      t.classList.toggle('on', !on);
+      t.setAttribute('aria-checked', !on);
     });
   });
 }
 
-// Hidden toggle
-const toggleHidden = document.getElementById('toggle-hidden');
-toggleHidden.addEventListener('click', () => {
-  state.includeHidden = !state.includeHidden;
-  toggleHidden.classList.toggle('on', state.includeHidden);
-  toggleHidden.setAttribute('aria-checked', state.includeHidden);
-});
-
-document.getElementById('btn-start-scan').addEventListener('click', () => {
-  state.maxDepth = parseInt(document.getElementById('max-depth').value) || 0;
-  state.minSizeMb = parseFloat(document.getElementById('min-size-mb').value) || 0;
-  startScan();
-});
-
-// ─────────────────────────────────────────────────
-// SCANNING
-// ─────────────────────────────────────────────────
-async function startScan() {
-  state.files = [];
-  state.selectedFiles.clear();
-  state.scanStats = { count: 0, dirs: 0, totalBytes: 0, catCounts: {} };
-  for (const k of Object.keys(CATS)) state.scanStats.catCounts[k] = { count: 0, bytes: 0 };
-  showView('scanning');
-  updateScanUI('Startar…', 0);
-
-  try {
-    if (state.useFileInput) {
-      await scanFallbackFiles();
-    } else {
-      await scanDirectory(state.dirHandle, '', 0);
-    }
-  } catch (err) {
-    console.error('Scan error:', err);
-  }
-
-  showResults();
-}
-
-async function scanDirectory(dirHandle, path, depth) {
-  const maxD = state.maxDepth;
-  if (maxD > 0 && depth >= maxD) return;
-
-  for await (const [name, handle] of dirHandle.entries()) {
-    if (!state.includeHidden && name.startsWith('.')) continue;
-
-    if (handle.kind === 'directory') {
-      state.scanStats.dirs++;
-      updateScanUI('📂 ' + (path ? path + '/' + name : name), null);
-      await scanDirectory(handle, path ? path + '/' + name : name, depth + 1);
-    } else if (handle.kind === 'file') {
-      await processFileHandle(handle, name, path);
-    }
-  }
-}
-
-async function processFileHandle(handle, name, path) {
-  try {
-    const file = await handle.getFile();
-    const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
-    const cat = getCategory(ext);
-    if (!state.selectedCats.has(cat)) return;
-    const sizeMb = file.size / (1024 * 1024);
-    if (sizeMb < state.minSizeMb) return;
-
-    const entry = {
-      name, ext, cat,
-      path: path ? path + '/' + name : name,
-      size: file.size,
-      lastModified: file.lastModified,
-      handle,
-      parentHandle: null,
-    };
-    state.files.push(entry);
-    state.scanStats.count++;
-    state.scanStats.totalBytes += file.size;
-    state.scanStats.catCounts[cat].count++;
-    state.scanStats.catCounts[cat].bytes += file.size;
-
-    if (state.scanStats.count % 10 === 0 || state.scanStats.count < 10) {
-      updateScanUI(name, null);
-    }
-  } catch (_) {}
-}
-
-async function scanFallbackFiles() {
-  const files = state.fallbackFiles || [];
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    const parts = file.webkitRelativePath.split('/');
-    const name = parts[parts.length - 1];
-    const path = parts.slice(1, -1).join('/');
-    if (!state.includeHidden && name.startsWith('.')) continue;
-    const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
-    const cat = getCategory(ext);
-    if (!state.selectedCats.has(cat)) continue;
-    const sizeMb = file.size / (1024 * 1024);
-    if (sizeMb < state.minSizeMb) continue;
-
-    state.files.push({
-      name, ext, cat, path: path ? path + '/' + name : name,
-      size: file.size, lastModified: file.lastModified,
-      handle: null, parentHandle: null,
-    });
-    state.scanStats.count++;
-    state.scanStats.totalBytes += file.size;
-    state.scanStats.catCounts[cat].count++;
-    state.scanStats.catCounts[cat].bytes += file.size;
-
-    if (i % 50 === 0) {
-      updateScanUI(name, (i / files.length) * 100);
-      await yieldToUI();
-    }
-  }
-}
-
-function updateScanUI(filename, pct) {
-  document.getElementById('scan-current-file').textContent = filename;
-  document.getElementById('scan-count').textContent = fmtCount(state.scanStats.count);
-  document.getElementById('scan-dirs').textContent = fmtCount(state.scanStats.dirs);
-  document.getElementById('scan-size').textContent = (state.scanStats.totalBytes / (1024*1024)).toFixed(1);
-  if (pct !== null) document.getElementById('scan-progress-bar').style.width = pct + '%';
-
-  const prev = document.getElementById('scan-cat-preview');
-  const lines = Object.entries(state.scanStats.catCounts)
-    .filter(([,v]) => v.count > 0)
-    .map(([k,v]) => {
-      const cat = CATS[k];
-      return `<div class="card-row"><span style="font-size:20px">${cat.icon}</span><div class="card-row-label"><div class="title">${cat.label}</div></div><div style="font-size:13px;color:var(--text3)">${fmtCount(v.count)} filer · ${fmtSize(v.bytes)}</div></div>`;
-    });
-  prev.innerHTML = lines.join('') || '<div class="card-row" style="color:var(--text3);font-size:15px">Söker…</div>';
-}
-
-function yieldToUI() {
-  return new Promise(r => setTimeout(r, 0));
-}
-
-// ─────────────────────────────────────────────────
-// RESULTS
-// ─────────────────────────────────────────────────
-function showResults() {
-  state.selectedFiles.clear();
-  document.getElementById('results-nav-title').textContent = fmtCount(state.files.length) + ' filer';
+$('btn-apply-filters').addEventListener('click', () => {
+  S.minSizeMb = parseFloat($('min-size-mb').value)||0;
+  S.sortBy = $('sort-select').value;
+  S.sortDir = $('dir-select').value;
+  S.filterCat = 'all';
+  S.selectedFiles.clear();
   buildCatPills();
   renderFileList();
   renderReport();
   updateDeleteBar();
   showView('results');
-  switchTab('files');
-}
+  syncSortUI();
+});
 
+$('btn-back-results').addEventListener('click', () => {
+  S.selectedFiles.clear();
+  showView('filters');
+  buildCatToggles();
+});
+
+// ── Category pills ───────────────────────────────────────
 function buildCatPills() {
-  const wrap = document.getElementById('cat-pills');
-  const activeCats = Object.keys(CATS).filter(k => (state.scanStats.catCounts[k]?.count || 0) > 0);
-  const pills = [{ key: 'all', label: 'Alla', icon: '🗂️' }].concat(
-    activeCats.map(k => ({ key: k, label: CATS[k].label, icon: CATS[k].icon }))
-  );
-  wrap.innerHTML = pills.map(p =>
-    `<button class="pill ${state.filterCat === p.key ? 'active' : ''}" data-cat="${p.key}">${p.icon} ${p.label}</button>`
-  ).join('');
-  wrap.querySelectorAll('.pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      state.filterCat = btn.dataset.cat;
-      wrap.querySelectorAll('.pill').forEach(b => b.classList.toggle('active', b.dataset.cat === state.filterCat));
+  const counts = {};
+  for (const f of filteredBase()) counts[f.cat] = (counts[f.cat]||0)+1;
+  const wrap = $('cat-pills');
+  const active = Object.keys(CATS).filter(k=>counts[k]>0);
+  const pills = [{key:'all',label:'Alla',icon:'🗂️'}].concat(active.map(k=>({key:k,...CATS[k]})));
+  wrap.innerHTML = pills.map(p=>`<button class="pill${S.filterCat===p.key?' active':''}" data-cat="${p.key}">${p.icon} ${p.label}</button>`).join('');
+  wrap.querySelectorAll('.pill').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      S.filterCat=btn.dataset.cat;
+      wrap.querySelectorAll('.pill').forEach(b=>b.classList.toggle('active',b.dataset.cat===S.filterCat));
       renderFileList();
     });
   });
 }
 
-function getFilteredSorted() {
-  let files = state.filterCat === 'all' ? state.files : state.files.filter(f => f.cat === state.filterCat);
-  const dir = state.sortDir === 'desc' ? -1 : 1;
-  files = [...files].sort((a, b) => {
-    switch (state.sortBy) {
-      case 'size': return dir * (a.size - b.size);
-      case 'type': return dir * a.ext.localeCompare(b.ext);
-      case 'date': return dir * (a.lastModified - b.lastModified);
-      case 'name': return dir * a.name.localeCompare(b.name, 'sv-SE');
+function filteredBase() {
+  return S.files.filter(f => S.selectedCats.has(f.cat) && f.size/1024/1024 >= S.minSizeMb);
+}
+function getFiltered() {
+  let files = S.filterCat==='all' ? filteredBase() : filteredBase().filter(f=>f.cat===S.filterCat);
+  const d = S.sortDir==='desc' ? -1 : 1;
+  return [...files].sort((a,b)=>{
+    switch(S.sortBy){
+      case 'size': return d*(a.size-b.size);
+      case 'type': return d*a.ext.localeCompare(b.ext);
+      case 'date': return d*(a.lastModified-b.lastModified);
+      case 'name': return d*a.name.localeCompare(b.name,'sv-SE');
     }
     return 0;
   });
-  return files;
 }
 
+// ── File list ────────────────────────────────────────────
 function renderFileList() {
-  const list = document.getElementById('file-list');
-  const files = getFilteredSorted();
+  const list = $('file-list');
+  const files = getFiltered();
+  $('results-nav-title').textContent = fmtN(files.length)+' filer';
 
   if (!files.length) {
-    list.innerHTML = `<div class="empty"><div class="e-icon">🔍</div><h3>Inga filer hittades</h3><p>Prova att ändra filter eller välj en annan mapp.</p></div>`;
+    list.innerHTML = `<div class="empty"><div class="e-icon">🔍</div><h3>Inga filer</h3><p>Ändra filter eller läs in fler filer.</p></div>`;
     return;
   }
 
-  // Group into clusters
   const clusters = buildClusters(files);
   let html = '';
-  for (const cluster of clusters) {
-    const selCount = cluster.files.filter(f => state.selectedFiles.has(f.path)).length;
-    html += `<div class="cluster-block" id="cluster-${cluster.id}">`;
-    html += `<div class="section-header"><span>${cluster.icon} ${escapeHtml(cluster.label)} <span style="font-weight:400;color:var(--text4)">(${fmtCount(cluster.files.length)} filer · ${fmtSize(cluster.bytes)})</span></span>`;
-    html += `<button class="select-all-btn" data-cluster="${cluster.id}">Välj alla</button></div>`;
-    for (const f of cluster.files) {
-      const sel = state.selectedFiles.has(f.path);
-      const col = extColor(f.ext);
-      html += `<div class="file-row${sel ? ' selected' : ''}" data-path="${escapeAttr(f.path)}">`;
+  for (const cl of clusters) {
+    html += `<div class="section-header"><span>${cl.icon} ${esc(cl.label)} <span style="color:var(--text4);font-weight:400">${fmtN(cl.files.length)} filer · ${fmtSz(cl.bytes)}</span></span><button class="sel-all-btn" data-cid="${esc(cl.id)}">Välj alla</button></div>`;
+    for (let i=0;i<cl.files.length;i++) {
+      const f=cl.files[i];
+      const sel=S.selectedFiles.has(f.path);
+      const first=i===0, last=i===cl.files.length-1;
+      const cls = first&&last ? 'cluster-only' : first ? 'cluster-first' : last ? 'cluster-last' : '';
+      html += `<div class="file-row${sel?' selected':''} ${cls}" data-path="${escA(f.path)}">`;
       html += `<div class="file-check"></div>`;
-      html += `<div class="file-ext-badge" style="background:${col}">${escapeHtml(f.ext || '?')}</div>`;
-      html += `<div class="file-info">`;
-      html += `<div class="fname">${escapeHtml(f.name)}</div>`;
-      html += `<div class="fmeta">${fmtDate(f.lastModified)}</div>`;
-      if (f.path.includes('/')) html += `<div class="fpath">📂 ${escapeHtml(f.path.substring(0, f.path.lastIndexOf('/')))}</div>`;
-      html += `</div>`;
-      html += `<div class="file-size">${fmtSize(f.size)}</div>`;
-      html += `</div>`;
+      html += `<div class="ext-badge" style="background:${CATS[f.cat].color}">${esc(f.ext||'?')}</div>`;
+      html += `<div class="file-info"><div class="fname">${esc(f.name)}</div><div class="fmeta">${fmtSz(f.size)} · ${fmtDate(f.lastModified)}</div>`;
+      if (f.path.includes('/')) html+=`<div class="fpath">📂 ${esc(f.path.substring(0,f.path.lastIndexOf('/')))}</div>`;
+      html += `</div></div>`;
     }
-    html += `</div>`;
+    html += '<div style="height:10px"></div>';
   }
   list.innerHTML = html;
 
-  list.querySelectorAll('.file-row').forEach(row => {
-    row.addEventListener('click', () => toggleFileSelect(row.dataset.path));
+  list.querySelectorAll('.file-row').forEach(row=>{
+    row.addEventListener('click',()=>toggleSel(row.dataset.path));
   });
-  list.querySelectorAll('.select-all-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+  list.querySelectorAll('.sel-all-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
       e.stopPropagation();
-      const cluster = clusters.find(c => c.id === btn.dataset.cluster);
-      if (!cluster) return;
-      const allSel = cluster.files.every(f => state.selectedFiles.has(f.path));
-      cluster.files.forEach(f => { if (allSel) state.selectedFiles.delete(f.path); else state.selectedFiles.add(f.path); });
-      renderFileList();
-      updateDeleteBar();
+      const cl=clusters.find(c=>c.id===btn.dataset.cid);
+      if(!cl) return;
+      const allSel=cl.files.every(f=>S.selectedFiles.has(f.path));
+      cl.files.forEach(f=>{ allSel ? S.selectedFiles.delete(f.path) : S.selectedFiles.add(f.path); });
+      renderFileList(); updateDeleteBar();
     });
   });
 }
 
 function buildClusters(files) {
-  if (state.sortBy === 'type') {
-    const groups = {};
-    for (const f of files) {
-      const k = f.ext || 'ingen';
-      if (!groups[k]) groups[k] = [];
-      groups[k].push(f);
-    }
-    return Object.entries(groups).map(([ext, fs], i) => ({
-      id: 'ext-' + i,
-      icon: CATS[getCategory(ext)].icon,
-      label: ext.toUpperCase() + '-filer',
-      files: fs,
-      bytes: fs.reduce((s, f) => s + f.size, 0)
-    }));
+  if (S.sortBy==='type') {
+    const g={}; for(const f of files){const k=f.ext||'ingen';(g[k]=g[k]||[]).push(f);}
+    return Object.entries(g).map(([ext,fs],i)=>({id:'x'+i,icon:CATS[getCat(ext)].icon,label:ext.toUpperCase()+'-filer',files:fs,bytes:fs.reduce((s,f)=>s+f.size,0)}));
   }
-
-  if (state.sortBy === 'date') {
-    const groups = {};
-    for (const f of files) {
-      const d = f.lastModified ? new Date(f.lastModified) : null;
-      const k = d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` : 'Okänt datum';
-      if (!groups[k]) groups[k] = [];
-      groups[k].push(f);
-    }
-    return Object.entries(groups).sort((a,b) => b[0].localeCompare(a[0])).map(([ym, fs], i) => {
-      const label = ym === 'Okänt datum' ? ym : new Date(ym + '-01').toLocaleDateString('sv-SE', { year:'numeric', month:'long' });
-      return {
-        id: 'date-' + i,
-        icon: '📅',
-        label,
-        files: fs,
-        bytes: fs.reduce((s, f) => s + f.size, 0)
-      };
+  if (S.sortBy==='date') {
+    const g={}; for(const f of files){const d=f.lastModified?new Date(f.lastModified):null; const k=d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`:'Okänt'; (g[k]=g[k]||[]).push(f);}
+    return Object.entries(g).sort((a,b)=>b[0].localeCompare(a[0])).map(([ym,fs],i)=>{
+      const lbl=ym==='Okänt'?ym:new Date(ym+'-01').toLocaleDateString('sv-SE',{year:'numeric',month:'long'});
+      return {id:'d'+i,icon:'📅',label:lbl,files:fs,bytes:fs.reduce((s,f)=>s+f.size,0)};
     });
   }
-
-  if (state.sortBy === 'size') {
-    const brackets = [
-      { min: 1073741824, label: 'Mycket stora (>1 GB)', icon: '🔴' },
-      { min: 104857600,  label: 'Stora (>100 MB)',      icon: '🟠' },
-      { min: 10485760,   label: 'Medelstora (>10 MB)',  icon: '🟡' },
-      { min: 1048576,    label: 'Normala (>1 MB)',       icon: '🟢' },
-      { min: 0,          label: 'Små (<1 MB)',           icon: '⚪' },
-    ];
-    const groups = brackets.map(b => ({ ...b, files: [] }));
-    for (const f of files) {
-      const g = groups.find(b => f.size >= b.min);
-      if (g) g.files.push(f);
-    }
-    return groups.filter(g => g.files.length > 0).map((g, i) => ({
-      id: 'size-' + i,
-      icon: g.icon,
-      label: g.label,
-      files: g.files,
-      bytes: g.files.reduce((s, f) => s + f.size, 0)
-    }));
+  if (S.sortBy==='size') {
+    const br=[{min:1073741824,lbl:'Mycket stora (>1 GB)',icon:'🔴'},{min:104857600,lbl:'Stora (>100 MB)',icon:'🟠'},{min:10485760,lbl:'Medelstora (>10 MB)',icon:'🟡'},{min:1048576,lbl:'Normala (>1 MB)',icon:'🟢'},{min:0,lbl:'Små (<1 MB)',icon:'⚪'}];
+    const gs=br.map(b=>({...b,files:[]}));
+    for(const f of files){ const g=gs.find(b=>f.size>=b.min); if(g) g.files.push(f); }
+    return gs.filter(g=>g.files.length).map((g,i)=>({id:'s'+i,icon:g.icon,label:g.lbl,files:g.files,bytes:g.files.reduce((s,f)=>s+f.size,0)}));
   }
-
-  // name / default: one cluster per category
-  const groups = {};
-  for (const f of files) {
-    if (!groups[f.cat]) groups[f.cat] = [];
-    groups[f.cat].push(f);
-  }
-  return Object.entries(groups).map(([cat, fs], i) => ({
-    id: 'cat-' + i,
-    icon: CATS[cat].icon,
-    label: CATS[cat].label,
-    files: fs,
-    bytes: fs.reduce((s, f) => s + f.size, 0)
-  }));
+  // name → per category
+  const g={}; for(const f of files){(g[f.cat]=g[f.cat]||[]).push(f);}
+  return Object.entries(g).map(([cat,fs],i)=>({id:'c'+i,icon:CATS[cat].icon,label:CATS[cat].label,files:fs,bytes:fs.reduce((s,f)=>s+f.size,0)}));
 }
 
-function toggleFileSelect(path) {
-  if (state.selectedFiles.has(path)) state.selectedFiles.delete(path);
-  else state.selectedFiles.add(path);
-  const row = document.querySelector(`.file-row[data-path="${CSS.escape(path)}"]`);
-  if (row) row.classList.toggle('selected', state.selectedFiles.has(path));
-  const chk = row?.querySelector('.file-check');
-  if (chk) { /* class handles visuals */ }
+function toggleSel(path) {
+  S.selectedFiles.has(path) ? S.selectedFiles.delete(path) : S.selectedFiles.add(path);
+  const row=document.querySelector(`.file-row[data-path="${CSS.escape(path)}"]`);
+  if(row) row.classList.toggle('selected',S.selectedFiles.has(path));
   updateDeleteBar();
 }
 
-// Select all / deselect all
-document.getElementById('btn-select-all-nav').addEventListener('click', () => {
-  const filtered = getFilteredSorted();
-  const allSel = filtered.every(f => state.selectedFiles.has(f.path));
-  filtered.forEach(f => { if (allSel) state.selectedFiles.delete(f.path); else state.selectedFiles.add(f.path); });
-  renderFileList();
-  updateDeleteBar();
+$('btn-sel-all-nav').addEventListener('click',()=>{
+  const files=getFiltered();
+  const allSel=files.every(f=>S.selectedFiles.has(f.path));
+  files.forEach(f=>{ allSel?S.selectedFiles.delete(f.path):S.selectedFiles.add(f.path); });
+  renderFileList(); updateDeleteBar();
 });
 
+// ── Sort controls ────────────────────────────────────────
+const sortLabels={desc:{size:'↓ Störst',type:'A→Ö',date:'↓ Nyast',name:'A→Ö'},asc:{size:'↑ Minst',type:'Ö→A',date:'↑ Äldst',name:'Ö→A'}};
+function syncSortUI() {
+  document.querySelectorAll('#sort-seg button').forEach(b=>b.classList.toggle('active',b.dataset.sort===S.sortBy));
+  $('sort-dir-btn').textContent=sortLabels[S.sortDir][S.sortBy]||'↓';
+}
+document.querySelectorAll('#sort-seg button').forEach(btn=>{
+  btn.addEventListener('click',()=>{ S.sortBy=btn.dataset.sort; syncSortUI(); renderFileList(); });
+});
+$('sort-dir-btn').addEventListener('click',()=>{ S.sortDir=S.sortDir==='desc'?'asc':'desc'; syncSortUI(); renderFileList(); });
+
+// ── Tabs ─────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t===tab));
+    $('tab-files').style.display=tab.dataset.tab==='files'?'flex':'none';
+    $('tab-report').style.display=tab.dataset.tab==='report'?'block':'none';
+  });
+});
+
+// ── Delete bar ───────────────────────────────────────────
 function updateDeleteBar() {
-  const bar = document.getElementById('delete-bar');
-  const n = state.selectedFiles.size;
-  if (n === 0) { bar.classList.remove('visible'); return; }
+  const n=S.selectedFiles.size;
+  const bar=$('delete-bar');
+  if(!n){bar.classList.remove('visible');return;}
   bar.classList.add('visible');
-  let totalBytes = 0;
-  state.selectedFiles.forEach(path => {
-    const f = state.files.find(x => x.path === path);
-    if (f) totalBytes += f.size;
-  });
-  document.getElementById('del-count').textContent = fmtCount(n) + ' ' + (n === 1 ? 'fil vald' : 'filer valda');
-  document.getElementById('del-size').textContent = fmtSize(totalBytes);
+  let bytes=0;
+  S.selectedFiles.forEach(p=>{const f=S.files.find(x=>x.path===p); if(f) bytes+=f.size;});
+  $('del-count-lbl').textContent=fmtN(n)+' '+(n===1?'fil vald':'filer valda');
+  $('del-size-lbl').textContent=fmtSz(bytes);
 }
-
-document.getElementById('del-cancel-btn').addEventListener('click', () => {
-  state.selectedFiles.clear();
-  renderFileList();
-  updateDeleteBar();
+$('del-cancel').addEventListener('click',()=>{ S.selectedFiles.clear(); renderFileList(); updateDeleteBar(); });
+$('del-btn').addEventListener('click',()=>{
+  if(!S.selectedFiles.size) return;
+  let bytes=0;
+  const sel=[];
+  S.selectedFiles.forEach(p=>{const f=S.files.find(x=>x.path===p); if(f){bytes+=f.size;sel.push(f);}});
+  $('mdl-count').textContent=fmtN(S.selectedFiles.size)+' filer';
+  $('mdl-size').textContent=fmtSz(bytes);
+  $('mdl-list').innerHTML=sel.slice(0,30).map(f=>`<div style="padding:3px 0;border-top:0.5px solid var(--sep)">${esc(f.path)} <span style="color:var(--text4)">(${fmtSz(f.size)})</span></div>`).join('')+(sel.length>30?`<div style="padding:3px 0;color:var(--text4)">…och ${sel.length-30} filer till</div>`:'');
+  $('mdl-no-delete').style.display = S.canDelete ? 'none' : 'block';
+  $('mdl-confirm').style.display = S.canDelete ? 'block' : 'none';
+  $('del-modal').classList.add('visible');
 });
+$('mdl-cancel').addEventListener('click',()=>$('del-modal').classList.remove('visible'));
+$('mdl-confirm').addEventListener('click',async()=>{ $('del-modal').classList.remove('visible'); await doDelete(); });
 
-document.getElementById('del-btn').addEventListener('click', () => {
-  if (!state.selectedFiles.size) return;
-  let totalBytes = 0;
-  const selFiles = [];
-  state.selectedFiles.forEach(path => {
-    const f = state.files.find(x => x.path === path);
-    if (f) { totalBytes += f.size; selFiles.push(f); }
-  });
-  document.getElementById('modal-del-count').textContent = fmtCount(state.selectedFiles.size) + ' filer';
-  document.getElementById('modal-del-size').textContent = fmtSize(totalBytes);
-  document.getElementById('modal-del-list').innerHTML = selFiles.slice(0, 30).map(f =>
-    `<div style="padding:3px 0;border-top:0.5px solid var(--sep)">${escapeHtml(f.path)} <span style="color:var(--text4)">(${fmtSize(f.size)})</span></div>`
-  ).join('') + (selFiles.length > 30 ? `<div style="padding:3px 0;color:var(--text4)">…och ${selFiles.length - 30} till</div>` : '');
-  document.getElementById('delete-modal').classList.add('visible');
-});
-
-document.getElementById('modal-cancel-del').addEventListener('click', () => {
-  document.getElementById('delete-modal').classList.remove('visible');
-});
-
-document.getElementById('modal-confirm-del').addEventListener('click', async () => {
-  document.getElementById('delete-modal').classList.remove('visible');
-  await deleteSelectedFiles();
-});
-
-async function deleteSelectedFiles() {
-  if (state.useFileInput) {
-    alert('Radering är inte tillgänglig i kompatibilitetsläget. Starta om och välj mapp med "Välj mapp"-knappen i Safari 16+ för att aktivera radering.');
-    return;
-  }
-
-  const toDelete = [];
-  state.selectedFiles.forEach(path => {
-    const f = state.files.find(x => x.path === path);
-    if (f) toDelete.push(f);
-  });
-
-  let deleted = 0, failed = 0;
-  for (const f of toDelete) {
+async function doDelete() {
+  if(!S.canDelete) return;
+  let ok=0, fail=0;
+  const toDelete=[...S.selectedFiles].map(p=>S.files.find(f=>f.path===p)).filter(Boolean);
+  for(const f of toDelete) {
     try {
-      const parentPath = f.path.includes('/') ? f.path.split('/').slice(0, -1) : [];
-      let dir = state.dirHandle;
-      for (const seg of parentPath) {
-        dir = await dir.getDirectoryHandle(seg);
+      if(f.parentHandle) {
+        await f.parentHandle.removeEntry(f.name);
+      } else {
+        const segs=f.path.split('/').filter(Boolean);
+        let dir=S.dirHandle;
+        for(let i=0;i<segs.length-1;i++) dir=await dir.getDirectoryHandle(segs[i]);
+        await dir.removeEntry(segs[segs.length-1]);
       }
-      await dir.removeEntry(f.name);
-      state.files = state.files.filter(x => x.path !== f.path);
-      state.scanStats.catCounts[f.cat].count--;
-      state.scanStats.catCounts[f.cat].bytes -= f.size;
-      state.scanStats.totalBytes -= f.size;
-      state.scanStats.count--;
-      deleted++;
-    } catch (e) {
-      console.warn('Failed to delete', f.path, e);
-      failed++;
-    }
+      S.files=S.files.filter(x=>x.path!==f.path);
+      ok++;
+    } catch(e){ console.warn('delete failed',f.path,e); fail++; }
   }
-
-  state.selectedFiles.clear();
-  document.getElementById('results-nav-title').textContent = fmtCount(state.files.length) + ' filer';
-  buildCatPills();
-  renderFileList();
-  renderReport();
-  updateDeleteBar();
-
-  if (failed > 0) {
-    alert(`✅ ${deleted} filer raderades.\n⚠️ ${failed} filer kunde inte raderas (kanske saknas behörighet).`);
-  }
+  S.selectedFiles.clear();
+  $('results-nav-title').textContent=fmtN(S.files.length)+' filer';
+  buildCatPills(); renderFileList(); renderReport(); updateDeleteBar();
+  if(fail) alert(`✅ ${fmtN(ok)} filer raderade.\n⚠️ ${fmtN(fail)} filer misslyckades.`);
 }
 
-// ─────────────────────────────────────────────────
-// REPORT
-// ─────────────────────────────────────────────────
+// ── Report ───────────────────────────────────────────────
 function renderReport() {
-  const totalFiles = state.files.length;
-  const totalBytes = state.files.reduce((s, f) => s + f.size, 0);
+  const files=filteredBase();
+  const totalBytes=files.reduce((s,f)=>s+f.size,0);
+  $('rep-total-count').textContent=fmtN(files.length);
+  $('rep-total-size').textContent=fmtSz(totalBytes);
 
-  document.getElementById('report-total-count').textContent = fmtCount(totalFiles);
-  document.getElementById('report-total-size').textContent = fmtSize(totalBytes);
+  const catData={};
+  for(const f of files){ if(!catData[f.cat]) catData[f.cat]={count:0,bytes:0,files:[]}; catData[f.cat].count++; catData[f.cat].bytes+=f.size; catData[f.cat].files.push(f); }
+  const sorted=Object.entries(catData).sort((a,b)=>b[1].bytes-a[1].bytes);
 
-  const wrap = document.getElementById('report-cats');
-  const cats = Object.entries(CATS)
-    .map(([key, cat]) => {
-      const stats = state.scanStats.catCounts[key] || { count: 0, bytes: 0 };
-      return { key, cat, count: stats.count, bytes: stats.bytes };
-    })
-    .filter(x => x.count > 0)
-    .sort((a, b) => b.bytes - a.bytes);
-
-  wrap.innerHTML = cats.map(({ key, cat, count, bytes }) => {
-    const pct = totalBytes > 0 ? (bytes / totalBytes * 100).toFixed(1) : 0;
-    const topFiles = state.files.filter(f => f.cat === key).sort((a, b) => b.size - a.size).slice(0, 3);
-    return `
-      <div class="report-cat">
-        <div class="rc-head">
-          <div class="rc-icon">${cat.icon}</div>
-          <div class="rc-name">${cat.label}</div>
-          <div class="rc-count">${fmtCount(count)} filer</div>
-        </div>
-        <div class="rc-size">${fmtSize(bytes)}</div>
-        <div class="rc-pct">${pct}% av total storlek</div>
-        <div class="rc-bar-wrap"><div class="rc-bar" style="width:${pct}%;background:${cat.color}"></div></div>
-        ${topFiles.length ? '<div class="report-top">' + topFiles.map(f => `
-          <div class="report-top-item">
-            <span class="ri-name">${escapeHtml(f.name)}</span>
-            <span class="ri-size">${fmtSize(f.size)}</span>
-          </div>`).join('') + '</div>' : ''}
-      </div>
-    `;
+  $('rep-cats').innerHTML=sorted.map(([key,d])=>{
+    const cat=CATS[key];
+    const pct=totalBytes>0?(d.bytes/totalBytes*100).toFixed(1):0;
+    const top=d.files.sort((a,b)=>b.size-a.size).slice(0,3);
+    return `<div class="report-cat">
+      <div class="rc-head"><div class="rc-icon">${cat.icon}</div><div class="rc-name">${cat.label}</div><div class="rc-count">${fmtN(d.count)} filer</div></div>
+      <div class="rc-size">${fmtSz(d.bytes)}</div><div class="rc-pct">${pct}% av totalt</div>
+      <div class="rc-bar-wrap"><div class="rc-bar" style="width:${pct}%;background:${cat.color}"></div></div>
+      ${top.length?'<div style="margin-top:6px">'+top.map(f=>`<div class="top-item"><span class="ti-name">${esc(f.name)}</span><span class="ti-size">${fmtSz(f.size)}</span></div>`).join('')+'</div>':''}
+    </div>`;
   }).join('');
-}
-
-// ─────────────────────────────────────────────────
-// SORTING
-// ─────────────────────────────────────────────────
-document.getElementById('sort-seg').querySelectorAll('button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    state.sortBy = btn.dataset.sort;
-    document.querySelectorAll('#sort-seg button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    updateSortDirBtn();
-    renderFileList();
-  });
-});
-
-const sortDirBtn = document.getElementById('sort-dir-btn');
-const sortDirLabels = { desc: { size: '↓ Störst', type: 'A→Ö', date: '↓ Nyast', name: 'A→Ö' }, asc: { size: '↑ Minst', type: 'Ö→A', date: '↑ Äldst', name: 'Ö→A' } };
-function updateSortDirBtn() {
-  sortDirBtn.textContent = sortDirLabels[state.sortDir][state.sortBy] || (state.sortDir === 'desc' ? '↓' : '↑');
-}
-sortDirBtn.addEventListener('click', () => {
-  state.sortDir = state.sortDir === 'desc' ? 'asc' : 'desc';
-  updateSortDirBtn();
-  renderFileList();
-});
-
-// ─────────────────────────────────────────────────
-// TABS
-// ─────────────────────────────────────────────────
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => switchTab(tab.dataset.tab));
-});
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-  document.getElementById('tab-files').style.display = name === 'files' ? 'flex' : 'none';
-  document.getElementById('tab-report').style.display = name === 'report' ? 'block' : 'none';
-}
-
-document.getElementById('btn-back-filters').addEventListener('click', () => {
-  state.files = [];
-  state.selectedFiles.clear();
-  goToFilters();
-});
-
-// ─────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────
-function escapeHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function escapeAttr(s) {
-  return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-
-// Check API support on load
-if (!('showDirectoryPicker' in window)) {
-  document.getElementById('fallback-notice').style.display = 'block';
 }
 </script>
 </body>
