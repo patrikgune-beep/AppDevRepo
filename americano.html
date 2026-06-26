@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kioskvältaren · Americano</title>
+<style>
+:root {
+  --navy: #1B2A4A;
+  --navy2: #263d6b;
+  --gold: #C9A84C;
+  --gold2: #e8c86a;
+  --cream: #F5F0E8;
+  --cream2: #ece5d7;
+  --red: #8B2525;
+  --green: #1e6b3a;
+  --white: #ffffff;
+  --gray: #888;
+  --border: #ddd;
+  --shadow: 0 2px 10px rgba(0,0,0,0.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--cream);
+  color: #1a1a2e;
+  min-height: 100vh;
+  font-size: 15px;
+}
+
+/* ===== HEADER ===== */
+header {
+  background: var(--navy);
+  color: var(--cream);
+  padding: 14px 20px;
+  text-align: center;
+  border-bottom: 4px solid var(--gold);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+header h1 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--gold);
+  line-height: 1;
+}
+header p {
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  opacity: 0.7;
+  margin-top: 3px;
+  text-transform: uppercase;
+}
+
+/* ===== NAV ===== */
+nav {
+  background: var(--navy2);
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+nav::-webkit-scrollbar { display: none; }
+nav button {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  padding: 11px 16px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 700;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+nav button:hover { color: white; background: rgba(255,255,255,0.06); }
+nav button.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+/* ===== MAIN ===== */
+main { max-width: 960px; margin: 0 auto; padding: 18px; }
+
+.hidden { display: none !important; }
+
+/* ===== CARD ===== */
+.card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 18px;
+  margin-bottom: 18px;
+}
+.card-title {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--navy);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--gold);
+}
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.85rem;
+  transition: all 0.18s;
+  letter-spacing: 0.5px;
+}
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn-navy { background: var(--navy); color: white; }
+.btn-navy:hover:not(:disabled) { background: var(--navy2); }
+.btn-gold { background: var(--gold); color: var(--navy); }
+.btn-gold:hover:not(:disabled) { background: var(--gold2); }
+.btn-red { background: var(--red); color: white; }
+.btn-outline { background: white; color: var(--navy); border: 2px solid var(--navy); }
+.btn-outline:hover:not(:disabled) { background: var(--navy); color: white; }
+.btn-sm { padding: 6px 12px; font-size: 0.78rem; }
+
+/* ===== FORM ELEMENTS ===== */
+.field-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.field-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #555;
+}
+input[type="text"], input[type="number"], input[type="time"], select {
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  padding: 7px 10px;
+  font-size: 0.9rem;
+  width: 100%;
+  background: white;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(27,42,74,0.08);
+}
+input:disabled, select:disabled {
+  background: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+/* ===== SETTINGS GRID ===== */
+.settings-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+/* ===== PLAYER GRID ===== */
+.player-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.player-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.player-badge {
+  width: 26px;
+  height: 26px;
+  background: var(--navy);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.player-input-wrap input { flex: 1; }
+
+/* ===== ALERT ===== */
+.alert {
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.83rem;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.alert-icon { font-size: 1rem; flex-shrink: 0; }
+.alert-info { background: #e8f0fd; border-left: 3px solid #3b82f6; color: #1e3a5f; }
+.alert-success { background: #e8fdf0; border-left: 3px solid #22c55e; color: #1a4a2e; }
+.alert-warning { background: #fdf8e8; border-left: 3px solid var(--gold); color: #4a3a0a; }
+.alert-locked { background: #fde8e8; border-left: 3px solid var(--red); color: #4a1a1a; }
+
+/* ===== SCHEDULE TABLE ===== */
+.sched-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.sched-table th {
+  background: var(--navy);
+  color: var(--cream);
+  padding: 9px 10px;
+  text-align: left;
+  font-size: 0.68rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.sched-table th:first-child { border-radius: 6px 0 0 0; }
+.sched-table th:last-child { border-radius: 0 6px 0 0; }
+.sched-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+.sched-table tr:last-child td { border-bottom: none; }
+.sched-table tr:hover td { background: #f9f9f9; }
+.break-row td {
+  background: var(--gold) !important;
+  color: var(--navy);
+  font-weight: 800;
+  text-align: center;
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 7px 10px;
+}
+.round-circle {
+  width: 26px;
+  height: 26px;
+  background: var(--navy);
+  color: white;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.time-cell { color: var(--navy2); font-weight: 700; white-space: nowrap; }
+.matchup {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 3px;
+}
+.matchup:last-child { margin-bottom: 0; }
+.team-tag {
+  background: var(--cream2);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.vs-tag { color: var(--gray); font-size: 0.7rem; }
+.court-label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--gray);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.rest-names { font-size: 0.75rem; color: var(--gray); line-height: 1.5; }
+
+/* ===== RESULTS TAB ===== */
+.round-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.rtab {
+  padding: 5px 11px;
+  border-radius: 20px;
+  border: 2px solid var(--border);
+  background: white;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: all 0.18s;
+  letter-spacing: 0.5px;
+}
+.rtab:hover { border-color: var(--navy2); color: var(--navy); }
+.rtab.active { background: var(--navy); border-color: var(--navy); color: white; }
+.rtab.break-tab { background: var(--gold); border-color: var(--gold); color: var(--navy); cursor: default; font-size: 0.65rem; letter-spacing: 1px; }
+
+.match-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.match-card {
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fafafa;
+}
+.match-card-header {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--navy);
+  margin-bottom: 12px;
+}
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.score-row:last-child { margin-bottom: 0; }
+.score-team {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+.score-team small { font-weight: 400; font-size: 0.72rem; color: var(--gray); display: block; }
+.score-input {
+  width: 56px;
+  text-align: center;
+  border: 2px solid var(--border);
+  border-radius: 5px;
+  padding: 6px 4px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--navy);
+  transition: border-color 0.18s;
+  -moz-appearance: textfield;
+}
+.score-input::-webkit-inner-spin-button,
+.score-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.score-input:focus { outline: none; border-color: var(--navy); }
+.score-input.has-value { border-color: var(--navy); background: #f0f4ff; }
+.vs-divider {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--gray);
+  margin: 4px 0;
+  letter-spacing: 1px;
+}
+
+/* ===== PLAYER GRID VIEW ===== */
+.pgrid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.pgrid {
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  min-width: 500px;
+}
+.pgrid th {
+  background: var(--navy);
+  color: white;
+  padding: 7px 8px;
+  text-align: center;
+  font-size: 0.65rem;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.pgrid th:first-child { text-align: left; min-width: 130px; border-radius: 6px 0 0 0; }
+.pgrid th:last-child { background: var(--gold); color: var(--navy); border-radius: 0 6px 0 0; }
+.pgrid td {
+  padding: 5px 8px;
+  border: 1px solid #eee;
+  text-align: center;
+  min-width: 38px;
+}
+.pgrid td.player-name-cell {
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+  border-left: none;
+}
+.pgrid td.rest-cell { background: #e8e8e8; color: #aaa; font-size: 0.7rem; }
+.pgrid td.score-cell { font-weight: 700; color: var(--navy); }
+.pgrid td.total-cell { background: var(--navy); color: white; font-weight: 800; font-size: 0.9rem; }
+.pgrid tr:nth-child(even) td { background-color: #f9f9f9; }
+.pgrid tr:nth-child(even) td.rest-cell { background: #ddd; }
+.pgrid tr:nth-child(even) td.total-cell { background: var(--navy); }
+
+/* ===== LEADERBOARD ===== */
+.lb-list { display: flex; flex-direction: column; gap: 8px; }
+.lb-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  border-left: 4px solid #eee;
+  transition: box-shadow 0.2s;
+}
+.lb-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.14); }
+.lb-item.rank-1 { border-left-color: var(--gold); background: linear-gradient(to right, #fffcef, white); }
+.lb-item.rank-2 { border-left-color: #bbb; }
+.lb-item.rank-3 { border-left-color: #cd7f32; }
+.rank-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.rank-1 .rank-badge { background: var(--gold); color: var(--navy); }
+.rank-2 .rank-badge { background: #bbb; color: white; }
+.rank-3 .rank-badge { background: #cd7f32; color: white; }
+.rank-other .rank-badge { background: #eee; color: #666; font-size: 0.8rem; }
+.lb-info { flex: 1; min-width: 0; }
+.lb-name { font-weight: 700; font-size: 1rem; }
+.lb-sub { font-size: 0.72rem; color: var(--gray); margin-top: 1px; }
+.lb-score { font-size: 1.6rem; font-weight: 800; color: var(--navy); flex-shrink: 0; }
+.lb-score.lead { color: var(--gold); }
+.no-scores { text-align: center; padding: 30px; color: var(--gray); font-size: 0.9rem; }
+
+/* ===== VIEW TOGGLE ===== */
+.view-toggle {
+  display: flex;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  width: fit-content;
+}
+.view-toggle button {
+  padding: 7px 14px;
+  border: none;
+  background: white;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--gray);
+  transition: all 0.18s;
+  letter-spacing: 0.5px;
+}
+.view-toggle button.active { background: var(--navy); color: white; }
+
+/* ===== BANNER ===== */
+.winner-banner {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+  color: white;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 18px;
+  border: 2px solid var(--gold);
+}
+.winner-banner .trophy { font-size: 2.5rem; margin-bottom: 6px; }
+.winner-banner h2 { font-size: 1.3rem; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; }
+.winner-banner p { font-size: 0.85rem; opacity: 0.8; margin-top: 4px; }
+
+/* ===== UTILITIES ===== */
+.flex { display: flex; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
+.mb-3 { margin-bottom: 12px; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-sm { font-size: 0.83rem; }
+.text-xs { font-size: 0.72rem; color: var(--gray); }
+.font-bold { font-weight: 700; }
+.wrap { flex-wrap: wrap; }
+.align-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+
+/* ===== RULES BOX ===== */
+.rules-box {
+  background: var(--cream);
+  border: 1px solid var(--cream2);
+  border-radius: 6px;
+  padding: 14px;
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+.rules-box h4 {
+  font-size: 0.7rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--navy);
+  margin-bottom: 8px;
+  font-weight: 800;
+}
+.rules-box ul { padding-left: 16px; }
+.rules-box li { margin-bottom: 4px; }
+.rules-box strong { color: var(--navy); }
+
+@media (max-width: 600px) {
+  main { padding: 12px; }
+  nav button { padding: 10px 11px; font-size: 0.7rem; }
+  header h1 { font-size: 1.15rem; }
+  .settings-row { grid-template-columns: 1fr 1fr; }
+  .lb-score { font-size: 1.3rem; }
+  .match-entry-grid { grid-template-columns: 1fr; }
+}
+
+@media print {
+  nav, .btn, .view-toggle, .round-tabs, .alert { display: none !important; }
+  header { position: static; }
+  main { max-width: 100%; padding: 8px; }
+  .card { box-shadow: none; border: 1px solid #ccc; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="hdr-title">Kioskvältaren</h1>
+  <p id="hdr-sub">Americano · Tennis · Vin · Pizza</p>
+</header>
+
+<nav id="nav-bar">
+  <button class="active" data-tab="setup" onclick="switchTab('setup')">&#9881; Inställningar</button>
+  <button data-tab="schedule" onclick="switchTab('schedule')">&#9654; Spelschema</button>
+  <button data-tab="results" onclick="switchTab('results')">&#9998; Resultat</button>
+  <button data-tab="leaderboard" onclick="switchTab('leaderboard')">&#9733; Leaderboard</button>
+</nav>
+
+<main>
+
+<!-- ========== SETUP TAB ========== -->
+<div id="tab-setup" class="tab-content">
+
+  <div class="card">
+    <div class="card-title">Evenemang</div>
+    <div class="settings-row">
+      <div class="field-group">
+        <label class="field-label">Evenemangsnamn</label>
+        <input type="text" id="s-title" value="Kioskvältaren" oninput="updateTitle()">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Undertitel</label>
+        <input type="text" id="s-subtitle" value="Americano · Tennis · Vin · Pizza" oninput="updateSubtitle()">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Starttid</label>
+        <input type="time" id="s-start" value="20:00">
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="field-group">
+        <label class="field-label">Antal spelare</label>
+        <select id="s-nplayers" onchange="onPlayerCountChange()">
+          <option value="4">4 spelare</option>
+          <option value="6">6 spelare</option>
+          <option value="8">8 spelare</option>
+          <option value="10">10 spelare</option>
+          <option value="12">12 spelare</option>
+          <option value="14">14 spelare</option>
+          <option value="16" selected>16 spelare</option>
+          <option value="18">18 spelare</option>
+          <option value="20">20 spelare</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Antal banor</label>
+        <select id="s-ncourts">
+          <option value="1">1 bana</option>
+          <option value="2" selected>2 banor</option>
+          <option value="3">3 banor</option>
+          <option value="4">4 banor</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Minuter per match</label>
+        <input type="number" id="s-matchmin" value="10" min="5" max="30">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Övergångstid (min)</label>
+        <input type="number" id="s-transmin" value="2" min="0" max="10">
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="field-group">
+        <label class="field-label">Paus efter rond</label>
+        <input type="number" id="s-breakround" value="4" min="1" max="20" placeholder="0 = ingen">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Pauslängd (min)</label>
+        <input type="number" id="s-breakmin" value="18" min="0" max="60">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Spelare <span id="player-count-label" style="font-weight:400;color:var(--gray);font-size:0.85em">(16 st)</span></div>
+    <div id="locked-alert" class="alert alert-locked hidden">
+      <span class="alert-icon">&#128274;</span>
+      <div>Turneringen är låst. Namn kan inte längre ändras. <button class="btn btn-sm btn-outline" onclick="unlockTournament()" style="margin-left:8px;">Lås upp</button></div>
+    </div>
+    <div id="player-grid" class="player-grid"></div>
+  </div>
+
+  <div class="flex gap-3 wrap" style="margin-bottom:18px;">
+    <button class="btn btn-navy" onclick="generateAndShow()">&#9654; Generera spelschema</button>
+    <button class="btn btn-gold" id="lock-btn" onclick="lockTournament()">&#128274; Lås &amp; starta turnering</button>
+    <button class="btn btn-outline btn-sm" onclick="resetAll()" style="margin-left:auto;">&#8635; Återställ allt</button>
+  </div>
+
+  <div class="card rules-box">
+    <h4>Regler — Americano (individuell)</h4>
+    <ul>
+      <li><strong>Längd:</strong> <span id="rule-time">10 minuter</span> per match — spela så många poäng ni hinner.</li>
+      <li><strong>Poäng:</strong> Rally scoring — varje boll en poäng, oavsett servare. Oavgjort är ok.</li>
+      <li><strong>Serve:</strong> 2 servar per spelare, sedan byter serven till andra laget. Rotera laget runt.</li>
+      <li><strong>Partner:</strong> Du byter partner varje rond — par spelar aldrig ihop två gånger i rad.</li>
+      <li><strong>Resultat:</strong> Varje spelare noterar de poäng den egna sidan vann.</li>
+      <li><strong>Vinnare:</strong> Spelaren med <strong>flest poäng totalt</strong> = kvällens Kioskvältare. Vid lika: flest vunna matcher.</li>
+    </ul>
+  </div>
+
+</div>
+
+<!-- ========== SCHEDULE TAB ========== -->
+<div id="tab-schedule" class="tab-content hidden">
+  <div id="schedule-content">
+    <div class="alert alert-info">
+      <span class="alert-icon">&#8505;</span>
+      <div>Gå till <strong>Inställningar</strong> och tryck <strong>Generera spelschema</strong> för att skapa ett schema.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== RESULTS TAB ========== -->
+<div id="tab-results" class="tab-content hidden">
+  <div id="results-content">
+    <div class="alert alert-info">
+      <span class="alert-icon">&#8505;</span>
+      <div>Generera ett spelschema först innan du kan fylla i resultat.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LEADERBOARD TAB ========== -->
+<div id="tab-leaderboard" class="tab-content hidden">
+  <div id="leaderboard-content">
+    <div class="alert alert-info">
+      <span class="alert-icon">&#8505;</span>
+      <div>Inga resultat inlagda ännu. Börja fylla i matcher under <strong>Resultat</strong>.</div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const DEFAULT_16_NAMES = [
+  "Per B","Anna B","Patrik G","Johan Sander",
+  "Louise Sander","Karl T","Christina T","Jonas Sjöberg",
+  "Johan Sahlstrand","Henrik B","Charlotte B","Anders Ö",
+  "Jenny Ö","Stefan L","Hans N","Sista minuten"
+];
+
+// Hardcoded optimal schedule for 16 players from the PDF
+const SCHED16 = [
+  {courts:[{t1:[1,4],t2:[6,10]},{t1:[3,12],t2:[8,9]}],   rest:[2,5,7,11,13,14,15,16]},
+  {courts:[{t1:[13,16],t2:[14,15]},{t1:[2,5],t2:[7,11]}], rest:[1,3,4,6,8,9,10,12]},
+  {courts:[{t1:[1,6],t2:[14,16]},{t1:[4,10],t2:[13,15]}], rest:[2,3,5,7,8,9,11,12]},
+  {courts:[{t1:[5,11],t2:[8,12]},{t1:[2,7],t2:[3,9]}],    rest:[1,4,6,10,13,14,15,16]},
+  {courts:[{t1:[1,10],t2:[2,11]},{t1:[4,6],t2:[5,7]}],    rest:[3,8,9,12,13,14,15,16]},
+  {courts:[{t1:[9,12],t2:[13,14]},{t1:[3,8],t2:[15,16]}], rest:[1,2,4,5,6,7,10,11]},
+  {courts:[{t1:[1,12],t2:[3,4]},{t1:[6,8],t2:[9,10]}],    rest:[2,5,7,11,13,14,15,16]},
+  {courts:[{t1:[7,15],t2:[11,14]},{t1:[2,13],t2:[5,16]}], rest:[1,3,4,6,8,9,10,12]},
+];
+
+let S = {
+  players: DEFAULT_16_NAMES.map((n,i) => ({id:i+1, name:n})),
+  schedule: null,       // [{roundNum, courts:[{t1,t2}], rest:[ids]}]
+  results: {},          // key "r{r}_c{c}" => {s1:num, s2:num}
+  locked: false,
+  currentTab: 'setup',
+  resultsView: 'entry', // 'entry' | 'grid'
+  selectedRound: 1,
+};
+
+// ============================================================
+// PERSISTENCE
+// ============================================================
+function saveState() {
+  try { localStorage.setItem('kv_americano', JSON.stringify(S)); } catch(e) {}
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem('kv_americano');
+    if (raw) {
+      const saved = JSON.parse(raw);
+      Object.assign(S, saved);
+    }
+  } catch(e) {}
+}
+
+// ============================================================
+// SCHEDULE GENERATION
+// ============================================================
+function generateSchedule(numPlayers, numCourts) {
+  // Use hardcoded optimal schedule for 16p / 2 courts
+  if (numPlayers === 16 && numCourts === 2) {
+    return SCHED16.map((r, i) => ({
+      roundNum: i + 1,
+      courts: r.courts,
+      rest: r.rest
+    }));
+  }
+
+  // Ensure playersPerRound is a multiple of 4 (4 players per court)
+  const maxForCourts = numCourts * 4;
+  const rawActive = Math.min(maxForCourts, numPlayers);
+  const playersPerRound = Math.max(4, Math.floor(rawActive / 4) * 4);
+  const actualCourts = playersPerRound / 4;
+  const restPerRound = numPlayers - playersPerRound;
+
+  // Determine number of rounds
+  let numRounds;
+  if (restPerRound <= 0) {
+    // All play every round — use n-1 rounds (full partner rotation)
+    numRounds = Math.max(3, Math.min(numPlayers - 1, 8));
+  } else {
+    const targetGames = 4;
+    numRounds = Math.ceil(targetGames * numPlayers / playersPerRound);
+  }
+
+  return generateAlgoSchedule(numPlayers, actualCourts, numRounds, playersPerRound, restPerRound);
+}
+
+function generateAlgoSchedule(n, numCourts, numRounds, playersPerRound, restPerRound) {
+  const partnerCount = {};
+  const playCount = new Array(n + 1).fill(0); // 1-indexed
+
+  const pkey = (a, b) => `${Math.min(a,b)}_${Math.max(a,b)}`;
+  const getPC = (a, b) => partnerCount[pkey(a,b)] || 0;
+  const incPC = (a, b) => { const k = pkey(a,b); partnerCount[k] = (partnerCount[k]||0)+1; };
+
+  const schedule = [];
+
+  for (let r = 0; r < numRounds; r++) {
+    let active, rest;
+
+    if (restPerRound <= 0) {
+      active = Array.from({length: n}, (_, i) => i + 1);
+      rest = [];
+    } else {
+      // Circular rest rotation
+      const allP = Array.from({length: n}, (_, i) => i + 1);
+      // Sort by playCount ascending, then by id to break ties
+      allP.sort((a, b) => playCount[a] - playCount[b] || a - b);
+      active = allP.slice(0, playersPerRound);
+      rest = allP.slice(playersPerRound).sort((a,b) => a-b);
+    }
+
+    // Create pairs from active players using greedy matching
+    const pairs = createGreedyPairs([...active], getPC);
+
+    // Update partnership counts
+    for (const [a, b] of pairs) incPC(a, b);
+    for (const p of active) playCount[p]++;
+
+    // Assign pairs to courts (alternate pair assignment for variety)
+    const courts = [];
+    for (let c = 0; c < numCourts; c++) {
+      const i = c * 2;
+      if (i + 1 < pairs.length) {
+        courts.push({ t1: pairs[i], t2: pairs[i + 1] });
+      }
+    }
+
+    schedule.push({ roundNum: r + 1, courts, rest });
+  }
+
+  return schedule;
+}
+
+function createGreedyPairs(players, getPC) {
+  const pairs = [];
+  const rem = [...players];
+
+  while (rem.length >= 2) {
+    const a = rem.shift();
+    let bestIdx = 0;
+    let minCount = Infinity;
+
+    for (let i = 0; i < rem.length; i++) {
+      const c = getPC(a, rem[i]);
+      if (c < minCount || (c === minCount && rem[i] < rem[bestIdx])) {
+        minCount = c;
+        bestIdx = i;
+      }
+    }
+
+    const b = rem.splice(bestIdx, 1)[0];
+    pairs.push([a, b]);
+  }
+
+  return pairs;
+}
+
+// ============================================================
+// TIME CALCULATION
+// ============================================================
+function getRoundTime(roundNum) {
+  const startMin = parseTimeToMin(document.getElementById('s-start').value || '20:00');
+  const matchMin = parseInt(document.getElementById('s-matchmin').value) || 10;
+  const transMin = parseInt(document.getElementById('s-transmin').value) || 2;
+  const breakAfter = parseInt(document.getElementById('s-breakround').value) || 4;
+  const breakMin = parseInt(document.getElementById('s-breakmin').value) || 18;
+  const roundDur = matchMin + transMin;
+
+  let elapsed = 5; // 5 min warmup before round 1
+  for (let r = 1; r < roundNum; r++) {
+    elapsed += roundDur;
+    if (r === breakAfter) elapsed += breakMin;
+  }
+  return formatMin(startMin + elapsed);
+}
+
+function getBreakTime() {
+  const startMin = parseTimeToMin(document.getElementById('s-start').value || '20:00');
+  const matchMin = parseInt(document.getElementById('s-matchmin').value) || 10;
+  const transMin = parseInt(document.getElementById('s-transmin').value) || 2;
+  const breakAfter = parseInt(document.getElementById('s-breakround').value) || 4;
+  const roundDur = matchMin + transMin;
+
+  let elapsed = 5;
+  for (let r = 1; r <= breakAfter; r++) elapsed += roundDur;
+  return formatMin(startMin + elapsed);
+}
+
+function parseTimeToMin(t) {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function formatMin(totalMin) {
+  const h = Math.floor(totalMin / 60) % 24;
+  const m = totalMin % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+// ============================================================
+// PLAYER HELPERS
+// ============================================================
+function pname(id) {
+  const p = S.players.find(x => x.id === id);
+  return p ? p.name : `Spelare ${id}`;
+}
+
+function pnames(ids) {
+  return ids.map(id => escHtml(pname(id))).join(' &amp; ');
+}
+
+// ============================================================
+// SCORE HELPERS
+// ============================================================
+function rkey(r, c) { return `r${r}_c${c}`; }
+
+function getMatchResult(roundNum, courtIdx) {
+  return S.results[rkey(roundNum, courtIdx)] || null;
+}
+
+function setMatchResult(roundNum, courtIdx, s1, s2) {
+  S.results[rkey(roundNum, courtIdx)] = { s1: Number(s1), s2: Number(s2) };
+  saveState();
+  refreshLeaderboard();
+  refreshPlayerGrid();
+}
+
+function getPlayerScore(playerId, roundNum) {
+  if (!S.schedule) return null;
+  const round = S.schedule.find(r => r.roundNum === roundNum);
+  if (!round) return null;
+  if (round.rest.includes(playerId)) return null; // resting
+
+  for (let ci = 0; ci < round.courts.length; ci++) {
+    const court = round.courts[ci];
+    const res = getMatchResult(roundNum, ci);
+    if (!res) return undefined; // not entered yet
+
+    if (court.t1.includes(playerId)) return res.s1;
+    if (court.t2.includes(playerId)) return res.s2;
+  }
+  return undefined;
+}
+
+function getPlayerTotal(playerId) {
+  if (!S.schedule) return 0;
+  let tot = 0;
+  for (const r of S.schedule) {
+    const sc = getPlayerScore(playerId, r.roundNum);
+    if (sc !== null && sc !== undefined) tot += sc;
+  }
+  return tot;
+}
+
+function getPlayerWins(playerId) {
+  if (!S.schedule) return 0;
+  let wins = 0;
+  for (const r of S.schedule) {
+    const round = r;
+    for (let ci = 0; ci < round.courts.length; ci++) {
+      const court = round.courts[ci];
+      const res = getMatchResult(r.roundNum, ci);
+      if (!res) continue;
+      if (court.t1.includes(playerId) && res.s1 > res.s2) wins++;
+      if (court.t2.includes(playerId) && res.s2 > res.s1) wins++;
+    }
+  }
+  return wins;
+}
+
+function getPlayerGamesPlayed(playerId) {
+  if (!S.schedule) return 0;
+  let games = 0;
+  for (const r of S.schedule) {
+    if (!r.rest.includes(playerId)) {
+      // Check if result entered for any court this player is in
+      for (let ci = 0; ci < r.courts.length; ci++) {
+        const court = r.courts[ci];
+        if ((court.t1.includes(playerId) || court.t2.includes(playerId)) && getMatchResult(r.roundNum, ci)) {
+          games++;
+        }
+      }
+    }
+  }
+  return games;
+}
+
+function getLeaderboard() {
+  return S.players
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      total: getPlayerTotal(p.id),
+      wins: getPlayerWins(p.id),
+      games: getPlayerGamesPlayed(p.id)
+    }))
+    .sort((a, b) => b.total - a.total || b.wins - a.wins || a.id - b.id);
+}
+
+// ============================================================
+// UI — PLAYER GRID (setup)
+// ============================================================
+function renderPlayerGrid() {
+  const n = S.players.length;
+  document.getElementById('player-count-label').textContent = `(${n} st)`;
+  const grid = document.getElementById('player-grid');
+  grid.innerHTML = '';
+
+  for (const p of S.players) {
+    const wrap = document.createElement('div');
+    wrap.className = 'player-input-wrap';
+    wrap.innerHTML = `
+      <div class="player-badge">${p.id}</div>
+      <input type="text" value="${escHtml(p.name)}"
+        ${S.locked ? 'disabled' : ''}
+        oninput="updatePlayer(${p.id}, this.value)"
+        placeholder="Spelare ${p.id}">
+    `;
+    grid.appendChild(wrap);
+  }
+}
+
+function updatePlayer(id, name) {
+  const p = S.players.find(x => x.id === id);
+  if (p) { p.name = name; saveState(); }
+}
+
+function updateTitle() {
+  const v = document.getElementById('s-title').value;
+  document.getElementById('hdr-title').textContent = v;
+  saveState();
+}
+function updateSubtitle() {
+  const v = document.getElementById('s-subtitle').value;
+  document.getElementById('hdr-sub').textContent = v;
+  saveState();
+}
+
+// ============================================================
+// PLAYER COUNT CHANGE
+// ============================================================
+function onPlayerCountChange() {
+  const n = parseInt(document.getElementById('s-nplayers').value);
+  const oldPlayers = S.players;
+  const newPlayers = [];
+
+  for (let i = 1; i <= n; i++) {
+    const existing = oldPlayers.find(p => p.id === i);
+    newPlayers.push(existing || { id: i, name: `Spelare ${i}` });
+  }
+
+  // Use default names for 16-player standard setup
+  if (n === 16 && S.players.length !== 16) {
+    for (let i = 0; i < n; i++) {
+      if (!oldPlayers.find(p => p.id === i+1) || oldPlayers.find(p => p.id === i+1)?.name === `Spelare ${i+1}`) {
+        newPlayers[i].name = DEFAULT_16_NAMES[i];
+      }
+    }
+  }
+
+  S.players = newPlayers;
+  S.schedule = null;
+  S.results = {};
+  renderPlayerGrid();
+  updateMatchMinRule();
+  saveState();
+}
+
+function updateMatchMinRule() {
+  const v = document.getElementById('s-matchmin').value;
+  document.getElementById('rule-time').textContent = `${v} minuter`;
+}
+
+// ============================================================
+// GENERATE SCHEDULE
+// ============================================================
+function generateAndShow() {
+  const n = S.players.length;
+  const nc = parseInt(document.getElementById('s-ncourts').value);
+  S.schedule = generateSchedule(n, nc);
+  S.results = {};
+  saveState();
+  renderSchedule();
+  renderResults();
+  refreshLeaderboard();
+  switchTab('schedule');
+}
+
+// ============================================================
+// LOCK / UNLOCK
+// ============================================================
+function lockTournament() {
+  if (!S.schedule) {
+    generateAndShow();
+  }
+  S.locked = true;
+  saveState();
+  document.getElementById('locked-alert').classList.remove('hidden');
+  renderPlayerGrid();
+  renderSchedule();
+}
+
+function unlockTournament() {
+  S.locked = false;
+  saveState();
+  document.getElementById('locked-alert').classList.add('hidden');
+  renderPlayerGrid();
+}
+
+function resetAll() {
+  if (!confirm('Vill du återställa ALLT (schema, resultat och spelarlista)?')) return;
+  S.schedule = null;
+  S.results = {};
+  S.locked = false;
+  S.players = DEFAULT_16_NAMES.map((n,i) => ({id:i+1, name:n}));
+  document.getElementById('s-nplayers').value = '16';
+  document.getElementById('locked-alert').classList.add('hidden');
+  renderPlayerGrid();
+  renderSchedule();
+  renderResults();
+  refreshLeaderboard();
+  saveState();
+}
+
+// ============================================================
+// RENDER — SCHEDULE TAB
+// ============================================================
+function renderSchedule() {
+  const el = document.getElementById('schedule-content');
+  if (!S.schedule) {
+    el.innerHTML = `<div class="alert alert-info"><span class="alert-icon">&#8505;</span>
+      <div>Gå till <strong>Inställningar</strong> och tryck <strong>Generera spelschema</strong>.</div></div>`;
+    return;
+  }
+
+  const breakAfter = parseInt(document.getElementById('s-breakround').value) || 0;
+  const breakMin = parseInt(document.getElementById('s-breakmin').value) || 0;
+  const showBreak = breakAfter > 0 && breakMin > 0;
+
+  let rows = '';
+  for (const round of S.schedule) {
+    // Break row
+    if (showBreak && round.roundNum === breakAfter + 1) {
+      const bt = getBreakTime();
+      rows += `<tr class="break-row">
+        <td colspan="4">&#127829; PAUS — ${bt} &nbsp;·&nbsp; ${breakMin} min &#127815;</td>
+      </tr>`;
+    }
+
+    const time = getRoundTime(round.roundNum);
+    const courtCells = round.courts.map((c, ci) => `
+      <div class="court-label">Bana ${ci + 1}</div>
+      <div class="matchup">
+        <span class="team-tag">${pnames(c.t1)}</span>
+        <span class="vs-tag">vs</span>
+        <span class="team-tag">${pnames(c.t2)}</span>
+      </div>
+    `).join('<div style="margin-top:6px;"></div>');
+
+    const restStr = round.rest.map(id => `<span title="${escHtml(pname(id))}">${id}·${escHtml(pname(id))}</span>`).join(', ');
+
+    rows += `<tr>
+      <td><span class="round-circle">${round.roundNum}</span></td>
+      <td class="time-cell">${time}</td>
+      <td>${courtCells}</td>
+      <td class="rest-names">${restStr || '—'}</td>
+    </tr>`;
+  }
+
+  el.innerHTML = `
+    <div class="flex justify-between align-center mb-3 wrap gap-2">
+      <div>
+        <strong style="font-size:1.1rem;">${S.players.length} spelare &nbsp;·&nbsp; ${S.schedule.length} ronder</strong>
+        <div class="text-xs" style="margin-top:2px;">Alla spelar ${countGamesPerPlayer()} gånger</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="window.print()">&#128438; Skriv ut</button>
+    </div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <table class="sched-table">
+      <thead><tr>
+        <th style="width:42px;">#</th>
+        <th style="width:60px;">Tid</th>
+        <th>Matcher</th>
+        <th>Vila</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+  `;
+}
+
+function countGamesPerPlayer() {
+  if (!S.schedule) return 0;
+  const counts = {};
+  for (const r of S.schedule) {
+    for (const c of r.courts) {
+      for (const id of [...c.t1, ...c.t2]) counts[id] = (counts[id]||0)+1;
+    }
+  }
+  const vals = Object.values(counts);
+  if (!vals.length) return 0;
+  const min = Math.min(...vals), max = Math.max(...vals);
+  return min === max ? min : `${min}–${max}`;
+}
+
+// ============================================================
+// RENDER — RESULTS TAB
+// ============================================================
+function renderResults() {
+  const el = document.getElementById('results-content');
+  if (!S.schedule) {
+    el.innerHTML = `<div class="alert alert-info"><span class="alert-icon">&#8505;</span>
+      <div>Generera ett spelschema först.</div></div>`;
+    return;
+  }
+
+  const breakAfter = parseInt(document.getElementById('s-breakround').value) || 0;
+  const breakMin = parseInt(document.getElementById('s-breakmin').value) || 0;
+
+  // Build round tabs
+  let tabsHtml = '';
+  for (const r of S.schedule) {
+    if (breakAfter > 0 && breakMin > 0 && r.roundNum === breakAfter + 1) {
+      tabsHtml += `<div class="rtab break-tab">&#127829; PAUS</div>`;
+    }
+    const isActive = r.roundNum === S.selectedRound;
+    tabsHtml += `<button class="rtab ${isActive ? 'active' : ''}" onclick="selectRound(${r.roundNum})">R${r.roundNum}</button>`;
+  }
+
+  el.innerHTML = `
+    <div class="flex justify-between align-center wrap gap-2" style="margin-bottom:12px;">
+      <div class="view-toggle">
+        <button class="${S.resultsView === 'entry' ? 'active' : ''}" onclick="setResultsView('entry')">Matchinmatning</button>
+        <button class="${S.resultsView === 'grid' ? 'active' : ''}" onclick="setResultsView('grid')">Spelargrid</button>
+      </div>
+    </div>
+    ${S.resultsView === 'entry' ? renderMatchEntry(tabsHtml, breakAfter, breakMin) : renderPlayerGridView()}
+  `;
+}
+
+function renderMatchEntry(tabsHtml, breakAfter, breakMin) {
+  const round = S.schedule.find(r => r.roundNum === S.selectedRound);
+  if (!round) return '';
+
+  const time = getRoundTime(round.roundNum);
+  let cardsHtml = '';
+
+  for (let ci = 0; ci < round.courts.length; ci++) {
+    const court = round.courts[ci];
+    const res = getMatchResult(round.roundNum, ci);
+    const s1 = res !== null ? res.s1 : '';
+    const s2 = res !== null ? res.s2 : '';
+    const hasVal = res !== null;
+
+    cardsHtml += `
+      <div class="match-card">
+        <div class="match-card-header">Bana ${ci + 1}</div>
+        <div class="score-row">
+          <div class="score-team">
+            ${pnames(court.t1)}
+            <small>${court.t1.map(id => `#${id}`).join(' &amp; ')}</small>
+          </div>
+          <input type="number" class="score-input ${hasVal?'has-value':''}"
+            min="0" max="99" value="${s1}" placeholder="–"
+            id="si_r${round.roundNum}_c${ci}_t1"
+            onchange="onScoreChange(${round.roundNum},${ci})">
+        </div>
+        <div class="vs-divider">vs</div>
+        <div class="score-row">
+          <div class="score-team">
+            ${pnames(court.t2)}
+            <small>${court.t2.map(id => `#${id}`).join(' &amp; ')}</small>
+          </div>
+          <input type="number" class="score-input ${hasVal?'has-value':''}"
+            min="0" max="99" value="${s2}" placeholder="–"
+            id="si_r${round.roundNum}_c${ci}_t2"
+            onchange="onScoreChange(${round.roundNum},${ci})">
+        </div>
+      </div>
+    `;
+  }
+
+  const restStr = round.rest.length
+    ? round.rest.map(id => `${escHtml(pname(id))} (#${id})`).join(', ')
+    : '—';
+
+  return `
+    <div class="round-tabs">${tabsHtml}</div>
+    <div style="margin-bottom:10px;" class="flex align-center gap-3 wrap">
+      <span class="round-circle">${round.roundNum}</span>
+      <strong>${time}</strong>
+    </div>
+    <div class="match-entry-grid">${cardsHtml}</div>
+    ${round.rest.length ? `<div class="text-xs mt-3"><strong>Vilar:</strong> ${restStr}</div>` : ''}
+  `;
+}
+
+function renderPlayerGridView() {
+  const numRounds = S.schedule.length;
+
+  let headerCols = `<th>#</th><th>Spelare</th>`;
+  for (const r of S.schedule) {
+    headerCols += `<th>R${r.roundNum}</th>`;
+  }
+  headerCols += `<th>TOT</th>`;
+
+  let rows = '';
+  for (const p of S.players) {
+    let cells = `<td>${p.id}</td><td class="player-name-cell">${escHtml(p.name)}</td>`;
+
+    for (const r of S.schedule) {
+      const isResting = r.rest.includes(p.id);
+      if (isResting) {
+        cells += `<td class="rest-cell">·</td>`;
+      } else {
+        const sc = getPlayerScore(p.id, r.roundNum);
+        if (sc === undefined) {
+          cells += `<td class="score-cell" style="color:#ccc;">—</td>`;
+        } else {
+          cells += `<td class="score-cell">${sc}</td>`;
+        }
+      }
+    }
+
+    const tot = getPlayerTotal(p.id);
+    cells += `<td class="total-cell">${tot || 0}</td>`;
+
+    rows += `<tr>${cells}</tr>`;
+  }
+
+  return `
+    <div class="alert alert-info" style="margin-bottom:12px;">
+      <span class="alert-icon">&#8505;</span>
+      <div>Skuggade rutor = vilar den ronden. Skriv in matchresultat via <strong>Matchinmatning</strong>.</div>
+    </div>
+    <div class="pgrid-wrap">
+      <table class="pgrid">
+        <thead><tr>${headerCols}</tr></thead>
+        <tbody id="pgrid-body">${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function refreshPlayerGrid() {
+  if (S.resultsView !== 'grid') return;
+  renderResults();
+}
+
+// ============================================================
+// RENDER — LEADERBOARD
+// ============================================================
+function refreshLeaderboard() {
+  renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  const el = document.getElementById('leaderboard-content');
+  const lb = getLeaderboard();
+
+  const hasAnyScore = lb.some(x => x.total > 0 || x.games > 0);
+
+  if (!S.schedule) {
+    el.innerHTML = `<div class="alert alert-info"><span class="alert-icon">&#8505;</span>
+      <div>Generera ett spelschema och fyll i resultat.</div></div>`;
+    return;
+  }
+
+  let bannerHtml = '';
+  if (hasAnyScore) {
+    const leader = lb[0];
+    const allDone = S.schedule.every(r =>
+      r.courts.every((_, ci) => getMatchResult(r.roundNum, ci) !== null)
+    );
+    if (allDone) {
+      bannerHtml = `
+        <div class="winner-banner">
+          <div class="trophy">&#127942;</div>
+          <h2>${escHtml(leader.name)}</h2>
+          <p>Kvällens Kioskvältare &nbsp;·&nbsp; ${leader.total} poäng</p>
+        </div>
+      `;
+    }
+  }
+
+  let items = '';
+  const topScore = lb[0]?.total || 0;
+
+  lb.forEach((p, idx) => {
+    const rank = idx + 1;
+    const rankClass = rank <= 3 ? `rank-${rank}` : 'rank-other';
+    const rankLabel = rank === 1 ? '&#127942;' : rank;
+    const isLead = rank === 1 && p.total === topScore && topScore > 0;
+    const gamesInfo = p.games > 0 ? `${p.games} matcher &nbsp;·&nbsp; ${p.wins} vinster` : 'Inga resultat';
+
+    items += `
+      <div class="lb-item ${rankClass}">
+        <div class="rank-badge">${rankLabel}</div>
+        <div class="lb-info">
+          <div class="lb-name">${escHtml(p.name)}</div>
+          <div class="lb-sub">#${p.id} &nbsp;·&nbsp; ${gamesInfo}</div>
+        </div>
+        <div class="lb-score ${isLead ? 'lead' : ''}">${p.total}</div>
+      </div>
+    `;
+  });
+
+  el.innerHTML = `
+    ${bannerHtml}
+    <div class="flex justify-between align-center mb-3 wrap gap-2">
+      <div>
+        <strong>Ställning</strong>
+        <div class="text-xs" style="margin-top:2px;">Uppdateras automatiskt · Vid lika: flest vunna matcher</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="switchTab('results')">&#9998; Fyll i resultat</button>
+    </div>
+    ${hasAnyScore ? `<div class="lb-list">${items}</div>` : `<div class="no-scores">&#9972; Inga poäng inlagda än. Fyll i matchresultat under <strong>Resultat</strong>.</div><div class="lb-list mt-3">${items}</div>`}
+  `;
+}
+
+// ============================================================
+// EVENT HANDLERS
+// ============================================================
+function selectRound(roundNum) {
+  S.selectedRound = roundNum;
+  renderResults();
+}
+
+function setResultsView(view) {
+  S.resultsView = view;
+  renderResults();
+}
+
+function onScoreChange(roundNum, courtIdx) {
+  const v1 = document.getElementById(`si_r${roundNum}_c${courtIdx}_t1`)?.value;
+  const v2 = document.getElementById(`si_r${roundNum}_c${courtIdx}_t2`)?.value;
+
+  if (v1 !== '' && v2 !== '') {
+    setMatchResult(roundNum, courtIdx, v1, v2);
+    // Re-render to update styling
+    renderResults();
+  }
+}
+
+function switchTab(tab) {
+  S.currentTab = tab;
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+  document.getElementById(`tab-${tab}`).classList.remove('hidden');
+  document.querySelectorAll('nav button').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+
+  if (tab === 'leaderboard') refreshLeaderboard();
+  if (tab === 'results') renderResults();
+  if (tab === 'schedule') renderSchedule();
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  loadState();
+
+  // Restore settings to inputs
+  if (S.players.length) {
+    document.getElementById('s-nplayers').value = S.players.length;
+  }
+
+  // Restore locked state
+  if (S.locked) {
+    document.getElementById('locked-alert').classList.remove('hidden');
+  }
+
+  renderPlayerGrid();
+  renderSchedule();
+  renderResults();
+  renderLeaderboard();
+  switchTab(S.currentTab || 'setup');
+  updateMatchMinRule();
+
+  // Wire up settings inputs to update rule text
+  document.getElementById('s-matchmin').addEventListener('input', updateMatchMinRule);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
