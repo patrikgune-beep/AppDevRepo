@@ -18,13 +18,18 @@
   --gray: #888;
   --border: #ddd;
   --shadow: 0 2px 10px rgba(0,0,0,0.12);
+  --serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: var(--sans);
   background: var(--cream);
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(201,168,76,0.05), transparent 40%),
+    radial-gradient(circle at 88% 92%, rgba(27,42,74,0.05), transparent 40%);
   color: #1a1a2e;
   min-height: 100vh;
   font-size: 15px;
@@ -34,28 +39,74 @@ body {
 header {
   background: var(--navy);
   color: var(--cream);
-  padding: 14px 20px;
+  padding: 16px 20px 12px;
   text-align: center;
+  border-top: 4px solid var(--gold);
   border-bottom: 4px solid var(--gold);
+  box-shadow: inset 0 0 0 1px rgba(201,168,76,0.35);
   position: sticky;
   top: 0;
   z-index: 100;
 }
-header h1 {
-  font-size: 1.4rem;
+.hdr-star {
+  position: absolute;
+  top: 12px;
+  color: var(--red);
+  font-size: 1rem;
+  text-shadow: 0 0 0 #000;
+  filter: drop-shadow(0 0 1px rgba(255,255,255,0.4));
+}
+.hdr-star.left { left: 14px; }
+.hdr-star.right { right: 14px; }
+.hdr-badge {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  border: 1.5px solid var(--gold);
+  border-radius: 5px;
+  padding: 4px 9px;
+  font-size: 0.6rem;
   font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--gold);
+  line-height: 1.2;
+  text-align: center;
+  background: rgba(0,0,0,0.15);
+}
+header .eyebrow {
+  font-size: 0.6rem;
   letter-spacing: 3px;
   text-transform: uppercase;
+  color: rgba(245,240,232,0.55);
+  margin-bottom: 2px;
+}
+header h1 {
+  font-family: var(--serif);
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
   color: var(--gold);
-  line-height: 1;
+  line-height: 1.05;
+  font-style: italic;
 }
 header p {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   letter-spacing: 2px;
   opacity: 0.7;
   margin-top: 3px;
   text-transform: uppercase;
 }
+.hdr-info {
+  margin-top: 7px;
+  font-size: 0.64rem;
+  letter-spacing: 1px;
+  color: var(--gold2);
+  border-top: 1px solid rgba(201,168,76,0.25);
+  padding-top: 6px;
+  display: inline-block;
+}
+.hdr-info:empty { display: none; }
 
 /* ===== NAV ===== */
 nav {
@@ -85,7 +136,14 @@ nav button:hover { color: white; background: rgba(255,255,255,0.06); }
 nav button.active { color: var(--gold); border-bottom-color: var(--gold); }
 
 /* ===== MAIN ===== */
-main { max-width: 960px; margin: 0 auto; padding: 18px; }
+main {
+  max-width: 960px;
+  margin: 18px auto;
+  padding: 20px;
+  border: 2px solid var(--navy);
+  box-shadow: inset 0 0 0 4px var(--cream), inset 0 0 0 5px var(--gold);
+  background: transparent;
+}
 
 .hidden { display: none !important; }
 
@@ -96,16 +154,44 @@ main { max-width: 960px; margin: 0 auto; padding: 18px; }
   box-shadow: var(--shadow);
   padding: 18px;
   margin-bottom: 18px;
+  border-top: 3px solid var(--navy);
 }
 .card-title {
-  font-size: 0.68rem;
+  font-family: var(--serif);
+  font-size: 0.95rem;
   font-weight: 800;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--navy);
-  margin-bottom: 14px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--gold);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  justify-content: center;
+}
+.card-title::before,
+.card-title::after {
+  content: '';
+  height: 2px;
+  background: var(--gold);
+  flex: 1;
+  max-width: 80px;
+}
+.card-title .ct-extra { font-family: var(--sans); flex: 0 0 auto; }
+.step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: var(--navy);
+  font-size: 0.7rem;
+  font-weight: 800;
+  font-family: var(--sans);
+  flex: 0 0 auto;
 }
 
 /* ===== BUTTONS ===== */
@@ -238,14 +324,14 @@ input:disabled, select:disabled {
 .sched-table tr:last-child td { border-bottom: none; }
 .sched-table tr:hover td { background: #f9f9f9; }
 .break-row td {
-  background: var(--gold) !important;
-  color: var(--navy);
+  background: var(--red) !important;
+  color: var(--cream);
   font-weight: 800;
   text-align: center;
   font-size: 0.75rem;
   letter-spacing: 2px;
   text-transform: uppercase;
-  padding: 7px 10px;
+  padding: 8px 10px;
 }
 .round-circle {
   width: 26px;
@@ -308,7 +394,7 @@ input:disabled, select:disabled {
 }
 .rtab:hover { border-color: var(--navy2); color: var(--navy); }
 .rtab.active { background: var(--navy); border-color: var(--navy); color: white; }
-.rtab.break-tab { background: var(--gold); border-color: var(--gold); color: var(--navy); cursor: default; font-size: 0.65rem; letter-spacing: 1px; }
+.rtab.break-tab { background: var(--red); border-color: var(--red); color: var(--cream); cursor: default; font-size: 0.65rem; letter-spacing: 1px; }
 
 .match-entry-grid {
   display: grid;
@@ -517,6 +603,45 @@ input:disabled, select:disabled {
 .rules-box li { margin-bottom: 4px; }
 .rules-box strong { color: var(--navy); }
 
+/* ===== SUGGESTION / PLAN ===== */
+.suggest-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--cream);
+  border: 1px dashed var(--gold);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.suggest-bar .text-xs { flex: 1; min-width: 160px; }
+.plan-readout {
+  margin-top: 12px;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  border-left: 4px solid var(--navy);
+  background: #f6f8fc;
+}
+.plan-readout.fit-ok { border-left-color: var(--green); background: #f0faf3; }
+.plan-readout.fit-over { border-left-color: var(--red); background: #fdf3f3; }
+.plan-readout .pr-headline { font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; }
+.plan-readout .pr-line { color: #444; }
+.plan-readout b { color: var(--navy); }
+.plan-stat {
+  display: inline-block;
+  background: white;
+  border: 1px solid var(--cream2);
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin: 2px 4px 2px 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.plan-stat b { color: var(--navy); }
+
 @media (max-width: 600px) {
   main { padding: 12px; }
   nav button { padding: 10px 11px; font-size: 0.7rem; }
@@ -537,8 +662,13 @@ input:disabled, select:disabled {
 <body>
 
 <header>
+  <span class="hdr-star left">&#9733;</span>
+  <span class="hdr-star right" style="right:auto;left:34px;">&#9733;</span>
+  <div class="hdr-badge" id="hdr-badge">16<br>SPELARE</div>
+  <div class="eyebrow">Americano</div>
   <h1 id="hdr-title">Kioskvältaren</h1>
-  <p id="hdr-sub">Americano · Tennis · Vin · Pizza</p>
+  <p id="hdr-sub">Tennis · Vin · Pizza</p>
+  <div class="hdr-info" id="hdr-info"></div>
 </header>
 
 <nav id="nav-bar">
@@ -554,7 +684,7 @@ input:disabled, select:disabled {
 <div id="tab-setup" class="tab-content">
 
   <div class="card">
-    <div class="card-title">Evenemang</div>
+    <div class="card-title"><span class="step-num">1</span> Tider &amp; Spelare</div>
     <div class="settings-row">
       <div class="field-group">
         <label class="field-label">Evenemangsnamn</label>
@@ -562,14 +692,18 @@ input:disabled, select:disabled {
       </div>
       <div class="field-group">
         <label class="field-label">Undertitel</label>
-        <input type="text" id="s-subtitle" value="Americano · Tennis · Vin · Pizza" oninput="updateSubtitle()">
+        <input type="text" id="s-subtitle" value="Tennis · Vin · Pizza" oninput="updateSubtitle()">
       </div>
+    </div>
+    <div class="settings-row">
       <div class="field-group">
         <label class="field-label">Starttid</label>
         <input type="time" id="s-start" value="20:00">
       </div>
-    </div>
-    <div class="settings-row">
+      <div class="field-group">
+        <label class="field-label">Sluttid</label>
+        <input type="time" id="s-end" value="22:00">
+      </div>
       <div class="field-group">
         <label class="field-label">Antal spelare</label>
         <select id="s-nplayers" onchange="onPlayerCountChange()">
@@ -593,29 +727,12 @@ input:disabled, select:disabled {
           <option value="4">4 banor</option>
         </select>
       </div>
-      <div class="field-group">
-        <label class="field-label">Minuter per match</label>
-        <input type="number" id="s-matchmin" value="10" min="5" max="30">
-      </div>
-      <div class="field-group">
-        <label class="field-label">Övergångstid (min)</label>
-        <input type="number" id="s-transmin" value="2" min="0" max="10">
-      </div>
     </div>
-    <div style="margin-top:8px;">
-      <div class="flex justify-between align-center" style="margin-bottom:8px;">
-        <label class="field-label" style="margin:0;">Pauser</label>
-        <button class="btn btn-outline btn-sm" onclick="addBreak()">+ Lägg till paus</button>
-      </div>
-      <div id="breaks-list"></div>
-      <div class="text-xs" style="margin-top:4px;">
-        Välj efter vilken rond varje paus ska ligga (= antal matcher innan paus) och hur lång den är. Starttiden räknas ut automatiskt.
-      </div>
-    </div>
+    <div class="text-xs">Ange tidsfönster, antal spelare och banor. Appen föreslår sedan upplägg i steg 3.</div>
   </div>
 
   <div class="card">
-    <div class="card-title">Spelare <span id="player-count-label" style="font-weight:400;color:var(--gray);font-size:0.85em">(16 st)</span></div>
+    <div class="card-title"><span class="step-num">2</span> Spelare <span class="ct-extra" id="player-count-label" style="font-weight:400;color:var(--gray);font-size:0.85em">(16 st)</span></div>
     <div id="locked-alert" class="alert alert-locked hidden">
       <span class="alert-icon">&#128274;</span>
       <div>Turneringen är låst. Namn kan inte längre ändras. <button class="btn btn-sm btn-outline" onclick="unlockTournament()" style="margin-left:8px;">Lås upp</button></div>
@@ -646,6 +763,45 @@ input:disabled, select:disabled {
     </div>
 
     <div id="player-grid" class="player-grid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="step-num">3</span> Pauser</div>
+    <div class="flex justify-between align-center" style="margin-bottom:10px;">
+      <span class="text-xs">Pauserna räknas bort från speltiden och påverkar förslaget i steg 4.</span>
+      <button class="btn btn-outline btn-sm" onclick="addBreak()">+ Lägg till paus</button>
+    </div>
+    <div id="breaks-list"></div>
+    <div class="text-xs" style="margin-top:6px;">
+      Välj efter vilken rond varje paus ska ligga (= antal matcher innan paus) och hur lång den är. Starttiden räknas ut automatiskt.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="step-num">4</span> Upplägg &amp; Förslag</div>
+    <div class="suggest-bar">
+      <span class="text-xs">Få ett förslag på antal ronder, matchtid och övergångstid utifrån tiderna, antal spelare och banor.</span>
+      <button class="btn btn-gold btn-sm" onclick="applySuggestion()">&#10024; Föreslå upplägg</button>
+    </div>
+    <div class="settings-row">
+      <div class="field-group">
+        <label class="field-label">Uppvärmning (min)</label>
+        <input type="number" id="s-warmup" value="5" min="0" max="30">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Antal ronder</label>
+        <input type="number" id="s-nrounds" value="8" min="1" max="30">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Minuter per match</label>
+        <input type="number" id="s-matchmin" value="10" min="3" max="40">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Övergångstid (min)</label>
+        <input type="number" id="s-transmin" value="2" min="0" max="10">
+      </div>
+    </div>
+    <div id="plan-readout" class="plan-readout"></div>
   </div>
 
   <div class="flex gap-3 wrap" style="margin-bottom:18px;">
@@ -726,6 +882,7 @@ const SCHED16 = [
 let S = {
   players: DEFAULT_16_NAMES.map((n,i) => ({id:i+1, name:n})),
   breaks: [{afterRound: 4, minutes: 18}], // [{afterRound, minutes}]
+  settings: {},         // persisted values of the setting inputs
   schedule: null,       // [{roundNum, courts:[{t1,t2}], rest:[ids]}]
   results: {},          // key "r{r}_c{c}" => {s1:num, s2:num}
   locked: false,
@@ -733,6 +890,27 @@ let S = {
   resultsView: 'entry', // 'entry' | 'grid'
   selectedRound: 1,
 };
+
+// Setting inputs persisted to S.settings
+const SETTING_IDS = ['s-title','s-subtitle','s-start','s-end','s-nplayers',
+  's-ncourts','s-warmup','s-nrounds','s-matchmin','s-transmin'];
+
+function val(id) { const e = document.getElementById(id); return e ? e.value : ''; }
+function intVal(id, def) { const v = parseInt(val(id)); return isNaN(v) ? def : v; }
+
+function persistSettings() {
+  S.settings = {};
+  SETTING_IDS.forEach(id => { S.settings[id] = val(id); });
+  saveState();
+}
+
+function restoreSettings() {
+  if (!S.settings) return;
+  SETTING_IDS.forEach(id => {
+    const e = document.getElementById(id);
+    if (e && S.settings[id] !== undefined && S.settings[id] !== '') e.value = S.settings[id];
+  });
+}
 
 // ============================================================
 // PERSISTENCE
@@ -753,9 +931,9 @@ function loadState() {
 // ============================================================
 // SCHEDULE GENERATION
 // ============================================================
-function generateSchedule(numPlayers, numCourts) {
-  // Use hardcoded optimal schedule for 16p / 2 courts
-  if (numPlayers === 16 && numCourts === 2) {
+function generateSchedule(numPlayers, numCourts, numRounds) {
+  // Use hardcoded optimal schedule for 16p / 2 courts / 8 rounds (the PDF)
+  if (numPlayers === 16 && numCourts === 2 && (!numRounds || numRounds === 8)) {
     return SCHED16.map((r, i) => ({
       roundNum: i + 1,
       courts: r.courts,
@@ -770,14 +948,13 @@ function generateSchedule(numPlayers, numCourts) {
   const actualCourts = playersPerRound / 4;
   const restPerRound = numPlayers - playersPerRound;
 
-  // Determine number of rounds
-  let numRounds;
-  if (restPerRound <= 0) {
-    // All play every round — use n-1 rounds (full partner rotation)
-    numRounds = Math.max(3, Math.min(numPlayers - 1, 8));
-  } else {
-    const targetGames = 4;
-    numRounds = Math.ceil(targetGames * numPlayers / playersPerRound);
+  // Use requested round count; fall back to a sensible default
+  if (!numRounds || numRounds < 1) {
+    if (restPerRound <= 0) {
+      numRounds = Math.max(3, Math.min(numPlayers - 1, 8));
+    } else {
+      numRounds = Math.ceil(4 * numPlayers / playersPerRound);
+    }
   }
 
   return generateAlgoSchedule(numPlayers, actualCourts, numRounds, playersPerRound, restPerRound);
@@ -880,12 +1057,13 @@ function breakMinutesBefore(roundNum) {
 }
 
 function getRoundTime(roundNum) {
-  const startMin = parseTimeToMin(document.getElementById('s-start').value || '20:00');
-  const matchMin = parseInt(document.getElementById('s-matchmin').value) || 10;
-  const transMin = parseInt(document.getElementById('s-transmin').value) || 2;
+  const startMin = parseTimeToMin(val('s-start') || '20:00');
+  const warmup = intVal('s-warmup', 5);
+  const matchMin = intVal('s-matchmin', 10);
+  const transMin = intVal('s-transmin', 2);
   const roundDur = matchMin + transMin;
 
-  let elapsed = 5; // 5 min warmup before round 1
+  let elapsed = warmup; // warmup before round 1
   elapsed += (roundNum - 1) * roundDur;
   elapsed += breakMinutesBefore(roundNum);
   return formatMin(startMin + elapsed);
@@ -895,20 +1073,148 @@ function getRoundTime(roundNum) {
 // round's match finishes (start of the round + match length, transition
 // time is absorbed into the break itself).
 function getBreakStartTime(afterRound) {
-  const matchMin = parseInt(document.getElementById('s-matchmin').value) || 10;
+  const matchMin = intVal('s-matchmin', 10);
   const roundStart = parseTimeToMin(getRoundTime(afterRound));
   return formatMin(roundStart + matchMin);
 }
 
 function parseTimeToMin(t) {
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + m;
+  const [h, m] = (t || '0:0').split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
 }
 
 function formatMin(totalMin) {
   const h = Math.floor(totalMin / 60) % 24;
-  const m = totalMin % 60;
+  const m = ((totalMin % 60) + 60) % 60;
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+// ============================================================
+// SUGGESTION ENGINE (rounds / match time / transition)
+// ============================================================
+function playersPerRound() {
+  const players = S.players.length;
+  const courts = intVal('s-ncourts', 2);
+  return Math.max(4, Math.floor(Math.min(courts * 4, players) / 4) * 4);
+}
+
+// Window in minutes between start and end (handles crossing midnight).
+function windowMinutes() {
+  const startMin = parseTimeToMin(val('s-start') || '20:00');
+  let endMin = parseTimeToMin(val('s-end') || '22:00');
+  if (endMin <= startMin) endMin += 1440;
+  return endMin - startMin;
+}
+
+// Suggest rounds / matchMin / transMin from the time window, players, courts.
+function computeSuggestion() {
+  const players = S.players.length;
+  const ppr = playersPerRound();
+  const warmup = intVal('s-warmup', 5);
+  const transMin = intVal('s-transmin', 2) || 2;
+  const breaksTotal = getBreaks().reduce((s, b) => s + b.minutes, 0);
+  const available = windowMinutes() - warmup - breaksTotal;
+
+  if (available < transMin + 4) {
+    return { feasible: false, rounds: 1, matchMin: 5, transMin };
+  }
+
+  // Aim for ~4 games per player, then fit match length into [6, 15] minutes.
+  let rounds = Math.max(1, Math.round(4 * players / ppr));
+  let matchMin = Math.floor(available / rounds) - transMin;
+
+  // Too long → add rounds (more games). Too short → fewer rounds.
+  let guard = 0;
+  while (matchMin > 15 && rounds < 30 && guard++ < 60) {
+    rounds++;
+    matchMin = Math.floor(available / rounds) - transMin;
+  }
+  guard = 0;
+  while (matchMin < 6 && rounds > 1 && guard++ < 60) {
+    rounds--;
+    matchMin = Math.floor(available / rounds) - transMin;
+  }
+  matchMin = Math.max(4, matchMin);
+
+  return { feasible: true, rounds, matchMin, transMin };
+}
+
+// Apply suggestion to the input fields, then refresh.
+function applySuggestion() {
+  const s = computeSuggestion();
+  document.getElementById('s-nrounds').value = s.rounds;
+  document.getElementById('s-matchmin').value = s.matchMin;
+  document.getElementById('s-transmin').value = s.transMin;
+  updateMatchMinRule();
+  persistSettings();
+  updatePlanReadout();
+}
+
+// Games per player for the current round count (range if uneven rest).
+function gamesPerPlayerRange(rounds) {
+  const players = S.players.length;
+  const ppr = playersPerRound();
+  const totalSlots = rounds * ppr;
+  const base = Math.floor(totalSlots / players);
+  const extra = totalSlots % players;
+  if (extra === 0) return `${base}`;
+  return `${base}–${base + 1}`;
+}
+
+// Update the live plan readout + header info line.
+function updatePlanReadout() {
+  const el = document.getElementById('plan-readout');
+  if (!el) return;
+
+  const warmup = intVal('s-warmup', 5);
+  const rounds = intVal('s-nrounds', 8);
+  const matchMin = intVal('s-matchmin', 10);
+  const transMin = intVal('s-transmin', 2);
+  const breaksTotal = getBreaks().reduce((s, b) => s + b.minutes, 0);
+  const startMin = parseTimeToMin(val('s-start') || '20:00');
+  const win = windowMinutes();
+
+  const total = warmup + rounds * (matchMin + transMin) + breaksTotal;
+  const computedEnd = formatMin(startMin + total);
+  const gpp = gamesPerPlayerRange(rounds);
+  const diff = total - win;
+
+  let cls = 'fit-ok', status = `&#9989; Ryms inom tidsfönstret (${win - total} min marginal).`;
+  if (diff > 0) {
+    cls = 'fit-over';
+    status = `&#9888;&#65039; ${diff} min för långt — korta matchtid/ronder eller flytta sluttiden.`;
+  } else if (win - total > (matchMin + transMin)) {
+    cls = '';
+    status = `&#8505;&#65039; ${win - total} min outnyttjad tid — du kan lägga till en rond eller längre matcher.`;
+  }
+
+  el.className = 'plan-readout ' + cls;
+  el.innerHTML = `
+    <div class="pr-headline">Beräknat slut: ${computedEnd}</div>
+    <div>
+      <span class="plan-stat">Uppvärmning <b>${warmup} min</b></span>
+      <span class="plan-stat"><b>${rounds}</b> ronder</span>
+      <span class="plan-stat">Match <b>${matchMin} min</b></span>
+      <span class="plan-stat">Övergång <b>${transMin} min</b></span>
+      <span class="plan-stat">Paus <b>${breaksTotal} min</b></span>
+      <span class="plan-stat">Alla spelar <b>${gpp} ggr</b></span>
+    </div>
+    <div class="pr-line" style="margin-top:6px;">${status}</div>
+  `;
+
+  updateHeaderInfo(rounds, computedEnd, gpp);
+}
+
+function updateHeaderInfo(rounds, computedEnd, gpp) {
+  const info = document.getElementById('hdr-info');
+  if (!info) return;
+  const start = val('s-start') || '20:00';
+  info.textContent = `${start} start · ${rounds} ronder · slut ${computedEnd} · alla spelar ${gpp} ggr`;
+}
+
+function updateBadge() {
+  const b = document.getElementById('hdr-badge');
+  if (b) b.innerHTML = `${S.players.length}<br>SPELARE`;
 }
 
 // ============================================================
@@ -1076,7 +1382,9 @@ function onPlayerCountChange() {
   S.schedule = null;
   S.results = {};
   renderPlayerGrid();
+  updateBadge();
   updateMatchMinRule();
+  applySuggestion();
   saveState();
 }
 
@@ -1133,6 +1441,7 @@ function addBreak() {
   renderBreaks();
   renderSchedule();
   renderResults();
+  updatePlanReadout();
 }
 
 function removeBreak(i) {
@@ -1141,6 +1450,7 @@ function removeBreak(i) {
   renderBreaks();
   renderSchedule();
   renderResults();
+  updatePlanReadout();
 }
 
 function updateBreak(i, field, value) {
@@ -1150,6 +1460,7 @@ function updateBreak(i, field, value) {
   renderBreaks();
   renderSchedule();
   renderResults();
+  updatePlanReadout();
 }
 
 // ============================================================
@@ -1181,10 +1492,12 @@ function importPlayers() {
   S.results = {};
   syncPlayerCountDropdown(names.length);
   renderPlayerGrid();
+  updateBadge();
   renderBreaks();
   renderSchedule();
   renderResults();
   refreshLeaderboard();
+  applySuggestion();
   saveState();
 
   const oddNote = (names.length % 2 !== 0)
@@ -1222,14 +1535,19 @@ function syncPlayerCountDropdown(n) {
 // ============================================================
 function generateAndShow() {
   const n = S.players.length;
-  const nc = parseInt(document.getElementById('s-ncourts').value);
-  S.schedule = generateSchedule(n, nc);
+  const nc = intVal('s-ncourts', 2);
+  const nr = intVal('s-nrounds', 0);
+  S.schedule = generateSchedule(n, nc, nr);
+  // Keep the rounds field in sync with what was actually generated
+  document.getElementById('s-nrounds').value = S.schedule.length;
   S.results = {};
+  persistSettings();
   saveState();
   renderBreaks();
   renderSchedule();
   renderResults();
   refreshLeaderboard();
+  updatePlanReadout();
   switchTab('schedule');
 }
 
@@ -1261,10 +1579,17 @@ function resetAll() {
   S.locked = false;
   S.players = DEFAULT_16_NAMES.map((n,i) => ({id:i+1, name:n}));
   S.breaks = [{afterRound: 4, minutes: 18}];
+  S.settings = {};
   document.getElementById('s-nplayers').value = '16';
+  document.getElementById('s-start').value = '20:00';
+  document.getElementById('s-end').value = '22:00';
+  document.getElementById('s-warmup').value = '5';
+  document.getElementById('s-ncourts').value = '2';
   document.getElementById('locked-alert').classList.add('hidden');
   renderPlayerGrid();
+  updateBadge();
   renderBreaks();
+  applySuggestion();
   renderSchedule();
   renderResults();
   refreshLeaderboard();
@@ -1619,13 +1944,16 @@ function escHtml(s) {
 function init() {
   loadState();
 
-  // Backward-compat: older saved state may lack a breaks array
+  // Backward-compat: older saved state may lack newer fields
   if (!Array.isArray(S.breaks)) S.breaks = [{afterRound: 4, minutes: 18}];
+  if (!S.settings) S.settings = {};
 
-  // Restore settings to inputs
-  if (S.players.length) {
-    syncPlayerCountDropdown(S.players.length);
-  }
+  // Restore persisted setting inputs, then header/title
+  restoreSettings();
+  if (S.players.length) syncPlayerCountDropdown(S.players.length);
+  updateTitle();
+  updateSubtitle();
+  updateBadge();
 
   // Restore locked state
   if (S.locked) {
@@ -1640,17 +1968,33 @@ function init() {
   switchTab(S.currentTab || 'setup');
   updateMatchMinRule();
 
-  // Recompute break start times when timing inputs change
-  ['s-start','s-matchmin','s-transmin'].forEach(id => {
-    const elx = document.getElementById(id);
-    if (elx) elx.addEventListener('input', () => {
+  // First-time suggestion if no plan was saved yet
+  if (!S.settings['s-nrounds']) applySuggestion();
+  updatePlanReadout();
+
+  // "Driver" inputs → recompute the suggested plan
+  ['s-start','s-end','s-ncourts'].forEach(id => {
+    const e = document.getElementById(id);
+    if (e) e.addEventListener('change', () => { applySuggestion(); renderBreaks(); renderSchedule(); });
+  });
+
+  // "Plan" inputs → only recompute the readout (keep the user's edits)
+  ['s-warmup','s-nrounds','s-matchmin','s-transmin'].forEach(id => {
+    const e = document.getElementById(id);
+    if (e) e.addEventListener('input', () => {
+      persistSettings();
+      updateMatchMinRule();
       renderBreaks();
       renderSchedule();
+      updatePlanReadout();
     });
   });
 
-  // Wire up settings inputs to update rule text
-  document.getElementById('s-matchmin').addEventListener('input', updateMatchMinRule);
+  // Persist title/subtitle edits too
+  ['s-title','s-subtitle'].forEach(id => {
+    const e = document.getElementById(id);
+    if (e) e.addEventListener('input', persistSettings);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
