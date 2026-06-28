@@ -858,6 +858,33 @@ input:disabled, select:disabled {
 
 <script>
 // ============================================================
+// GLOBAL ERROR SURFACING
+// Shows a visible banner if anything throws, so failures are never
+// silent (handy when the console isn't visible, e.g. on a phone).
+// ============================================================
+function showFatal(msg) {
+  try {
+    var bar = document.getElementById('fatal-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'fatal-bar';
+      bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;'
+        + 'background:#8B2525;color:#fff;padding:10px 14px;'
+        + 'font:13px/1.45 system-ui,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.3);';
+      (document.body || document.documentElement).appendChild(bar);
+    }
+    bar.textContent = '⚠️ Ett fel uppstod: ' + msg
+      + ' — prova att öppna filen i Chrome, Safari eller Edge.';
+  } catch (e) {}
+}
+window.addEventListener('error', function (e) {
+  showFatal((e.error && e.error.message) || e.message || 'okänt fel');
+});
+window.addEventListener('unhandledrejection', function (e) {
+  showFatal((e.reason && e.reason.message) || String(e.reason));
+});
+
+// ============================================================
 // STATE
 // ============================================================
 const DEFAULT_16_NAMES = [
@@ -1997,7 +2024,10 @@ function init() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', function () {
+  try { init(); }
+  catch (e) { showFatal((e && e.message) || 'init misslyckades'); }
+});
 </script>
 </body>
 </html>
