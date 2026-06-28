@@ -602,14 +602,14 @@ input:disabled, select:disabled {
         <input type="number" id="s-transmin" value="2" min="0" max="10">
       </div>
     </div>
-    <div class="settings-row">
-      <div class="field-group">
-        <label class="field-label">Paus efter rond</label>
-        <input type="number" id="s-breakround" value="4" min="1" max="20" placeholder="0 = ingen">
+    <div style="margin-top:8px;">
+      <div class="flex justify-between align-center" style="margin-bottom:8px;">
+        <label class="field-label" style="margin:0;">Pauser</label>
+        <button class="btn btn-outline btn-sm" onclick="addBreak()">+ Lägg till paus</button>
       </div>
-      <div class="field-group">
-        <label class="field-label">Pauslängd (min)</label>
-        <input type="number" id="s-breakmin" value="18" min="0" max="60">
+      <div id="breaks-list"></div>
+      <div class="text-xs" style="margin-top:4px;">
+        Välj efter vilken rond varje paus ska ligga (= antal matcher innan paus) och hur lång den är. Starttiden räknas ut automatiskt.
       </div>
     </div>
   </div>
@@ -620,6 +620,31 @@ input:disabled, select:disabled {
       <span class="alert-icon">&#128274;</span>
       <div>Turneringen är låst. Namn kan inte längre ändras. <button class="btn btn-sm btn-outline" onclick="unlockTournament()" style="margin-left:8px;">Lås upp</button></div>
     </div>
+
+    <div id="import-section" style="margin-bottom:14px;">
+      <details>
+        <summary style="cursor:pointer;font-size:0.78rem;font-weight:700;letter-spacing:0.5px;color:var(--navy);">
+          &#128203; Klistra in deltagarlista
+        </summary>
+        <div style="margin-top:10px;">
+          <div class="field-group">
+            <label class="field-label">En deltagare per rad (eller separerade med komma / semikolon)</label>
+            <textarea id="import-textarea" rows="6"
+              placeholder="Per B&#10;Anna B&#10;Patrik G&#10;..."
+              style="width:100%;border:1.5px solid var(--border);border-radius:5px;padding:8px 10px;font-size:0.9rem;font-family:inherit;resize:vertical;"></textarea>
+          </div>
+          <div class="flex gap-2 wrap align-center">
+            <button class="btn btn-navy btn-sm" onclick="importPlayers()">&#10003; Importera namn</button>
+            <button class="btn btn-outline btn-sm" onclick="fillImportFromCurrent()">Hämta nuvarande lista</button>
+            <span id="import-feedback" class="text-xs"></span>
+          </div>
+          <div class="text-xs" style="margin-top:6px;">
+            Antal spelare anpassas automatiskt efter listan (4–20). Numrering följer ordningen i listan.
+          </div>
+        </div>
+      </details>
+    </div>
+
     <div id="player-grid" class="player-grid"></div>
   </div>
 
@@ -700,6 +725,7 @@ const SCHED16 = [
 
 let S = {
   players: DEFAULT_16_NAMES.map((n,i) => ({id:i+1, name:n})),
+  breaks: [{afterRound: 4, minutes: 18}], // [{afterRound, minutes}]
   schedule: null,       // [{roundNum, courts:[{t1,t2}], rest:[ids]}]
   results: {},          // key "r{r}_c{c}" => {s1:num, s2:num}
   locked: false,
@@ -831,32 +857,47 @@ function createGreedyPairs(players, getPC) {
 // ============================================================
 // TIME CALCULATION
 // ============================================================
+// Returns valid breaks sorted by afterRound, with duplicates on the same
+// round merged (longest wins).
+function getBreaks() {
+  const seen = {};
+  (S.breaks || []).forEach(b => {
+    const after = parseInt(b.afterRound);
+    const mins = parseInt(b.minutes);
+    if (!after || after < 1 || !mins || mins < 1) return;
+    if (!seen[after] || mins > seen[after]) seen[after] = mins;
+  });
+  return Object.keys(seen)
+    .map(k => ({afterRound: parseInt(k), minutes: seen[k]}))
+    .sort((a, b) => a.afterRound - b.afterRound);
+}
+
+// Total break minutes accumulated before a given round starts.
+function breakMinutesBefore(roundNum) {
+  return getBreaks()
+    .filter(b => b.afterRound < roundNum)
+    .reduce((sum, b) => sum + b.minutes, 0);
+}
+
 function getRoundTime(roundNum) {
   const startMin = parseTimeToMin(document.getElementById('s-start').value || '20:00');
   const matchMin = parseInt(document.getElementById('s-matchmin').value) || 10;
   const transMin = parseInt(document.getElementById('s-transmin').value) || 2;
-  const breakAfter = parseInt(document.getElementById('s-breakround').value) || 4;
-  const breakMin = parseInt(document.getElementById('s-breakmin').value) || 18;
   const roundDur = matchMin + transMin;
 
   let elapsed = 5; // 5 min warmup before round 1
-  for (let r = 1; r < roundNum; r++) {
-    elapsed += roundDur;
-    if (r === breakAfter) elapsed += breakMin;
-  }
+  elapsed += (roundNum - 1) * roundDur;
+  elapsed += breakMinutesBefore(roundNum);
   return formatMin(startMin + elapsed);
 }
 
-function getBreakTime() {
-  const startMin = parseTimeToMin(document.getElementById('s-start').value || '20:00');
+// Clock time when the break AFTER the given round begins — i.e. when that
+// round's match finishes (start of the round + match length, transition
+// time is absorbed into the break itself).
+function getBreakStartTime(afterRound) {
   const matchMin = parseInt(document.getElementById('s-matchmin').value) || 10;
-  const transMin = parseInt(document.getElementById('s-transmin').value) || 2;
-  const breakAfter = parseInt(document.getElementById('s-breakround').value) || 4;
-  const roundDur = matchMin + transMin;
-
-  let elapsed = 5;
-  for (let r = 1; r <= breakAfter; r++) elapsed += roundDur;
-  return formatMin(startMin + elapsed);
+  const roundStart = parseTimeToMin(getRoundTime(afterRound));
+  return formatMin(roundStart + matchMin);
 }
 
 function parseTimeToMin(t) {
@@ -1045,6 +1086,138 @@ function updateMatchMinRule() {
 }
 
 // ============================================================
+// BREAKS MANAGEMENT
+// ============================================================
+function renderBreaks() {
+  const el = document.getElementById('breaks-list');
+  if (!el) return;
+  const breaks = S.breaks || [];
+
+  if (!breaks.length) {
+    el.innerHTML = `<div class="text-xs" style="padding:4px 0;">Inga pauser inlagda. Tryck "+ Lägg till paus".</div>`;
+    return;
+  }
+
+  const maxRound = S.schedule ? Math.max(1, S.schedule.length - 1) : 20;
+  let html = '';
+  breaks.forEach((b, i) => {
+    const after = parseInt(b.afterRound) || '';
+    const mins = parseInt(b.minutes) || '';
+    const valid = after >= 1 && mins >= 1;
+    const timeInfo = (valid && S.schedule) ? `&#128337; börjar ${getBreakStartTime(after)}` : '';
+    html += `
+      <div class="flex gap-2 align-center wrap" style="margin-bottom:8px;background:var(--cream);border-radius:6px;padding:8px 10px;">
+        <span class="text-xs font-bold" style="min-width:16px;">${i + 1}.</span>
+        <label class="text-xs" style="display:flex;align-items:center;gap:4px;">Efter rond
+          <input type="number" min="1" max="${maxRound}" value="${after}" style="width:60px;"
+            onchange="updateBreak(${i},'afterRound',this.value)">
+        </label>
+        <label class="text-xs" style="display:flex;align-items:center;gap:4px;">Längd (min)
+          <input type="number" min="1" max="120" value="${mins}" style="width:60px;"
+            onchange="updateBreak(${i},'minutes',this.value)">
+        </label>
+        <span class="text-xs font-bold" style="color:var(--navy2);">${timeInfo}</span>
+        <button class="btn btn-sm btn-red" style="margin-left:auto;padding:4px 10px;" onclick="removeBreak(${i})" title="Ta bort paus">&times;</button>
+      </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function addBreak() {
+  if (!S.breaks) S.breaks = [];
+  const lastAfter = S.breaks.length
+    ? Math.max(...S.breaks.map(b => parseInt(b.afterRound) || 0))
+    : 0;
+  S.breaks.push({ afterRound: lastAfter + 4, minutes: 10 });
+  saveState();
+  renderBreaks();
+  renderSchedule();
+  renderResults();
+}
+
+function removeBreak(i) {
+  S.breaks.splice(i, 1);
+  saveState();
+  renderBreaks();
+  renderSchedule();
+  renderResults();
+}
+
+function updateBreak(i, field, value) {
+  if (!S.breaks[i]) return;
+  S.breaks[i][field] = parseInt(value) || 0;
+  saveState();
+  renderBreaks();
+  renderSchedule();
+  renderResults();
+}
+
+// ============================================================
+// IMPORT PLAYERS (paste list)
+// ============================================================
+function importPlayers() {
+  const raw = document.getElementById('import-textarea').value || '';
+  const fb = document.getElementById('import-feedback');
+
+  // Split on newlines, commas, semicolons or tabs
+  let names = raw.split(/[\n,;\t]+/).map(s => s.trim()).filter(Boolean);
+  // Strip leading numbering like "1 Per", "1. Per", "1) Per", "1: Per"
+  names = names.map(s => s.replace(/^\s*\d+\s*[.\):\-]?\s+/, '').trim()).filter(Boolean);
+
+  if (names.length < 4) {
+    fb.style.color = 'var(--red)';
+    fb.textContent = `Behöver minst 4 namn (hittade ${names.length}).`;
+    return;
+  }
+
+  let trimmedNote = '';
+  if (names.length > 20) {
+    names = names.slice(0, 20);
+    trimmedNote = ' (kapad till 20)';
+  }
+
+  S.players = names.map((name, i) => ({ id: i + 1, name }));
+  S.schedule = null;
+  S.results = {};
+  syncPlayerCountDropdown(names.length);
+  renderPlayerGrid();
+  renderBreaks();
+  renderSchedule();
+  renderResults();
+  refreshLeaderboard();
+  saveState();
+
+  const oddNote = (names.length % 2 !== 0)
+    ? ' OBS: udda antal – Americano kräver jämnt antal spelare.'
+    : '';
+  fb.style.color = oddNote ? 'var(--red)' : 'var(--green)';
+  fb.textContent = `${names.length} spelare importerade${trimmedNote}.${oddNote}`;
+}
+
+function fillImportFromCurrent() {
+  document.getElementById('import-textarea').value =
+    S.players.map(p => p.name).join('\n');
+  const fb = document.getElementById('import-feedback');
+  fb.style.color = 'var(--gray)';
+  fb.textContent = 'Nuvarande lista inhämtad.';
+}
+
+function syncPlayerCountDropdown(n) {
+  const sel = document.getElementById('s-nplayers');
+  let opt = [...sel.options].find(o => parseInt(o.value) === n);
+  if (!opt) {
+    opt = document.createElement('option');
+    opt.value = String(n);
+    opt.textContent = `${n} spelare`;
+    // Insert keeping numeric order
+    const after = [...sel.options].find(o => parseInt(o.value) > n);
+    if (after) sel.insertBefore(opt, after);
+    else sel.appendChild(opt);
+  }
+  sel.value = String(n);
+}
+
+// ============================================================
 // GENERATE SCHEDULE
 // ============================================================
 function generateAndShow() {
@@ -1053,6 +1226,7 @@ function generateAndShow() {
   S.schedule = generateSchedule(n, nc);
   S.results = {};
   saveState();
+  renderBreaks();
   renderSchedule();
   renderResults();
   refreshLeaderboard();
@@ -1086,9 +1260,11 @@ function resetAll() {
   S.results = {};
   S.locked = false;
   S.players = DEFAULT_16_NAMES.map((n,i) => ({id:i+1, name:n}));
+  S.breaks = [{afterRound: 4, minutes: 18}];
   document.getElementById('s-nplayers').value = '16';
   document.getElementById('locked-alert').classList.add('hidden');
   renderPlayerGrid();
+  renderBreaks();
   renderSchedule();
   renderResults();
   refreshLeaderboard();
@@ -1106,17 +1282,16 @@ function renderSchedule() {
     return;
   }
 
-  const breakAfter = parseInt(document.getElementById('s-breakround').value) || 0;
-  const breakMin = parseInt(document.getElementById('s-breakmin').value) || 0;
-  const showBreak = breakAfter > 0 && breakMin > 0;
+  const breaks = getBreaks();
 
   let rows = '';
   for (const round of S.schedule) {
-    // Break row
-    if (showBreak && round.roundNum === breakAfter + 1) {
-      const bt = getBreakTime();
+    // Break row(s) before this round
+    const brk = breaks.find(b => b.afterRound === round.roundNum - 1);
+    if (brk) {
+      const bt = getBreakStartTime(brk.afterRound);
       rows += `<tr class="break-row">
-        <td colspan="4">&#127829; PAUS — ${bt} &nbsp;·&nbsp; ${breakMin} min &#127815;</td>
+        <td colspan="4">&#127829; PAUS — ${bt} &nbsp;·&nbsp; ${brk.minutes} min &#127815;</td>
       </tr>`;
     }
 
@@ -1187,13 +1362,12 @@ function renderResults() {
     return;
   }
 
-  const breakAfter = parseInt(document.getElementById('s-breakround').value) || 0;
-  const breakMin = parseInt(document.getElementById('s-breakmin').value) || 0;
+  const breaks = getBreaks();
 
   // Build round tabs
   let tabsHtml = '';
   for (const r of S.schedule) {
-    if (breakAfter > 0 && breakMin > 0 && r.roundNum === breakAfter + 1) {
+    if (breaks.some(b => b.afterRound === r.roundNum - 1)) {
       tabsHtml += `<div class="rtab break-tab">&#127829; PAUS</div>`;
     }
     const isActive = r.roundNum === S.selectedRound;
@@ -1207,11 +1381,11 @@ function renderResults() {
         <button class="${S.resultsView === 'grid' ? 'active' : ''}" onclick="setResultsView('grid')">Spelargrid</button>
       </div>
     </div>
-    ${S.resultsView === 'entry' ? renderMatchEntry(tabsHtml, breakAfter, breakMin) : renderPlayerGridView()}
+    ${S.resultsView === 'entry' ? renderMatchEntry(tabsHtml) : renderPlayerGridView()}
   `;
 }
 
-function renderMatchEntry(tabsHtml, breakAfter, breakMin) {
+function renderMatchEntry(tabsHtml) {
   const round = S.schedule.find(r => r.roundNum === S.selectedRound);
   if (!round) return '';
 
@@ -1445,9 +1619,12 @@ function escHtml(s) {
 function init() {
   loadState();
 
+  // Backward-compat: older saved state may lack a breaks array
+  if (!Array.isArray(S.breaks)) S.breaks = [{afterRound: 4, minutes: 18}];
+
   // Restore settings to inputs
   if (S.players.length) {
-    document.getElementById('s-nplayers').value = S.players.length;
+    syncPlayerCountDropdown(S.players.length);
   }
 
   // Restore locked state
@@ -1456,11 +1633,21 @@ function init() {
   }
 
   renderPlayerGrid();
+  renderBreaks();
   renderSchedule();
   renderResults();
   renderLeaderboard();
   switchTab(S.currentTab || 'setup');
   updateMatchMinRule();
+
+  // Recompute break start times when timing inputs change
+  ['s-start','s-matchmin','s-transmin'].forEach(id => {
+    const elx = document.getElementById(id);
+    if (elx) elx.addEventListener('input', () => {
+      renderBreaks();
+      renderSchedule();
+    });
+  });
 
   // Wire up settings inputs to update rule text
   document.getElementById('s-matchmin').addEventListener('input', updateMatchMinRule);
