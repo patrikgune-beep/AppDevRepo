@@ -134,6 +134,22 @@ nav button {
 }
 nav button:hover { color: white; background: rgba(255,255,255,0.06); }
 nav button.active { color: var(--gold); border-bottom-color: var(--gold); }
+.nav-home {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  color: rgba(255,255,255,0.6);
+  padding: 11px 16px;
+  font-size: 0.78rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border-bottom: 3px solid transparent;
+}
+.nav-home:hover { color: white; background: rgba(255,255,255,0.06); }
 
 /* ===== MAIN ===== */
 main {
@@ -676,6 +692,7 @@ input:disabled, select:disabled {
   <button data-tab="schedule" onclick="switchTab('schedule')">&#9654; Spelschema</button>
   <button data-tab="results" onclick="switchTab('results')">&#9998; Resultat</button>
   <button data-tab="leaderboard" onclick="switchTab('leaderboard')">&#9733; Leaderboard</button>
+  <a class="nav-home" href="index.html" title="Till Gym Coach">&#8617; Gym Coach</a>
 </nav>
 
 <main>
