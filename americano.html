@@ -134,22 +134,6 @@ nav button {
 }
 nav button:hover { color: white; background: rgba(255,255,255,0.06); }
 nav button.active { color: var(--gold); border-bottom-color: var(--gold); }
-.nav-home {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  color: rgba(255,255,255,0.6);
-  padding: 11px 16px;
-  font-size: 0.78rem;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  font-weight: 700;
-  text-decoration: none;
-  white-space: nowrap;
-  flex-shrink: 0;
-  border-bottom: 3px solid transparent;
-}
-.nav-home:hover { color: white; background: rgba(255,255,255,0.06); }
 
 /* ===== MAIN ===== */
 main {
@@ -692,7 +676,6 @@ input:disabled, select:disabled {
   <button data-tab="schedule" onclick="switchTab('schedule')">&#9654; Spelschema</button>
   <button data-tab="results" onclick="switchTab('results')">&#9998; Resultat</button>
   <button data-tab="leaderboard" onclick="switchTab('leaderboard')">&#9733; Leaderboard</button>
-  <a class="nav-home" href="index.html" title="Till Gym Coach">&#8617; Gym Coach</a>
 </nav>
 
 <main>
@@ -1585,6 +1568,8 @@ function generateAndShow() {
   // Keep the rounds field in sync with what was actually generated
   document.getElementById('s-nrounds').value = S.schedule.length;
   S.results = {};
+  S.selectedRound = 1;
+  S.resultsView = 'entry';
   persistSettings();
   saveState();
   renderBreaks();
@@ -1725,10 +1710,17 @@ function countGamesPerPlayer() {
 // ============================================================
 function renderResults() {
   const el = document.getElementById('results-content');
-  if (!S.schedule) {
+  if (!S.schedule || !S.schedule.length) {
     el.innerHTML = `<div class="alert alert-info"><span class="alert-icon">&#8505;</span>
       <div>Generera ett spelschema först.</div></div>`;
     return;
+  }
+
+  // Keep the selected round within the current schedule. Without this,
+  // regenerating a shorter schedule leaves selectedRound out of range and
+  // the match entry renders blank.
+  if (!S.schedule.some(r => r.roundNum === S.selectedRound)) {
+    S.selectedRound = S.schedule[0].roundNum;
   }
 
   const breaks = getBreaks();
@@ -1755,8 +1747,11 @@ function renderResults() {
 }
 
 function renderMatchEntry(tabsHtml) {
-  const round = S.schedule.find(r => r.roundNum === S.selectedRound);
-  if (!round) return '';
+  let round = S.schedule.find(r => r.roundNum === S.selectedRound);
+  if (!round) {
+    round = S.schedule[0];
+    S.selectedRound = round.roundNum;
+  }
 
   const time = getRoundTime(round.roundNum);
   let cardsHtml = '';
