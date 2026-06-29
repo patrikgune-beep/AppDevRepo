@@ -840,7 +840,6 @@ input:disabled, select:disabled {
       </div>
     </div>
     <div class="text-xs">Ange tidsfönster, antal spelare och banor. Appen föreslår sedan upplägg i steg 3.</div>
-    <div class="text-xs" style="margin-top:6px;">📄 Behöver du en variant för iPhone/iPad <em>utan JavaScript</em>? Öppna <a href="americano-buttons.html" style="color:var(--navy);font-weight:700;">knappversionen</a> (välj 8/12/16/20 spelare med knappar) eller den fasta <a href="americano-static.html" style="color:var(--navy);font-weight:700;">utskriftsversionen</a>.</div>
   </div>
 
   <div class="card">
@@ -1358,7 +1357,7 @@ function updatePlanReadout() {
     const sugEnd = roundEl(warmup + sug * (matchMin + transMin) + breaksTotal);
     cls = 'fit-over';
     status = `&#9888;&#65039; Ojämnt — alla spelar inte lika. Välj <b>${sug} ronder</b> (multipel av ${block}) för lika antal matcher; det ger slut ${sugEnd}.`;
-    endBtn = `<button class="btn btn-sm btn-outline" style="margin-top:8px;" onclick="applySuggestion()">Justera till ${sug} ronder</button>`;
+    endBtn = `<button class="btn btn-sm btn-outline" style="margin-top:8px;" onclick="adjustToRounds(${sug})">Justera till ${sug} ronder</button>`;
   } else if (total > win) {
     // Equal, but doesn't fit the window → suggest a later end time.
     cls = 'fit-over';
@@ -1394,6 +1393,16 @@ function applySuggestedEnd(hhmm) {
   if (e) e.value = hhmm;
   persistSettings();
   applySuggestion();
+}
+
+// Set the round count to an exact value (keeps match time/window), so the
+// "Justera till X ronder" button does exactly what it says.
+function adjustToRounds(n) {
+  const el = document.getElementById('s-nrounds');
+  if (el) el.value = n;
+  persistSettings();
+  updateMatchMinRule();
+  updatePlanReadout();
 }
 
 function updateHeaderInfo(rounds, computedEnd, gpp) {
