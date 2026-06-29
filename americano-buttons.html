@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Kioskvältaren · Americano (knappval, utan JS)</title>
+<style>
+:root{--navy:#1B2A4A;--navy2:#263d6b;--gold:#C9A84C;--cream:#F5F0E8;--cream2:#ece5d7;
+  --red:#8B2525;--gray:#888;--serif:'Playfair Display',Georgia,'Times New Roman',serif;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-text-size-adjust:100%;}
+body{font-family:var(--sans);background:var(--cream);color:#1a1a2e;font-size:15px;}
+header{background:var(--navy);color:var(--cream);text-align:center;padding:14px 16px 10px;border-top:4px solid var(--gold);border-bottom:4px solid var(--gold);}
+header .eyebrow{font-size:.6rem;letter-spacing:3px;text-transform:uppercase;color:rgba(245,240,232,.55);}
+header h1{font-family:var(--serif);font-style:italic;font-size:1.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--gold);line-height:1.05;}
+header p{font-size:.66rem;letter-spacing:2px;text-transform:uppercase;opacity:.7;margin-top:3px;}
+
+.tabradio{position:absolute;opacity:0;pointer-events:none;}
+
+/* Player-count push buttons */
+nav.countnav{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;
+  background:var(--cream2);padding:10px;border-bottom:1px solid #ddd;}
+nav.countnav .lbl{font-size:.66rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--navy);margin-right:2px;}
+nav.countnav label{min-width:46px;text-align:center;padding:9px 14px;border-radius:8px;border:2px solid var(--navy);
+  background:#fff;color:var(--navy);font-weight:800;font-size:.95rem;cursor:pointer;user-select:none;
+  box-shadow:0 2px 0 rgba(27,42,74,.25);transition:transform .05s;}
+nav.countnav label:active{transform:translateY(2px);box-shadow:none;}
+
+/* Tab buttons */
+nav.tabnav{background:var(--navy2);display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;border-bottom:1px solid rgba(255,255,255,.1);position:sticky;top:0;z-index:10;}
+nav.tabnav label{flex-shrink:0;color:rgba(255,255,255,.62);padding:12px 16px;font-size:.78rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;}
+nav.tabnav label:active{background:rgba(255,255,255,.08);}
+
+main{max-width:960px;margin:16px auto;padding:0 14px 40px;}
+.blk{display:none;}
+#n8:checked ~ #t-schema:checked ~ main .blk.c8.tab-schema{display:block;}
+#n8:checked ~ #t-slips:checked ~ main .blk.c8.tab-slips{display:block;}
+#n8:checked ~ #t-result:checked ~ main .blk.c8.tab-result{display:block;}
+#n12:checked ~ #t-schema:checked ~ main .blk.c12.tab-schema{display:block;}
+#n12:checked ~ #t-slips:checked ~ main .blk.c12.tab-slips{display:block;}
+#n12:checked ~ #t-result:checked ~ main .blk.c12.tab-result{display:block;}
+#n16:checked ~ #t-schema:checked ~ main .blk.c16.tab-schema{display:block;}
+#n16:checked ~ #t-slips:checked ~ main .blk.c16.tab-slips{display:block;}
+#n16:checked ~ #t-result:checked ~ main .blk.c16.tab-result{display:block;}
+#n20:checked ~ #t-schema:checked ~ main .blk.c20.tab-schema{display:block;}
+#n20:checked ~ #t-slips:checked ~ main .blk.c20.tab-slips{display:block;}
+#n20:checked ~ #t-result:checked ~ main .blk.c20.tab-result{display:block;}
+#t-rules:checked ~ main #s-rules{display:block;}
+#t-schema:checked ~ main #intro{display:block;}
+#n8:checked ~ nav.countnav label[for=n8],
+#n12:checked ~ nav.countnav label[for=n12],
+#n16:checked ~ nav.countnav label[for=n16],
+#n20:checked ~ nav.countnav label[for=n20]{background:var(--gold);color:var(--navy);border-color:var(--gold);}
+#t-schema:checked ~ nav.tabnav label[for=t-schema],
+#t-slips:checked ~ nav.tabnav label[for=t-slips],
+#t-result:checked ~ nav.tabnav label[for=t-result],
+#t-rules:checked ~ nav.tabnav label[for=t-rules]{color:var(--gold);border-bottom-color:var(--gold);}
+
+.card{background:#fff;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.1);border-top:3px solid var(--navy);padding:16px;margin-bottom:16px;}
+.card-title{font-family:var(--serif);font-size:.95rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:12px;justify-content:center;}
+.card-title::before,.card-title::after{content:'';height:2px;background:var(--gold);flex:1;max-width:80px;}
+.note{font-size:.8rem;color:#555;background:#eef3fb;border-left:3px solid var(--navy);border-radius:5px;padding:9px 12px;margin-bottom:14px;line-height:1.5;}
+.intro{font-size:.8rem;color:#444;background:#fff8e6;border-left:3px solid var(--gold);border-radius:5px;padding:10px 13px;margin-bottom:16px;line-height:1.55;}
+
+.roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;}
+.ros{display:flex;align-items:center;gap:8px;}
+.rb{width:24px;height:24px;border-radius:50%;background:var(--navy);color:#fff;font-size:.7rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.rn{font-size:.86rem;}
+
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+table.sched{width:100%;border-collapse:collapse;font-size:.84rem;}
+table.sched th{background:var(--navy);color:var(--cream);padding:9px 10px;text-align:left;font-size:.66rem;letter-spacing:1.5px;text-transform:uppercase;}
+table.sched td{padding:9px 10px;border-bottom:1px solid #f0f0f0;vertical-align:middle;}
+.rc{width:26px;height:26px;border-radius:50%;background:var(--navy);color:#fff;font-size:.74rem;font-weight:800;display:inline-flex;align-items:center;justify-content:center;}
+.time{color:var(--navy2);font-weight:700;white-space:nowrap;}
+.court-label{font-size:.62rem;font-weight:700;letter-spacing:1px;color:var(--gray);text-transform:uppercase;}
+.matchup{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-weight:600;}
+.tt{background:var(--cream2);border-radius:3px;padding:2px 7px;font-weight:800;}
+.vs{color:var(--gray);font-size:.7rem;}
+.rest{font-size:.74rem;color:var(--gray);line-height:1.5;}
+.break-row td{background:var(--red);color:var(--cream);font-weight:800;text-align:center;letter-spacing:2px;text-transform:uppercase;font-size:.74rem;padding:8px;}
+
+.slips{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+.slip{border:2px dashed var(--navy);border-radius:8px;padding:12px 14px 10px;background:#fff;position:relative;}
+.sciss{position:absolute;top:-11px;left:10px;background:var(--cream);color:var(--navy);font-size:.85rem;padding:0 4px;}
+.slip-head{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--gold);padding-bottom:6px;margin-bottom:8px;}
+.slip-round{display:inline-flex;align-items:center;gap:7px;font-weight:800;color:var(--navy);font-size:.9rem;}
+.slip-round .rc{width:24px;height:24px;font-size:.72rem;}
+.slip-court{font-size:.64rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#fff;background:var(--navy);border-radius:4px;padding:3px 8px;}
+.slip-event{font-family:var(--serif);font-style:italic;font-size:.72rem;color:var(--gray);text-align:center;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;}
+.slip-team{display:flex;align-items:center;gap:10px;padding:7px 0;}
+.slip-info{flex:1;min-width:0;}
+.slip-lbl{font-size:.6rem;font-weight:800;letter-spacing:1.5px;color:var(--gold);text-transform:uppercase;}
+.slip-names{font-weight:700;font-size:.92rem;line-height:1.3;}
+.slip-names .hash{color:var(--gray);font-weight:800;}
+.slip-score{width:52px;height:44px;border:2px solid var(--navy);border-radius:5px;flex-shrink:0;background:repeating-linear-gradient(transparent,transparent 21px,#eee 21px,#eee 22px);}
+.slip-vs{text-align:center;font-size:.62rem;font-weight:800;letter-spacing:2px;color:var(--gray);border-top:1px dotted #ccc;border-bottom:1px dotted #ccc;padding:2px 0;margin:2px 0;}
+.slip-foot{margin-top:9px;border-top:1px solid #eee;padding-top:6px;font-size:.62rem;color:var(--gray);text-align:center;}
+.slip-foot b{color:var(--red);}
+
+table.res{width:100%;border-collapse:collapse;font-size:.8rem;min-width:520px;}
+table.res th{background:var(--navy);color:#fff;padding:7px 6px;text-align:center;font-size:.64rem;letter-spacing:.5px;}
+table.res th.rc-name{text-align:left;}
+table.res th.rc-tot{background:var(--gold);color:var(--navy);}
+table.res td{border:1px solid #e8e8e8;text-align:center;padding:3px;min-width:34px;}
+table.res td.rc-num{font-weight:800;color:var(--navy);width:26px;}
+table.res td.rc-name{text-align:left;min-width:130px;padding:2px 4px;}
+table.res td.rc-name input{width:100%;border:none;font:inherit;font-weight:600;background:transparent;padding:4px 2px;}
+table.res td.rc-name input:focus{outline:2px solid var(--gold);border-radius:3px;}
+table.res td.write{background:#fff;height:30px;}
+table.res td.rc-tot{background:#fff7e6;font-weight:800;}
+table.res td.rest-cell{background:#e6e6e6;color:#bbb;}
+table.res tr:nth-child(even) td.write{background:#fafafa;}
+
+.rules h4{font-size:.7rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--navy);margin:14px 0 6px;font-weight:800;}
+.rules ul{padding-left:18px;line-height:1.7;font-size:.88rem;}
+.rules li{margin-bottom:5px;}
+.rules strong{color:var(--navy);}
+.print-hint{display:inline-flex;align-items:center;gap:6px;background:var(--cream);color:var(--navy);border:1px solid var(--cream2);border-radius:6px;padding:8px 13px;font-weight:700;font-size:.8rem;}
+
+@media (max-width:600px){.slips{grid-template-columns:1fr;}header h1{font-size:1.25rem;}}
+@media print{
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  nav,.print-hint,.note,.intro{display:none!important;}
+  header{position:static;}
+  main{max-width:100%;margin:0;padding:0;}
+  .blk{display:block!important;}
+  .blk.tab-slips,.blk.tab-result{page-break-before:always;}
+  .slip{break-inside:avoid;page-break-inside:avoid;}
+  table.sched tr,table.res tr{page-break-inside:avoid;}
+  .card{box-shadow:none;border:1px solid #ccc;}
+}
+</style>
+</head>
+<body>
+
+<input class="tabradio" type="radio" name="count" id="n8">
+<input class="tabradio" type="radio" name="count" id="n12">
+<input class="tabradio" type="radio" name="count" id="n16" checked>
+<input class="tabradio" type="radio" name="count" id="n20">
+<input class="tabradio" type="radio" name="tab" id="t-schema" checked>
+<input class="tabradio" type="radio" name="tab" id="t-slips">
+<input class="tabradio" type="radio" name="tab" id="t-result">
+<input class="tabradio" type="radio" name="tab" id="t-rules">
+
+<header>
+  <div class="eyebrow">Americano · Tryck för att välja</div>
+  <h1>Kioskvältaren</h1>
+  <p>Tennis · Vin · Pizza</p>
+</header>
+
+<nav class="countnav">
+  <span class="lbl">Antal spelare</span>
+  <label for="n8">8</label>
+<label for="n12">12</label>
+<label for="n16">16</label>
+<label for="n20">20</label>
+</nav>
+
+<nav class="tabnav">
+  <label for="t-schema">▶ Schema</label>
+  <label for="t-slips">✂ Matchlappar</label>
+  <label for="t-result">✎ Resultatkort</label>
+  <label for="t-rules">★ Regler</label>
+</nav>
+
+<main>
+  <div id="intro" class="blk">
+    <div class="intro">👆 Tryck på en <b>siffra ovan</b> (8 / 12 / 16 / 20) så räknas schema, matchlappar och resultatkort om direkt — helt utan JavaScript. Fungerar i alla lägen på iPhone/iPad. Tider: start 20:00, 10 min/match, paus 18 min efter rond 4. För egna tider/namn och automatisk leaderboard, använd <b>americano.html</b>.</div>
+  </div>
+
+  <div class="blk c8 tab-schema">
+    <div class="card">
+      <div class="card-title">Spelare · 8 st</div>
+      <div class="roster"><div class="ros"><span class="rb">1</span><span class="rn">Spelare 1</span></div><div class="ros"><span class="rb">2</span><span class="rn">Spelare 2</span></div><div class="ros"><span class="rb">3</span><span class="rn">Spelare 3</span></div><div class="ros"><span class="rb">4</span><span class="rn">Spelare 4</span></div><div class="ros"><span class="rb">5</span><span class="rn">Spelare 5</span></div><div class="ros"><span class="rb">6</span><span class="rn">Spelare 6</span></div><div class="ros"><span class="rb">7</span><span class="rn">Spelare 7</span></div><div class="ros"><span class="rb">8</span><span class="rn">Spelare 8</span></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Spelschema</div>
+      <div class="tbl-wrap"><table class="sched">
+        <thead><tr><th style="width:40px">#</th><th style="width:56px">Tid</th><th>Matcher</th><th>Vila</th></tr></thead>
+        <tbody><tr><td><span class="rc">1</span></td><td class="time">20:05</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">1·2</span><span class="vs">vs</span><span class="tt">3·4</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">5·6</span><span class="vs">vs</span><span class="tt">7·8</span></div></td><td class="rest">—</td></tr><tr><td><span class="rc">2</span></td><td class="time">20:17</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">1·3</span><span class="vs">vs</span><span class="tt">2·4</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">5·7</span><span class="vs">vs</span><span class="tt">6·8</span></div></td><td class="rest">—</td></tr><tr><td><span class="rc">3</span></td><td class="time">20:29</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">1·4</span><span class="vs">vs</span><span class="tt">2·3</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">5·8</span><span class="vs">vs</span><span class="tt">6·7</span></div></td><td class="rest">—</td></tr><tr><td><span class="rc">4</span></td><td class="time">20:41</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">1·5</span><span class="vs">vs</span><span class="tt">2·6</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">3·7</span><span class="vs">vs</span><span class="tt">4·8</span></div></td><td class="rest">—</td></tr></tbody></table></div>
+    </div></div><div class="blk c8 tab-slips"><div class="card"><div class="card-title">Matchlappar · 8 st</div>
+    <div class="note">Skriv ut, klipp längs de streckade linjerna och dela ut en lapp per match.</div>
+    <span class="print-hint">🖨 Skriv ut: Dela-menyn → Skriv ut (eller Cmd/Ctrl+P)</span>
+    <div style="height:14px"></div><div class="slips"><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">1</span> 20:05</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#1</span> Spelare 1<br><span class="hash">#2</span> Spelare 2</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#3</span> Spelare 3<br><span class="hash">#4</span> Spelare 4</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">1</span> 20:05</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#5</span> Spelare 5<br><span class="hash">#6</span> Spelare 6</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#7</span> Spelare 7<br><span class="hash">#8</span> Spelare 8</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">2</span> 20:17</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#1</span> Spelare 1<br><span class="hash">#3</span> Spelare 3</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#2</span> Spelare 2<br><span class="hash">#4</span> Spelare 4</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">2</span> 20:17</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#5</span> Spelare 5<br><span class="hash">#7</span> Spelare 7</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#6</span> Spelare 6<br><span class="hash">#8</span> Spelare 8</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">3</span> 20:29</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#1</span> Spelare 1<br><span class="hash">#4</span> Spelare 4</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#2</span> Spelare 2<br><span class="hash">#3</span> Spelare 3</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">3</span> 20:29</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#5</span> Spelare 5<br><span class="hash">#8</span> Spelare 8</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#6</span> Spelare 6<br><span class="hash">#7</span> Spelare 7</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">4</span> 20:41</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#1</span> Spelare 1<br><span class="hash">#5</span> Spelare 5</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#2</span> Spelare 2<br><span class="hash">#6</span> Spelare 6</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">4</span> 20:41</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#3</span> Spelare 3<br><span class="hash">#7</span> Spelare 7</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#4</span> Spelare 4<br><span class="hash">#8</span> Spelare 8</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div></div></div></div><div class="blk c8 tab-result"><div class="card"><div class="card-title">Resultatkort · 8 st</div>
+    <div class="note">Skriv in varje spelares poäng per rond och summera i <b>TOT</b>. Skuggade rutor = vilar den ronden.
+      Högst total = kvällens Kioskvältare (vid lika: flest vunna matcher).</div>
+    <span class="print-hint">🖨 Skriv ut: Dela-menyn → Skriv ut (eller Cmd/Ctrl+P)</span>
+    <div style="height:14px"></div>
+    <div class="tbl-wrap"><table class="res"><thead><tr><th class="rc-num">#</th><th class="rc-name">Spelare</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th class="rc-tot">TOT</th></tr></thead><tbody><tr><td class="rc-num">1</td>
+      <td class="rc-name"><input type="text" value="Spelare 1" aria-label="Spelare 1"></td>
+      <td class="write"></td><td class="write"></td><td class="write"></td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">2</td>
+      <td class="rc-name"><input type="text" value="Spelare 2" aria-label="Spelare 2"></td>
+      <td class="write"></td><td class="write"></td><td class="write"></td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">3</td>
+      <td class="rc-name"><input type="text" value="Spelare 3" aria-label="Spelare 3"></td>
+      <td class="write"></td><td class="write"></td><td class="write"></td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">4</td>
+      <td class="rc-name"><input type="text" value="Spelare 4" aria-label="Spelare 4"></td>
+      <td class="write"></td><td class="write"></td><td class="write"></td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">5</td>
+      <td class="rc-name"><input type="text" value="Spelare 5" aria-label="Spelare 5"></td>
+      <td class="write"></td><td class="write"></td><td class="write"></td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">6</td>
+      <td class="rc-name"><input type="text" value="Spelare 6" aria-label="Spelare 6"></td>
+      <td class="write"></td><td class="write"></td><td class="write"></td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">7</td>
+      <td class="rc-name"><input type="text" value="Spelare 7" aria-label="Spelare 7"></td>
+      <td class="write"></td><td class="write"></td><td class="write"></td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">8</td>
+      <td class="rc-name"><input type="text" value="Spelare 8" aria-label="Spelare 8"></td>
+      <td class="write"></td><td class="write"></td><td class="write"></td><td class="write"></td><td class="rc-tot write"></td></tr></tbody></table></div></div></div><div class="blk c12 tab-schema">
+    <div class="card">
+      <div class="card-title">Spelare · 12 st</div>
+      <div class="roster"><div class="ros"><span class="rb">1</span><span class="rn">Spelare 1</span></div><div class="ros"><span class="rb">2</span><span class="rn">Spelare 2</span></div><div class="ros"><span class="rb">3</span><span class="rn">Spelare 3</span></div><div class="ros"><span class="rb">4</span><span class="rn">Spelare 4</span></div><div class="ros"><span class="rb">5</span><span class="rn">Spelare 5</span></div><div class="ros"><span class="rb">6</span><span class="rn">Spelare 6</span></div><div class="ros"><span class="rb">7</span><span class="rn">Spelare 7</span></div><div class="ros"><span class="rb">8</span><span class="rn">Spelare 8</span></div><div class="ros"><span class="rb">9</span><span class="rn">Spelare 9</span></div><div class="ros"><span class="rb">10</span><span class="rn">Spelare 10</span></div><div class="ros"><span class="rb">11</span><span class="rn">Spelare 11</span></div><div class="ros"><span class="rb">12</span><span class="rn">Spelare 12</span></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Spelschema</div>
+      <div class="tbl-wrap"><table class="sched">
+        <thead><tr><th style="width:40px">#</th><th style="width:56px">Tid</th><th>Matcher</th><th>Vila</th></tr></thead>
+        <tbody><tr><td><span class="rc">1</span></td><td class="time">20:05</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">1·2</span><span class="vs">vs</span><span class="tt">3·4</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">5·6</span><span class="vs">vs</span><span class="tt">7·8</span></div></td><td class="rest">9·Spelare 9, 10·Spelare 10, 11·Spelare 11, 12·Spelare 12</td></tr><tr><td><span class="rc">2</span></td><td class="time">20:17</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">9·1</span><span class="vs">vs</span><span class="tt">10·2</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">11·3</span><span class="vs">vs</span><span class="tt">12·4</span></div></td><td class="rest">5·Spelare 5, 6·Spelare 6, 7·Spelare 7, 8·Spelare 8</td></tr><tr><td><span class="rc">3</span></td><td class="time">20:29</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">5·7</span><span class="vs">vs</span><span class="tt">6·8</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">9·10</span><span class="vs">vs</span><span class="tt">11·12</span></div></td><td class="rest">1·Spelare 1, 2·Spelare 2, 3·Spelare 3, 4·Spelare 4</td></tr><tr><td><span class="rc">4</span></td><td class="time">20:41</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">1·3</span><span class="vs">vs</span><span class="tt">2·4</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">5·8</span><span class="vs">vs</span><span class="tt">6·7</span></div></td><td class="rest">9·Spelare 9, 10·Spelare 10, 11·Spelare 11, 12·Spelare 12</td></tr><tr class="break-row"><td colspan="4">🍕 PAUS — 20:51 · 18 min 🍷</td></tr><tr><td><span class="rc">5</span></td><td class="time">21:11</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">9·2</span><span class="vs">vs</span><span class="tt">10·1</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">11·4</span><span class="vs">vs</span><span class="tt">12·3</span></div></td><td class="rest">5·Spelare 5, 6·Spelare 6, 7·Spelare 7, 8·Spelare 8</td></tr><tr><td><span class="rc">6</span></td><td class="time">21:23</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">5·9</span><span class="vs">vs</span><span class="tt">6·10</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">7·11</span><span class="vs">vs</span><span class="tt">8·12</span></div></td><td class="rest">1·Spelare 1, 2·Spelare 2, 3·Spelare 3, 4·Spelare 4</td></tr></tbody></table></div>
+    </div></div><div class="blk c12 tab-slips"><div class="card"><div class="card-title">Matchlappar · 12 st</div>
+    <div class="note">Skriv ut, klipp längs de streckade linjerna och dela ut en lapp per match.</div>
+    <span class="print-hint">🖨 Skriv ut: Dela-menyn → Skriv ut (eller Cmd/Ctrl+P)</span>
+    <div style="height:14px"></div><div class="slips"><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">1</span> 20:05</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#1</span> Spelare 1<br><span class="hash">#2</span> Spelare 2</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#3</span> Spelare 3<br><span class="hash">#4</span> Spelare 4</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">1</span> 20:05</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#5</span> Spelare 5<br><span class="hash">#6</span> Spelare 6</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#7</span> Spelare 7<br><span class="hash">#8</span> Spelare 8</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">2</span> 20:17</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#9</span> Spelare 9<br><span class="hash">#1</span> Spelare 1</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#10</span> Spelare 10<br><span class="hash">#2</span> Spelare 2</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">2</span> 20:17</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#11</span> Spelare 11<br><span class="hash">#3</span> Spelare 3</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#12</span> Spelare 12<br><span class="hash">#4</span> Spelare 4</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">3</span> 20:29</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#5</span> Spelare 5<br><span class="hash">#7</span> Spelare 7</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#6</span> Spelare 6<br><span class="hash">#8</span> Spelare 8</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">3</span> 20:29</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#9</span> Spelare 9<br><span class="hash">#10</span> Spelare 10</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#11</span> Spelare 11<br><span class="hash">#12</span> Spelare 12</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">4</span> 20:41</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#1</span> Spelare 1<br><span class="hash">#3</span> Spelare 3</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#2</span> Spelare 2<br><span class="hash">#4</span> Spelare 4</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">4</span> 20:41</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#5</span> Spelare 5<br><span class="hash">#8</span> Spelare 8</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#6</span> Spelare 6<br><span class="hash">#7</span> Spelare 7</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">5</span> 21:11</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#9</span> Spelare 9<br><span class="hash">#2</span> Spelare 2</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#10</span> Spelare 10<br><span class="hash">#1</span> Spelare 1</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">5</span> 21:11</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#11</span> Spelare 11<br><span class="hash">#4</span> Spelare 4</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#12</span> Spelare 12<br><span class="hash">#3</span> Spelare 3</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">6</span> 21:23</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#5</span> Spelare 5<br><span class="hash">#9</span> Spelare 9</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#6</span> Spelare 6<br><span class="hash">#10</span> Spelare 10</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">6</span> 21:23</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#7</span> Spelare 7<br><span class="hash">#11</span> Spelare 11</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#8</span> Spelare 8<br><span class="hash">#12</span> Spelare 12</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div></div></div></div><div class="blk c12 tab-result"><div class="card"><div class="card-title">Resultatkort · 12 st</div>
+    <div class="note">Skriv in varje spelares poäng per rond och summera i <b>TOT</b>. Skuggade rutor = vilar den ronden.
+      Högst total = kvällens Kioskvältare (vid lika: flest vunna matcher).</div>
+    <span class="print-hint">🖨 Skriv ut: Dela-menyn → Skriv ut (eller Cmd/Ctrl+P)</span>
+    <div style="height:14px"></div>
+    <div class="tbl-wrap"><table class="res"><thead><tr><th class="rc-num">#</th><th class="rc-name">Spelare</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th><th>R6</th><th class="rc-tot">TOT</th></tr></thead><tbody><tr><td class="rc-num">1</td>
+      <td class="rc-name"><input type="text" value="Spelare 1" aria-label="Spelare 1"></td>
+      <td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">2</td>
+      <td class="rc-name"><input type="text" value="Spelare 2" aria-label="Spelare 2"></td>
+      <td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">3</td>
+      <td class="rc-name"><input type="text" value="Spelare 3" aria-label="Spelare 3"></td>
+      <td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">4</td>
+      <td class="rc-name"><input type="text" value="Spelare 4" aria-label="Spelare 4"></td>
+      <td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">5</td>
+      <td class="rc-name"><input type="text" value="Spelare 5" aria-label="Spelare 5"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">6</td>
+      <td class="rc-name"><input type="text" value="Spelare 6" aria-label="Spelare 6"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">7</td>
+      <td class="rc-name"><input type="text" value="Spelare 7" aria-label="Spelare 7"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">8</td>
+      <td class="rc-name"><input type="text" value="Spelare 8" aria-label="Spelare 8"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">9</td>
+      <td class="rc-name"><input type="text" value="Spelare 9" aria-label="Spelare 9"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">10</td>
+      <td class="rc-name"><input type="text" value="Spelare 10" aria-label="Spelare 10"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">11</td>
+      <td class="rc-name"><input type="text" value="Spelare 11" aria-label="Spelare 11"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">12</td>
+      <td class="rc-name"><input type="text" value="Spelare 12" aria-label="Spelare 12"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rc-tot write"></td></tr></tbody></table></div></div></div><div class="blk c16 tab-schema">
+    <div class="card">
+      <div class="card-title">Spelare · 16 st</div>
+      <div class="roster"><div class="ros"><span class="rb">1</span><span class="rn">Per B</span></div><div class="ros"><span class="rb">2</span><span class="rn">Anna B</span></div><div class="ros"><span class="rb">3</span><span class="rn">Patrik G</span></div><div class="ros"><span class="rb">4</span><span class="rn">Johan Sander</span></div><div class="ros"><span class="rb">5</span><span class="rn">Louise Sander</span></div><div class="ros"><span class="rb">6</span><span class="rn">Karl T</span></div><div class="ros"><span class="rb">7</span><span class="rn">Christina T</span></div><div class="ros"><span class="rb">8</span><span class="rn">Jonas Sjöberg</span></div><div class="ros"><span class="rb">9</span><span class="rn">Johan Sahlstrand</span></div><div class="ros"><span class="rb">10</span><span class="rn">Henrik B</span></div><div class="ros"><span class="rb">11</span><span class="rn">Charlotte B</span></div><div class="ros"><span class="rb">12</span><span class="rn">Anders Ö</span></div><div class="ros"><span class="rb">13</span><span class="rn">Jenny Ö</span></div><div class="ros"><span class="rb">14</span><span class="rn">Stefan L</span></div><div class="ros"><span class="rb">15</span><span class="rn">Hans N</span></div><div class="ros"><span class="rb">16</span><span class="rn">Sista minuten</span></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Spelschema</div>
+      <div class="tbl-wrap"><table class="sched">
+        <thead><tr><th style="width:40px">#</th><th style="width:56px">Tid</th><th>Matcher</th><th>Vila</th></tr></thead>
+        <tbody><tr><td><span class="rc">1</span></td><td class="time">20:05</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">1·4</span><span class="vs">vs</span><span class="tt">6·10</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">3·12</span><span class="vs">vs</span><span class="tt">8·9</span></div></td><td class="rest">2·Anna B, 5·Louise Sander, 7·Christina T, 11·Charlotte B, 13·Jenny Ö, 14·Stefan L, 15·Hans N, 16·Sista minuten</td></tr><tr><td><span class="rc">2</span></td><td class="time">20:17</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">13·16</span><span class="vs">vs</span><span class="tt">14·15</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">2·5</span><span class="vs">vs</span><span class="tt">7·11</span></div></td><td class="rest">1·Per B, 3·Patrik G, 4·Johan Sander, 6·Karl T, 8·Jonas Sjöberg, 9·Johan Sahlstrand, 10·Henrik B, 12·Anders Ö</td></tr><tr><td><span class="rc">3</span></td><td class="time">20:29</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">1·6</span><span class="vs">vs</span><span class="tt">14·16</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">4·10</span><span class="vs">vs</span><span class="tt">13·15</span></div></td><td class="rest">2·Anna B, 3·Patrik G, 5·Louise Sander, 7·Christina T, 8·Jonas Sjöberg, 9·Johan Sahlstrand, 11·Charlotte B, 12·Anders Ö</td></tr><tr><td><span class="rc">4</span></td><td class="time">20:41</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">5·11</span><span class="vs">vs</span><span class="tt">8·12</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">2·7</span><span class="vs">vs</span><span class="tt">3·9</span></div></td><td class="rest">1·Per B, 4·Johan Sander, 6·Karl T, 10·Henrik B, 13·Jenny Ö, 14·Stefan L, 15·Hans N, 16·Sista minuten</td></tr><tr class="break-row"><td colspan="4">🍕 PAUS — 20:51 · 18 min 🍷</td></tr><tr><td><span class="rc">5</span></td><td class="time">21:11</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">1·10</span><span class="vs">vs</span><span class="tt">2·11</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">4·6</span><span class="vs">vs</span><span class="tt">5·7</span></div></td><td class="rest">3·Patrik G, 8·Jonas Sjöberg, 9·Johan Sahlstrand, 12·Anders Ö, 13·Jenny Ö, 14·Stefan L, 15·Hans N, 16·Sista minuten</td></tr><tr><td><span class="rc">6</span></td><td class="time">21:23</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">9·12</span><span class="vs">vs</span><span class="tt">13·14</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">3·8</span><span class="vs">vs</span><span class="tt">15·16</span></div></td><td class="rest">1·Per B, 2·Anna B, 4·Johan Sander, 5·Louise Sander, 6·Karl T, 7·Christina T, 10·Henrik B, 11·Charlotte B</td></tr><tr><td><span class="rc">7</span></td><td class="time">21:35</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">1·12</span><span class="vs">vs</span><span class="tt">3·4</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">6·8</span><span class="vs">vs</span><span class="tt">9·10</span></div></td><td class="rest">2·Anna B, 5·Louise Sander, 7·Christina T, 11·Charlotte B, 13·Jenny Ö, 14·Stefan L, 15·Hans N, 16·Sista minuten</td></tr><tr><td><span class="rc">8</span></td><td class="time">21:47</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">7·15</span><span class="vs">vs</span><span class="tt">11·14</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">2·13</span><span class="vs">vs</span><span class="tt">5·16</span></div></td><td class="rest">1·Per B, 3·Patrik G, 4·Johan Sander, 6·Karl T, 8·Jonas Sjöberg, 9·Johan Sahlstrand, 10·Henrik B, 12·Anders Ö</td></tr></tbody></table></div>
+    </div></div><div class="blk c16 tab-slips"><div class="card"><div class="card-title">Matchlappar · 16 st</div>
+    <div class="note">Skriv ut, klipp längs de streckade linjerna och dela ut en lapp per match.</div>
+    <span class="print-hint">🖨 Skriv ut: Dela-menyn → Skriv ut (eller Cmd/Ctrl+P)</span>
+    <div style="height:14px"></div><div class="slips"><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">1</span> 20:05</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#1</span> Per B<br><span class="hash">#4</span> Johan Sander</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#6</span> Karl T<br><span class="hash">#10</span> Henrik B</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">1</span> 20:05</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#3</span> Patrik G<br><span class="hash">#12</span> Anders Ö</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#8</span> Jonas Sjöberg<br><span class="hash">#9</span> Johan Sahlstrand</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">2</span> 20:17</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#13</span> Jenny Ö<br><span class="hash">#16</span> Sista minuten</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#14</span> Stefan L<br><span class="hash">#15</span> Hans N</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">2</span> 20:17</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#2</span> Anna B<br><span class="hash">#5</span> Louise Sander</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#7</span> Christina T<br><span class="hash">#11</span> Charlotte B</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">3</span> 20:29</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#1</span> Per B<br><span class="hash">#6</span> Karl T</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#14</span> Stefan L<br><span class="hash">#16</span> Sista minuten</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">3</span> 20:29</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#4</span> Johan Sander<br><span class="hash">#10</span> Henrik B</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#13</span> Jenny Ö<br><span class="hash">#15</span> Hans N</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">4</span> 20:41</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#5</span> Louise Sander<br><span class="hash">#11</span> Charlotte B</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#8</span> Jonas Sjöberg<br><span class="hash">#12</span> Anders Ö</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">4</span> 20:41</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#2</span> Anna B<br><span class="hash">#7</span> Christina T</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#3</span> Patrik G<br><span class="hash">#9</span> Johan Sahlstrand</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">5</span> 21:11</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#1</span> Per B<br><span class="hash">#10</span> Henrik B</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#2</span> Anna B<br><span class="hash">#11</span> Charlotte B</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">5</span> 21:11</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#4</span> Johan Sander<br><span class="hash">#6</span> Karl T</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#5</span> Louise Sander<br><span class="hash">#7</span> Christina T</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">6</span> 21:23</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#9</span> Johan Sahlstrand<br><span class="hash">#12</span> Anders Ö</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#13</span> Jenny Ö<br><span class="hash">#14</span> Stefan L</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">6</span> 21:23</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#3</span> Patrik G<br><span class="hash">#8</span> Jonas Sjöberg</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#15</span> Hans N<br><span class="hash">#16</span> Sista minuten</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">7</span> 21:35</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#1</span> Per B<br><span class="hash">#12</span> Anders Ö</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#3</span> Patrik G<br><span class="hash">#4</span> Johan Sander</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">7</span> 21:35</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#6</span> Karl T<br><span class="hash">#8</span> Jonas Sjöberg</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#9</span> Johan Sahlstrand<br><span class="hash">#10</span> Henrik B</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">8</span> 21:47</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#7</span> Christina T<br><span class="hash">#15</span> Hans N</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#11</span> Charlotte B<br><span class="hash">#14</span> Stefan L</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">8</span> 21:47</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#2</span> Anna B<br><span class="hash">#13</span> Jenny Ö</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#5</span> Louise Sander<br><span class="hash">#16</span> Sista minuten</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div></div></div></div><div class="blk c16 tab-result"><div class="card"><div class="card-title">Resultatkort · 16 st</div>
+    <div class="note">Skriv in varje spelares poäng per rond och summera i <b>TOT</b>. Skuggade rutor = vilar den ronden.
+      Högst total = kvällens Kioskvältare (vid lika: flest vunna matcher).</div>
+    <span class="print-hint">🖨 Skriv ut: Dela-menyn → Skriv ut (eller Cmd/Ctrl+P)</span>
+    <div style="height:14px"></div>
+    <div class="tbl-wrap"><table class="res"><thead><tr><th class="rc-num">#</th><th class="rc-name">Spelare</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th><th>R6</th><th>R7</th><th>R8</th><th class="rc-tot">TOT</th></tr></thead><tbody><tr><td class="rc-num">1</td>
+      <td class="rc-name"><input type="text" value="Per B" aria-label="Spelare 1"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">2</td>
+      <td class="rc-name"><input type="text" value="Anna B" aria-label="Spelare 2"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">3</td>
+      <td class="rc-name"><input type="text" value="Patrik G" aria-label="Spelare 3"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">4</td>
+      <td class="rc-name"><input type="text" value="Johan Sander" aria-label="Spelare 4"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">5</td>
+      <td class="rc-name"><input type="text" value="Louise Sander" aria-label="Spelare 5"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">6</td>
+      <td class="rc-name"><input type="text" value="Karl T" aria-label="Spelare 6"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">7</td>
+      <td class="rc-name"><input type="text" value="Christina T" aria-label="Spelare 7"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">8</td>
+      <td class="rc-name"><input type="text" value="Jonas Sjöberg" aria-label="Spelare 8"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">9</td>
+      <td class="rc-name"><input type="text" value="Johan Sahlstrand" aria-label="Spelare 9"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">10</td>
+      <td class="rc-name"><input type="text" value="Henrik B" aria-label="Spelare 10"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">11</td>
+      <td class="rc-name"><input type="text" value="Charlotte B" aria-label="Spelare 11"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">12</td>
+      <td class="rc-name"><input type="text" value="Anders Ö" aria-label="Spelare 12"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">13</td>
+      <td class="rc-name"><input type="text" value="Jenny Ö" aria-label="Spelare 13"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">14</td>
+      <td class="rc-name"><input type="text" value="Stefan L" aria-label="Spelare 14"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">15</td>
+      <td class="rc-name"><input type="text" value="Hans N" aria-label="Spelare 15"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">16</td>
+      <td class="rc-name"><input type="text" value="Sista minuten" aria-label="Spelare 16"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr></tbody></table></div></div></div><div class="blk c20 tab-schema">
+    <div class="card">
+      <div class="card-title">Spelare · 20 st</div>
+      <div class="roster"><div class="ros"><span class="rb">1</span><span class="rn">Spelare 1</span></div><div class="ros"><span class="rb">2</span><span class="rn">Spelare 2</span></div><div class="ros"><span class="rb">3</span><span class="rn">Spelare 3</span></div><div class="ros"><span class="rb">4</span><span class="rn">Spelare 4</span></div><div class="ros"><span class="rb">5</span><span class="rn">Spelare 5</span></div><div class="ros"><span class="rb">6</span><span class="rn">Spelare 6</span></div><div class="ros"><span class="rb">7</span><span class="rn">Spelare 7</span></div><div class="ros"><span class="rb">8</span><span class="rn">Spelare 8</span></div><div class="ros"><span class="rb">9</span><span class="rn">Spelare 9</span></div><div class="ros"><span class="rb">10</span><span class="rn">Spelare 10</span></div><div class="ros"><span class="rb">11</span><span class="rn">Spelare 11</span></div><div class="ros"><span class="rb">12</span><span class="rn">Spelare 12</span></div><div class="ros"><span class="rb">13</span><span class="rn">Spelare 13</span></div><div class="ros"><span class="rb">14</span><span class="rn">Spelare 14</span></div><div class="ros"><span class="rb">15</span><span class="rn">Spelare 15</span></div><div class="ros"><span class="rb">16</span><span class="rn">Spelare 16</span></div><div class="ros"><span class="rb">17</span><span class="rn">Spelare 17</span></div><div class="ros"><span class="rb">18</span><span class="rn">Spelare 18</span></div><div class="ros"><span class="rb">19</span><span class="rn">Spelare 19</span></div><div class="ros"><span class="rb">20</span><span class="rn">Spelare 20</span></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Spelschema</div>
+      <div class="tbl-wrap"><table class="sched">
+        <thead><tr><th style="width:40px">#</th><th style="width:56px">Tid</th><th>Matcher</th><th>Vila</th></tr></thead>
+        <tbody><tr><td><span class="rc">1</span></td><td class="time">20:05</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">1·2</span><span class="vs">vs</span><span class="tt">3·4</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">5·6</span><span class="vs">vs</span><span class="tt">7·8</span></div></td><td class="rest">9·Spelare 9, 10·Spelare 10, 11·Spelare 11, 12·Spelare 12, 13·Spelare 13, 14·Spelare 14, 15·Spelare 15, 16·Spelare 16, 17·Spelare 17, 18·Spelare 18, 19·Spelare 19, 20·Spelare 20</td></tr><tr><td><span class="rc">2</span></td><td class="time">20:17</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">9·10</span><span class="vs">vs</span><span class="tt">11·12</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">13·14</span><span class="vs">vs</span><span class="tt">15·16</span></div></td><td class="rest">1·Spelare 1, 2·Spelare 2, 3·Spelare 3, 4·Spelare 4, 5·Spelare 5, 6·Spelare 6, 7·Spelare 7, 8·Spelare 8, 17·Spelare 17, 18·Spelare 18, 19·Spelare 19, 20·Spelare 20</td></tr><tr><td><span class="rc">3</span></td><td class="time">20:29</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">17·1</span><span class="vs">vs</span><span class="tt">18·2</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">19·3</span><span class="vs">vs</span><span class="tt">20·4</span></div></td><td class="rest">5·Spelare 5, 6·Spelare 6, 7·Spelare 7, 8·Spelare 8, 9·Spelare 9, 10·Spelare 10, 11·Spelare 11, 12·Spelare 12, 13·Spelare 13, 14·Spelare 14, 15·Spelare 15, 16·Spelare 16</td></tr><tr><td><span class="rc">4</span></td><td class="time">20:41</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">5·7</span><span class="vs">vs</span><span class="tt">6·8</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">9·11</span><span class="vs">vs</span><span class="tt">10·12</span></div></td><td class="rest">1·Spelare 1, 2·Spelare 2, 3·Spelare 3, 4·Spelare 4, 13·Spelare 13, 14·Spelare 14, 15·Spelare 15, 16·Spelare 16, 17·Spelare 17, 18·Spelare 18, 19·Spelare 19, 20·Spelare 20</td></tr><tr class="break-row"><td colspan="4">🍕 PAUS — 20:51 · 18 min 🍷</td></tr><tr><td><span class="rc">5</span></td><td class="time">21:11</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">13·15</span><span class="vs">vs</span><span class="tt">14·16</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">17·18</span><span class="vs">vs</span><span class="tt">19·20</span></div></td><td class="rest">1·Spelare 1, 2·Spelare 2, 3·Spelare 3, 4·Spelare 4, 5·Spelare 5, 6·Spelare 6, 7·Spelare 7, 8·Spelare 8, 9·Spelare 9, 10·Spelare 10, 11·Spelare 11, 12·Spelare 12</td></tr><tr><td><span class="rc">6</span></td><td class="time">21:23</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">1·3</span><span class="vs">vs</span><span class="tt">2·4</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">5·8</span><span class="vs">vs</span><span class="tt">6·7</span></div></td><td class="rest">9·Spelare 9, 10·Spelare 10, 11·Spelare 11, 12·Spelare 12, 13·Spelare 13, 14·Spelare 14, 15·Spelare 15, 16·Spelare 16, 17·Spelare 17, 18·Spelare 18, 19·Spelare 19, 20·Spelare 20</td></tr><tr><td><span class="rc">7</span></td><td class="time">21:35</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">9·12</span><span class="vs">vs</span><span class="tt">10·11</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">13·16</span><span class="vs">vs</span><span class="tt">14·15</span></div></td><td class="rest">1·Spelare 1, 2·Spelare 2, 3·Spelare 3, 4·Spelare 4, 5·Spelare 5, 6·Spelare 6, 7·Spelare 7, 8·Spelare 8, 17·Spelare 17, 18·Spelare 18, 19·Spelare 19, 20·Spelare 20</td></tr><tr><td><span class="rc">8</span></td><td class="time">21:47</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">17·2</span><span class="vs">vs</span><span class="tt">18·1</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">19·4</span><span class="vs">vs</span><span class="tt">20·3</span></div></td><td class="rest">5·Spelare 5, 6·Spelare 6, 7·Spelare 7, 8·Spelare 8, 9·Spelare 9, 10·Spelare 10, 11·Spelare 11, 12·Spelare 12, 13·Spelare 13, 14·Spelare 14, 15·Spelare 15, 16·Spelare 16</td></tr><tr><td><span class="rc">9</span></td><td class="time">21:59</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">5·9</span><span class="vs">vs</span><span class="tt">6·10</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">7·11</span><span class="vs">vs</span><span class="tt">8·12</span></div></td><td class="rest">1·Spelare 1, 2·Spelare 2, 3·Spelare 3, 4·Spelare 4, 13·Spelare 13, 14·Spelare 14, 15·Spelare 15, 16·Spelare 16, 17·Spelare 17, 18·Spelare 18, 19·Spelare 19, 20·Spelare 20</td></tr><tr><td><span class="rc">10</span></td><td class="time">22:11</td><td>
+      <div class="court-label">Bana 1</div>
+      <div class="matchup"><span class="tt">13·17</span><span class="vs">vs</span><span class="tt">14·18</span></div><div style="height:6px"></div>
+      <div class="court-label">Bana 2</div>
+      <div class="matchup"><span class="tt">15·19</span><span class="vs">vs</span><span class="tt">16·20</span></div></td><td class="rest">1·Spelare 1, 2·Spelare 2, 3·Spelare 3, 4·Spelare 4, 5·Spelare 5, 6·Spelare 6, 7·Spelare 7, 8·Spelare 8, 9·Spelare 9, 10·Spelare 10, 11·Spelare 11, 12·Spelare 12</td></tr></tbody></table></div>
+    </div></div><div class="blk c20 tab-slips"><div class="card"><div class="card-title">Matchlappar · 20 st</div>
+    <div class="note">Skriv ut, klipp längs de streckade linjerna och dela ut en lapp per match.</div>
+    <span class="print-hint">🖨 Skriv ut: Dela-menyn → Skriv ut (eller Cmd/Ctrl+P)</span>
+    <div style="height:14px"></div><div class="slips"><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">1</span> 20:05</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#1</span> Spelare 1<br><span class="hash">#2</span> Spelare 2</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#3</span> Spelare 3<br><span class="hash">#4</span> Spelare 4</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">1</span> 20:05</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#5</span> Spelare 5<br><span class="hash">#6</span> Spelare 6</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#7</span> Spelare 7<br><span class="hash">#8</span> Spelare 8</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">2</span> 20:17</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#9</span> Spelare 9<br><span class="hash">#10</span> Spelare 10</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#11</span> Spelare 11<br><span class="hash">#12</span> Spelare 12</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">2</span> 20:17</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#13</span> Spelare 13<br><span class="hash">#14</span> Spelare 14</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#15</span> Spelare 15<br><span class="hash">#16</span> Spelare 16</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">3</span> 20:29</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#17</span> Spelare 17<br><span class="hash">#1</span> Spelare 1</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#18</span> Spelare 18<br><span class="hash">#2</span> Spelare 2</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">3</span> 20:29</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#19</span> Spelare 19<br><span class="hash">#3</span> Spelare 3</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#20</span> Spelare 20<br><span class="hash">#4</span> Spelare 4</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">4</span> 20:41</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#5</span> Spelare 5<br><span class="hash">#7</span> Spelare 7</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#6</span> Spelare 6<br><span class="hash">#8</span> Spelare 8</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">4</span> 20:41</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#9</span> Spelare 9<br><span class="hash">#11</span> Spelare 11</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#10</span> Spelare 10<br><span class="hash">#12</span> Spelare 12</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">5</span> 21:11</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#13</span> Spelare 13<br><span class="hash">#15</span> Spelare 15</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#14</span> Spelare 14<br><span class="hash">#16</span> Spelare 16</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">5</span> 21:11</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#17</span> Spelare 17<br><span class="hash">#18</span> Spelare 18</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#19</span> Spelare 19<br><span class="hash">#20</span> Spelare 20</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">6</span> 21:23</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#1</span> Spelare 1<br><span class="hash">#3</span> Spelare 3</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#2</span> Spelare 2<br><span class="hash">#4</span> Spelare 4</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">6</span> 21:23</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#5</span> Spelare 5<br><span class="hash">#8</span> Spelare 8</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#6</span> Spelare 6<br><span class="hash">#7</span> Spelare 7</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">7</span> 21:35</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#9</span> Spelare 9<br><span class="hash">#12</span> Spelare 12</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#10</span> Spelare 10<br><span class="hash">#11</span> Spelare 11</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">7</span> 21:35</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#13</span> Spelare 13<br><span class="hash">#16</span> Spelare 16</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#14</span> Spelare 14<br><span class="hash">#15</span> Spelare 15</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">8</span> 21:47</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#17</span> Spelare 17<br><span class="hash">#2</span> Spelare 2</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#18</span> Spelare 18<br><span class="hash">#1</span> Spelare 1</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">8</span> 21:47</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#19</span> Spelare 19<br><span class="hash">#4</span> Spelare 4</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#20</span> Spelare 20<br><span class="hash">#3</span> Spelare 3</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">9</span> 21:59</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#5</span> Spelare 5<br><span class="hash">#9</span> Spelare 9</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#6</span> Spelare 6<br><span class="hash">#10</span> Spelare 10</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">9</span> 21:59</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#7</span> Spelare 7<br><span class="hash">#11</span> Spelare 11</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#8</span> Spelare 8<br><span class="hash">#12</span> Spelare 12</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">10</span> 22:11</span><span class="slip-court">Bana 1</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#13</span> Spelare 13<br><span class="hash">#17</span> Spelare 17</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#14</span> Spelare 14<br><span class="hash">#18</span> Spelare 18</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div><div class="slip"><span class="sciss">✂</span>
+        <div class="slip-head"><span class="slip-round"><span class="rc">10</span> 22:11</span><span class="slip-court">Bana 2</span></div>
+        <div class="slip-event">Kioskvältaren</div>
+        
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 1</div>
+          <div class="slip-names"><span class="hash">#15</span> Spelare 15<br><span class="hash">#19</span> Spelare 19</div>
+        </div><div class="slip-score"></div></div><div class="slip-vs">VS</div>
+        <div class="slip-team"><div class="slip-info">
+          <div class="slip-lbl">Lag 2</div>
+          <div class="slip-names"><span class="hash">#16</span> Spelare 16<br><span class="hash">#20</span> Spelare 20</div>
+        </div><div class="slip-score"></div></div>
+        <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div></div></div></div></div><div class="blk c20 tab-result"><div class="card"><div class="card-title">Resultatkort · 20 st</div>
+    <div class="note">Skriv in varje spelares poäng per rond och summera i <b>TOT</b>. Skuggade rutor = vilar den ronden.
+      Högst total = kvällens Kioskvältare (vid lika: flest vunna matcher).</div>
+    <span class="print-hint">🖨 Skriv ut: Dela-menyn → Skriv ut (eller Cmd/Ctrl+P)</span>
+    <div style="height:14px"></div>
+    <div class="tbl-wrap"><table class="res"><thead><tr><th class="rc-num">#</th><th class="rc-name">Spelare</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th><th>R6</th><th>R7</th><th>R8</th><th>R9</th><th>R10</th><th class="rc-tot">TOT</th></tr></thead><tbody><tr><td class="rc-num">1</td>
+      <td class="rc-name"><input type="text" value="Spelare 1" aria-label="Spelare 1"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">2</td>
+      <td class="rc-name"><input type="text" value="Spelare 2" aria-label="Spelare 2"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">3</td>
+      <td class="rc-name"><input type="text" value="Spelare 3" aria-label="Spelare 3"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">4</td>
+      <td class="rc-name"><input type="text" value="Spelare 4" aria-label="Spelare 4"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">5</td>
+      <td class="rc-name"><input type="text" value="Spelare 5" aria-label="Spelare 5"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">6</td>
+      <td class="rc-name"><input type="text" value="Spelare 6" aria-label="Spelare 6"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">7</td>
+      <td class="rc-name"><input type="text" value="Spelare 7" aria-label="Spelare 7"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">8</td>
+      <td class="rc-name"><input type="text" value="Spelare 8" aria-label="Spelare 8"></td>
+      <td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">9</td>
+      <td class="rc-name"><input type="text" value="Spelare 9" aria-label="Spelare 9"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">10</td>
+      <td class="rc-name"><input type="text" value="Spelare 10" aria-label="Spelare 10"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">11</td>
+      <td class="rc-name"><input type="text" value="Spelare 11" aria-label="Spelare 11"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">12</td>
+      <td class="rc-name"><input type="text" value="Spelare 12" aria-label="Spelare 12"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rc-tot write"></td></tr><tr><td class="rc-num">13</td>
+      <td class="rc-name"><input type="text" value="Spelare 13" aria-label="Spelare 13"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">14</td>
+      <td class="rc-name"><input type="text" value="Spelare 14" aria-label="Spelare 14"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">15</td>
+      <td class="rc-name"><input type="text" value="Spelare 15" aria-label="Spelare 15"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">16</td>
+      <td class="rc-name"><input type="text" value="Spelare 16" aria-label="Spelare 16"></td>
+      <td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">17</td>
+      <td class="rc-name"><input type="text" value="Spelare 17" aria-label="Spelare 17"></td>
+      <td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">18</td>
+      <td class="rc-name"><input type="text" value="Spelare 18" aria-label="Spelare 18"></td>
+      <td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">19</td>
+      <td class="rc-name"><input type="text" value="Spelare 19" aria-label="Spelare 19"></td>
+      <td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr><tr><td class="rc-num">20</td>
+      <td class="rc-name"><input type="text" value="Spelare 20" aria-label="Spelare 20"></td>
+      <td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="rest-cell">·</td><td class="write"></td><td class="rest-cell">·</td><td class="write"></td><td class="rc-tot write"></td></tr></tbody></table></div></div></div>
+
+  <section id="s-rules" class="blk">
+    <div class="card rules">
+      <div class="card-title">Regler — Americano</div>
+      <h4>Varje match</h4>
+      <ul>
+        <li><strong>Längd:</strong> 10 minuter per match — spela så många poäng ni hinner.</li>
+        <li><strong>Poäng:</strong> Rally scoring — varje boll en poäng, oavsett servare. Oavgjort är ok.</li>
+        <li><strong>Serve:</strong> 2 servar per spelare, sedan byter serven till andra laget. Rotera laget runt.</li>
+      </ul>
+      <h4>Individuell Americano</h4>
+      <ul>
+        <li>Du byter partner varje rond — följ ditt nummer. Par spelar aldrig ihop.</li>
+        <li>Skriv upp dina egna poäng efter varje match (poängen din sida vann).</li>
+        <li><strong>Vinnare:</strong> spelaren med flest poäng totalt = kvällens <strong>Kioskvältare</strong>.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+</body>
+</html>
