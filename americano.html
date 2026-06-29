@@ -784,9 +784,9 @@ input:disabled, select:disabled {
 <nav id="nav-bar">
   <button class="active" data-tab="setup" onclick="switchTab('setup')">&#9881; Inställningar</button>
   <button data-tab="schedule" onclick="switchTab('schedule')">&#9654; Spelschema</button>
-  <button data-tab="slips" onclick="switchTab('slips')">&#9986; Matchlappar</button>
   <button data-tab="results" onclick="switchTab('results')">&#9998; Resultat</button>
   <button data-tab="leaderboard" onclick="switchTab('leaderboard')">&#9733; Leaderboard</button>
+  <button data-tab="slips" onclick="switchTab('slips')">&#9986; Matchlappar</button>
 </nav>
 
 <main>
@@ -1080,30 +1080,41 @@ function loadState() {
 // ============================================================
 // SCHEDULE GENERATION
 // ============================================================
-function generateSchedule(numPlayers, numCourts, numRounds) {
-  // Use hardcoded optimal schedule for 16p / 2 courts / 8 rounds (the PDF)
-  if (numPlayers === 16 && numCourts === 2 && (!numRounds || numRounds === 8)) {
-    return SCHED16.map((r, i) => ({
-      roundNum: i + 1,
-      courts: r.courts,
-      rest: r.rest
-    }));
-  }
+function gcd(a, b) { return b ? gcd(b, a % b) : a; }
 
-  // Ensure playersPerRound is a multiple of 4 (4 players per court)
-  const maxForCourts = numCourts * 4;
-  const rawActive = Math.min(maxForCourts, numPlayers);
-  const playersPerRound = Math.max(4, Math.floor(rawActive / 4) * 4);
+// Active players per round for a given player/court count (multiple of 4).
+function activePerRound(numPlayers, numCourts) {
+  const rawActive = Math.min(numCourts * 4, numPlayers);
+  return Math.max(4, Math.floor(rawActive / 4) * 4);
+}
+
+// Smallest number of rounds after which every player has played an equal
+// number of matches. Any multiple of this block keeps games-per-player equal.
+function equalGamesBlock(numPlayers, numCourts) {
+  const ppr = activePerRound(numPlayers, numCourts);
+  return numPlayers / gcd(numPlayers, ppr);
+}
+
+function generateSchedule(numPlayers, numCourts, numRounds) {
+  const playersPerRound = activePerRound(numPlayers, numCourts);
   const actualCourts = playersPerRound / 4;
   const restPerRound = numPlayers - playersPerRound;
+  const block = equalGamesBlock(numPlayers, numCourts);
 
-  // Use requested round count; fall back to a sensible default
+  // Fall back to a sensible default round count
   if (!numRounds || numRounds < 1) {
-    if (restPerRound <= 0) {
-      numRounds = Math.max(3, Math.min(numPlayers - 1, 8));
-    } else {
-      numRounds = Math.ceil(4 * numPlayers / playersPerRound);
-    }
+    numRounds = restPerRound <= 0
+      ? Math.max(block, Math.min(numPlayers - 1, 8))
+      : Math.ceil(4 * numPlayers / playersPerRound);
+  }
+
+  // ALWAYS snap to a multiple of the equal-games block so everyone plays the
+  // same number of matches (req: lika antal matcher).
+  numRounds = Math.max(block, Math.round(numRounds / block) * block);
+
+  // Hardcoded PDF schedule for the canonical 16p / 2 courts / 8 rounds case
+  if (numPlayers === 16 && numCourts === 2 && numRounds === 8) {
+    return SCHED16.map((r, i) => ({ roundNum: i + 1, courts: r.courts, rest: r.rest }));
   }
 
   return generateAlgoSchedule(numPlayers, actualCourts, numRounds, playersPerRound, restPerRound);
@@ -1256,36 +1267,43 @@ function windowMinutes() {
 }
 
 // Suggest rounds / matchMin / transMin from the time window, players, courts.
+// Rounds is always a multiple of the equal-games block, so every player gets
+// the same number of matches. If even one block does not fit the window, the
+// result is marked infeasible with a suggested (later) end time.
 function computeSuggestion() {
   const players = S.players.length;
-  const ppr = playersPerRound();
+  const courts = intVal('s-ncourts', 2);
+  const block = equalGamesBlock(players, courts);
   const warmup = intVal('s-warmup', 5);
   const transMin = intVal('s-transmin', 2) || 2;
   const breaksTotal = getBreaks().reduce((s, b) => s + b.minutes, 0);
+  const startMin = parseTimeToMin(val('s-start') || '20:00');
   const available = windowMinutes() - warmup - breaksTotal;
+  const TARGET = 10, MINM = 6, MAXM = 15;
 
-  if (available < transMin + 4) {
-    return { feasible: false, rounds: 1, matchMin: 5, transMin };
-  }
-
-  // Aim for ~4 games per player, then fit match length into [6, 15] minutes.
-  let rounds = Math.max(1, Math.round(4 * players / ppr));
+  // Ideal rounds for ~10-min matches, snapped to a multiple of the block.
+  const ideal = available / (TARGET + transMin);
+  let rounds = Math.max(block, Math.round(ideal / block) * block);
   let matchMin = Math.floor(available / rounds) - transMin;
 
-  // Too long → add rounds (more games). Too short → fewer rounds.
+  // Too-short matches → drop whole blocks (keeps games equal) until they fit.
   let guard = 0;
-  while (matchMin > 15 && rounds < 30 && guard++ < 60) {
-    rounds++;
+  while (matchMin < MINM && rounds > block && guard++ < 100) {
+    rounds -= block;
     matchMin = Math.floor(available / rounds) - transMin;
   }
-  guard = 0;
-  while (matchMin < 6 && rounds > 1 && guard++ < 60) {
-    rounds--;
-    matchMin = Math.floor(available / rounds) - transMin;
-  }
-  matchMin = Math.max(4, matchMin);
 
-  return { feasible: true, rounds, matchMin, transMin };
+  if (matchMin < MINM) {
+    // Not even one block fits → need a longer window.
+    const neededTotal = warmup + breaksTotal + block * (MINM + transMin);
+    return {
+      feasible: false, rounds: block, matchMin: MINM, transMin, block,
+      suggestedEnd: formatMin(startMin + neededTotal)
+    };
+  }
+
+  matchMin = Math.min(matchMin, MAXM);
+  return { feasible: true, rounds, matchMin, transMin, block };
 }
 
 // Apply suggestion to the input fields, then refresh.
@@ -1315,6 +1333,10 @@ function updatePlanReadout() {
   const el = document.getElementById('plan-readout');
   if (!el) return;
 
+  const players = S.players.length;
+  const courts = intVal('s-ncourts', 2);
+  const ppr = playersPerRound();
+  const block = equalGamesBlock(players, courts);
   const warmup = intVal('s-warmup', 5);
   const rounds = intVal('s-nrounds', 8);
   const matchMin = intVal('s-matchmin', 10);
@@ -1325,16 +1347,27 @@ function updatePlanReadout() {
 
   const total = warmup + rounds * (matchMin + transMin) + breaksTotal;
   const computedEnd = formatMin(startMin + total);
-  const gpp = gamesPerPlayerRange(rounds);
-  const diff = total - win;
+  const equal = rounds % block === 0;
+  const gpp = equal ? String(rounds * ppr / players) : gamesPerPlayerRange(rounds) + ' (ojämnt)';
+  const roundEl = m => formatMin(startMin + m);
 
-  let cls = 'fit-ok', status = `&#9989; Ryms inom tidsfönstret (${win - total} min marginal).`;
-  if (diff > 0) {
+  let cls, status, endBtn = '';
+  if (!equal) {
+    // Round count doesn't give everyone equal matches → suggest nearest block.
+    const sug = Math.max(block, Math.round(rounds / block) * block);
+    const sugEnd = roundEl(warmup + sug * (matchMin + transMin) + breaksTotal);
     cls = 'fit-over';
-    status = `&#9888;&#65039; ${diff} min för långt — korta matchtid/ronder eller flytta sluttiden.`;
-  } else if (win - total > (matchMin + transMin)) {
-    cls = '';
-    status = `&#8505;&#65039; ${win - total} min outnyttjad tid — du kan lägga till en rond eller längre matcher.`;
+    status = `&#9888;&#65039; Ojämnt — alla spelar inte lika. Välj <b>${sug} ronder</b> (multipel av ${block}) för lika antal matcher; det ger slut ${sugEnd}.`;
+    endBtn = `<button class="btn btn-sm btn-outline" style="margin-top:8px;" onclick="applySuggestion()">Justera till ${sug} ronder</button>`;
+  } else if (total > win) {
+    // Equal, but doesn't fit the window → suggest a later end time.
+    cls = 'fit-over';
+    status = `&#9888;&#65039; ${total - win} min för långt för tidsfönstret. Flytta <b>sluttiden till ${computedEnd}</b> för att hinna med alla ${rounds} ronder (alla spelar ${rounds * ppr / players} matcher).`;
+    endBtn = `<button class="btn btn-sm btn-outline" style="margin-top:8px;" onclick="applySuggestedEnd('${computedEnd}')">Flytta sluttid till ${computedEnd}</button>`;
+  } else {
+    cls = 'fit-ok';
+    const slack = win - total;
+    status = `&#9989; Alla spelar <b>${rounds * ppr / players} matcher</b>. Ryms inom tidsfönstret${slack > 0 ? ` (${slack} min marginal)` : ''}.`;
   }
 
   el.className = 'plan-readout ' + cls;
@@ -1349,9 +1382,18 @@ function updatePlanReadout() {
       <span class="plan-stat">Alla spelar <b>${gpp} ggr</b></span>
     </div>
     <div class="pr-line" style="margin-top:6px;">${status}</div>
+    ${endBtn}
   `;
 
   updateHeaderInfo(rounds, computedEnd, gpp);
+}
+
+// Apply a suggested end time, then re-fit the plan.
+function applySuggestedEnd(hhmm) {
+  const e = document.getElementById('s-end');
+  if (e) e.value = hhmm;
+  persistSettings();
+  applySuggestion();
 }
 
 function updateHeaderInfo(rounds, computedEnd, gpp) {
@@ -1682,11 +1724,36 @@ function syncPlayerCountDropdown(n) {
 // ============================================================
 // GENERATE SCHEDULE
 // ============================================================
+// Random permutation of player ids [1..n] (Fisher–Yates).
+function randomPermutation(n) {
+  const a = Array.from({ length: n }, (_, i) => i + 1);
+  for (let i = n - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Relabel every player id in the schedule through perm (perm[id-1] = new id).
+// The base schedule is balanced for the id set, and relabeling is a bijection,
+// so equal games and partnership variety are preserved — only WHICH players
+// appear in each round/court changes (so round 1 isn't always players 1–8).
+function remapSchedule(schedule, perm) {
+  const map = id => perm[id - 1];
+  return schedule.map(r => ({
+    roundNum: r.roundNum,
+    courts: r.courts.map(c => ({ t1: c.t1.map(map), t2: c.t2.map(map) })),
+    rest: r.rest.map(map).sort((a, b) => a - b)
+  }));
+}
+
 function generateAndShow() {
   const n = S.players.length;
   const nc = intVal('s-ncourts', 2);
   const nr = intVal('s-nrounds', 0);
-  S.schedule = generateSchedule(n, nc, nr);
+  const base = generateSchedule(n, nc, nr);
+  // Shuffle which players take each slot (req: slumpa spelordning)
+  S.schedule = remapSchedule(base, randomPermutation(n));
   // Keep the rounds field in sync with what was actually generated
   document.getElementById('s-nrounds').value = S.schedule.length;
   S.results = {};
@@ -1701,6 +1768,16 @@ function generateAndShow() {
   refreshLeaderboard();
   updatePlanReadout();
   switchTab('schedule');
+}
+
+// Re-shuffle the play order without changing settings (req: slumpa om).
+function reshuffleOrder() {
+  if (!S.schedule) { generateAndShow(); return; }
+  if (Object.keys(S.results).length &&
+      !confirm('Detta blandar om spelordningen och rensar inmatade resultat. Fortsätta?')) {
+    return;
+  }
+  generateAndShow();
 }
 
 // ============================================================
@@ -1796,9 +1873,12 @@ function renderSchedule() {
     <div class="flex justify-between align-center mb-3 wrap gap-2">
       <div>
         <strong style="font-size:1.1rem;">${S.players.length} spelare &nbsp;·&nbsp; ${S.schedule.length} ronder</strong>
-        <div class="text-xs" style="margin-top:2px;">Alla spelar ${countGamesPerPlayer()} gånger</div>
+        <div class="text-xs" style="margin-top:2px;">Alla spelar ${countGamesPerPlayer()} matcher · slumpad spelordning</div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="window.print()">&#128438; Skriv ut</button>
+      <div class="flex gap-2 wrap">
+        <button class="btn btn-gold btn-sm" onclick="reshuffleOrder()">&#127922; Slumpa om spelordning</button>
+        <button class="btn btn-outline btn-sm" onclick="window.print()">&#128438; Skriv ut</button>
+      </div>
     </div>
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="sched-table">
