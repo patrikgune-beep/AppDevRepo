@@ -642,6 +642,113 @@ input:disabled, select:disabled {
 }
 .plan-stat b { color: var(--navy); }
 
+/* ===== MATCH SLIPS ===== */
+.slips-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+.slip {
+  border: 2px dashed var(--navy);
+  border-radius: 8px;
+  padding: 12px 14px 10px;
+  background: white;
+  position: relative;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.slip-scissors {
+  position: absolute;
+  top: -11px;
+  left: 10px;
+  background: white;
+  color: var(--navy);
+  font-size: 0.85rem;
+  padding: 0 4px;
+  line-height: 1;
+}
+.slip-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--gold);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+.slip-round {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 800;
+  color: var(--navy);
+  font-size: 0.9rem;
+}
+.slip-round .round-circle { width: 24px; height: 24px; font-size: 0.72rem; }
+.slip-court {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: white;
+  background: var(--navy);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+.slip-event {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 0.72rem;
+  color: var(--gray);
+  text-align: center;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.slip-team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+}
+.slip-team-info { flex: 1; min-width: 0; }
+.slip-team-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+.slip-names { font-weight: 700; font-size: 0.92rem; line-height: 1.25; color: #1a1a2e; }
+.slip-score {
+  width: 52px;
+  height: 44px;
+  border: 2px solid var(--navy);
+  border-radius: 5px;
+  flex-shrink: 0;
+  background: repeating-linear-gradient(transparent, transparent 21px, #eee 21px, #eee 22px);
+}
+.slip-vs {
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--gray);
+  border-top: 1px dotted #ccc;
+  border-bottom: 1px dotted #ccc;
+  padding: 2px 0;
+  margin: 2px 0;
+}
+.slip-foot {
+  margin-top: 9px;
+  border-top: 1px solid #eee;
+  padding-top: 6px;
+  font-size: 0.62rem;
+  color: var(--gray);
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+.slip-foot b { color: var(--red); }
+
 @media (max-width: 600px) {
   main { padding: 12px; }
   nav button { padding: 10px 11px; font-size: 0.7rem; }
@@ -652,10 +759,13 @@ input:disabled, select:disabled {
 }
 
 @media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   nav, .btn, .view-toggle, .round-tabs, .alert { display: none !important; }
   header { position: static; }
-  main { max-width: 100%; padding: 8px; }
+  main { max-width: 100%; padding: 8px; border: none; box-shadow: none; }
   .card { box-shadow: none; border: 1px solid #ccc; }
+  .slips-grid { gap: 10px; }
+  .slip { border-color: #1B2A4A; }
 }
 </style>
 </head>
@@ -674,6 +784,7 @@ input:disabled, select:disabled {
 <nav id="nav-bar">
   <button class="active" data-tab="setup" onclick="switchTab('setup')">&#9881; Inställningar</button>
   <button data-tab="schedule" onclick="switchTab('schedule')">&#9654; Spelschema</button>
+  <button data-tab="slips" onclick="switchTab('slips')">&#9986; Matchlappar</button>
   <button data-tab="results" onclick="switchTab('results')">&#9998; Resultat</button>
   <button data-tab="leaderboard" onclick="switchTab('leaderboard')">&#9733; Leaderboard</button>
 </nav>
@@ -830,6 +941,16 @@ input:disabled, select:disabled {
     <div class="alert alert-info">
       <span class="alert-icon">&#8505;</span>
       <div>Gå till <strong>Inställningar</strong> och tryck <strong>Generera spelschema</strong> för att skapa ett schema.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SLIPS TAB ========== -->
+<div id="tab-slips" class="tab-content hidden">
+  <div id="slips-content">
+    <div class="alert alert-info">
+      <span class="alert-icon">&#8505;</span>
+      <div>Generera ett spelschema först — sedan kan du skriva ut matchlappar här.</div>
     </div>
   </div>
 </div>
@@ -1574,6 +1695,7 @@ function generateAndShow() {
   saveState();
   renderBreaks();
   renderSchedule();
+  renderSlips();
   renderResults();
   refreshLeaderboard();
   updatePlanReadout();
@@ -1703,6 +1825,72 @@ function countGamesPerPlayer() {
   if (!vals.length) return 0;
   const min = Math.min(...vals), max = Math.max(...vals);
   return min === max ? min : `${min}–${max}`;
+}
+
+// ============================================================
+// RENDER — MATCH SLIPS (printable, cut-out)
+// ============================================================
+function slipNames(ids) {
+  return ids.map(id =>
+    `<span style="color:var(--gray);font-weight:800;">#${id}</span> ${escHtml(pname(id))}`
+  ).join('<br>');
+}
+
+function renderSlips() {
+  const el = document.getElementById('slips-content');
+  if (!el) return;
+  if (!S.schedule || !S.schedule.length) {
+    el.innerHTML = `<div class="alert alert-info"><span class="alert-icon">&#8505;</span>
+      <div>Generera ett spelschema först — sedan kan du skriva ut matchlappar här.</div></div>`;
+    return;
+  }
+
+  const eventName = (document.getElementById('s-title')?.value || 'Americano').trim() || 'Americano';
+  let slips = '';
+  let count = 0;
+
+  for (const round of S.schedule) {
+    const time = getRoundTime(round.roundNum);
+    round.courts.forEach((c, ci) => {
+      count++;
+      slips += `
+        <div class="slip">
+          <span class="slip-scissors">&#9986;</span>
+          <div class="slip-head">
+            <span class="slip-round"><span class="round-circle">${round.roundNum}</span> ${time}</span>
+            <span class="slip-court">Bana ${ci + 1}</span>
+          </div>
+          <div class="slip-event">${escHtml(eventName)}</div>
+          <div class="slip-team">
+            <div class="slip-team-info">
+              <div class="slip-team-label">Lag 1</div>
+              <div class="slip-names">${slipNames(c.t1)}</div>
+            </div>
+            <div class="slip-score" title="Poäng Lag 1"></div>
+          </div>
+          <div class="slip-vs">VS</div>
+          <div class="slip-team">
+            <div class="slip-team-info">
+              <div class="slip-team-label">Lag 2</div>
+              <div class="slip-names">${slipNames(c.t2)}</div>
+            </div>
+            <div class="slip-score" title="Poäng Lag 2"></div>
+          </div>
+          <div class="slip-foot">Skriv poängen i rutorna och lämna till <b>sekretariatet</b></div>
+        </div>`;
+    });
+  }
+
+  el.innerHTML = `
+    <div class="flex justify-between align-center mb-3 wrap gap-2">
+      <div>
+        <strong style="font-size:1.1rem;">${count} matchlappar &nbsp;·&nbsp; ${S.schedule.length} ronder</strong>
+        <div class="text-xs" style="margin-top:2px;">Skriv ut, klipp längs de streckade linjerna och dela ut en lapp per match.</div>
+      </div>
+      <button class="btn btn-navy btn-sm" onclick="window.print()">&#128438; Skriv ut matchlappar</button>
+    </div>
+    <div class="slips-grid">${slips}</div>
+  `;
 }
 
 // ============================================================
@@ -1964,6 +2152,7 @@ function switchTab(tab) {
   if (tab === 'leaderboard') refreshLeaderboard();
   if (tab === 'results') renderResults();
   if (tab === 'schedule') renderSchedule();
+  if (tab === 'slips') renderSlips();
 }
 
 // ============================================================
@@ -2002,6 +2191,7 @@ function init() {
   renderPlayerGrid();
   renderBreaks();
   renderSchedule();
+  renderSlips();
   renderResults();
   renderLeaderboard();
   switchTab(S.currentTab || 'setup');
