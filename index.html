@@ -217,6 +217,7 @@ const MAX_SEEDS = 4;
 /* ---------- Tidsluckor (minuter från midnatt) ----------
    Ungdom: 30 min/match, vardagar 9–13, paus 30 min efter 3 matcher.
    Senior: 60 min/match, alla dagar 13–21, paus 60 min efter 3 matcher.
+   Helg: seniorer spelar dessutom förmiddag 8–11 (3 matcher à 60 min, paus efter tre).
    Lunch 12–13. */
 const MATCH_MIN_YOUTH = 30;
 const MATCH_MIN_SENIOR = 60;
@@ -229,15 +230,24 @@ function buildZoneSlots(startMin, endMin, matchMin, perBreak, breakMin){
   }
   return out;
 }
-const YOUTH_SLOTS  = buildZoneSlots(540,780,MATCH_MIN_YOUTH,3,30);    // 9–13, 30 min match + 30 min paus
-const SENIOR_SLOTS = buildZoneSlots(780,1260,MATCH_MIN_SENIOR,3,60);  // 13–21, 60 min match + 60 min paus
-function slotsFor(type){ return type==="youth"?YOUTH_SLOTS:SENIOR_SLOTS; }
-const ALL_SLOTS = [...new Set([...YOUTH_SLOTS,...SENIOR_SLOTS])].sort((a,b)=>a-b);
+const YOUTH_SLOTS   = buildZoneSlots(540,780,MATCH_MIN_YOUTH,3,30);    // 9–13, 30 min match + 30 min paus
+const SENIOR_SLOTS  = buildZoneSlots(780,1260,MATCH_MIN_SENIOR,3,60);  // 13–21, 60 min match + 60 min paus
+const SENIOR_MORNING= buildZoneSlots(480,780,MATCH_MIN_SENIOR,3,60);   // 8–11 (endast helg), 60 min match
+// Tillgängliga tider för en klasstyp en given dag.
+function slotsFor(type, day){
+  if(type==="youth") return YOUTH_SLOTS;
+  return (day && isWeekend(day)) ? [...SENIOR_MORNING, ...SENIOR_SLOTS] : SENIOR_SLOTS;
+}
+// Alla tider en given dag kan ha (helg = seniorförmiddag + eftermiddag; vardag = ungdom + senior).
+function daySlots(day){
+  return isWeekend(day) ? [...SENIOR_MORNING, ...SENIOR_SLOTS] : [...YOUTH_SLOTS, ...SENIOR_SLOTS];
+}
+const ALL_SLOTS = [...new Set([...YOUTH_SLOTS,...SENIOR_MORNING,...SENIOR_SLOTS])].sort((a,b)=>a-b);
 function fmtMin(m){ return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); }
-// Matchlängd utifrån tidpunkt: före 13:00 = ungdom (30 min), från 13:00 = senior (60 min).
-function slotDur(t){ return t<780 ? MATCH_MIN_YOUTH : MATCH_MIN_SENIOR; }
-function timeLabel(m){ return fmtMin(m)+"–"+fmtMin(m+slotDur(m)); }
-function hourLabel(m){ return timeLabel(m); }   // bakåtkompatibelt namn
+// Matchlängd: helg = alltid senior (60 min); vardag: före 13:00 = ungdom (30), annars senior (60).
+function slotDur(t, day){ if(day && isWeekend(day)) return MATCH_MIN_SENIOR; return t<780 ? MATCH_MIN_YOUTH : MATCH_MIN_SENIOR; }
+function timeLabel(m, day){ return fmtMin(m)+"–"+fmtMin(m+slotDur(m, day)); }
+function hourLabel(m, day){ return timeLabel(m, day); }   // bakåtkompatibelt namn
 
 /* ---------- Spelarnamn ---------- */
 // Ta bort rank "(n)" i slutet av ett namn (för jämförelse/gruppering).
@@ -668,7 +678,7 @@ function matchHTML(cls,m,total){
     if(m.winner && p && m.winner===p) cl+=" win";
     return `<div class="${cl}"><span class="nm" id="nm_${m.id}_${key}">${nm||""}</span>${m.winner===p?' 🏆':''}</div>`;
   };
-  const sched = m.day?`<div class="sched-tag">📅 ${dayShort(m.day)} · ${m.time!=null?hourLabel(m.time):'-'} · Bana ${m.court||'-'}</div>`:"";
+  const sched = m.day?`<div class="sched-tag">📅 ${dayShort(m.day)} · ${m.time!=null?hourLabel(m.time,m.day):'-'} · Bana ${m.court||'-'}</div>`:"";
   return `<div class="match">
      ${slotHTML(m.p1,"p1")}
      ${slotHTML(m.p2,"p2")}
@@ -692,7 +702,7 @@ function renderSchedule(){
    <div class="hint no-print">
      <b>Ungdom:</b> 30 min/match, vardagar 9–13, paus 30 min efter 3 matcher.
      <b>Senior:</b> 60 min/match, alla dagar 13–21, paus 60 min efter 3 matcher. Lunch 12–13.
-     <b>Lör/sön spelar endast seniorer.</b>
+     <b>Lör/sön:</b> endast seniorer – då även förmiddag 8–11 (3 matcher à 60 min, paus efter tre).
      Max 3 matcher/dag/person och aldrig samtidigt på två banor.
      Ungdomsfinaler läggs ${youthFinalDay()?dayLong(youthFinalDay()):'näst sista dagen'},
      övriga finaler ${adultFinalDay()?dayLong(adultFinalDay()):'sista dagen'}.
@@ -826,7 +836,7 @@ function sameTimeBusy(day,t,m){
 }
 
 function dayTimes(day){
-  return [...new Set([...ALL_SLOTS,
+  return [...new Set([...daySlots(day),
      ...realMatches().filter(m=>m.day===day&&m.time!=null).map(m=>m.time)])].sort((a,b)=>a-b);
 }
 function renderSchedGrid(){
@@ -839,7 +849,7 @@ function renderSchedGrid(){
   let lunchShown=false;
   for(const t of dayTimes(day)){
     if(!lunchShown && t>=780){ html+=`<tr><td class="time">12:00–13:00</td><td class="lunch" colspan="${courts}">🍽 Lunchpaus</td></tr>`; lunchShown=true; }
-    html+=`<tr><td class="time">${timeLabel(t)}</td>`;
+    html+=`<tr><td class="time">${timeLabel(t, day)}</td>`;
     for(let ct=1;ct<=courts;ct++){
       const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct);
       html+=`<td class="slotcell">${here.map(m=>mtileHTML(m,bad)).join("")}</td>`;
@@ -856,7 +866,7 @@ function mtileHTML(m,bad){
   const conf=bad.has(m.id)?" conflict":"";
   const dayCourts=courtsForDay(m.day||ui.day);
   const courtOpts=Array.from({length:dayCourts},(_,i)=>`<option value="${i+1}" ${m.court===i+1?'selected':''}>Bana ${i+1}</option>`).join("");
-  const tset=[...new Set([...ALL_SLOTS, ...(m.time!=null?[m.time]:[])])].sort((a,b)=>a-b);
+  const tset=[...new Set([...daySlots(m.day||ui.day), ...(m.time!=null?[m.time]:[])])].sort((a,b)=>a-b);
   const timeOpts=tset.map(t=>`<option value="${t}" ${m.time===t?'selected':''}>${fmtMin(t)}</option>`).join("");
   const dayOpts=getDays().map(d=>`<option value="${d.date}" ${m.day===d.date?'selected':''}>${d.dow.slice(0,3)} ${d.short}</option>`).join("");
   return `<div class="mtile ${c.type}${conf}" data-id="${m.id}">
@@ -931,7 +941,7 @@ function placeMatch(m,day,opts={}){
   if(playerDayCount(day,m) >= 3) return false;                  // max 3 matcher/dag/person
   if(opts.requireUnused && playerDayCount(day,m) > 0) return false;
   const courts=courtsForDay(day);
-  for(const t of slotsFor(cls.type)){
+  for(const t of slotsFor(cls.type, day)){
     if(sameTimeBusy(day,t,m)) continue;                         // ej samma tid på annan bana
     for(let ct=1;ct<=courts;ct++){
       if(realMatches().some(x=>x.day===day&&x.time===t&&x.court===ct&&x.id!==m.id)) continue;
@@ -1049,7 +1059,7 @@ function resultsHTML(day){
     h+=`<table class="results"><thead><tr><th>Tid</th><th>Bana</th><th>Klass</th><th>Match</th><th>Resultat</th><th>Vinnare</th></tr></thead><tbody>`;
     played.sort((a,b)=>(a.time||0)-(b.time||0)).forEach(m=>{
       const c=getClass(m.classId);
-      h+=`<tr><td>${m.time!=null?hourLabel(m.time):'-'}</td><td>${m.court||'-'}</td><td>${c.name}</td>
+      h+=`<tr><td>${m.time!=null?hourLabel(m.time,m.day):'-'}</td><td>${m.court||'-'}</td><td>${c.name}</td>
         <td>${m.p1} – ${m.p2}</td><td>${m.score||'WO'}</td><td><b>${m.winner}</b></td></tr>`;
     });
     h+=`</tbody></table>`;
@@ -1059,7 +1069,7 @@ function resultsHTML(day){
     h+=`<div class="card"><h2>Ospelade matcher kvar denna dag</h2><table class="results"><tbody>`;
     upcoming.sort((a,b)=>(a.time||0)-(b.time||0)).forEach(m=>{
       const c=getClass(m.classId);
-      h+=`<tr><td>${m.time!=null?hourLabel(m.time):'-'}</td><td>Bana ${m.court||'-'}</td><td>${c.name}</td><td>${m.p1} – ${m.p2}</td></tr>`;
+      h+=`<tr><td>${m.time!=null?hourLabel(m.time,m.day):'-'}</td><td>Bana ${m.court||'-'}</td><td>${c.name}</td><td>${m.p1} – ${m.p2}</td></tr>`;
     });
     h+=`</tbody></table></div>`;
   }
@@ -1087,9 +1097,9 @@ function printBlankSchedule(){
   html+=`<table class="schedtable" style="width:100%"><thead><tr><th style="width:120px">Tid</th>${
      Array.from({length:courts},(_,i)=>`<th>Bana ${i+1}</th>`).join("")}</tr></thead><tbody>`;
   let lunchShown=false;
-  for(const t of ALL_SLOTS){
+  for(const t of daySlots(ui.day)){
     if(!lunchShown && t>=780){ html+=`<tr><td class="time">12:00–13:00</td><td colspan="${courts}" style="text-align:center">Lunchpaus</td></tr>`; lunchShown=true; }
-    html+=`<tr><td class="time">${timeLabel(t)}</td>`;
+    html+=`<tr><td class="time">${timeLabel(t, ui.day)}</td>`;
     for(let ct=1;ct<=courts;ct++){
       html+=`<td style="height:42px"><div style="color:#bbb;font-size:11px">Klass: ____________</div>
         <div style="color:#bbb;font-size:11px">__________ &nbsp;–&nbsp; __________</div></td>`;
@@ -1110,7 +1120,7 @@ function printSchedule(day){
   let lunchShown=false;
   for(const t of dayTimes(day)){
     if(!lunchShown && t>=780){ html+=`<tr><td class="time">12:00–13:00</td><td colspan="${courts}" style="text-align:center">Lunchpaus</td></tr>`; lunchShown=true; }
-    html+=`<tr><td class="time">${timeLabel(t)}</td>`;
+    html+=`<tr><td class="time">${timeLabel(t, day)}</td>`;
     for(let ct=1;ct<=courts;ct++){
       const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct);
       html+=`<td>${here.map(m=>{const c=getClass(m.classId);return `<b>${c.name}</b><br>${m.p1} – ${m.p2}${isFinal(c,m)?' <i>(final)</i>':''}`;}).join("<hr>")}</td>`;
