@@ -116,27 +116,14 @@
 
   <div class="modal-overlay" id="profile-modal" style="display:none">
     <div class="modal">
-
-      <div id="profile-list-view">
-        <h2>Profiler</h2>
-        <div id="profile-list-container" class="profile-list-container"></div>
-        <button class="modal-action-btn" id="show-create-profile-btn">+ Skapa ny profil</button>
-        <div class="modal-footer-row">
-          <button class="modal-skip-btn" id="profile-close-btn">Stäng</button>
-        </div>
+      <h2>Ditt namn</h2>
+      <p>Används för att spara historik och statistik på den här enheten.</p>
+      <input type="text" id="profile-alias-input" placeholder="Ditt namn" maxlength="50" autocomplete="nickname">
+      <p class="profile-create-error" id="profile-create-error"></p>
+      <div class="modal-actions">
+        <button class="modal-submit-btn" id="profile-submit-btn">Spara</button>
+        <button class="modal-skip-btn" id="profile-close-btn">Stäng</button>
       </div>
-
-      <div id="profile-create-view" style="display:none">
-        <h2>Skapa profil</h2>
-        <p>Ange ett namn för din profil.</p>
-        <input type="text" id="profile-alias-input" placeholder="Ditt namn / alias" maxlength="50" autocomplete="nickname">
-        <p class="profile-create-error" id="profile-create-error"></p>
-        <div class="modal-actions">
-          <button class="modal-submit-btn" id="profile-submit-btn">Skapa profil</button>
-          <button class="modal-skip-btn" id="profile-create-cancel-btn">Tillbaka</button>
-        </div>
-      </div>
-
     </div>
   </div>
 
