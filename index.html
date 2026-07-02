@@ -302,6 +302,7 @@ ensureDay();
 function newState(){
   return {
     courts: 2,
+    migratedV2: true,
     extraCourts: {},
     tournament: defaultTournament(),
     classes: DEFAULT_CLASSES.map((c,i)=>({
@@ -317,15 +318,18 @@ function normalize(s){
   if(!s.tournament.start||!s.tournament.end) s.tournament=defaultTournament();
   if(!s.extraCourts) s.extraCourts={};
   s.classes=s.classes||[];
-  // Migrering: döp om gamla juniorklasser och lägg till nya juniorklasser.
-  const renameMap={"Pojksingel":"Pojksingel Äldre","Flicksingel":"Flicksingel Äldre"};
-  s.classes.forEach(c=>{ if(renameMap[c.name]) c.name=renameMap[c.name]; });
-  [["Pojksingel Yngre","youth"],["Flicksingel Yngre","youth"],["Minidubbel","youth"]].forEach(([name,type])=>{
-    if(!s.classes.some(c=>c.name===name)){
-      s.classes.push({ id:"c"+uid(), name, type, ranked:false, seeds:4, catNo:s.classes.length+1,
-        participants:[], matches:[], champion:null });
-    }
-  });
+  // Engångsmigrering (annars återskapas klasser som användaren tagit bort/döpt om).
+  if(!s.migratedV2){
+    const renameMap={"Pojksingel":"Pojksingel Äldre","Flicksingel":"Flicksingel Äldre"};
+    s.classes.forEach(c=>{ if(renameMap[c.name]) c.name=renameMap[c.name]; });
+    [["Pojksingel Yngre","youth"],["Flicksingel Yngre","youth"],["Minidubbel","youth"]].forEach(([name,type])=>{
+      if(!s.classes.some(c=>c.name===name)){
+        s.classes.push({ id:"c"+uid(), name, type, ranked:false, seeds:4, catNo:s.classes.length+1,
+          participants:[], matches:[], champion:null });
+      }
+    });
+    s.migratedV2=true;
+  }
   (s.classes||[]).forEach((c,ci)=>{
     // Sätt/uppdatera seedningsflaggan utifrån klassnamnet (robust mot gammal data).
     if(c.ranked===undefined) c.ranked = RANKED_CLASSES.has(c.name);
@@ -337,6 +341,39 @@ function normalize(s){
     }
   });
   return s;
+}
+// Synliga (ej dolda) klasser – används i väljare, statistik och listor.
+function visibleClasses(){ return state.classes.filter(c=>!c.hidden); }
+// Klasshantering: lägg till, döp om, dölj/visa, ta bort.
+function addClass_(){
+  const name=(prompt("Namn på den nya klassen:")||"").trim();
+  if(!name) return;
+  if(state.classes.some(c=>c.name===name)){ alert("Det finns redan en klass med det namnet."); return; }
+  const youth=confirm("Är detta en juniorklass (spelas vardagar 9–13, 30 min/match)?\nOK = junior · Avbryt = senior");
+  state.classes.push({ id:"c"+uid(), name, type: youth?"youth":"adult",
+    ranked:false, seeds:4, catNo: state.classes.length+1,
+    participants:[], matches:[], champion:null });
+  ui.classId=state.classes[state.classes.length-1].id;
+  save(); render();
+}
+function renameClass(cls){
+  const nn=(prompt(`Nytt namn för klassen "${cls.name}":`, cls.name)||"").trim();
+  if(!nn || nn===cls.name) return;
+  if(state.classes.some(c=>c!==cls && c.name===nn)){ alert("Det finns redan en klass med det namnet."); return; }
+  cls.name=nn; save(); render();
+}
+function toggleHideClass(cls){
+  cls.hidden=!cls.hidden;
+  save(); render();
+}
+function deleteClass(cls){
+  const extra=cls.participants.length?` Klassen har ${cls.participants.length} deltagare och ${cls.matches.length} matcher som också tas bort.`:"";
+  if(!confirm(`Ta bort klassen "${cls.name}" permanent?${extra} Detta kan inte ångras.`)) return;
+  const i=state.classes.indexOf(cls);
+  if(i>=0) state.classes.splice(i,1);
+  if(!state.classes.length){ alert("Minst en klass måste finnas – skapar en ny tom klass."); state.classes.push({id:"c"+uid(),name:"Ny klass",type:"adult",ranked:false,seeds:4,catNo:1,participants:[],matches:[],champion:null}); }
+  if(!getClass(ui.classId)) ui.classId=state.classes[0].id;
+  save(); render();
 }
 // Ska klassen seedas?
 function isRanked(cls){ return cls.ranked!==undefined ? cls.ranked : RANKED_CLASSES.has(cls.name); }
@@ -582,7 +619,7 @@ function appVersionText(){
 
 /* ----- Tab: Statistik ----- */
 function renderStats(){
-  const days=getDays(), classes=state.classes;
+  const days=getDays(), classes=visibleClasses();
   if(!days.length){ app.innerHTML=`<div class="card"><h2>Statistik</h2><p class="muted">Ange turneringens datum under <b>Klasser &amp; deltagare</b> först.</p></div>`; return; }
   const all=realMatches();
   const schedOf=(cid,date)=> all.filter(m=>m.classId===cid && m.day===date).length;
@@ -723,13 +760,22 @@ function renderClasses(){
    </div>
    <div class="card no-print">
      <h2>Klasser</h2>
-     <p class="small muted">Klicka på en klass för att klistra in deltagare och bygga stegen.</p>
+     <p class="small muted">Klicka på en klass för att klistra in deltagare och bygga stegen. Dolda klasser visas gråade här men syns inte i övriga flikar.</p>
      <div class="grid-classes" id="clsGrid"></div>
+     <div class="row" style="margin-top:12px">
+       <button class="btn mini" id="addClassBtn">➕ Lägg till klass</button>
+     </div>
    </div>
    <div class="card">
      <h2>${cls.name}
         <span class="badge ${cls.type}">${cls.type==='youth'?'Ungdom 9–13':'Senior 13–21'}</span>
-        ${isRanked(cls)?`<span class="badge" style="background:#f6efd2;color:#8a6d00">★ Seedas (top ${seedCountOf(cls)})</span>`:'<span class="badge" style="background:#eee;color:#777">Ingen seedning</span>'}</h2>
+        ${isRanked(cls)?`<span class="badge" style="background:#f6efd2;color:#8a6d00">★ Seedas (top ${seedCountOf(cls)})</span>`:'<span class="badge" style="background:#eee;color:#777">Ingen seedning</span>'}
+        ${cls.hidden?'<span class="badge" style="background:#e8e8e8;color:#666">🙈 Dold</span>':''}</h2>
+     <div class="row" style="margin:6px 0 10px">
+       <button class="btn ghost mini" id="renameClsBtn">✏️ Döp om klass</button>
+       <button class="btn ghost mini" id="hideClsBtn">${cls.hidden?'👁 Visa klass':'🙈 Dölj klass'}</button>
+       <button class="btn gray mini" id="deleteClsBtn">🗑 Ta bort klass</button>
+     </div>
      <div class="hint">
        Klistra in deltagare – <b>en rad per deltagare</b>. För dubbelklasser: skriv paret på en rad,
        t.ex. <i>Anna Andersson / Björn Berg</i>.
@@ -780,8 +826,8 @@ function renderClasses(){
   };
   document.getElementById("clsGrid").innerHTML=state.classes.map(c=>{
     const done=c.champion?`<span class="badge done">✓ ${dispName(c.champion)}</span>`:"";
-    return `<div class="classcard ${c.id===cls.id?'active':''}" data-id="${c.id}">
-      <div class="ttl"><span class="sw" style="background:${classColor(c)}"></span>${c.name} ${isRanked(c)?`<span title="Seedas – top ${seedCountOf(c)}" style="color:#c9a227">★</span>`:''}</div>
+    return `<div class="classcard ${c.id===cls.id?'active':''}" data-id="${c.id}" style="${c.hidden?'opacity:.45':''}">
+      <div class="ttl"><span class="sw" style="background:${classColor(c)}"></span>${c.name} ${isRanked(c)?`<span title="Seedas – top ${seedCountOf(c)}" style="color:#c9a227">★</span>`:''} ${c.hidden?'🙈':''}</div>
       <div class="meta">
         <span class="badge ${c.type}">${c.type==='youth'?'Ungdom':'Senior'}</span>
         &nbsp;${c.participants.length} delt. ${done}
@@ -789,6 +835,10 @@ function renderClasses(){
   }).join("");
   document.querySelectorAll("#clsGrid .classcard").forEach(el=>
     el.onclick=()=>{ui.classId=el.dataset.id;render();});
+  document.getElementById("addClassBtn").onclick=addClass_;
+  document.getElementById("renameClsBtn").onclick=()=>renameClass(cls);
+  document.getElementById("hideClsBtn").onclick=()=>toggleHideClass(cls);
+  document.getElementById("deleteClsBtn").onclick=()=>deleteClass(cls);
   function applySeedChange(){
     // Om stegen redan är byggd: erbjud att lotta om så att ändringen slår igenom direkt.
     if(cls.matches.some(m=>!m.manual) && confirm("Lotta om stegen nu så att seedningsändringen tillämpas? (Registrerade resultat och schemaläggning för klassen försvinner.)"))
@@ -855,7 +905,7 @@ function renderBracketTab(){
      <div class="row">
        <span class="sw" style="background:${classColor(cls)};width:16px;height:16px;border-radius:4px;display:inline-block"></span>
        <label class="small">Klass:
-         <select id="clsSel">${state.classes.map(c=>`<option value="${c.id}" ${c.id===cls.id?'selected':''}>${c.name}</option>`).join("")}</select>
+         <select id="clsSel">${visibleClasses().map(c=>`<option value="${c.id}" ${c.id===cls.id?'selected':''}>${c.name}</option>`).join("")}</select>
        </label>
        <span class="badge ${cls.type}">${cls.type==='youth'?'Ungdom 9–13':'Senior 13–21'}</span>
        ${isRanked(cls)?`<span class="badge" style="background:#f6efd2;color:#8a6d00">★ Seedas (top ${seedCountOf(cls)})</span>`:''}
@@ -1065,6 +1115,8 @@ function renderSchedule(){
      <button class="btn ghost mini" id="printSched">🖨 Skriv ut dagens schema</button>
      <button class="btn ghost mini" id="printBlank">🖨 Skriv ut blankt schema</button>
      <label class="small"><input type="checkbox" id="fullGrid" ${ui.fullGrid?'checked':''}> Visa alla tider (08–21)</label>
+     <label class="small" title="Auto-schemaläggning får lägga in matcher i nästa omgång även om föregående omgång i klassen inte är färdigspelad">
+       <input type="checkbox" id="earlyRounds" ${state.allowEarlyRounds?'checked':''}> Tillåt senare omgångar</label>
      <span style="flex:1"></span>
      <label class="small">Extra banor denna dag:
        <select id="extraCourts">${[0,1,2].map(v=>`<option value="${v}" ${((state.extraCourts[ui.day]||0)===v)?'selected':''}>+${v}</option>`).join("")}</select>
@@ -1075,7 +1127,7 @@ function renderSchedule(){
      <h2>Lägg till match i schemat (${dayShort(ui.day)})</h2>
      <div class="row">
        <label class="small">Klass:
-         <select id="addClass">${state.classes.map(c=>`<option value="${c.id}">${c.name}</option>`).join("")}</select>
+         <select id="addClass">${visibleClasses().map(c=>`<option value="${c.id}">${c.name}</option>`).join("")}</select>
        </label>
        <button class="btn" id="randMatch">🎲 Slumpa in ny match</button>
        <span class="muted small">– slumpar två deltagare ur vald klass</span>
@@ -1120,6 +1172,7 @@ function renderSchedule(){
   document.getElementById("clearSched").onclick=clearAllSchedule;
   document.getElementById("printBlank").onclick=()=>printBlankSchedule();
   document.getElementById("fullGrid").onchange=e=>{ ui.fullGrid=e.target.checked; render(); };
+  document.getElementById("earlyRounds").onchange=e=>{ state.allowEarlyRounds=e.target.checked; save(); render(); };
   // Sök i schemat (klass/deltagare, vald dag eller hela schemat)
   const ss=document.getElementById("schedSearch");
   ss.oninput=e=>{ ui.schedSearch=e.target.value; renderSchedSearch(); };
@@ -1330,7 +1383,7 @@ function bindTileCtrls(){
   });
 }
 function renderUnsched(){
-  const list=realMatches().filter(m=>isReady(m)&&!m.day);
+  const list=realMatches().filter(m=>isReady(m)&&!m.day&&!getClass(m.classId).hidden);
   const box=document.getElementById("unsched");
   if(!list.length){ box.innerHTML=`<span class="muted">Inga spelklara matcher väntar på schemaläggning.</span>`; return; }
   box.innerHTML=list.map(m=>{
@@ -1397,31 +1450,32 @@ function roundComplete(cls,r){
   const ms=cls.matches.filter(m=>m.round===r);
   return ms.length>0 && ms.every(m=>m.winner);
 }
-// Auto: spela klart en hel omgång i klassen innan nästa omgång schemaläggs.
+// Auto: spela klart en hel omgång i klassen innan nästa omgång schemaläggs
+// (kan stängas av via "Tillåt senare omgångar" i Schema-fliken).
 function roundReadyForAuto(cls,m){
+  if(state.allowEarlyRounds) return true;
   if(m.manual || m.round===0) return true;
   return roundComplete(cls, m.round-1);
 }
 function generateDay(day){
   const sortFn=(a,b)=>((a.round==null?99:a.round)-(b.round==null?99:b.round));
+  const ok=(m,cls)=>!cls.hidden && dayHasFinalsAllowed(cls,m,day) && canPlayDayAuto(cls,day) && roundReadyForAuto(cls,m);
   // Pass 1: prioritera matcher där ingen spelare redan spelar den dagen (undvik flera/dag).
   realMatches().filter(m=>isReady(m)&&!m.day).sort(sortFn).forEach(m=>{
     const cls=getClass(m.classId);
-    if(!dayHasFinalsAllowed(cls,m,day) || !canPlayDayAuto(cls,day) || !roundReadyForAuto(cls,m)) return;
-    placeMatch(m,day,{requireUnused:true});
+    if(ok(m,cls)) placeMatch(m,day,{requireUnused:true});
   });
   // Pass 2: fyll resten (upp till 3 matcher/dag/person).
   realMatches().filter(m=>isReady(m)&&!m.day).sort(sortFn).forEach(m=>{
     const cls=getClass(m.classId);
-    if(!dayHasFinalsAllowed(cls,m,day) || !canPlayDayAuto(cls,day) || !roundReadyForAuto(cls,m)) return;
-    placeMatch(m,day);
+    if(ok(m,cls)) placeMatch(m,day);
   });
 }
 
 /* ----- Tab: Deltagarlista (per person, utifrån namn) ----- */
 function participantIndex(filterId){
   const map=new Map(); // namn -> Set(klassnamn)
-  const classes = filterId ? state.classes.filter(c=>c.id===filterId) : state.classes;
+  const classes = filterId ? state.classes.filter(c=>c.id===filterId) : visibleClasses();
   for(const c of classes){
     for(const line of c.participants){
       for(const part of String(line).split("/")){
@@ -1465,7 +1519,7 @@ function renamePlayer(oldName,newName){
 // ännu inte är klar (t.ex. seedad spelare i omgång 2 som väntar på vinnare).
 function playerMatches(name, filterId){
   const res=[];
-  const classes = filterId ? state.classes.filter(c=>c.id===filterId) : state.classes;
+  const classes = filterId ? state.classes.filter(c=>c.id===filterId) : visibleClasses();
   for(const c of classes) for(const m of c.matches){
     if((m.p1 || m.p2) && !isByeMatch(m) && playersOf(m).includes(name)) res.push({m,c});
   }
@@ -1479,7 +1533,7 @@ function renderParticipants(){
   const fcls=fid?getClass(fid):null;
   const idx=participantIndex(fid);
   const q=(ui.playerSearch||"").trim().toLowerCase();
-  const classOpts=`<option value="">Alla klasser</option>`+state.classes.map(c=>`<option value="${c.id}" ${fid===c.id?'selected':''}>${c.name} (${c.participants.length})</option>`).join("");
+  const classOpts=`<option value="">Alla klasser</option>`+visibleClasses().map(c=>`<option value="${c.id}" ${fid===c.id?'selected':''}>${c.name} (${c.participants.length})</option>`).join("");
   let html=`<div class="card no-print">
      <h2>Deltagarlista &amp; sök</h2>
      <p class="small muted">Välj klass för att söka/lista deltagare i en specifik klass (eller "Alla klasser"). Dubbelpar delas på "/".</p>
@@ -1552,7 +1606,7 @@ function printParticipants(fid){
   doPrint(html);
 }
 function printParticipantsByClass(fid){
-  const classes=(fid?state.classes.filter(c=>c.id===fid):state.classes).filter(c=>c.participants.length);
+  const classes=(fid?state.classes.filter(c=>c.id===fid):visibleClasses()).filter(c=>c.participants.length);
   if(!classes.length){ alert("Inga deltagare att skriva ut."); return; }
   let html=printHeader("Deltagare per klass");
   for(const c of classes){
@@ -1718,7 +1772,7 @@ function printBracketPages(list){
   window.print();
 }
 function printOneBracket(cls){ printBracketPages([cls]); }   // stege-fliken
-function printBrackets(){ printBracketPages(state.classes); } // "Skriv ut alla stegar"
+function printBrackets(){ printBracketPages(visibleClasses()); } // "Skriv ut alla stegar"
 
 /* ----- Toolbar / export / import ----- */
 document.getElementById("courtsInput").onchange=e=>{
