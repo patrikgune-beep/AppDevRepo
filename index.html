@@ -77,10 +77,12 @@
   .bracket{display:flex;gap:34px;overflow-x:auto;padding:10px 4px 20px}
   .round{display:flex;flex-direction:column;justify-content:space-around;min-width:210px}
   .round h3{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;text-align:center;margin:0 0 6px}
+  .bracket{position:relative}
   .match{
     background:#fff;border:1px solid var(--line);border-radius:9px;margin:9px 0;
-    position:relative;
+    position:relative;z-index:1;
   }
+  .match .slot.swapsel{background:#fff3bf;outline:2px solid #f0a500;border-radius:5px}
   .match .slot{display:flex;align-items:center;gap:6px;padding:7px 9px;border-bottom:1px dashed var(--line)}
   .match .slot:last-of-type{border-bottom:none}
   .match .slot .nm{flex:1;font-size:13px;cursor:pointer;border-radius:5px;padding:2px 4px}
@@ -132,12 +134,20 @@
   .small{font-size:12px}
   /* print */
   #printArea{display:none}
+  .a4page{position:relative;overflow:hidden;background:#fff}
+  .brtitle{display:none}
+  @page land{ size:A4 landscape; margin:6mm }
   @media print{
     header.app,.tabs,.toolbar,.daybar,#app,.no-print{display:none !important}
     body{background:#fff}
     #printArea{display:block;padding:0}
     #printArea h1{color:#000}
     .mtile .ctrls{display:none}
+    /* Liggande A4-utskrift av stege, en sida per bricka */
+    .a4page{width:1040px;height:720px;page:land;break-after:page;page-break-after:always}
+    .a4page:last-child{break-after:auto;page-break-after:auto}
+    body.printing-bracket .brtitle{display:block;position:fixed;top:2mm;left:4mm;font-family:'Arial Narrow',Arial;color:#b5362b;font-weight:bold;font-size:12px;z-index:20}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   }
 </style>
 </head>
@@ -341,6 +351,8 @@ function getClass(id){ return state.classes.find(c=>c.id===id); }
 const CLASS_COLORS = ["#d1495b","#3f88c5","#2e9e57","#8e44ad","#e07b16","#0e9aa7","#9A6324","#7a2e2e","#7f8c1e","#d81b8c","#5d6d7e"];
 function classColor(cls){ const i=state.classes.indexOf(cls); return CLASS_COLORS[(i<0?0:i)%CLASS_COLORS.length]; }
 function classColorId(id){ const c=getClass(id); return c?classColor(c):"#888"; }
+// Visningsnamn: dölj seedningssiffran "(n)" överallt utom i Klasser & deltagare.
+function dispName(x){ return x==null ? x : stripRank(x); }
 
 /* ---------------- Bracket / stege ---------------- */
 function seedOrder(size){
@@ -622,7 +634,7 @@ function renderClasses(){
     ensureDay(); save(); render();
   };
   document.getElementById("clsGrid").innerHTML=state.classes.map(c=>{
-    const done=c.champion?`<span class="badge done">✓ ${c.champion}</span>`:"";
+    const done=c.champion?`<span class="badge done">✓ ${dispName(c.champion)}</span>`:"";
     return `<div class="classcard ${c.id===cls.id?'active':''}" data-id="${c.id}">
       <div class="ttl"><span class="sw" style="background:${classColor(c)}"></span>${c.name} ${isRanked(c)?`<span title="Seedas – top ${seedCountOf(c)}" style="color:#c9a227">★</span>`:''}</div>
       <div class="meta">
@@ -689,7 +701,7 @@ function renderBracketTab(){
        </label>
        <span class="badge ${cls.type}">${cls.type==='youth'?'Ungdom 9–13':'Senior 13–21'}</span>
        ${isRanked(cls)?`<span class="badge" style="background:#f6efd2;color:#8a6d00">★ Seedas (top ${seedCountOf(cls)})</span>`:''}
-       ${cls.champion?`<span class="badge done">🏆 Mästare: ${cls.champion}</span>`:""}
+       ${cls.champion?`<span class="badge done">🏆 Mästare: ${dispName(cls.champion)}</span>`:""}
      </div>
      ${(isRanked(cls) && cls.matches.some(m=>!m.manual) && !cls.participants.some(p=>/\(\d+\)\s*$/.test(p)))
        ? `<div class="hint" style="border-color:#c9a227;background:#fbf6e3;margin-top:10px">
@@ -698,15 +710,30 @@ function renderBracketTab(){
      <p class="small muted" style="margin:8px 0 0">
        Skriv resultatet i rutan och välj <b>vinnare</b> i listan (eller klicka på spelarens namn).
        Vinnaren förs automatiskt vidare och nästa match blir spelklar i <b>Schema → Ej schemalagda</b>.</p>
+     ${ui.swapMode?`<div class="hint" style="border-color:#f0a500;background:#fff8e6;margin-top:10px">
+        🔀 <b>Bytesläge på:</b> klicka på en spelare i första omgången och sedan på en annan – de byter plats. (Berörda resultat nollställs.)</div>`:''}
      <div class="row" style="margin-top:10px">
+       <button class="btn ${ui.swapMode?'':'ghost'} mini" id="swapMode">🔀 Byt spelare ${ui.swapMode?'(på)':''}</button>
        <button class="btn ghost mini" id="rebuildBr">🔁 Lotta om / bygg stege</button>
        <button class="btn gray mini" id="clearBr">🗑 Rensa flik (denna stege)</button>
+       <span style="flex:1"></span>
+       <label class="small">Skriv ut stege på A4 (liggande):
+         bredd <select id="a4cols">${[1,2,3,4].map(n=>`<option>${n}</option>`).join("")}</select>
+         × höjd <select id="a4rows">${[1,2,3,4].map(n=>`<option>${n}</option>`).join("")}</select>
+       </label>
+       <button class="btn mini" id="printBr">🖨 Skriv ut stege</button>
      </div>
    </div>
    <div id="bracketWrap"></div>`;
-  document.getElementById("clsSel").onchange=e=>{ui.classId=e.target.value;render();};
+  document.getElementById("clsSel").onchange=e=>{ui.classId=e.target.value; ui.swapSel=null; render();};
   document.getElementById("rebuildBr").onclick=()=>rebuildBracketOf(cls);
   document.getElementById("clearBr").onclick=()=>clearBracketOf(cls);
+  document.getElementById("swapMode").onclick=()=>{ ui.swapMode=!ui.swapMode; ui.swapSel=null; render(); };
+  document.getElementById("printBr").onclick=()=>{
+    const cols=parseInt(document.getElementById("a4cols").value,10)||1;
+    const rows=parseInt(document.getElementById("a4rows").value,10)||1;
+    printBracketTiled(cls, cols, rows);
+  };
   const wrap=document.getElementById("bracketWrap");
   if(!cls.matches.length){
     if(cls.participants.length>=2){
@@ -727,42 +754,140 @@ function renderBracketTab(){
   // mästar-kolumn
   html+=`<div class="round"><h3>Mästare</h3><div class="champion" style="border-top:5px solid ${classColor(cls)}">
       <div class="lbl">🏆 Klubbmästare</div>
-      <div class="who">${cls.champion||"–"}</div></div></div>`;
+      <div class="who">${dispName(cls.champion)||"–"}</div></div></div>`;
   html+=`</div>`;
   wrap.innerHTML=html;
   // events
   cls.matches.forEach(m=>{
     ["p1","p2"].forEach(slot=>{
       const el=document.getElementById(`nm_${m.id}_${slot}`);
-      if(el) el.onclick=()=>{ if(m[slot]) setWinner(cls,m,m[slot]); };
+      if(el) el.onclick=()=>{
+        if(ui.swapMode) handleSwapClick(cls,m,slot);
+        else if(m[slot]) setWinner(cls,m,m[slot]);
+      };
     });
     const sc=document.getElementById(`sc_${m.id}`);
     if(sc) sc.onchange=()=>{ m.score=sc.value; save(); };
     const ws=document.getElementById(`win_${m.id}`);
     if(ws) ws.onchange=()=>{ registerWinner(cls,m,ws.value); };
   });
+  requestAnimationFrame(()=>drawBracketLines());
 }
 function matchHTML(cls,m,total){
+  const sel=ui.swapSel;
   const slotHTML=(p,key)=>{
-    let cl="slot", nm=p;
+    let cl="slot", nm=dispName(p);
     if(p===null){ cl+= (m.round===0?" bye":" tbd"); nm=(m.round===0?"BYE":"– vinnare –"); }
     if(m.winner && p && m.winner===p) cl+=" win";
+    if(sel && sel.id===m.id && sel.key===key) cl+=" swapsel";
     return `<div class="${cl}"><span class="nm" id="nm_${m.id}_${key}">${nm||""}</span>${m.winner===p?' 🏆':''}</div>`;
   };
   const sched = m.day?`<div class="sched-tag">📅 ${dayShort(m.day)} · ${m.time!=null?matchLabel(m):'-'} · Bana ${m.court||'-'}</div>`:"";
-  return `<div class="match" style="border-left:5px solid ${classColor(cls)}">
+  return `<div class="match" data-r="${m.round}" data-i="${m.index}" style="border-left:5px solid ${classColor(cls)}">
      ${slotHTML(m.p1,"p1")}
      ${slotHTML(m.p2,"p2")}
      ${ (m.p1&&m.p2) ? `<div class="scorerow">
          <input type="text" id="sc_${m.id}" value="${m.score||''}" placeholder="ex. 6-3 6-4">
          <select id="win_${m.id}" class="winsel" title="Välj vinnare">
            <option value="">Vinnare?</option>
-           <option value="p1" ${m.winner===m.p1?'selected':''}>${m.p1}</option>
-           <option value="p2" ${m.winner===m.p2?'selected':''}>${m.p2}</option>
+           <option value="p1" ${m.winner===m.p1?'selected':''}>${dispName(m.p1)}</option>
+           <option value="p2" ${m.winner===m.p2?'selected':''}>${dispName(m.p2)}</option>
          </select>
        </div>`:""}
      ${sched}
    </div>`;
+}
+// Byt plats på två spelare i omgång 0 (inom samma klass).
+function handleSwapClick(cls,m,slot){
+  if(m.round!==0 || !m[slot]) return;            // endast riktiga spelare i första omgången
+  if(!ui.swapSel){ ui.swapSel={id:m.id,key:slot}; render(); return; }
+  if(ui.swapSel.id===m.id && ui.swapSel.key===slot){ ui.swapSel=null; render(); return; }
+  const A=cls.matches.find(x=>x.id===ui.swapSel.id), aKey=ui.swapSel.key;
+  if(!A){ ui.swapSel=null; render(); return; }
+  const tmp=A[aKey]; A[aKey]=m[slot]; m[slot]=tmp;   // byt plats
+  [A,m].forEach(x=>{ if(x.winner){ x.winner=null; x.score=""; } clearDownstream(cls,x); });
+  ui.swapSel=null;
+  resolveByes(cls); recompChampion(cls); save(); render();
+}
+// Rita trädlinjer i en given .bracket (mäter positioner, lägger SVG bakom). color valfri.
+function drawLinesIn(br, color){
+  if(!br) return;
+  const ns='http://www.w3.org/2000/svg';
+  const old=br.querySelector('svg.brlines'); if(old) old.remove();
+  const map={};
+  br.querySelectorAll('.match[data-r]').forEach(el=>{ map[el.dataset.r+'_'+el.dataset.i]=el; });
+  const svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('class','brlines');
+  svg.style.cssText=`position:absolute;left:0;top:0;width:${br.scrollWidth}px;height:${br.scrollHeight}px;pointer-events:none;z-index:0`;
+  const line=(x1,y1,x2,y2)=>{ const l=document.createElementNS(ns,'line');
+    l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+    l.setAttribute('stroke',color||'#c9c2ac');l.setAttribute('stroke-width','2');svg.appendChild(l); };
+  Object.values(map).forEach(el=>{
+    const r=+el.dataset.r, i=+el.dataset.i; if(r===0) return;
+    const f0=map[(r-1)+'_'+(i*2)], f1=map[(r-1)+'_'+(i*2+1)]; if(!f0||!f1) return;
+    const Px=el.offsetLeft, Py=el.offsetTop+el.offsetHeight/2;
+    const g0x=f0.offsetLeft+f0.offsetWidth, g0y=f0.offsetTop+f0.offsetHeight/2;
+    const g1x=f1.offsetLeft+f1.offsetWidth, g1y=f1.offsetTop+f1.offsetHeight/2;
+    const midX=Math.round((Math.max(g0x,g1x)+Px)/2);
+    line(g0x,g0y,midX,g0y); line(g1x,g1y,midX,g1y); line(midX,g0y,midX,g1y); line(midX,Py,Px,Py);
+  });
+  br.insertBefore(svg, br.firstChild);
+}
+function drawBracketLines(){ drawLinesIn(document.querySelector('.bracket')); }
+window.addEventListener('resize', ()=>{ if(ui.tab==='bracket') drawBracketLines(); });
+
+/* ----- Utskrift av stege på liggande A4 (NxM sidor) ----- */
+function printBracketBox(cls,m){
+  const rowh=(p,win)=>`<div style="padding:4px 7px;border-bottom:1px solid #ddd;${win?'font-weight:800;color:#2e7d32':''}">${p==null?(m.round===0?'BYE':'—'):dispName(p)}${win?' 🏆':''}</div>`;
+  return `<div class="match" data-r="${m.round}" data-i="${m.index}" style="position:relative;z-index:1;border:1px solid #bbb;border-left:5px solid ${classColor(cls)};border-radius:6px;margin:9px 0;background:#fff;min-width:180px">
+     ${rowh(m.p1, m.winner&&m.winner===m.p1)}
+     ${rowh(m.p2, m.winner&&m.winner===m.p2)}
+     ${m.score?`<div style="padding:2px 7px;font-size:11px;color:#555;background:#faf6ec">${m.score}</div>`:''}
+   </div>`;
+}
+function buildPrintBracket(cls){
+  const total=totalRounds(cls);
+  let html=`<div class="bracket" style="display:flex;gap:34px;align-items:stretch;position:relative">`;
+  for(let r=0;r<total;r++){
+    html+=`<div class="round" style="display:flex;flex-direction:column;justify-content:space-around;min-width:190px">
+      <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;text-align:center;margin:0 0 6px">${roundName(r,total)}</h3>`;
+    cls.matches.filter(m=>m.round===r).sort((a,b)=>a.index-b.index).forEach(m=>{ html+=printBracketBox(cls,m); });
+    html+=`</div>`;
+  }
+  html+=`<div class="round" style="display:flex;flex-direction:column;justify-content:space-around;min-width:170px">
+     <h3 style="font-size:12px;text-align:center;margin:0 0 6px;color:#6b6356">MÄSTARE</h3>
+     <div style="border:2px solid ${classColor(cls)};border-radius:8px;text-align:center;padding:12px;background:#fff">
+       <div style="font-size:10px;letter-spacing:2px;color:#8a6d00">🏆 KLUBBMÄSTARE</div>
+       <div style="font-size:16px;font-weight:800;margin-top:4px">${dispName(cls.champion)||'–'}</div></div></div>`;
+  html+=`</div>`;
+  return html;
+}
+function printBracketTiled(cls, cols, rows){
+  if(!totalRounds(cls)){ alert("Stegen är tom – bygg den först."); return; }
+  const PAGE_W=1040, PAGE_H=720;   // ungefärlig utskriftsyta för A4 liggande (px)
+  const pa=document.getElementById("printArea");
+  // 1) rendera stegen offscreen, rita trädlinjer och mät naturlig storlek
+  const meas=document.createElement("div");
+  meas.style.cssText="position:fixed;left:-20000px;top:0";
+  meas.innerHTML=buildPrintBracket(cls);
+  document.body.appendChild(meas);
+  const brEl=meas.querySelector(".bracket");
+  const natW=brEl.scrollWidth, natH=brEl.scrollHeight;
+  drawLinesIn(brEl);                       // linjer bakas in i markupen
+  const inner=brEl.outerHTML;
+  document.body.removeChild(meas);
+  // 2) skala så stegen får plats i cols×rows sidor
+  const scale=Math.min((cols*PAGE_W)/natW, (rows*PAGE_H)/natH);
+  const offX=Math.max(0,(cols*PAGE_W - natW*scale)/2), offY=Math.max(0,(rows*PAGE_H - natH*scale)/2);
+  let pages="";
+  for(let rr=0;rr<rows;rr++) for(let cc=0;cc<cols;cc++){
+    pages+=`<div class="a4page"><div style="position:absolute;left:${Math.round(offX-cc*PAGE_W)}px;top:${Math.round(offY-rr*PAGE_H)}px;transform:scale(${scale});transform-origin:top left">${inner}</div></div>`;
+  }
+  pa.innerHTML=`<div class="brtitle">Dalarö TK · KM ${tournamentYear()} · Stege – ${cls.name}</div>${pages}`;
+  document.body.classList.add("printing-bracket");
+  const done=()=>{ document.body.classList.remove("printing-bracket"); window.removeEventListener("afterprint",done); };
+  window.addEventListener("afterprint",done);
+  window.print();
 }
 function dayShort(date){ const d=getDays().find(x=>x.date===date); return d?`${d.dow.slice(0,3)} ${d.short}`:date; }
 function dayLong(date){ const d=getDays().find(x=>x.date===date); return d?`${d.dow} ${d.short}`:date; }
@@ -843,7 +968,7 @@ function renderSchedule(){
   const addP1=document.getElementById("addP1"), addP2=document.getElementById("addP2");
   function fillPlayers(){
     const c=getClass(addClass.value);
-    const opts='<option value="">– välj –</option>'+c.participants.map(p=>`<option>${p}</option>`).join("");
+    const opts='<option value="">– välj –</option>'+c.participants.map(p=>`<option value="${p}">${dispName(p)}</option>`).join("");
     addP1.innerHTML=opts; addP2.innerHTML=opts;
   }
   addClass.onchange=fillPlayers; fillPlayers();
@@ -966,7 +1091,7 @@ function mtileHTML(m,bad){
   const col=classColor(c);
   return `<div class="mtile${conf}" data-id="${m.id}" style="border-left-color:${col}">
      <div class="cls"><span class="cdot" style="background:${col}"></span>${c.name}${isFinal(c,m)?' · FINAL':''}</div>
-     <div class="vs">${m.p1||'?'} <span class="muted">vs</span> ${m.p2||'?'}</div>
+     <div class="vs">${dispName(m.p1)||'?'} <span class="muted">vs</span> ${dispName(m.p2)||'?'}</div>
      <div class="ctrls no-print">
        <select data-f="day">${dayOpts}</select>
        <select data-f="time">${timeOpts}</select>
@@ -1005,7 +1130,7 @@ function renderUnsched(){
     const col=classColor(c);
     return `<div class="mtile" style="width:240px;border-left-color:${col}">
       <div class="cls"><span class="cdot" style="background:${col}"></span>${c.name} · ${stage}</div>
-      <div class="vs">${m.p1} <span class="muted">vs</span> ${m.p2}</div>
+      <div class="vs">${dispName(m.p1)} <span class="muted">vs</span> ${dispName(m.p2)}</div>
       <div class="ctrls"><button class="btn mini" data-place="${m.id}">➕ Lägg in ${dayShort(ui.day)}</button>
       ${m.manual?`<button class="btn gray mini" data-del="${m.id}">🗑 Ta bort</button>`:""}</div>
     </div>`;
@@ -1089,7 +1214,7 @@ function participantIndex(){
   }
   return [...map.entries()]
     .map(([name,set])=>({name, classes:[...set]}))
-    .sort((a,b)=> b.classes.length-a.classes.length || a.name.localeCompare(b.name,"sv"));
+    .sort((a,b)=> a.name.localeCompare(b.name,"sv"));
 }
 function renderParticipants(){
   const idx=participantIndex();
@@ -1156,7 +1281,7 @@ function resultsHTML(day){
     played.sort((a,b)=>(a.time||0)-(b.time||0)).forEach(m=>{
       const c=getClass(m.classId);
       h+=`<tr><td>${m.time!=null?matchLabel(m):'-'}</td><td>${m.court||'-'}</td><td>${c.name}</td>
-        <td>${m.p1} – ${m.p2}</td><td>${m.score||'WO'}</td><td><b>${m.winner}</b></td></tr>`;
+        <td>${dispName(m.p1)} – ${dispName(m.p2)}</td><td>${m.score||'WO'}</td><td><b>${dispName(m.winner)}</b></td></tr>`;
     });
     h+=`</tbody></table>`;
   }
@@ -1165,7 +1290,7 @@ function resultsHTML(day){
     h+=`<div class="card"><h2>Ospelade matcher kvar denna dag</h2><table class="results"><tbody>`;
     upcoming.sort((a,b)=>(a.time||0)-(b.time||0)).forEach(m=>{
       const c=getClass(m.classId);
-      h+=`<tr><td>${m.time!=null?matchLabel(m):'-'}</td><td>Bana ${m.court||'-'}</td><td>${c.name}</td><td>${m.p1} – ${m.p2}</td></tr>`;
+      h+=`<tr><td>${m.time!=null?matchLabel(m):'-'}</td><td>Bana ${m.court||'-'}</td><td>${c.name}</td><td>${dispName(m.p1)} – ${dispName(m.p2)}</td></tr>`;
     });
     h+=`</tbody></table></div>`;
   }
@@ -1222,7 +1347,7 @@ function printSchedule(day){
     html+=`<tr><td class="time">${timeLabel(t, day)}</td>`;
     for(let ct=1;ct<=courts;ct++){
       const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct);
-      html+=`<td>${here.map(m=>{const c=getClass(m.classId);return `<div style="border-left:5px solid ${classColor(c)};padding-left:5px;margin:2px 0"><b>${c.name}</b><br>${m.p1} – ${m.p2}${isFinal(c,m)?' <i>(final)</i>':''}</div>`;}).join("")}</td>`;
+      html+=`<td>${here.map(m=>{const c=getClass(m.classId);return `<div style="border-left:5px solid ${classColor(c)};padding-left:5px;margin:2px 0"><b>${c.name}</b><br>${dispName(m.p1)} – ${dispName(m.p2)}${isFinal(c,m)?' <i>(final)</i>':''}</div>`;}).join("")}</td>`;
     }
     html+=`</tr>`;
     prevEnd = Math.max(prevEnd||0, t + slotDur(t, day));
@@ -1235,11 +1360,11 @@ function printBrackets(){
   for(const c of state.classes){
     if(!totalRounds(c)) continue;
     const total=totalRounds(c);
-    html+=`<h2 style="color:var(--red);margin-top:20px">${c.name} ${c.champion?`· 🏆 ${c.champion}`:''}</h2>`;
+    html+=`<h2 style="color:var(--red);margin-top:20px">${c.name} ${c.champion?`· 🏆 ${dispName(c.champion)}`:''}</h2>`;
     html+=`<table class="results"><thead><tr><th>Omgång</th><th>Match</th><th>Resultat</th><th>Vidare</th></tr></thead><tbody>`;
     c.matches.filter(m=>!m.manual&&(m.p1||m.p2)).sort((a,b)=>a.round-b.round||a.index-b.index).forEach(m=>{
-      html+=`<tr><td>${roundName(m.round,total)}</td><td>${m.p1||'?'} – ${m.p2||'?'}</td>
-        <td>${m.score||''}</td><td>${m.winner||''}</td></tr>`;
+      html+=`<tr><td>${roundName(m.round,total)}</td><td>${dispName(m.p1)||'?'} – ${dispName(m.p2)||'?'}</td>
+        <td>${m.score||''}</td><td>${dispName(m.winner)||''}</td></tr>`;
     });
     html+=`</tbody></table>`;
   }
