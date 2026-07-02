@@ -1341,18 +1341,28 @@ function manualPlace(m,day){
     warn="Obs: ungdomsklass schemalagd på helg – normalt spelar endast seniorer lör/sön.";
   return {ok:true, warn};
 }
+// Är alla matcher i en omgång färdigspelade (byes räknas som klara)?
+function roundComplete(cls,r){
+  const ms=cls.matches.filter(m=>m.round===r);
+  return ms.length>0 && ms.every(m=>m.winner);
+}
+// Auto: spela klart en hel omgång i klassen innan nästa omgång schemaläggs.
+function roundReadyForAuto(cls,m){
+  if(m.manual || m.round===0) return true;
+  return roundComplete(cls, m.round-1);
+}
 function generateDay(day){
   const sortFn=(a,b)=>((a.round==null?99:a.round)-(b.round==null?99:b.round));
   // Pass 1: prioritera matcher där ingen spelare redan spelar den dagen (undvik flera/dag).
   realMatches().filter(m=>isReady(m)&&!m.day).sort(sortFn).forEach(m=>{
     const cls=getClass(m.classId);
-    if(!dayHasFinalsAllowed(cls,m,day) || !canPlayDayAuto(cls,day)) return;
+    if(!dayHasFinalsAllowed(cls,m,day) || !canPlayDayAuto(cls,day) || !roundReadyForAuto(cls,m)) return;
     placeMatch(m,day,{requireUnused:true});
   });
   // Pass 2: fyll resten (upp till 3 matcher/dag/person).
   realMatches().filter(m=>isReady(m)&&!m.day).sort(sortFn).forEach(m=>{
     const cls=getClass(m.classId);
-    if(!dayHasFinalsAllowed(cls,m,day) || !canPlayDayAuto(cls,day)) return;
+    if(!dayHasFinalsAllowed(cls,m,day) || !canPlayDayAuto(cls,day) || !roundReadyForAuto(cls,m)) return;
     placeMatch(m,day);
   });
 }
