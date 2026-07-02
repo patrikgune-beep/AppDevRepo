@@ -493,12 +493,61 @@ function render(){
   else if(ui.tab==="schedule") renderSchedule();
   else if(ui.tab==="participants") renderParticipants();
   else if(ui.tab==="print") renderPrintTab();
+  else if(ui.tab==="about") renderAbout();
 }
 function renderTabs(){
-  const tabs=[["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["participants","Deltagarlista"],["print","Resultat & utskrift"]];
+  const tabs=[["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["about","Om appen"]];
   document.getElementById("tabs").innerHTML=tabs.map(([k,l])=>
     `<button class="${ui.tab===k?'active':''}" data-tab="${k}">${l}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{ui.tab=b.dataset.tab;render();});
+}
+
+/* ----- Versionsstämpel (utifrån när denna index.html senast sparades) ----- */
+function appVersionText(){
+  const d=new Date(document.lastModified);
+  if(isNaN(d)) return document.lastModified || "okänd";
+  const p=n=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/* ----- Tab: Om appen ----- */
+function renderAbout(){
+  app.innerHTML=`
+   <div class="card">
+     <div class="row" style="align-items:center;gap:14px">
+       <div style="width:56px;height:56px;flex:0 0 auto">${LOGO_SVG}</div>
+       <div>
+         <h2 style="margin:0">Klubbmästerskap – Dalarö Tennisklubb</h2>
+         <p class="small muted" style="margin:2px 0 0">Lokal app för att planera och genomföra KM. All data sparas i din webbläsare.</p>
+       </div>
+     </div>
+     <p style="margin-top:14px">Appen hanterar hela turneringen från deltagare till färdiga resultat, helt lokalt i webbläsaren –
+        ingen server och inget konto behövs.</p>
+     <h3 style="color:var(--red)">Så här används appen</h3>
+     <ol class="small" style="line-height:1.7">
+       <li><b>Klasser &amp; deltagare:</b> ange turneringens datum, klistra in deltagare per klass (en rad per spelare/par),
+           välj ev. seedning (antal seedade), och lås deltagarna för att bygga stegen.</li>
+       <li><b>Stege:</b> registrera resultat och välj vinnare – vinnaren förs automatiskt vidare och nästa match blir spelklar.</li>
+       <li><b>Schema:</b> generera dagens schema automatiskt eller lägg/flytta matcher manuellt (08–21), byt bana/dag, lägg till extra banor per dag.</li>
+       <li><b>Deltagarlista:</b> se varje person och vilka klasser hen deltar i (dubbelpar uppdelade).</li>
+       <li><b>Resultat &amp; utskrift:</b> skriv ut resultatlistor, matchscheman, blankt schema och alla stegar (med klubblogga).</li>
+     </ol>
+     <h3 style="color:var(--red)">Planeringsregler</h3>
+     <ul class="small" style="line-height:1.7">
+       <li>Auto: junior 30 min (vardag 9–13), senior 60 min (vardag 13–21, helg 9–21). Paus efter var 3:e match, lunch 12–13.</li>
+       <li>Lör/sön spelar endast seniorer. Max 3 matcher/dag/person, aldrig samtidigt på två banor.</li>
+       <li>Manuellt kan matcher läggas 08:00–21:00 och i paus-/lunchluckor (t.ex. paus efter 2, eller 4 i rad).</li>
+       <li>Seedade spelare kan inte mötas i första omgången.</li>
+     </ul>
+     <h3 style="color:var(--red)">Säkerhetskopiering</h3>
+     <p class="small">Använd <b>Exportera</b> (uppe till vänster) för att spara en JSON-fil (filnamnet får datum + klockslag),
+        och <b>Importera</b> för att återställa eller flytta turneringen till en annan dator.</p>
+     <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
+     <p class="small muted">
+       <b>Version (denna sidas senaste ändring):</b> ${appVersionText()}<br>
+       Dalarö Tennisklubb · fristående webbapp (index.html).
+     </p>
+   </div>`;
 }
 
 /* ----- Tab 1: Klasser & deltagare ----- */
