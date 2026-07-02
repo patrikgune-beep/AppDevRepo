@@ -135,12 +135,17 @@
   .small{font-size:12px}
   /* print */
   #printArea{display:none}
+  .brpage{position:relative;overflow:hidden;background:#fff}
+  @page land{ size:A4 landscape; margin:6mm }
   @media print{
     header.app,.tabs,.toolbar,.daybar,#app,.no-print{display:none !important}
     body{background:#fff}
     #printArea{display:block;padding:0}
     #printArea h1{color:#000}
     .mtile .ctrls{display:none}
+    /* Stege som träd: en liggande A4 per klass */
+    .brpage{width:1040px;height:730px;page:land;break-after:page;page-break-after:always}
+    .brpage:last-child{break-after:auto;page-break-after:auto}
     *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   }
 </style>
@@ -818,6 +823,8 @@ function renderBracketTab(){
        <button class="btn ${ui.swapMode?'':'ghost'} mini" id="swapMode">🔀 Byt spelare ${ui.swapMode?'(på)':''}</button>
        <button class="btn ghost mini" id="rebuildBr">🔁 Lotta om / bygg stege</button>
        <button class="btn gray mini" id="clearBr">🗑 Rensa flik (denna stege)</button>
+       <span style="flex:1"></span>
+       <button class="btn mini" id="printBr">🖨 Skriv ut stege</button>
      </div>
    </div>
    <div id="bracketWrap"></div>`;
@@ -825,6 +832,7 @@ function renderBracketTab(){
   document.getElementById("rebuildBr").onclick=()=>rebuildBracketOf(cls);
   document.getElementById("clearBr").onclick=()=>clearBracketOf(cls);
   document.getElementById("swapMode").onclick=()=>{ ui.swapMode=!ui.swapMode; ui.swapSel=null; render(); };
+  document.getElementById("printBr").onclick=()=>printOneBracket(cls);
   const wrap=document.getElementById("bracketWrap");
   if(!cls.matches.length){
     if(cls.participants.length>=2){
@@ -1495,8 +1503,7 @@ function printBlankSchedule(){
     if(!lunchShown && t>=780){ html+=`<tr><td class="time">12:00–13:00</td><td colspan="${courts}" style="text-align:center">Lunchpaus</td></tr>`; lunchShown=true; }
     html+=`<tr><td class="time">${timeLabel(t, ui.day)}</td>`;
     for(let ct=1;ct<=courts;ct++){
-      html+=`<td style="height:42px"><div style="color:#bbb;font-size:11px">Klass: ____________</div>
-        <div style="color:#bbb;font-size:11px">__________ &nbsp;–&nbsp; __________</div></td>`;
+      html+=`<td style="height:44px"></td>`;
     }
     html+=`</tr>`;
   }
@@ -1528,21 +1535,56 @@ function printSchedule(day){
   html+=`</tbody></table>`;
   doPrint(html);
 }
-function printBrackets(){
-  let html=printHeader("Stegar – alla klasser");
-  for(const c of state.classes){
-    if(!totalRounds(c)) continue;
-    const total=totalRounds(c);
-    html+=`<h2 style="color:var(--red);margin-top:20px">${c.name} ${c.champion?`· 🏆 ${dispName(c.champion)}`:''}</h2>`;
-    html+=`<table class="results"><thead><tr><th>Omgång</th><th>Match</th><th>Resultat</th><th>Vidare</th></tr></thead><tbody>`;
-    c.matches.filter(m=>!m.manual&&(m.p1||m.p2)).sort((a,b)=>a.round-b.round||a.index-b.index).forEach(m=>{
-      html+=`<tr><td>${roundName(m.round,total)}</td><td>${dispName(m.p1)||'?'} – ${dispName(m.p2)||'?'}</td>
-        <td>${m.score||''}</td><td>${dispName(m.winner)||''}</td></tr>`;
-    });
-    html+=`</tbody></table>`;
-  }
-  doPrint(html);
+/* ----- Utskrift av stege som träd (en liggande A4 per klass, skalad att passa) ----- */
+function printBracketBox(cls,m){
+  const rowh=(p,win)=>`<div style="padding:4px 7px;border-bottom:1px solid #ddd;${win?'font-weight:800;color:#2e7d32':''}">${p==null?(m.round===0?'BYE':'—'):dispName(p)}${win?' 🏆':''}</div>`;
+  const n=matchNumber(m);
+  return `<div class="match" data-r="${m.round}" data-i="${m.index}" style="border:1px solid #bbb;border-left:5px solid ${classColor(cls)};border-radius:6px;background:#fff">
+     ${n!=null?`<div style="font-size:10px;font-weight:700;color:#6b6356;padding:2px 7px 0">#${n}</div>`:''}
+     ${rowh(m.p1, m.winner&&m.winner===m.p1)}
+     ${rowh(m.p2, m.winner&&m.winner===m.p2)}
+     ${m.score?`<div style="padding:2px 7px;font-size:11px;color:#555;background:#faf6ec">${m.score}</div>`:''}
+   </div>`;
 }
+function buildPrintBracket(cls){
+  const total=totalRounds(cls);
+  let html=`<div class="bracket" style="position:relative">`;
+  for(let r=0;r<total;r++) html+=`<div class="rhead" data-rh="${r}" style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;text-align:center;font-weight:700">${roundName(r,total)}</div>`;
+  html+=`<div class="rhead" data-rh="${total}" style="font-size:12px;text-align:center;font-weight:700;color:#6b6356">MÄSTARE</div>`;
+  for(let r=0;r<total;r++) cls.matches.filter(m=>m.round===r).sort((a,b)=>a.index-b.index).forEach(m=>{ html+=printBracketBox(cls,m); });
+  html+=`<div class="match champbox" data-r="${total}" data-i="0" style="border:2px solid ${classColor(cls)};border-radius:8px;text-align:center;padding:12px;background:#fff">
+       <div style="font-size:10px;letter-spacing:2px;color:#8a6d00">🏆 KLUBBMÄSTARE</div>
+       <div style="font-size:16px;font-weight:800;margin-top:4px">${dispName(cls.champion)||'–'}</div></div>`;
+  html+=`</div>`;
+  return html;
+}
+function printBracketPages(list){
+  const PAGE_W=1040, PAGE_H=730, TITLE_H=30;   // ungefärlig utskriftsyta för A4 liggande (px)
+  const withBr=list.filter(c=>totalRounds(c));
+  if(!withBr.length){ alert("Ingen stege att skriva ut – bygg en stege först."); return; }
+  let pages="";
+  for(const cls of withBr){
+    const meas=document.createElement("div");
+    meas.style.cssText="position:fixed;left:-20000px;top:0";
+    meas.innerHTML=buildPrintBracket(cls);
+    document.body.appendChild(meas);
+    const brEl=meas.querySelector(".bracket");
+    const size=layoutBracketEl(brEl);
+    const natW=size.width||brEl.scrollWidth, natH=size.height||brEl.scrollHeight;
+    const inner=brEl.outerHTML;
+    document.body.removeChild(meas);
+    const scale=Math.min(PAGE_W/natW, (PAGE_H-TITLE_H)/natH);
+    const offX=Math.max(0,(PAGE_W - natW*scale)/2);
+    pages+=`<div class="brpage">
+       <div style="font-family:'Arial Narrow',Arial;color:#b5362b;font-weight:bold;font-size:15px;padding:0 0 6px">Dalarö TK · KM ${tournamentYear()} · Stege – ${cls.name}${cls.champion?` · 🏆 ${dispName(cls.champion)}`:''}</div>
+       <div style="position:relative;height:${PAGE_H-TITLE_H}px"><div style="position:absolute;left:${Math.round(offX)}px;top:0;transform:scale(${scale});transform-origin:top left">${inner}</div></div>
+     </div>`;
+  }
+  document.getElementById("printArea").innerHTML=pages;
+  window.print();
+}
+function printOneBracket(cls){ printBracketPages([cls]); }   // stege-fliken
+function printBrackets(){ printBracketPages(state.classes); } // "Skriv ut alla stegar"
 
 /* ----- Toolbar / export / import ----- */
 document.getElementById("courtsInput").onchange=e=>{
