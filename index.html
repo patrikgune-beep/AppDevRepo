@@ -715,8 +715,9 @@ function renderSchedule(){
      Auto-planering (paus efter var 3:e match, lunch 12–13):
      <b>Junior</b> 30 min – vardag, första start 09:00 (sista ≤ 12:30).
      <b>Senior</b> 60 min – vardag från 13:00, <b>helg från 09:00</b> (sista start ≤ 20:00). Lör/sön: endast seniorer.
-     <b>Manuellt</b> kan matcher läggas 08:00–21:00 för både junior och senior.
-     Max 3 matcher/dag/person och aldrig samtidigt på två banor.
+     <b>Manuellt</b> kan matcher läggas 08:00–21:00 för både junior och senior – även i paus-/lunchluckor
+     (t.ex. paus efter 2 matcher eller 4 i rad) via tidsväljaren på matchen. Bocka i "Visa alla tider" nedan
+     för att se hela rutnätet. Max 3 matcher/dag/person och aldrig samtidigt på två banor.
      Ungdomsfinaler läggs ${youthFinalDay()?dayLong(youthFinalDay()):'näst sista dagen'},
      övriga finaler ${adultFinalDay()?dayLong(adultFinalDay()):'sista dagen'}.
    </div>
@@ -727,6 +728,7 @@ function renderSchedule(){
      <button class="btn gray" id="clearSched">🗑 Rensa flik (hela schemat)</button>
      <button class="btn ghost mini" id="printSched">🖨 Skriv ut dagens schema</button>
      <button class="btn ghost mini" id="printBlank">🖨 Skriv ut blankt schema</button>
+     <label class="small"><input type="checkbox" id="fullGrid" ${ui.fullGrid?'checked':''}> Visa alla tider (08–21)</label>
      <span style="flex:1"></span>
      <label class="small">Extra banor denna dag:
        <select id="extraCourts">${[0,1,2].map(v=>`<option value="${v}" ${((state.extraCourts[ui.day]||0)===v)?'selected':''}>+${v}</option>`).join("")}</select>
@@ -771,6 +773,7 @@ function renderSchedule(){
   };
   document.getElementById("clearSched").onclick=clearAllSchedule;
   document.getElementById("printBlank").onclick=()=>printBlankSchedule();
+  document.getElementById("fullGrid").onchange=e=>{ ui.fullGrid=e.target.checked; render(); };
   document.getElementById("extraCourts").onchange=e=>{
     const v=parseInt(e.target.value,10)||0;
     if(v) state.extraCourts[ui.day]=v; else delete state.extraCourts[ui.day];
@@ -852,24 +855,33 @@ function dayTimes(day){
   return [...new Set([...daySlots(day),
      ...realMatches().filter(m=>m.day===day&&m.time!=null).map(m=>m.time)])].sort((a,b)=>a-b);
 }
+// Hela manuella rutnätet 08:00–21:00 (30 min-steg) + ev. schemalagda tider.
+function fullDayTimes(day){
+  const out=[]; for(let t=480;t<=1260;t+=30) out.push(t);
+  return [...new Set([...out,
+     ...realMatches().filter(m=>m.day===day&&m.time!=null).map(m=>m.time)])].sort((a,b)=>a-b);
+}
 function renderSchedGrid(){
   const wrap=document.getElementById("schedWrap");
   const day=ui.day;
   const courts=courtsForDay(day);
   const bad=conflicts(day);
+  const times = ui.fullGrid ? fullDayTimes(day) : dayTimes(day);
   let html=`<table class="schedtable"><thead><tr><th>Tid</th>${
      Array.from({length:courts},(_,i)=>`<th>Bana ${i+1}</th>`).join("")}</tr></thead><tbody>`;
   let lunchShown=false;
-  for(const t of dayTimes(day)){
-    if(!lunchShown && t>=780){ html+=`<tr><td class="time">12:00–13:00</td><td class="lunch" colspan="${courts}">🍽 Lunchpaus</td></tr>`; lunchShown=true; }
-    html+=`<tr><td class="time">${timeLabel(t, day)}</td>`;
+  for(const t of times){
+    // I normalläge visas lunchen som en egen rad; i "visa alla tider" är 12:00/12:30 vanliga rader.
+    if(!ui.fullGrid && !lunchShown && t>=780){ html+=`<tr><td class="time">12:00–13:00</td><td class="lunch" colspan="${courts}">🍽 Lunchpaus</td></tr>`; lunchShown=true; }
+    const lunchRow = ui.fullGrid && (t===720 || t===750);
+    html+=`<tr><td class="time">${timeLabel(t, day)}${lunchRow?' 🍽':''}</td>`;
     for(let ct=1;ct<=courts;ct++){
       const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct);
       html+=`<td class="slotcell">${here.map(m=>mtileHTML(m,bad)).join("")}</td>`;
     }
     html+=`</tr>`;
   }
-  if(!lunchShown) html+=`<tr><td class="time">12:00–13:00</td><td class="lunch" colspan="${courts}">🍽 Lunchpaus</td></tr>`;
+  if(!ui.fullGrid && !lunchShown) html+=`<tr><td class="time">12:00–13:00</td><td class="lunch" colspan="${courts}">🍽 Lunchpaus</td></tr>`;
   html+=`</tbody></table>`;
   wrap.innerHTML=html;
   bindTileCtrls();
