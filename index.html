@@ -73,15 +73,15 @@
   .badge.youth{background:#e7f0f6;color:#2c6285}
   .badge.adult{background:#f6e9e0;color:var(--red)}
   .badge.done{background:#e3f1de;color:var(--green)}
-  /* Bracket */
-  .bracket{display:flex;gap:34px;overflow-x:auto;padding:10px 4px 20px}
-  .round{display:flex;flex-direction:column;justify-content:space-around;min-width:210px}
-  .round h3{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;text-align:center;margin:0 0 6px}
+  /* Bracket – absolut balanserat träd */
+  .bracketwrap{overflow-x:auto;padding:6px 4px 20px}
   .bracket{position:relative}
+  .bracket .rhead{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;text-align:center;font-weight:700}
   .match{
-    background:#fff;border:1px solid var(--line);border-radius:9px;margin:9px 0;
-    position:relative;z-index:1;
+    background:#fff;border:1px solid var(--line);border-radius:9px;
+    position:absolute;z-index:1;box-sizing:border-box;
   }
+  .match.champbox{border:none;background:transparent}
   .match .slot.swapsel{background:#fff3bf;outline:2px solid #f0a500;border-radius:5px}
   .mno{display:inline-block;font-size:10px;font-weight:700;color:#fff;background:#6b6356;border-radius:4px;padding:0 5px;margin-right:5px;letter-spacing:.5px}
   .match .slot{display:flex;align-items:center;gap:6px;padding:7px 9px;border-bottom:1px dashed var(--line)}
@@ -853,18 +853,20 @@ function renderBracketTab(){
     return;
   }
   const total=totalRounds(cls);
-  let html=`<div class="bracket">`;
+  let html=`<div class="bracketwrap"><div class="bracket">`;
+  // rubriker per omgång + mästare
+  for(let r=0;r<total;r++) html+=`<div class="rhead" data-rh="${r}">${roundName(r,total)}</div>`;
+  html+=`<div class="rhead" data-rh="${total}">Mästare</div>`;
+  // matcher (platt lista, positioneras av layoutBracket)
   for(let r=0;r<total;r++){
-    html+=`<div class="round"><h3>${roundName(r,total)}</h3>`;
-    const ms=cls.matches.filter(m=>m.round===r).sort((a,b)=>a.index-b.index);
-    for(const m of ms) html+=matchHTML(cls,m,total);
-    html+=`</div>`;
+    cls.matches.filter(m=>m.round===r).sort((a,b)=>a.index-b.index).forEach(m=>{ html+=matchHTML(cls,m,total); });
   }
-  // mästar-kolumn
-  html+=`<div class="round"><h3>Mästare</h3><div class="champion" style="border-top:5px solid ${classColor(cls)}">
-      <div class="lbl">🏆 Klubbmästare</div>
-      <div class="who">${dispName(cls.champion)||"–"}</div></div></div>`;
-  html+=`</div>`;
+  // mästar-box som en "match" i sista kolumnen
+  html+=`<div class="match champbox" data-r="${total}" data-i="0" style="border-left:5px solid ${classColor(cls)}">
+      <div class="champion" style="border-top:5px solid ${classColor(cls)};border-radius:8px">
+        <div class="lbl">🏆 Klubbmästare</div>
+        <div class="who">${dispName(cls.champion)||"–"}</div></div></div>`;
+  html+=`</div></div>`;
   wrap.innerHTML=html;
   // events
   cls.matches.forEach(m=>{
@@ -880,7 +882,68 @@ function renderBracketTab(){
     const ws=document.getElementById(`win_${m.id}`);
     if(ws) ws.onchange=()=>{ registerWinner(cls,m,ws.value); };
   });
-  requestAnimationFrame(()=>drawBracketLines());
+  requestAnimationFrame(()=>layoutBracketEl(document.querySelector('.bracket')));
+}
+// Balanserad trädlayout: final centrerad, jämna avstånd, tydliga vinkellinjer.
+function layoutBracketEl(br){
+  if(!br) return {width:0,height:0};
+  const COLW=210, HGAP=52, VGAP=14, HEADH=24;
+  const byRound={};
+  br.querySelectorAll('.match').forEach(el=>{ const r=+el.dataset.r,i=+el.dataset.i; (byRound[r]=byRound[r]||[])[i]=el; });
+  const rounds=Object.keys(byRound).map(Number).sort((a,b)=>a-b);
+  const maxR=rounds[rounds.length-1];
+  // 1) sätt bredd, mät höjder
+  let maxH=0;
+  br.querySelectorAll('.match').forEach(el=>{ el.style.width=COLW+'px'; });
+  br.querySelectorAll('.match').forEach(el=>{ maxH=Math.max(maxH, el.offsetHeight); });
+  const rowUnit=maxH+VGAP;
+  const n0=(byRound[0]||[]).filter(Boolean).length;
+  // 2) beräkna vertikala centrum
+  const centers={};
+  (byRound[0]||[]).forEach((el,i)=>{ if(el) centers['0_'+i]=HEADH + i*rowUnit + rowUnit/2; });
+  for(let r=1;r<=maxR;r++){
+    (byRound[r]||[]).forEach((el,j)=>{
+      if(!el) return;
+      const a=centers[(r-1)+'_'+(2*j)], b=centers[(r-1)+'_'+(2*j+1)];
+      centers[r+'_'+j] = (a!=null&&b!=null) ? (a+b)/2 : (a!=null?a : (b!=null?b : HEADH+rowUnit/2));
+    });
+  }
+  // 3) positionera matcher
+  rounds.forEach(r=>{
+    (byRound[r]||[]).forEach((el,i)=>{
+      if(!el) return;
+      el.style.left=(r*(COLW+HGAP))+'px';
+      el.style.top=Math.round(centers[r+'_'+i]-el.offsetHeight/2)+'px';
+    });
+  });
+  // 4) rubriker
+  br.querySelectorAll('.rhead').forEach(h=>{ const r=+h.dataset.rh; h.style.position='absolute'; h.style.left=(r*(COLW+HGAP))+'px'; h.style.top='0px'; h.style.width=COLW+'px'; });
+  // 5) container-storlek
+  const width=(maxR+1)*(COLW+HGAP)-HGAP;
+  const height=HEADH + Math.max(1,n0)*rowUnit + 8;
+  br.style.width=width+'px'; br.style.height=height+'px';
+  // 6) linjer
+  const ns='http://www.w3.org/2000/svg';
+  const oldsvg=br.querySelector('svg.brlines'); if(oldsvg) oldsvg.remove();
+  const svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('class','brlines');
+  svg.style.cssText=`position:absolute;left:0;top:0;width:${width}px;height:${height}px;pointer-events:none;z-index:0`;
+  const L=(x1,y1,x2,y2)=>{ const l=document.createElementNS(ns,'line'); l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2); l.setAttribute('stroke','#b9b19a'); l.setAttribute('stroke-width','2'); svg.appendChild(l); };
+  for(let r=1;r<=maxR;r++){
+    (byRound[r]||[]).forEach((el,j)=>{
+      if(!el) return;
+      const px=r*(COLW+HGAP), py=centers[r+'_'+j];
+      const fx=(r-1)*(COLW+HGAP)+COLW, midX=fx+HGAP/2;
+      const f0=centers[(r-1)+'_'+(2*j)], f1=centers[(r-1)+'_'+(2*j+1)];
+      if(f0!=null && f1!=null){
+        L(fx,f0,midX,f0); L(fx,f1,midX,f1); L(midX,f0,midX,f1); L(midX,py,px,py);
+      } else {
+        const fy=(f0!=null?f0:f1); if(fy!=null){ L(fx,fy,px,py); }
+      }
+    });
+  }
+  br.insertBefore(svg, br.firstChild);
+  return {width, height};
 }
 function matchHTML(cls,m,total){
   const sel=ui.swapSel;
@@ -920,37 +983,13 @@ function handleSwapClick(cls,m,slot){
   resolveByes(cls); recompChampion(cls); save(); render();
 }
 // Rita trädlinjer i en given .bracket (mäter positioner, lägger SVG bakom). color valfri.
-function drawLinesIn(br, color){
-  if(!br) return;
-  const ns='http://www.w3.org/2000/svg';
-  const old=br.querySelector('svg.brlines'); if(old) old.remove();
-  const map={};
-  br.querySelectorAll('.match[data-r]').forEach(el=>{ map[el.dataset.r+'_'+el.dataset.i]=el; });
-  const svg=document.createElementNS(ns,'svg');
-  svg.setAttribute('class','brlines');
-  svg.style.cssText=`position:absolute;left:0;top:0;width:${br.scrollWidth}px;height:${br.scrollHeight}px;pointer-events:none;z-index:0`;
-  const line=(x1,y1,x2,y2)=>{ const l=document.createElementNS(ns,'line');
-    l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
-    l.setAttribute('stroke',color||'#c9c2ac');l.setAttribute('stroke-width','2');svg.appendChild(l); };
-  Object.values(map).forEach(el=>{
-    const r=+el.dataset.r, i=+el.dataset.i; if(r===0) return;
-    const f0=map[(r-1)+'_'+(i*2)], f1=map[(r-1)+'_'+(i*2+1)]; if(!f0||!f1) return;
-    const Px=el.offsetLeft, Py=el.offsetTop+el.offsetHeight/2;
-    const g0x=f0.offsetLeft+f0.offsetWidth, g0y=f0.offsetTop+f0.offsetHeight/2;
-    const g1x=f1.offsetLeft+f1.offsetWidth, g1y=f1.offsetTop+f1.offsetHeight/2;
-    const midX=Math.round((Math.max(g0x,g1x)+Px)/2);
-    line(g0x,g0y,midX,g0y); line(g1x,g1y,midX,g1y); line(midX,g0y,midX,g1y); line(midX,Py,Px,Py);
-  });
-  br.insertBefore(svg, br.firstChild);
-}
-function drawBracketLines(){ drawLinesIn(document.querySelector('.bracket')); }
-window.addEventListener('resize', ()=>{ if(ui.tab==='bracket') drawBracketLines(); });
+window.addEventListener('resize', ()=>{ if(ui.tab==='bracket') layoutBracketEl(document.querySelector('.bracket')); });
 
 /* ----- Utskrift av stege på liggande A4 (NxM sidor) ----- */
 function printBracketBox(cls,m){
   const rowh=(p,win)=>`<div style="padding:4px 7px;border-bottom:1px solid #ddd;${win?'font-weight:800;color:#2e7d32':''}">${p==null?(m.round===0?'BYE':'—'):dispName(p)}${win?' 🏆':''}</div>`;
   const n=matchNumber(m);
-  return `<div class="match" data-r="${m.round}" data-i="${m.index}" style="position:relative;z-index:1;border:1px solid #bbb;border-left:5px solid ${classColor(cls)};border-radius:6px;margin:9px 0;background:#fff;min-width:180px">
+  return `<div class="match" data-r="${m.round}" data-i="${m.index}" style="border:1px solid #bbb;border-left:5px solid ${classColor(cls)};border-radius:6px;background:#fff">
      ${n!=null?`<div style="font-size:10px;font-weight:700;color:#6b6356;padding:2px 7px 0">#${n}</div>`:''}
      ${rowh(m.p1, m.winner&&m.winner===m.p1)}
      ${rowh(m.p2, m.winner&&m.winner===m.p2)}
@@ -959,18 +998,15 @@ function printBracketBox(cls,m){
 }
 function buildPrintBracket(cls){
   const total=totalRounds(cls);
-  let html=`<div class="bracket" style="display:flex;gap:34px;align-items:stretch;position:relative">`;
+  let html=`<div class="bracket" style="position:relative">`;
+  for(let r=0;r<total;r++) html+=`<div class="rhead" data-rh="${r}" style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;text-align:center;font-weight:700">${roundName(r,total)}</div>`;
+  html+=`<div class="rhead" data-rh="${total}" style="font-size:12px;text-align:center;font-weight:700;color:#6b6356">MÄSTARE</div>`;
   for(let r=0;r<total;r++){
-    html+=`<div class="round" style="display:flex;flex-direction:column;justify-content:space-around;min-width:190px">
-      <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;text-align:center;margin:0 0 6px">${roundName(r,total)}</h3>`;
     cls.matches.filter(m=>m.round===r).sort((a,b)=>a.index-b.index).forEach(m=>{ html+=printBracketBox(cls,m); });
-    html+=`</div>`;
   }
-  html+=`<div class="round" style="display:flex;flex-direction:column;justify-content:space-around;min-width:170px">
-     <h3 style="font-size:12px;text-align:center;margin:0 0 6px;color:#6b6356">MÄSTARE</h3>
-     <div style="border:2px solid ${classColor(cls)};border-radius:8px;text-align:center;padding:12px;background:#fff">
+  html+=`<div class="match champbox" data-r="${total}" data-i="0" style="border:2px solid ${classColor(cls)};border-radius:8px;text-align:center;padding:12px;background:#fff">
        <div style="font-size:10px;letter-spacing:2px;color:#8a6d00">🏆 KLUBBMÄSTARE</div>
-       <div style="font-size:16px;font-weight:800;margin-top:4px">${dispName(cls.champion)||'–'}</div></div></div>`;
+       <div style="font-size:16px;font-weight:800;margin-top:4px">${dispName(cls.champion)||'–'}</div></div>`;
   html+=`</div>`;
   return html;
 }
@@ -978,14 +1014,14 @@ function printBracketTiled(cls, cols, rows){
   if(!totalRounds(cls)){ alert("Stegen är tom – bygg den först."); return; }
   const PAGE_W=1040, PAGE_H=720;   // ungefärlig utskriftsyta för A4 liggande (px)
   const pa=document.getElementById("printArea");
-  // 1) rendera stegen offscreen, rita trädlinjer och mät naturlig storlek
+  // 1) rendera stegen offscreen, layouta (positioner + linjer) och mät storlek
   const meas=document.createElement("div");
   meas.style.cssText="position:fixed;left:-20000px;top:0";
   meas.innerHTML=buildPrintBracket(cls);
   document.body.appendChild(meas);
   const brEl=meas.querySelector(".bracket");
-  const natW=brEl.scrollWidth, natH=brEl.scrollHeight;
-  drawLinesIn(brEl);                       // linjer bakas in i markupen
+  const size=layoutBracketEl(brEl);
+  const natW=size.width||brEl.scrollWidth, natH=size.height||brEl.scrollHeight;
   const inner=brEl.outerHTML;
   document.body.removeChild(meas);
   // 2) skala så stegen får plats i cols×rows sidor
