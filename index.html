@@ -108,10 +108,15 @@
   .schedtable td.time{background:#faf6ec;font-weight:700;white-space:nowrap;text-align:center}
   .schedtable td.lunch{background:#f0eada;text-align:center;color:#8f8775}
   .slotcell{min-height:34px}
-  .mtile{background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:6px;padding:5px 7px;margin-bottom:4px}
-  .mtile.youth{border-left-color:var(--sky)}
-  .mtile.conflict{border-left-color:#d11;background:#fde9e9}
+  .mtile{background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--red);border-radius:6px;padding:5px 7px;margin-bottom:4px}
+  .mtile.conflict{background:#fde9e9;box-shadow:inset 0 0 0 2px #d11}
   .mtile .cls{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b6356}
+  .mtile .cdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .schedtable td.pausrow{background:#efe9db;color:#8a8270;text-align:center;font-size:11px;font-style:italic}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 12px;padding:10px 12px;background:var(--paper);border:1px solid var(--line);border-radius:8px}
+  .legend .item{display:flex;align-items:center;gap:6px;font-size:12px}
+  .legend .sw{width:13px;height:13px;border-radius:3px;display:inline-block;flex:0 0 auto}
+  .classcard .sw{width:12px;height:12px;border-radius:3px;display:inline-block;vertical-align:middle;margin-right:5px}
   .mtile .vs{font-size:12px;font-weight:600;margin:2px 0}
   .mtile .ctrls{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px}
   .mtile select{font-size:11px;padding:2px 3px}
@@ -332,6 +337,10 @@ function load(){ try{ const r=localStorage.getItem(LS_KEY); return r?JSON.parse(
 function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
 function uid(){ return Math.random().toString(36).slice(2,9); }
 function getClass(id){ return state.classes.find(c=>c.id===id); }
+// Distinkt färg per klass (utifrån klassens ordning) för att skilja matcher åt.
+const CLASS_COLORS = ["#d1495b","#3f88c5","#2e9e57","#8e44ad","#e07b16","#0e9aa7","#9A6324","#7a2e2e","#7f8c1e","#d81b8c","#5d6d7e"];
+function classColor(cls){ const i=state.classes.indexOf(cls); return CLASS_COLORS[(i<0?0:i)%CLASS_COLORS.length]; }
+function classColorId(id){ const c=getClass(id); return c?classColor(c):"#888"; }
 
 /* ---------------- Bracket / stege ---------------- */
 function seedOrder(size){
@@ -615,7 +624,7 @@ function renderClasses(){
   document.getElementById("clsGrid").innerHTML=state.classes.map(c=>{
     const done=c.champion?`<span class="badge done">✓ ${c.champion}</span>`:"";
     return `<div class="classcard ${c.id===cls.id?'active':''}" data-id="${c.id}">
-      <div class="ttl">${c.name} ${isRanked(c)?`<span title="Seedas – top ${seedCountOf(c)}" style="color:#c9a227">★</span>`:''}</div>
+      <div class="ttl"><span class="sw" style="background:${classColor(c)}"></span>${c.name} ${isRanked(c)?`<span title="Seedas – top ${seedCountOf(c)}" style="color:#c9a227">★</span>`:''}</div>
       <div class="meta">
         <span class="badge ${c.type}">${c.type==='youth'?'Ungdom':'Senior'}</span>
         &nbsp;${c.participants.length} delt. ${done}
@@ -916,12 +925,22 @@ function renderSchedGrid(){
   const courts=courtsForDay(day);
   const bad=conflicts(day);
   const times = ui.fullGrid ? fullDayTimes(day) : dayTimes(day);
+  // Färgförklaring för klasserna (de som har matcher)
+  const used=state.classes.filter(c=>c.matches.length);
+  const legend = used.length
+    ? `<div class="legend no-print">${used.map(c=>`<span class="item"><span class="sw" style="background:${classColor(c)}"></span>${c.name}</span>`).join("")}</div>`
+    : "";
   let html=`<table class="schedtable"><thead><tr><th>Tid</th>${
      Array.from({length:courts},(_,i)=>`<th>Bana ${i+1}</th>`).join("")}</tr></thead><tbody>`;
-  let lunchShown=false;
+  let prevEnd=null;
   for(const t of times){
-    // I normalläge visas lunchen som en egen rad; i "visa alla tider" är 12:00/12:30 vanliga rader.
-    if(!ui.fullGrid && !lunchShown && t>=780){ html+=`<tr><td class="time">12:00–13:00</td><td class="lunch" colspan="${courts}">🍽 Lunchpaus</td></tr>`; lunchShown=true; }
+    // Visa paus-/lunchluckor i normalläge (i "visa alla tider" är alla rader redan med).
+    if(!ui.fullGrid && prevEnd!=null && t>prevEnd){
+      const isLunch = prevEnd<780 && t>=780;               // luckan täcker 12–13
+      const cl = isLunch ? 'lunch' : 'pausrow';
+      const txt= isLunch ? '🍽 Lunchpaus' : '⏸ Paus – ledig lucka (kan schemaläggas manuellt)';
+      html+=`<tr><td class="time">${fmtMin(prevEnd)}–${fmtMin(t)}</td><td class="${cl}" colspan="${courts}">${txt}</td></tr>`;
+    }
     const lunchRow = ui.fullGrid && (t===720 || t===750);
     html+=`<tr><td class="time">${timeLabel(t, day)}${lunchRow?' 🍽':''}</td>`;
     for(let ct=1;ct<=courts;ct++){
@@ -929,10 +948,10 @@ function renderSchedGrid(){
       html+=`<td class="slotcell">${here.map(m=>mtileHTML(m,bad)).join("")}</td>`;
     }
     html+=`</tr>`;
+    prevEnd = Math.max(prevEnd||0, t + slotDur(t, day));
   }
-  if(!ui.fullGrid && !lunchShown) html+=`<tr><td class="time">12:00–13:00</td><td class="lunch" colspan="${courts}">🍽 Lunchpaus</td></tr>`;
   html+=`</tbody></table>`;
-  wrap.innerHTML=html;
+  wrap.innerHTML=legend+html;
   bindTileCtrls();
 }
 function mtileHTML(m,bad){
@@ -943,8 +962,9 @@ function mtileHTML(m,bad){
   const tset=[...new Set([...manualSlots(c.type), ...(m.time!=null?[m.time]:[])])].sort((a,b)=>a-b);
   const timeOpts=tset.map(t=>`<option value="${t}" ${m.time===t?'selected':''}>${fmtMin(t)}</option>`).join("");
   const dayOpts=getDays().map(d=>`<option value="${d.date}" ${m.day===d.date?'selected':''}>${d.dow.slice(0,3)} ${d.short}</option>`).join("");
-  return `<div class="mtile ${c.type}${conf}" data-id="${m.id}">
-     <div class="cls">${c.name}${isFinal(c,m)?' · FINAL':''}</div>
+  const col=classColor(c);
+  return `<div class="mtile${conf}" data-id="${m.id}" style="border-left-color:${col}">
+     <div class="cls"><span class="cdot" style="background:${col}"></span>${c.name}${isFinal(c,m)?' · FINAL':''}</div>
      <div class="vs">${m.p1||'?'} <span class="muted">vs</span> ${m.p2||'?'}</div>
      <div class="ctrls no-print">
        <select data-f="day">${dayOpts}</select>
@@ -981,8 +1001,9 @@ function renderUnsched(){
   box.innerHTML=list.map(m=>{
     const c=getClass(m.classId);
     const stage = m.manual ? "Manuell match" : `${isFinal(c,m)?'FINAL · ':''}${roundName(m.round,totalRounds(c))}`;
-    return `<div class="mtile ${c.type}" style="width:240px">
-      <div class="cls">${c.name} · ${stage}</div>
+    const col=classColor(c);
+    return `<div class="mtile" style="width:240px;border-left-color:${col}">
+      <div class="cls"><span class="cdot" style="background:${col}"></span>${c.name} · ${stage}</div>
       <div class="vs">${m.p1} <span class="muted">vs</span> ${m.p2}</div>
       <div class="ctrls"><button class="btn mini" data-place="${m.id}">➕ Lägg in ${dayShort(ui.day)}</button>
       ${m.manual?`<button class="btn gray mini" data-del="${m.id}">🗑 Ta bort</button>`:""}</div>
@@ -1191,15 +1212,19 @@ function printSchedule(day){
   let html=printHeader("Matchschema – "+dayLong(day));
   html+=`<table class="schedtable" style="width:100%"><thead><tr><th>Tid</th>${
      Array.from({length:courts},(_,i)=>`<th>Bana ${i+1}</th>`).join("")}</tr></thead><tbody>`;
-  let lunchShown=false;
+  let prevEnd=null;
   for(const t of dayTimes(day)){
-    if(!lunchShown && t>=780){ html+=`<tr><td class="time">12:00–13:00</td><td colspan="${courts}" style="text-align:center">Lunchpaus</td></tr>`; lunchShown=true; }
+    if(prevEnd!=null && t>prevEnd){
+      const isLunch = prevEnd<780 && t>=780;
+      html+=`<tr><td class="time">${fmtMin(prevEnd)}–${fmtMin(t)}</td><td colspan="${courts}" style="text-align:center;color:#888;font-style:italic">${isLunch?'Lunchpaus':'Paus'}</td></tr>`;
+    }
     html+=`<tr><td class="time">${timeLabel(t, day)}</td>`;
     for(let ct=1;ct<=courts;ct++){
       const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct);
-      html+=`<td>${here.map(m=>{const c=getClass(m.classId);return `<b>${c.name}</b><br>${m.p1} – ${m.p2}${isFinal(c,m)?' <i>(final)</i>':''}`;}).join("<hr>")}</td>`;
+      html+=`<td>${here.map(m=>{const c=getClass(m.classId);return `<div style="border-left:5px solid ${classColor(c)};padding-left:5px;margin:2px 0"><b>${c.name}</b><br>${m.p1} – ${m.p2}${isFinal(c,m)?' <i>(final)</i>':''}</div>`;}).join("")}</td>`;
     }
     html+=`</tr>`;
+    prevEnd = Math.max(prevEnd||0, t + slotDur(t, day));
   }
   html+=`</tbody></table>`;
   doPrint(html);
