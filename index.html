@@ -1088,6 +1088,16 @@ function renderSchedule(){
        <button class="btn" id="addMatch">➕ Lägg in match</button>
      </div>
    </div>
+   <div class="card no-print">
+     <h2>Sök i schemat</h2>
+     <div class="row">
+       <input type="text" id="schedSearch" placeholder="🔎 Klass eller deltagare…" value="${(ui.schedSearch||'').replace(/"/g,'&quot;')}" style="min-width:220px">
+       <label class="small"><input type="radio" name="schedScope" value="day" ${ui.schedScope!=='all'?'checked':''}> Vald dag (${dayShort(ui.day)})</label>
+       <label class="small"><input type="radio" name="schedScope" value="all" ${ui.schedScope==='all'?'checked':''}> Hela schemat</label>
+       ${(ui.schedSearch||'').trim()?`<button class="btn ghost mini" id="clrSchedSearch">✕ Rensa</button>`:''}
+     </div>
+     <div id="schedSearchRes"></div>
+   </div>
    <div id="schedWrap"></div>
    <div class="card no-print">
      <h2>Ej schemalagda, spelklara matcher</h2>
@@ -1110,6 +1120,12 @@ function renderSchedule(){
   document.getElementById("clearSched").onclick=clearAllSchedule;
   document.getElementById("printBlank").onclick=()=>printBlankSchedule();
   document.getElementById("fullGrid").onchange=e=>{ ui.fullGrid=e.target.checked; render(); };
+  // Sök i schemat (klass/deltagare, vald dag eller hela schemat)
+  const ss=document.getElementById("schedSearch");
+  ss.oninput=e=>{ ui.schedSearch=e.target.value; renderSchedSearch(); };
+  document.querySelectorAll('input[name="schedScope"]').forEach(r=>r.onchange=e=>{ ui.schedScope=e.target.value; renderSchedSearch(); });
+  const css2=document.getElementById("clrSchedSearch"); if(css2) css2.onclick=()=>{ ui.schedSearch=""; render(); };
+  renderSchedSearch();
   document.getElementById("extraCourts").onchange=e=>{
     const v=parseInt(e.target.value,10)||0;
     if(v) state.extraCourts[ui.day]=v; else delete state.extraCourts[ui.day];
@@ -1187,6 +1203,37 @@ function sameTimeBusy(day,t,m){
      playersOf(x).some(p=>ps.includes(p)));
 }
 
+// Sök i schemat: matcha klassnamn eller deltagarnamn, vald dag eller hela schemat.
+function renderSchedSearch(){
+  const box=document.getElementById("schedSearchRes"); if(!box) return;
+  const q=(ui.schedSearch||"").trim().toLowerCase();
+  if(!q){ box.innerHTML=""; return; }
+  const scopeAll = ui.schedScope==='all';
+  const hits=[];
+  for(const c of state.classes) for(const m of c.matches){
+    if(!m.day) continue;                          // endast schemalagda matcher
+    if(!scopeAll && m.day!==ui.day) continue;
+    const clsHit=c.name.toLowerCase().includes(q);
+    const plHit=playersOf(m).some(p=>p.toLowerCase().includes(q));
+    if(clsHit||plHit) hits.push({m,c});
+  }
+  hits.sort((a,b)=>{ const da=a.m.day, db=b.m.day; return da<db?-1:da>db?1:((a.m.time||0)-(b.m.time||0)); });
+  if(!hits.length){ box.innerHTML=`<p class="small muted" style="margin:10px 0 0">Inga matcher matchar "${ui.schedSearch}" ${scopeAll?'i hela schemat':'på '+dayShort(ui.day)}.</p>`; return; }
+  const played=hits.filter(h=>h.m.winner), upcoming=hits.filter(h=>!h.m.winner);
+  const table=(list,title)=>{
+    if(!list.length) return "";
+    let h=`<h3 style="margin:12px 0 4px">${title} <span class="small muted">(${list.length})</span></h3>
+      <table class="results"><thead><tr><th>Nr</th><th>Klass</th><th>Dag</th><th>Tid</th><th>Bana</th><th>Match</th><th>Resultat</th></tr></thead><tbody>`;
+    for(const {m,c} of list){
+      const vs=`${dispName(m.p1)||'<i style="color:#b3aa98">väntar</i>'} – ${dispName(m.p2)||'<i style="color:#b3aa98">väntar</i>'}`;
+      h+=`<tr><td>${matchNumber(m)??'-'}</td><td><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td>
+        <td>${dayShort(m.day)}</td><td>${m.time!=null?matchLabel(m):'-'}</td><td>${m.court||'-'}</td>
+        <td>${vs}</td><td>${m.winner?`<b>${m.score||'WO'}</b> 🏆 ${dispName(m.winner)}`:''}</td></tr>`;
+    }
+    return h+`</tbody></table>`;
+  };
+  box.innerHTML = table(upcoming,"Kommande/ospelade") + table(played,"Spelade (med resultat)");
+}
 function dayTimes(day){
   return [...new Set([...daySlots(day),
      ...realMatches().filter(m=>m.day===day&&m.time!=null).map(m=>m.time)])].sort((a,b)=>a-b);
@@ -1414,12 +1461,13 @@ function renamePlayer(oldName,newName){
   }
   save(); render();
 }
-// Alla riktiga matcher (schemalagda + ospelade) där en person deltar.
+// Alla riktiga matcher där en person deltar – inkl. matcher där motståndaren
+// ännu inte är klar (t.ex. seedad spelare i omgång 2 som väntar på vinnare).
 function playerMatches(name, filterId){
   const res=[];
   const classes = filterId ? state.classes.filter(c=>c.id===filterId) : state.classes;
   for(const c of classes) for(const m of c.matches){
-    if(m.p1 && m.p2 && playersOf(m).includes(name)) res.push({m,c});
+    if((m.p1 || m.p2) && !isByeMatch(m) && playersOf(m).includes(name)) res.push({m,c});
   }
   return res.sort((a,b)=>{
     const da=(a.m.day||"9"), db=(b.m.day||"9");
@@ -1468,9 +1516,10 @@ function renderParticipants(){
       if(!pm.length){ html+=`<p class="small muted">Inga matcher.</p>`; continue; }
       html+=`<table class="results"><thead><tr><th>Nr</th><th>Klass</th><th>Dag</th><th>Tid</th><th>Bana</th><th>Motstånd</th><th>Resultat</th></tr></thead><tbody>`;
       for(const {m,c} of pm){
-        html+=`<tr><td>${matchNumber(m)??'-'}</td><td><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td>
+        const vs=`${dispName(m.p1)||'<i style="color:#b3aa98">väntar på motståndare</i>'} – ${dispName(m.p2)||'<i style="color:#b3aa98">väntar på motståndare</i>'}`;
+        html+=`<tr><td>${matchNumber(m)??'-'}</td><td><span class="cdot" style="background:${classColor(c)}"></span>${c.name} <span class="small muted">(${m.manual?'manuell':roundName(m.round,totalRounds(c))})</span></td>
           <td>${m.day?dayShort(m.day):'<i>ej schemalagd</i>'}</td><td>${m.time!=null?matchLabel(m):'-'}</td><td>${m.court||'-'}</td>
-          <td>${dispName(m.p1)} – ${dispName(m.p2)}</td><td>${m.winner?`${m.score||'WO'} (🏆 ${dispName(m.winner)})`:''}</td></tr>`;
+          <td>${vs}</td><td>${m.winner?`${m.score||'WO'} (🏆 ${dispName(m.winner)})`:''}</td></tr>`;
       }
       html+=`</tbody></table>`;
     }
