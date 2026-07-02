@@ -135,19 +135,12 @@
   .small{font-size:12px}
   /* print */
   #printArea{display:none}
-  .a4page{position:relative;overflow:hidden;background:#fff}
-  .brtitle{display:none}
-  @page land{ size:A4 landscape; margin:6mm }
   @media print{
     header.app,.tabs,.toolbar,.daybar,#app,.no-print{display:none !important}
     body{background:#fff}
     #printArea{display:block;padding:0}
     #printArea h1{color:#000}
     .mtile .ctrls{display:none}
-    /* Liggande A4-utskrift av stege, en sida per bricka */
-    .a4page{width:1040px;height:720px;page:land;break-after:page;page-break-after:always}
-    .a4page:last-child{break-after:auto;page-break-after:auto}
-    body.printing-bracket .brtitle{display:block;position:fixed;top:2mm;left:4mm;font-family:'Arial Narrow',Arial;color:#b5362b;font-weight:bold;font-size:12px;z-index:20}
     *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   }
 </style>
@@ -825,12 +818,6 @@ function renderBracketTab(){
        <button class="btn ${ui.swapMode?'':'ghost'} mini" id="swapMode">🔀 Byt spelare ${ui.swapMode?'(på)':''}</button>
        <button class="btn ghost mini" id="rebuildBr">🔁 Lotta om / bygg stege</button>
        <button class="btn gray mini" id="clearBr">🗑 Rensa flik (denna stege)</button>
-       <span style="flex:1"></span>
-       <label class="small">Skriv ut stege på A4 (liggande):
-         bredd <select id="a4cols">${[1,2,3,4].map(n=>`<option>${n}</option>`).join("")}</select>
-         × höjd <select id="a4rows">${[1,2,3,4].map(n=>`<option>${n}</option>`).join("")}</select>
-       </label>
-       <button class="btn mini" id="printBr">🖨 Skriv ut stege</button>
      </div>
    </div>
    <div id="bracketWrap"></div>`;
@@ -838,11 +825,6 @@ function renderBracketTab(){
   document.getElementById("rebuildBr").onclick=()=>rebuildBracketOf(cls);
   document.getElementById("clearBr").onclick=()=>clearBracketOf(cls);
   document.getElementById("swapMode").onclick=()=>{ ui.swapMode=!ui.swapMode; ui.swapSel=null; render(); };
-  document.getElementById("printBr").onclick=()=>{
-    const cols=parseInt(document.getElementById("a4cols").value,10)||1;
-    const rows=parseInt(document.getElementById("a4rows").value,10)||1;
-    printBracketTiled(cls, cols, rows);
-  };
   const wrap=document.getElementById("bracketWrap");
   if(!cls.matches.length){
     if(cls.participants.length>=2){
@@ -982,61 +964,8 @@ function handleSwapClick(cls,m,slot){
   ui.swapSel=null;
   resolveByes(cls); recompChampion(cls); save(); render();
 }
-// Rita trädlinjer i en given .bracket (mäter positioner, lägger SVG bakom). color valfri.
 window.addEventListener('resize', ()=>{ if(ui.tab==='bracket') layoutBracketEl(document.querySelector('.bracket')); });
 
-/* ----- Utskrift av stege på liggande A4 (NxM sidor) ----- */
-function printBracketBox(cls,m){
-  const rowh=(p,win)=>`<div style="padding:4px 7px;border-bottom:1px solid #ddd;${win?'font-weight:800;color:#2e7d32':''}">${p==null?(m.round===0?'BYE':'—'):dispName(p)}${win?' 🏆':''}</div>`;
-  const n=matchNumber(m);
-  return `<div class="match" data-r="${m.round}" data-i="${m.index}" style="border:1px solid #bbb;border-left:5px solid ${classColor(cls)};border-radius:6px;background:#fff">
-     ${n!=null?`<div style="font-size:10px;font-weight:700;color:#6b6356;padding:2px 7px 0">#${n}</div>`:''}
-     ${rowh(m.p1, m.winner&&m.winner===m.p1)}
-     ${rowh(m.p2, m.winner&&m.winner===m.p2)}
-     ${m.score?`<div style="padding:2px 7px;font-size:11px;color:#555;background:#faf6ec">${m.score}</div>`:''}
-   </div>`;
-}
-function buildPrintBracket(cls){
-  const total=totalRounds(cls);
-  let html=`<div class="bracket" style="position:relative">`;
-  for(let r=0;r<total;r++) html+=`<div class="rhead" data-rh="${r}" style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;text-align:center;font-weight:700">${roundName(r,total)}</div>`;
-  html+=`<div class="rhead" data-rh="${total}" style="font-size:12px;text-align:center;font-weight:700;color:#6b6356">MÄSTARE</div>`;
-  for(let r=0;r<total;r++){
-    cls.matches.filter(m=>m.round===r).sort((a,b)=>a.index-b.index).forEach(m=>{ html+=printBracketBox(cls,m); });
-  }
-  html+=`<div class="match champbox" data-r="${total}" data-i="0" style="border:2px solid ${classColor(cls)};border-radius:8px;text-align:center;padding:12px;background:#fff">
-       <div style="font-size:10px;letter-spacing:2px;color:#8a6d00">🏆 KLUBBMÄSTARE</div>
-       <div style="font-size:16px;font-weight:800;margin-top:4px">${dispName(cls.champion)||'–'}</div></div>`;
-  html+=`</div>`;
-  return html;
-}
-function printBracketTiled(cls, cols, rows){
-  if(!totalRounds(cls)){ alert("Stegen är tom – bygg den först."); return; }
-  const PAGE_W=1040, PAGE_H=720;   // ungefärlig utskriftsyta för A4 liggande (px)
-  const pa=document.getElementById("printArea");
-  // 1) rendera stegen offscreen, layouta (positioner + linjer) och mät storlek
-  const meas=document.createElement("div");
-  meas.style.cssText="position:fixed;left:-20000px;top:0";
-  meas.innerHTML=buildPrintBracket(cls);
-  document.body.appendChild(meas);
-  const brEl=meas.querySelector(".bracket");
-  const size=layoutBracketEl(brEl);
-  const natW=size.width||brEl.scrollWidth, natH=size.height||brEl.scrollHeight;
-  const inner=brEl.outerHTML;
-  document.body.removeChild(meas);
-  // 2) skala så stegen får plats i cols×rows sidor
-  const scale=Math.min((cols*PAGE_W)/natW, (rows*PAGE_H)/natH);
-  const offX=Math.max(0,(cols*PAGE_W - natW*scale)/2), offY=Math.max(0,(rows*PAGE_H - natH*scale)/2);
-  let pages="";
-  for(let rr=0;rr<rows;rr++) for(let cc=0;cc<cols;cc++){
-    pages+=`<div class="a4page"><div style="position:absolute;left:${Math.round(offX-cc*PAGE_W)}px;top:${Math.round(offY-rr*PAGE_H)}px;transform:scale(${scale});transform-origin:top left">${inner}</div></div>`;
-  }
-  pa.innerHTML=`<div class="brtitle">Dalarö TK · KM ${tournamentYear()} · Stege – ${cls.name}</div>${pages}`;
-  document.body.classList.add("printing-bracket");
-  const done=()=>{ document.body.classList.remove("printing-bracket"); window.removeEventListener("afterprint",done); };
-  window.addEventListener("afterprint",done);
-  window.print();
-}
 function dayShort(date){ const d=getDays().find(x=>x.date===date); return d?`${d.dow.slice(0,3)} ${d.short}`:date; }
 function dayLong(date){ const d=getDays().find(x=>x.date===date); return d?`${d.dow} ${d.short}`:date; }
 
