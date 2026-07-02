@@ -373,6 +373,21 @@ function matchNoTag(m){ const n=matchNumber(m); return n==null?"":`<span class="
 function realMatchCount(cls){
   return Math.max(0, cls.participants.length-1) + cls.matches.filter(m=>m.manual).length;
 }
+// Ersätt en deltagare i en klass: nya deltagaren tar den gamlas plats i stege och schema.
+function replaceParticipant(cls, oldEntry, newBase){
+  newBase=(newBase||"").trim(); if(!newBase) return;
+  const rm=String(oldEntry).match(/\s*(\(\d+\))\s*$/);   // behåll ev. seedning "(n)"
+  const newEntry = newBase + (rm ? (" "+rm[1]) : "");
+  const i=cls.participants.indexOf(oldEntry);
+  if(i>=0) cls.participants[i]=newEntry;
+  for(const m of cls.matches){
+    if(m.p1===oldEntry) m.p1=newEntry;
+    if(m.p2===oldEntry) m.p2=newEntry;
+    if(m.winner===oldEntry) m.winner=newEntry;
+  }
+  if(cls.champion===oldEntry) cls.champion=newEntry;
+  save(); render();
+}
 
 /* ---------------- Bracket / stege ---------------- */
 function seedOrder(size){
@@ -729,7 +744,18 @@ function renderClasses(){
        <span class="pill">${cls.participants.length} deltagare</span>
        ${cls.matches.length?`<span class="pill">${totalRounds(cls)} omgångar</span>`:""}
        <button class="btn ghost mini" id="goBracket" ${cls.matches.length?'':'disabled'}>Visa stege →</button>
+       <span style="flex:1"></span>
+       <button class="btn gray mini" id="clearParts" ${cls.participants.length?'':'disabled'}>🗑 Rensa deltagare (raderar stegen)</button>
      </div>
+     ${cls.participants.length?`
+     <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+       <span class="small">Ersätt deltagare:</span>
+       <select id="replSel">${cls.participants.map(p=>`<option value="${String(p).replace(/"/g,'&quot;')}">${dispName(p)}</option>`).join("")}</select>
+       <span class="small">med</span>
+       <input type="text" id="replNew" placeholder="nytt namn / par" style="min-width:180px">
+       <button class="btn mini" id="replBtn">🔁 Ersätt</button>
+       <span class="muted small">– den nya tar den gamlas plats i stege och schema.</span>
+     </div>`:''}
    </div>`;
   // grid
   document.getElementById("saveDates").onclick=()=>{
@@ -764,6 +790,18 @@ function renderClasses(){
     cls.participants=lines;
     buildBracket(cls);
     save(); render();
+  };
+  document.getElementById("clearParts").onclick=()=>{
+    if(!confirm(`Rensa alla deltagare i ${cls.name}? Stegen raderas.`)) return;
+    cls.participants=[]; cls.matches=[]; cls.champion=null;
+    save(); render();
+  };
+  const replBtn=document.getElementById("replBtn");
+  if(replBtn) replBtn.onclick=()=>{
+    const oldEntry=document.getElementById("replSel").value;
+    const nn=document.getElementById("replNew").value.trim();
+    if(!nn){ alert("Skriv namnet på den nya deltagaren."); return; }
+    replaceParticipant(cls, oldEntry, nn);
   };
   document.getElementById("goBracket").onclick=()=>{ui.tab="bracket";render();};
   document.getElementById("newTournament").onclick=resetEverything;
