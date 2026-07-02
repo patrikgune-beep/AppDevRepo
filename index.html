@@ -83,6 +83,7 @@
     position:relative;z-index:1;
   }
   .match .slot.swapsel{background:#fff3bf;outline:2px solid #f0a500;border-radius:5px}
+  .mno{display:inline-block;font-size:10px;font-weight:700;color:#fff;background:#6b6356;border-radius:4px;padding:0 5px;margin-right:5px;letter-spacing:.5px}
   .match .slot{display:flex;align-items:center;gap:6px;padding:7px 9px;border-bottom:1px dashed var(--line)}
   .match .slot:last-of-type{border-bottom:none}
   .match .slot .nm{flex:1;font-size:13px;cursor:pointer;border-radius:5px;padding:2px 4px}
@@ -304,7 +305,7 @@ function newState(){
     tournament: defaultTournament(),
     classes: DEFAULT_CLASSES.map((c,i)=>({
       id:"c"+i, name:c.name, type:c.type,
-      ranked: RANKED_CLASSES.has(c.name), seeds: 4,
+      ranked: RANKED_CLASSES.has(c.name), seeds: 4, catNo: i+1,
       participants:[], matches:[], champion:null
     }))
   };
@@ -314,15 +315,16 @@ function normalize(s){
   if(!s.tournament) s.tournament=defaultTournament();
   if(!s.tournament.start||!s.tournament.end) s.tournament=defaultTournament();
   if(!s.extraCourts) s.extraCourts={};
-  for(const c of (s.classes||[])){
+  (s.classes||[]).forEach((c,ci)=>{
     // Sätt/uppdatera seedningsflaggan utifrån klassnamnet (robust mot gammal data).
     if(c.ranked===undefined) c.ranked = RANKED_CLASSES.has(c.name);
     if(!(c.seeds>0)) c.seeds = 4;   // antal seedade (standard 4)
+    if(!(c.catNo>0)) c.catNo = ci+1; // matchnummer-kategori (första siffran)
     // Migrera gamla heltimme-tider (9..20) till minuter (540..1200).
     for(const m of (c.matches||[])){
       if(m.time!=null && m.time>0 && m.time<60) m.time=m.time*60;
     }
-  }
+  });
   return s;
 }
 // Ska klassen seedas?
@@ -353,6 +355,26 @@ function classColor(cls){ const i=state.classes.indexOf(cls); return CLASS_COLOR
 function classColorId(id){ const c=getClass(id); return c?classColor(c):"#888"; }
 // Visningsnamn: dölj seedningssiffran "(n)" överallt utom i Klasser & deltagare.
 function dispName(x){ return x==null ? x : stripRank(x); }
+
+/* ----- Matchnummer (kategori*100 + löpande) ----- */
+function classCatNo(cls){ return cls.catNo>0 ? cls.catNo : state.classes.indexOf(cls)+1; }   // kategori (första siffran)
+function isByeMatch(m){ return !m.manual && m.round===0 && (m.p1===null || m.p2===null); }
+// Riktiga matcher i en klass i spelordning (byes räknas ej), bracket före manuella.
+function orderedRealMatches(cls){
+  const br=cls.matches.filter(m=>!m.manual && !isByeMatch(m)).sort((a,b)=>a.round-b.round||a.index-b.index);
+  const man=cls.matches.filter(m=>m.manual);
+  return [...br, ...man];
+}
+function matchNumber(m){
+  const cls=getClass(m.classId); if(!cls) return null;
+  const pos=orderedRealMatches(cls).indexOf(m);
+  return pos<0 ? null : classCatNo(cls)*100 + (pos+1);
+}
+function matchNoTag(m){ const n=matchNumber(m); return n==null?"":`<span class="mno">#${n}</span>`; }
+// Antal riktiga matcher som ska spelas i en klass (deltagare-1 + manuella).
+function realMatchCount(cls){
+  return Math.max(0, cls.participants.length-1) + cls.matches.filter(m=>m.manual).length;
+}
 
 /* ---------------- Bracket / stege ---------------- */
 function seedOrder(size){
@@ -514,10 +536,11 @@ function render(){
   else if(ui.tab==="schedule") renderSchedule();
   else if(ui.tab==="participants") renderParticipants();
   else if(ui.tab==="print") renderPrintTab();
+  else if(ui.tab==="stats") renderStats();
   else if(ui.tab==="about") renderAbout();
 }
 function renderTabs(){
-  const tabs=[["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["about","Om appen"]];
+  const tabs=[["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["stats","Statistik"],["about","Om appen"]];
   document.getElementById("tabs").innerHTML=tabs.map(([k,l])=>
     `<button class="${ui.tab===k?'active':''}" data-tab="${k}">${l}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{ui.tab=b.dataset.tab;render();});
@@ -529,6 +552,67 @@ function appVersionText(){
   if(isNaN(d)) return document.lastModified || "okänd";
   const p=n=>String(n).padStart(2,"0");
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/* ----- Tab: Statistik ----- */
+function renderStats(){
+  const days=getDays(), classes=state.classes;
+  if(!days.length){ app.innerHTML=`<div class="card"><h2>Statistik</h2><p class="muted">Ange turneringens datum under <b>Klasser &amp; deltagare</b> först.</p></div>`; return; }
+  const all=realMatches();
+  const schedOf=(cid,date)=> all.filter(m=>m.classId===cid && m.day===date).length;
+
+  // 1) Matris kategori × dag (schemalagda matcher)
+  let colTot=days.map(()=>0), grand=0;
+  let rowsHtml="";
+  classes.forEach(c=>{
+    let rowTot=0, cells="";
+    days.forEach((d,di)=>{ const n=schedOf(c.id,d.date); rowTot+=n; colTot[di]+=n; cells+=`<td>${n||''}</td>`; });
+    grand+=rowTot;
+    rowsHtml+=`<tr><td style="text-align:left"><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td>${cells}<td><b>${rowTot||''}</b></td></tr>`;
+  });
+  let html=`<div class="card"><h2>Matcher per kategori och dag (schemalagda)</h2>
+    <p class="small muted">Visar antal schemalagda matcher per dag i varje kategori, med totalsummor per kategori (höger) och per dag (nederst).</p>
+    <div style="overflow-x:auto"><table class="results"><thead><tr><th style="text-align:left">Kategori</th>${days.map(d=>`<th>${d.dow.slice(0,3)}<br>${d.short}</th>`).join("")}<th>Totalt</th></tr></thead><tbody>
+    ${rowsHtml}
+    <tr style="background:#faf6ec"><td style="text-align:left"><b>Totalt/dag</b></td>${colTot.map(n=>`<td><b>${n||''}</b></td>`).join("")}<td><b>${grand}</b></td></tr>
+    </tbody></table></div></div>`;
+
+  // 2) Totalt i turneringen och per kategori
+  let tPlay=0,tSched=0,tDone=0, r2="";
+  classes.forEach(c=>{
+    const play=realMatchCount(c);
+    const s=all.filter(m=>m.classId===c.id && m.day).length;
+    const done=all.filter(m=>m.classId===c.id && m.winner && m.p1 && m.p2 && !isByeMatch(m)).length;
+    tPlay+=play;tSched+=s;tDone+=done;
+    if(play>0||s>0) r2+=`<tr><td style="text-align:left"><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td><td>${play}</td><td>${s}</td><td>${done}</td><td>${Math.max(0,play-done)}</td></tr>`;
+  });
+  html+=`<div class="card"><h2>Antal matcher totalt</h2>
+    <p class="small muted">"Att spela" = totalt antal matcher i kategorin (deltagare − 1 + manuella).</p>
+    <table class="results"><thead><tr><th style="text-align:left">Kategori</th><th>Att spela</th><th>Schemalagda</th><th>Spelade</th><th>Kvar</th></tr></thead><tbody>
+    ${r2}
+    <tr style="background:#faf6ec"><td style="text-align:left"><b>Hela turneringen</b></td><td><b>${tPlay}</b></td><td><b>${tSched}</b></td><td><b>${tDone}</b></td><td><b>${Math.max(0,tPlay-tDone)}</b></td></tr>
+    </tbody></table></div>`;
+
+  // 3) Matcher/dag som krävs till finalerna
+  let r3="";
+  classes.forEach(c=>{
+    const play=realMatchCount(c); if(play===0) return;
+    const fd=c.type==="youth"?youthFinalDay():adultFinalDay();
+    const idx=days.findIndex(d=>d.date===fd);
+    const daysBefore=idx<0?days.length:idx;
+    const beforeFinal=Math.max(0,play-1);
+    const perDay=daysBefore>0?Math.ceil(beforeFinal/daysBefore):beforeFinal;
+    r3+=`<tr><td style="text-align:left">${c.name}</td><td>${play}</td><td>${idx<0?'–':dayLong(fd)}</td><td>${daysBefore}</td><td><b>${perDay}</b></td></tr>`;
+  });
+  const totalDays=days.length;
+  html+=`<div class="card"><h2>Matcher/dag som krävs till finalerna</h2>
+    <p class="small muted">Antal matcher per dag (summa över alla banor) som behöver spelas för att hinna klart före respektive finaldag.</p>
+    <table class="results"><thead><tr><th style="text-align:left">Kategori</th><th>Matcher totalt</th><th>Final</th><th>Dagar före final</th><th>Matcher/dag som krävs</th></tr></thead><tbody>
+    ${r3}
+    <tr style="background:#faf6ec"><td style="text-align:left"><b>Hela turneringen (snitt)</b></td><td><b>${tPlay}</b></td><td>–</td><td><b>${totalDays}</b></td><td><b>${totalDays>0?Math.ceil(tPlay/totalDays):tPlay}</b></td></tr>
+    </tbody></table></div>`;
+
+  app.innerHTML=html;
 }
 
 /* ----- Tab: Om appen ----- */
@@ -617,6 +701,11 @@ function renderClasses(){
        </select>
        (rank 1–${seedCountOf(cls)||4})
      </label>
+     <label class="small" style="display:block;margin:0 0 10px">
+       Matchnummer-kategori (första siffran):
+       <input type="number" id="catNo" min="1" max="99" value="${classCatNo(cls)}" style="width:60px">
+       – matcher numreras <b>${classCatNo(cls)}01, ${classCatNo(cls)}02 …</b>
+     </label>
      <textarea id="partsInput" placeholder="Anna Andersson&#10;Björn Berg&#10;Carl Carlsson&#10;...">${cls.participants.join("\n")}</textarea>
      <div class="toolbar" style="margin-top:10px">
        <button class="btn" id="saveParts">🔒 Lås deltagare &amp; bygg stege</button>
@@ -652,6 +741,7 @@ function renderClasses(){
   }
   document.getElementById("rankToggle").onchange=e=>{ cls.ranked=e.target.checked; applySeedChange(); };
   document.getElementById("seedCount").onchange=e=>{ cls.seeds=parseInt(e.target.value,10)||4; applySeedChange(); };
+  document.getElementById("catNo").onchange=e=>{ cls.catNo=Math.max(1,parseInt(e.target.value,10)||1); save(); render(); };
   document.getElementById("saveParts").onclick=()=>{
     const lines=document.getElementById("partsInput").value.split("\n").map(s=>s.trim()).filter(Boolean);
     cls.participants=lines;
@@ -782,7 +872,8 @@ function matchHTML(cls,m,total){
     if(sel && sel.id===m.id && sel.key===key) cl+=" swapsel";
     return `<div class="${cl}"><span class="nm" id="nm_${m.id}_${key}">${nm||""}</span>${m.winner===p?' 🏆':''}</div>`;
   };
-  const sched = m.day?`<div class="sched-tag">📅 ${dayShort(m.day)} · ${m.time!=null?matchLabel(m):'-'} · Bana ${m.court||'-'}</div>`:"";
+  const sched = m.day?`<div class="sched-tag">${matchNoTag(m)}📅 ${dayShort(m.day)} · ${m.time!=null?matchLabel(m):'-'} · Bana ${m.court||'-'}</div>`
+                     :(matchNumber(m)!=null?`<div class="sched-tag">${matchNoTag(m)}</div>`:"");
   return `<div class="match" data-r="${m.round}" data-i="${m.index}" style="border-left:5px solid ${classColor(cls)}">
      ${slotHTML(m.p1,"p1")}
      ${slotHTML(m.p2,"p2")}
@@ -839,7 +930,9 @@ window.addEventListener('resize', ()=>{ if(ui.tab==='bracket') drawBracketLines(
 /* ----- Utskrift av stege på liggande A4 (NxM sidor) ----- */
 function printBracketBox(cls,m){
   const rowh=(p,win)=>`<div style="padding:4px 7px;border-bottom:1px solid #ddd;${win?'font-weight:800;color:#2e7d32':''}">${p==null?(m.round===0?'BYE':'—'):dispName(p)}${win?' 🏆':''}</div>`;
+  const n=matchNumber(m);
   return `<div class="match" data-r="${m.round}" data-i="${m.index}" style="position:relative;z-index:1;border:1px solid #bbb;border-left:5px solid ${classColor(cls)};border-radius:6px;margin:9px 0;background:#fff;min-width:180px">
+     ${n!=null?`<div style="font-size:10px;font-weight:700;color:#6b6356;padding:2px 7px 0">#${n}</div>`:''}
      ${rowh(m.p1, m.winner&&m.winner===m.p1)}
      ${rowh(m.p2, m.winner&&m.winner===m.p2)}
      ${m.score?`<div style="padding:2px 7px;font-size:11px;color:#555;background:#faf6ec">${m.score}</div>`:''}
@@ -1089,9 +1182,18 @@ function mtileHTML(m,bad){
   const timeOpts=tset.map(t=>`<option value="${t}" ${m.time===t?'selected':''}>${fmtMin(t)}</option>`).join("");
   const dayOpts=getDays().map(d=>`<option value="${d.date}" ${m.day===d.date?'selected':''}>${d.dow.slice(0,3)} ${d.short}</option>`).join("");
   const col=classColor(c);
+  const winsel=(m.p1&&m.p2)?`<div class="ctrls no-print" style="margin-top:3px">
+       <input type="text" data-f="score" value="${m.score||''}" placeholder="resultat" style="flex:1;min-width:40px">
+       <select data-f="winner" title="Registrera vinnare (uppdaterar stegen)">
+         <option value="">Vinnare?</option>
+         <option value="p1" ${m.winner===m.p1?'selected':''}>${dispName(m.p1)}</option>
+         <option value="p2" ${m.winner===m.p2?'selected':''}>${dispName(m.p2)}</option>
+       </select>
+     </div>`:"";
   return `<div class="mtile${conf}" data-id="${m.id}" style="border-left-color:${col}">
-     <div class="cls"><span class="cdot" style="background:${col}"></span>${c.name}${isFinal(c,m)?' · FINAL':''}</div>
-     <div class="vs">${dispName(m.p1)||'?'} <span class="muted">vs</span> ${dispName(m.p2)||'?'}</div>
+     <div class="cls"><span class="cdot" style="background:${col}"></span>${matchNoTag(m)}${c.name}${isFinal(c,m)?' · FINAL':''}</div>
+     <div class="vs">${dispName(m.p1)||'?'} <span class="muted">vs</span> ${dispName(m.p2)||'?'}${m.winner?` <span style="color:var(--green)">🏆 ${dispName(m.winner)}</span>`:''}</div>
+     ${winsel}
      <div class="ctrls no-print">
        <select data-f="day">${dayOpts}</select>
        <select data-f="time">${timeOpts}</select>
@@ -1103,9 +1205,12 @@ function bindTileCtrls(){
   document.querySelectorAll(".mtile").forEach(tile=>{
     const id=tile.dataset.id; const {m}=findMatch(id)||{};
     if(!m) return;
-    tile.querySelectorAll("select,button").forEach(ctrl=>{
-      const f=ctrl.dataset.f;
-      if(ctrl.tagName==="SELECT"){
+    tile.querySelectorAll("select,input,button").forEach(ctrl=>{
+      const f=ctrl.dataset.f; if(!f) return;
+      if(f==="score"){ ctrl.onchange=()=>{ m.score=ctrl.value; save(); }; }
+      else if(f==="winner"){ ctrl.onchange=()=>{ registerWinner(getClass(m.classId), m, ctrl.value); }; }
+      else if(f==="remove"){ ctrl.onclick=()=>{ m.day=null;m.court=null;m.time=null; save(); render(); }; }
+      else if(ctrl.tagName==="SELECT"){
         ctrl.onchange=()=>{
           if(f==="day"){
             m.day=ctrl.value;
@@ -1114,8 +1219,6 @@ function bindTileCtrls(){
           } else m[f]= parseInt(ctrl.value,10);
           save(); render();
         };
-      } else {
-        ctrl.onclick=()=>{ m.day=null;m.court=null;m.time=null; save(); render(); };
       }
     });
   });
@@ -1129,7 +1232,7 @@ function renderUnsched(){
     const stage = m.manual ? "Manuell match" : `${isFinal(c,m)?'FINAL · ':''}${roundName(m.round,totalRounds(c))}`;
     const col=classColor(c);
     return `<div class="mtile" style="width:240px;border-left-color:${col}">
-      <div class="cls"><span class="cdot" style="background:${col}"></span>${c.name} · ${stage}</div>
+      <div class="cls"><span class="cdot" style="background:${col}"></span>${matchNoTag(m)}${c.name} · ${stage}</div>
       <div class="vs">${dispName(m.p1)} <span class="muted">vs</span> ${dispName(m.p2)}</div>
       <div class="ctrls"><button class="btn mini" data-place="${m.id}">➕ Lägg in ${dayShort(ui.day)}</button>
       ${m.manual?`<button class="btn gray mini" data-del="${m.id}">🗑 Ta bort</button>`:""}</div>
@@ -1277,10 +1380,10 @@ function resultsHTML(day){
   let h=`<div class="card"><h2>Resultat – ${dayShort(day)}</h2>`;
   if(!played.length) h+=`<p class="muted">Inga färdigspelade matcher registrerade denna dag.</p>`;
   else{
-    h+=`<table class="results"><thead><tr><th>Tid</th><th>Bana</th><th>Klass</th><th>Match</th><th>Resultat</th><th>Vinnare</th></tr></thead><tbody>`;
+    h+=`<table class="results"><thead><tr><th>Nr</th><th>Tid</th><th>Bana</th><th>Klass</th><th>Match</th><th>Resultat</th><th>Vinnare</th></tr></thead><tbody>`;
     played.sort((a,b)=>(a.time||0)-(b.time||0)).forEach(m=>{
       const c=getClass(m.classId);
-      h+=`<tr><td>${m.time!=null?matchLabel(m):'-'}</td><td>${m.court||'-'}</td><td>${c.name}</td>
+      h+=`<tr><td>${matchNumber(m)??'-'}</td><td>${m.time!=null?matchLabel(m):'-'}</td><td>${m.court||'-'}</td><td>${c.name}</td>
         <td>${dispName(m.p1)} – ${dispName(m.p2)}</td><td>${m.score||'WO'}</td><td><b>${dispName(m.winner)}</b></td></tr>`;
     });
     h+=`</tbody></table>`;
@@ -1290,7 +1393,7 @@ function resultsHTML(day){
     h+=`<div class="card"><h2>Ospelade matcher kvar denna dag</h2><table class="results"><tbody>`;
     upcoming.sort((a,b)=>(a.time||0)-(b.time||0)).forEach(m=>{
       const c=getClass(m.classId);
-      h+=`<tr><td>${m.time!=null?matchLabel(m):'-'}</td><td>Bana ${m.court||'-'}</td><td>${c.name}</td><td>${dispName(m.p1)} – ${dispName(m.p2)}</td></tr>`;
+      h+=`<tr><td>${matchNumber(m)??'-'}</td><td>${m.time!=null?matchLabel(m):'-'}</td><td>Bana ${m.court||'-'}</td><td>${c.name}</td><td>${dispName(m.p1)} – ${dispName(m.p2)}</td></tr>`;
     });
     h+=`</tbody></table></div>`;
   }
@@ -1347,7 +1450,7 @@ function printSchedule(day){
     html+=`<tr><td class="time">${timeLabel(t, day)}</td>`;
     for(let ct=1;ct<=courts;ct++){
       const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct);
-      html+=`<td>${here.map(m=>{const c=getClass(m.classId);return `<div style="border-left:5px solid ${classColor(c)};padding-left:5px;margin:2px 0"><b>${c.name}</b><br>${dispName(m.p1)} – ${dispName(m.p2)}${isFinal(c,m)?' <i>(final)</i>':''}</div>`;}).join("")}</td>`;
+      html+=`<td>${here.map(m=>{const c=getClass(m.classId);const n=matchNumber(m);return `<div style="border-left:5px solid ${classColor(c)};padding-left:5px;margin:2px 0">${n!=null?`<b>#${n}</b> `:''}<b>${c.name}</b><br>${dispName(m.p1)} – ${dispName(m.p2)}${isFinal(c,m)?' <i>(final)</i>':''}</div>`;}).join("")}</td>`;
     }
     html+=`</tr>`;
     prevEnd = Math.max(prevEnd||0, t + slotDur(t, day));
