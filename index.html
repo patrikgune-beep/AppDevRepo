@@ -683,6 +683,7 @@ function renderBracketTab(){
   app.innerHTML=`
    <div class="card no-print">
      <div class="row">
+       <span class="sw" style="background:${classColor(cls)};width:16px;height:16px;border-radius:4px;display:inline-block"></span>
        <label class="small">Klass:
          <select id="clsSel">${state.classes.map(c=>`<option value="${c.id}" ${c.id===cls.id?'selected':''}>${c.name}</option>`).join("")}</select>
        </label>
@@ -724,7 +725,7 @@ function renderBracketTab(){
     html+=`</div>`;
   }
   // mästar-kolumn
-  html+=`<div class="round"><h3>Mästare</h3><div class="champion">
+  html+=`<div class="round"><h3>Mästare</h3><div class="champion" style="border-top:5px solid ${classColor(cls)}">
       <div class="lbl">🏆 Klubbmästare</div>
       <div class="who">${cls.champion||"–"}</div></div></div>`;
   html+=`</div>`;
@@ -749,7 +750,7 @@ function matchHTML(cls,m,total){
     return `<div class="${cl}"><span class="nm" id="nm_${m.id}_${key}">${nm||""}</span>${m.winner===p?' 🏆':''}</div>`;
   };
   const sched = m.day?`<div class="sched-tag">📅 ${dayShort(m.day)} · ${m.time!=null?matchLabel(m):'-'} · Bana ${m.court||'-'}</div>`:"";
-  return `<div class="match">
+  return `<div class="match" style="border-left:5px solid ${classColor(cls)}">
      ${slotHTML(m.p1,"p1")}
      ${slotHTML(m.p2,"p2")}
      ${ (m.p1&&m.p2) ? `<div class="scorerow">
