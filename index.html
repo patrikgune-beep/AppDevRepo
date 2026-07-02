@@ -219,9 +219,12 @@ const DEFAULT_CLASSES = [
   {name:"Juniorveteran",    type:"adult"},
   {name:"Veteransingel",    type:"adult"},
   {name:"Generationsdubbel",type:"adult"},
-  {name:"Pojksingel",       type:"youth"},
-  {name:"Flicksingel",      type:"youth"},
+  {name:"Pojksingel Äldre", type:"youth"},
+  {name:"Flicksingel Äldre",type:"youth"},
   {name:"Juniordubbel",     type:"youth"},
+  {name:"Pojksingel Yngre", type:"youth"},
+  {name:"Flicksingel Yngre",type:"youth"},
+  {name:"Minidubbel",       type:"youth"},
 ];
 
 /* ---------- Klasser med seedning (endast top 4) ---------- */
@@ -313,6 +316,16 @@ function normalize(s){
   if(!s.tournament) s.tournament=defaultTournament();
   if(!s.tournament.start||!s.tournament.end) s.tournament=defaultTournament();
   if(!s.extraCourts) s.extraCourts={};
+  s.classes=s.classes||[];
+  // Migrering: döp om gamla juniorklasser och lägg till nya juniorklasser.
+  const renameMap={"Pojksingel":"Pojksingel Äldre","Flicksingel":"Flicksingel Äldre"};
+  s.classes.forEach(c=>{ if(renameMap[c.name]) c.name=renameMap[c.name]; });
+  [["Pojksingel Yngre","youth"],["Flicksingel Yngre","youth"],["Minidubbel","youth"]].forEach(([name,type])=>{
+    if(!s.classes.some(c=>c.name===name)){
+      s.classes.push({ id:"c"+uid(), name, type, ranked:false, seeds:4, catNo:s.classes.length+1,
+        participants:[], matches:[], champion:null });
+    }
+  });
   (s.classes||[]).forEach((c,ci)=>{
     // Sätt/uppdatera seedningsflaggan utifrån klassnamnet (robust mot gammal data).
     if(c.ranked===undefined) c.ranked = RANKED_CLASSES.has(c.name);
@@ -864,6 +877,15 @@ function renderBracketTab(){
        <span style="flex:1"></span>
        <button class="btn mini" id="printBr">🖨 Skriv ut stege</button>
      </div>
+     ${cls.participants.length?`
+     <div class="row" style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+       <span class="small">Ersätt deltagare:</span>
+       <select id="replSelBr">${cls.participants.map(p=>`<option value="${String(p).replace(/"/g,'&quot;')}">${dispName(p)}</option>`).join("")}</select>
+       <span class="small">med</span>
+       <input type="text" id="replNewBr" placeholder="nytt namn / par" style="min-width:170px">
+       <button class="btn mini" id="replBtnBr">🔁 Ersätt</button>
+       <span class="muted small">– den nya tar den gamlas plats i stege och schema.</span>
+     </div>`:''}
    </div>
    <div id="bracketWrap"></div>`;
   document.getElementById("clsSel").onchange=e=>{ui.classId=e.target.value; ui.swapSel=null; render();};
@@ -871,6 +893,13 @@ function renderBracketTab(){
   document.getElementById("clearBr").onclick=()=>clearBracketOf(cls);
   document.getElementById("swapMode").onclick=()=>{ ui.swapMode=!ui.swapMode; ui.swapSel=null; render(); };
   document.getElementById("printBr").onclick=()=>printOneBracket(cls);
+  const replBtnBr=document.getElementById("replBtnBr");
+  if(replBtnBr) replBtnBr.onclick=()=>{
+    const oldEntry=document.getElementById("replSelBr").value;
+    const nn=document.getElementById("replNewBr").value.trim();
+    if(!nn){ alert("Skriv namnet på den nya deltagaren."); return; }
+    replaceParticipant(cls, oldEntry, nn);
+  };
   const wrap=document.getElementById("bracketWrap");
   if(!cls.matches.length){
     if(cls.participants.length>=2){
@@ -1343,9 +1372,10 @@ function generateDay(day){
 }
 
 /* ----- Tab: Deltagarlista (per person, utifrån namn) ----- */
-function participantIndex(){
+function participantIndex(filterId){
   const map=new Map(); // namn -> Set(klassnamn)
-  for(const c of state.classes){
+  const classes = filterId ? state.classes.filter(c=>c.id===filterId) : state.classes;
+  for(const c of classes){
     for(const line of c.participants){
       for(const part of String(line).split("/")){
         const nm=stripRank(part);
@@ -1385,9 +1415,10 @@ function renamePlayer(oldName,newName){
   save(); render();
 }
 // Alla riktiga matcher (schemalagda + ospelade) där en person deltar.
-function playerMatches(name){
+function playerMatches(name, filterId){
   const res=[];
-  for(const c of state.classes) for(const m of c.matches){
+  const classes = filterId ? state.classes.filter(c=>c.id===filterId) : state.classes;
+  for(const c of classes) for(const m of c.matches){
     if(m.p1 && m.p2 && playersOf(m).includes(name)) res.push({m,c});
   }
   return res.sort((a,b)=>{
@@ -1396,37 +1427,47 @@ function playerMatches(name){
   });
 }
 function renderParticipants(){
-  const idx=participantIndex();
+  const fid=ui.partClass||"";
+  const fcls=fid?getClass(fid):null;
+  const idx=participantIndex(fid);
   const q=(ui.playerSearch||"").trim().toLowerCase();
+  const classOpts=`<option value="">Alla klasser</option>`+state.classes.map(c=>`<option value="${c.id}" ${fid===c.id?'selected':''}>${c.name} (${c.participants.length})</option>`).join("");
   let html=`<div class="card no-print">
      <h2>Deltagarlista &amp; sök</h2>
-     <p class="small muted">Sammanställning utifrån namn – dubbelpar delas på "/". Sök en spelare för att se hens inplanerade matcher, eller byt namn (uppdateras överallt).</p>
+     <p class="small muted">Välj klass för att söka/lista deltagare i en specifik klass (eller "Alla klasser"). Dubbelpar delas på "/".</p>
      <div class="row">
-       <input type="text" id="playerSearch" placeholder="🔎 Sök spelare…" value="${(ui.playerSearch||'').replace(/"/g,'&quot;')}" style="min-width:220px">
+       <label class="small">Klass: <select id="partClass">${classOpts}</select></label>
+       <input type="text" id="playerSearch" placeholder="🔎 Sök deltagare…" value="${(ui.playerSearch||'').replace(/"/g,'&quot;')}" style="min-width:200px">
        ${q?`<button class="btn ghost mini" id="clrSearch">✕ Rensa</button>`:''}
-       <span class="pill">${idx.length} personer</span>
+       <span class="pill">${idx.length} personer${fcls?` i ${fcls.name}`:''}</span>
        <button class="btn ghost mini" id="printParts">🖨 Skriv ut deltagarlista</button>
+       <button class="btn ghost mini" id="printPartsCls">🖨 Skriv ut per klass</button>
      </div>
    </div>`;
+  const bindTop=()=>{
+    document.getElementById("partClass").onchange=e=>{ ui.partClass=e.target.value; render(); };
+    const si=document.getElementById("playerSearch");
+    si.oninput=e=>{ ui.playerSearch=e.target.value; ui._sf=true; render(); };
+    if(ui._sf){ const el=document.getElementById("playerSearch"); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length); } ui._sf=false; }
+    const clr=document.getElementById("clrSearch"); if(clr) clr.onclick=()=>{ ui.playerSearch=""; render(); };
+    document.getElementById("printParts").onclick=()=>printParticipants(fid);
+    document.getElementById("printPartsCls").onclick=()=>printParticipantsByClass(fid);
+  };
   if(!idx.length){
-    html+=`<div class="card"><p class="muted">Inga deltagare inlagda ännu. Lägg in deltagare under <b>Klasser & deltagare</b>.</p></div>`;
-    app.innerHTML=html;
-    document.getElementById("playerSearch").oninput=e=>{ ui.playerSearch=e.target.value; };
-    document.getElementById("printParts").onclick=()=>printParticipants();
-    return;
+    html+=`<div class="card"><p class="muted">Inga deltagare ${fcls?`i <b>${fcls.name}</b>`:'inlagda ännu'}. Lägg in deltagare under <b>Klasser & deltagare</b>.</p></div>`;
+    app.innerHTML=html; bindTop(); return;
   }
-  // Sökresultat: matchande spelares inplanerade matcher
+  // Sökresultat: matchande deltagares inplanerade matcher
   if(q){
     const matched=idx.filter(r=>r.name.toLowerCase().includes(q));
-    html+=`<div class="card"><h2>Sökresultat</h2>`;
-    if(!matched.length) html+=`<p class="muted">Ingen spelare matchar "${ui.playerSearch}".</p>`;
+    html+=`<div class="card"><h2>Sökresultat${fcls?` i ${fcls.name}`:''}</h2>`;
+    if(!matched.length) html+=`<p class="muted">Ingen deltagare matchar "${ui.playerSearch}".</p>`;
     for(const r of matched){
-      const pm=playerMatches(r.name);
+      const pm=playerMatches(r.name, fid);
       html+=`<h3 style="margin:14px 0 4px">${r.name} <span class="small muted">(${r.classes.join(", ")})</span></h3>`;
       if(!pm.length){ html+=`<p class="small muted">Inga matcher.</p>`; continue; }
       html+=`<table class="results"><thead><tr><th>Nr</th><th>Klass</th><th>Dag</th><th>Tid</th><th>Bana</th><th>Motstånd</th><th>Resultat</th></tr></thead><tbody>`;
       for(const {m,c} of pm){
-        const opp = playersOf(m).filter(p=>p!==r.name).join(", ") || (dispName(m.p1)+" / "+dispName(m.p2));
         html+=`<tr><td>${matchNumber(m)??'-'}</td><td><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td>
           <td>${m.day?dayShort(m.day):'<i>ej schemalagd</i>'}</td><td>${m.time!=null?matchLabel(m):'-'}</td><td>${m.court||'-'}</td>
           <td>${dispName(m.p1)} – ${dispName(m.p2)}</td><td>${m.winner?`${m.score||'WO'} (🏆 ${dispName(m.winner)})`:''}</td></tr>`;
@@ -1437,18 +1478,14 @@ function renderParticipants(){
   }
   // Full lista med byt-namn
   html+=`<div class="card"><table class="results"><thead>
-     <tr><th>Namn</th><th>Antal klasser</th><th>Klasser</th><th class="no-print"></th></tr></thead><tbody>`;
+     <tr><th>Namn</th><th>${fcls?'Klass':'Antal klasser'}</th><th>${fcls?'':'Klasser'}</th><th class="no-print"></th></tr></thead><tbody>`;
   for(const r of idx)
-    html+=`<tr><td>${r.name}</td><td>${r.classes.length}</td><td>${r.classes.join(", ")}</td>
+    html+=`<tr><td>${r.name}</td><td>${fcls?r.classes.join(", "):r.classes.length}</td><td>${fcls?'':r.classes.join(", ")}</td>
       <td class="no-print"><button class="btn ghost mini" data-rename="${r.name.replace(/"/g,'&quot;')}">✏️ Byt namn</button>
       <button class="btn ghost mini" data-find="${r.name.replace(/"/g,'&quot;')}">🔎 Matcher</button></td></tr>`;
   html+=`</tbody></table></div>`;
   app.innerHTML=html;
-  const si=document.getElementById("playerSearch");
-  si.oninput=e=>{ ui.playerSearch=e.target.value; ui._sf=true; render(); };
-  if(ui._sf){ const el=document.getElementById("playerSearch"); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length); } ui._sf=false; }
-  const clr=document.getElementById("clrSearch"); if(clr) clr.onclick=()=>{ ui.playerSearch=""; render(); };
-  document.getElementById("printParts").onclick=()=>printParticipants();
+  bindTop();
   document.querySelectorAll("[data-rename]").forEach(b=>b.onclick=()=>{
     const old=b.dataset.rename;
     const nn=prompt(`Byt namn på "${old}" – nytt namn (uppdateras i alla klasser, stegar, schema och resultat):`, old);
@@ -1456,13 +1493,23 @@ function renderParticipants(){
   });
   document.querySelectorAll("[data-find]").forEach(b=>b.onclick=()=>{ ui.playerSearch=b.dataset.find; render(); });
 }
-function printParticipants(){
-  const idx=participantIndex();
-  let html=printHeader("Deltagarlista");
-  html+=`<table class="results"><thead><tr><th>Namn</th><th>Antal klasser</th><th>Klasser</th></tr></thead><tbody>`;
-  for(const r of idx)
-    html+=`<tr><td>${r.name}</td><td>${r.classes.length}</td><td>${r.classes.join(", ")}</td></tr>`;
+function printParticipants(fid){
+  const idx=participantIndex(fid);
+  const fcls=fid?getClass(fid):null;
+  let html=printHeader("Deltagarlista"+(fcls?` – ${fcls.name}`:""));
+  html+=`<table class="results"><thead><tr><th>Namn</th><th>Klasser</th></tr></thead><tbody>`;
+  for(const r of idx) html+=`<tr><td>${r.name}</td><td>${r.classes.join(", ")}</td></tr>`;
   html+=`</tbody></table>`;
+  doPrint(html);
+}
+function printParticipantsByClass(fid){
+  const classes=(fid?state.classes.filter(c=>c.id===fid):state.classes).filter(c=>c.participants.length);
+  if(!classes.length){ alert("Inga deltagare att skriva ut."); return; }
+  let html=printHeader("Deltagare per klass");
+  for(const c of classes){
+    html+=`<h3 style="color:var(--red);margin:14px 0 4px">${c.name} <span style="font-weight:normal;font-size:13px;color:#666">(${c.participants.length} deltagare)</span></h3>`;
+    html+=`<ol style="margin:0 0 12px 22px;font-size:13px;line-height:1.6">`+c.participants.map(p=>`<li>${dispName(p)}</li>`).join("")+`</ol>`;
+  }
   doPrint(html);
 }
 
