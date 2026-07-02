@@ -561,20 +561,39 @@ function renderStats(){
   const all=realMatches();
   const schedOf=(cid,date)=> all.filter(m=>m.classId===cid && m.day===date).length;
 
-  // 1) Matris kategori × dag (schemalagda matcher)
-  let colTot=days.map(()=>0), grand=0;
+  // Fördela klassens kvarvarande (oschemalagda) matcher jämnt över dagarna t.o.m. finalen.
+  function suggestPerDay(cls){
+    const arr=days.map(()=>0);
+    const fd=cls.type==="youth"?youthFinalDay():adultFinalDay();
+    const fi=days.findIndex(d=>d.date===fd);
+    const D=fi<0?days.length:fi+1;
+    const kvar=Math.max(0, realMatchCount(cls) - all.filter(m=>m.classId===cls.id && m.day).length);
+    if(D<=0 || kvar<=0) return arr;
+    const base=Math.floor(kvar/D), extra=kvar%D;
+    for(let di=0; di<Math.min(D,days.length); di++) arr[di]=base + (di >= D-extra ? 1 : 0);
+    return arr;
+  }
+  // 1) Matris kategori × dag (schemalagda matcher) + Kvar + förslag/dag (rött inom parentes)
+  let colTot=days.map(()=>0), grand=0, tKvar=0;
   let rowsHtml="";
   classes.forEach(c=>{
     let rowTot=0, cells="";
-    days.forEach((d,di)=>{ const n=schedOf(c.id,d.date); rowTot+=n; colTot[di]+=n; cells+=`<td>${n||''}</td>`; });
+    const sugg=suggestPerDay(c);
+    days.forEach((d,di)=>{
+      const n=schedOf(c.id,d.date); rowTot+=n; colTot[di]+=n;
+      const s=sugg[di];
+      cells+=`<td>${n||''}${s>0?` <span style="color:#c0392b;font-weight:700">(${s})</span>`:''}</td>`;
+    });
     grand+=rowTot;
-    rowsHtml+=`<tr><td style="text-align:left"><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td>${cells}<td><b>${rowTot||''}</b></td></tr>`;
+    const kvar=Math.max(0, realMatchCount(c) - rowTot); tKvar+=kvar;
+    rowsHtml+=`<tr><td style="text-align:left"><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td>${cells}<td><b>${rowTot||''}</b></td><td><b>${kvar||''}</b></td></tr>`;
   });
   let html=`<div class="card"><h2>Matcher per kategori och dag (schemalagda)</h2>
-    <p class="small muted">Visar antal schemalagda matcher per dag i varje kategori, med totalsummor per kategori (höger) och per dag (nederst).</p>
-    <div style="overflow-x:auto"><table class="results"><thead><tr><th style="text-align:left">Kategori</th>${days.map(d=>`<th>${d.dow.slice(0,3)}<br>${d.short}</th>`).join("")}<th>Totalt</th></tr></thead><tbody>
+    <p class="small muted">Antal schemalagda matcher per dag och kategori. <b>Kvar</b> = matcher kvar att schemalägga t.o.m. finalen.
+    Röd siffra <span style="color:#c0392b;font-weight:700">(n)</span> = förslag på hur många kvarvarande matcher som bör läggas den dagen fram till finalen.</p>
+    <div style="overflow-x:auto"><table class="results"><thead><tr><th style="text-align:left">Kategori</th>${days.map(d=>`<th>${d.dow.slice(0,3)}<br>${d.short}</th>`).join("")}<th>Totalt</th><th>Kvar</th></tr></thead><tbody>
     ${rowsHtml}
-    <tr style="background:#faf6ec"><td style="text-align:left"><b>Totalt/dag</b></td>${colTot.map(n=>`<td><b>${n||''}</b></td>`).join("")}<td><b>${grand}</b></td></tr>
+    <tr style="background:#faf6ec"><td style="text-align:left"><b>Totalt/dag</b></td>${colTot.map(n=>`<td><b>${n||''}</b></td>`).join("")}<td><b>${grand}</b></td><td><b>${tKvar||''}</b></td></tr>
     </tbody></table></div></div>`;
 
   // 2) Totalt i turneringen och per kategori
@@ -1319,26 +1338,102 @@ function participantIndex(){
     .map(([name,set])=>({name, classes:[...set]}))
     .sort((a,b)=> a.name.localeCompare(b.name,"sv"));
 }
+// Byt ut ett individnamn i en sträng (dubbelpar delas på "/"), behåll ev. rank "(n)".
+function replaceIndivName(str, oldName, newName){
+  if(str==null) return str;
+  return String(str).split("/").map(part=>{
+    const t=part.trim();
+    const rm=t.match(/\s*(\(\d+\))\s*$/);
+    const rank=rm?(" "+rm[1]):"";
+    return stripRank(t)===oldName ? (newName+rank) : t;
+  }).join(" / ");
+}
+// Döp om en spelare överallt: deltagarlistor, matcher, vinnare, mästare.
+function renamePlayer(oldName,newName){
+  oldName=(oldName||"").trim(); newName=(newName||"").trim();
+  if(!newName || oldName===newName) return;
+  for(const c of state.classes){
+    c.participants=c.participants.map(p=>replaceIndivName(p,oldName,newName));
+    for(const m of c.matches){
+      m.p1=replaceIndivName(m.p1,oldName,newName);
+      m.p2=replaceIndivName(m.p2,oldName,newName);
+      if(m.winner) m.winner=replaceIndivName(m.winner,oldName,newName);
+    }
+    if(c.champion) c.champion=replaceIndivName(c.champion,oldName,newName);
+  }
+  save(); render();
+}
+// Alla riktiga matcher (schemalagda + ospelade) där en person deltar.
+function playerMatches(name){
+  const res=[];
+  for(const c of state.classes) for(const m of c.matches){
+    if(m.p1 && m.p2 && playersOf(m).includes(name)) res.push({m,c});
+  }
+  return res.sort((a,b)=>{
+    const da=(a.m.day||"9"), db=(b.m.day||"9");
+    return da<db?-1:da>db?1:((a.m.time||0)-(b.m.time||0));
+  });
+}
 function renderParticipants(){
   const idx=participantIndex();
+  const q=(ui.playerSearch||"").trim().toLowerCase();
   let html=`<div class="card no-print">
-     <h2>Deltagarlista</h2>
-     <p class="small muted">Sammanställning utifrån namn – dubbelpar delas på "/". Visar vilka klasser varje person deltar i.</p>
-     <div class="row"><span class="pill">${idx.length} personer</span>
-       <button class="btn ghost mini" id="printParts">🖨 Skriv ut deltagarlista</button></div>
+     <h2>Deltagarlista &amp; sök</h2>
+     <p class="small muted">Sammanställning utifrån namn – dubbelpar delas på "/". Sök en spelare för att se hens inplanerade matcher, eller byt namn (uppdateras överallt).</p>
+     <div class="row">
+       <input type="text" id="playerSearch" placeholder="🔎 Sök spelare…" value="${(ui.playerSearch||'').replace(/"/g,'&quot;')}" style="min-width:220px">
+       ${q?`<button class="btn ghost mini" id="clrSearch">✕ Rensa</button>`:''}
+       <span class="pill">${idx.length} personer</span>
+       <button class="btn ghost mini" id="printParts">🖨 Skriv ut deltagarlista</button>
+     </div>
    </div>`;
   if(!idx.length){
     html+=`<div class="card"><p class="muted">Inga deltagare inlagda ännu. Lägg in deltagare under <b>Klasser & deltagare</b>.</p></div>`;
     app.innerHTML=html;
+    document.getElementById("playerSearch").oninput=e=>{ ui.playerSearch=e.target.value; };
+    document.getElementById("printParts").onclick=()=>printParticipants();
     return;
   }
+  // Sökresultat: matchande spelares inplanerade matcher
+  if(q){
+    const matched=idx.filter(r=>r.name.toLowerCase().includes(q));
+    html+=`<div class="card"><h2>Sökresultat</h2>`;
+    if(!matched.length) html+=`<p class="muted">Ingen spelare matchar "${ui.playerSearch}".</p>`;
+    for(const r of matched){
+      const pm=playerMatches(r.name);
+      html+=`<h3 style="margin:14px 0 4px">${r.name} <span class="small muted">(${r.classes.join(", ")})</span></h3>`;
+      if(!pm.length){ html+=`<p class="small muted">Inga matcher.</p>`; continue; }
+      html+=`<table class="results"><thead><tr><th>Nr</th><th>Klass</th><th>Dag</th><th>Tid</th><th>Bana</th><th>Motstånd</th><th>Resultat</th></tr></thead><tbody>`;
+      for(const {m,c} of pm){
+        const opp = playersOf(m).filter(p=>p!==r.name).join(", ") || (dispName(m.p1)+" / "+dispName(m.p2));
+        html+=`<tr><td>${matchNumber(m)??'-'}</td><td><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td>
+          <td>${m.day?dayShort(m.day):'<i>ej schemalagd</i>'}</td><td>${m.time!=null?matchLabel(m):'-'}</td><td>${m.court||'-'}</td>
+          <td>${dispName(m.p1)} – ${dispName(m.p2)}</td><td>${m.winner?`${m.score||'WO'} (🏆 ${dispName(m.winner)})`:''}</td></tr>`;
+      }
+      html+=`</tbody></table>`;
+    }
+    html+=`</div>`;
+  }
+  // Full lista med byt-namn
   html+=`<div class="card"><table class="results"><thead>
-     <tr><th>Namn</th><th>Antal klasser</th><th>Klasser</th></tr></thead><tbody>`;
+     <tr><th>Namn</th><th>Antal klasser</th><th>Klasser</th><th class="no-print"></th></tr></thead><tbody>`;
   for(const r of idx)
-    html+=`<tr><td>${r.name}</td><td>${r.classes.length}</td><td>${r.classes.join(", ")}</td></tr>`;
+    html+=`<tr><td>${r.name}</td><td>${r.classes.length}</td><td>${r.classes.join(", ")}</td>
+      <td class="no-print"><button class="btn ghost mini" data-rename="${r.name.replace(/"/g,'&quot;')}">✏️ Byt namn</button>
+      <button class="btn ghost mini" data-find="${r.name.replace(/"/g,'&quot;')}">🔎 Matcher</button></td></tr>`;
   html+=`</tbody></table></div>`;
   app.innerHTML=html;
+  const si=document.getElementById("playerSearch");
+  si.oninput=e=>{ ui.playerSearch=e.target.value; ui._sf=true; render(); };
+  if(ui._sf){ const el=document.getElementById("playerSearch"); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length); } ui._sf=false; }
+  const clr=document.getElementById("clrSearch"); if(clr) clr.onclick=()=>{ ui.playerSearch=""; render(); };
   document.getElementById("printParts").onclick=()=>printParticipants();
+  document.querySelectorAll("[data-rename]").forEach(b=>b.onclick=()=>{
+    const old=b.dataset.rename;
+    const nn=prompt(`Byt namn på "${old}" – nytt namn (uppdateras i alla klasser, stegar, schema och resultat):`, old);
+    if(nn && nn.trim() && nn.trim()!==old) renamePlayer(old, nn.trim());
+  });
+  document.querySelectorAll("[data-find]").forEach(b=>b.onclick=()=>{ ui.playerSearch=b.dataset.find; render(); });
 }
 function printParticipants(){
   const idx=participantIndex();
