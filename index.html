@@ -925,6 +925,7 @@ function renderBracketTab(){
        <button class="btn ghost mini" id="rebuildBr">🔁 Lotta om / bygg stege</button>
        <button class="btn gray mini" id="clearBr">🗑 Rensa flik (denna stege)</button>
        <span style="flex:1"></span>
+       <button class="btn ghost mini" id="imgBr">📷 Spara bild av stege</button>
        <button class="btn mini" id="printBr">🖨 Skriv ut stege</button>
      </div>
      ${cls.participants.length?`
@@ -943,6 +944,7 @@ function renderBracketTab(){
   document.getElementById("clearBr").onclick=()=>clearBracketOf(cls);
   document.getElementById("swapMode").onclick=()=>{ ui.swapMode=!ui.swapMode; ui.swapSel=null; render(); };
   document.getElementById("printBr").onclick=()=>printOneBracket(cls);
+  document.getElementById("imgBr").onclick=()=>exportBracketImage(cls);
   const replBtnBr=document.getElementById("replBtnBr");
   if(replBtnBr) replBtnBr.onclick=()=>{
     const oldEntry=document.getElementById("replSelBr").value;
@@ -1015,10 +1017,11 @@ function layoutBracketEl(br){
       centers[r+'_'+j] = (a!=null&&b!=null) ? (a+b)/2 : (a!=null?a : (b!=null?b : HEADH+rowUnit/2));
     });
   }
-  // 3) positionera matcher
+  // 3) positionera matcher (inline position så det funkar även i exporterad bild)
   rounds.forEach(r=>{
     (byRound[r]||[]).forEach((el,i)=>{
       if(!el) return;
+      el.style.position='absolute'; el.style.zIndex='1';
       el.style.left=(r*(COLW+HGAP))+'px';
       el.style.top=Math.round(centers[r+'_'+i]-el.offsetHeight/2)+'px';
     });
@@ -1773,6 +1776,113 @@ function printBracketPages(list){
 }
 function printOneBracket(cls){ printBracketPages([cls]); }   // stege-fliken
 function printBrackets(){ printBracketPages(visibleClasses()); } // "Skriv ut alla stegar"
+
+// Spara en blob på plats användaren väljer (File System Access API) – annars nedladdning.
+async function saveBlob(blob, filename){
+  if(window.showSaveFilePicker){
+    try{
+      const ext=filename.split('.').pop();
+      const handle=await window.showSaveFilePicker({ suggestedName:filename,
+        types:[{description:'Bild', accept:{ ['image/'+(ext==='jpg'?'jpeg':ext)]:['.'+ext] }}] });
+      const w=await handle.createWritable(); await w.write(blob); await w.close(); return true;
+    }catch(e){ if(e && e.name==='AbortError') return false; /* faller igenom till nedladdning */ }
+  }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1500); return true;
+}
+function escXml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function svgText(x,y,txt,o={}){
+  return `<text x="${x}" y="${y}" font-family="Arial,Helvetica,sans-serif" font-size="${o.size||13}"`+
+    `${o.weight?` font-weight="${o.weight}"`:''}${o.anchor?` text-anchor="${o.anchor}"`:''} fill="${o.fill||'#26211c'}">${escXml(txt)}</text>`;
+}
+function truncStr(s,n){ s=String(s); return s.length>n ? s.slice(0,n-1)+'…' : s; }
+// Bygg stegen som REN SVG (rutor/text/linjer) – rasteriseras utan taint.
+function buildBracketSVG(cls){
+  const total=totalRounds(cls);
+  const COLW=210, HGAP=52, VGAP=16, HEADH=26, CHAMP_H=64, col=classColor(cls);
+  const byRound={};
+  for(let r=0;r<total;r++) byRound[r]=cls.matches.filter(m=>m.round===r).sort((a,b)=>a.index-b.index);
+  const maxR=total;
+  const boxInfo=m=>{ const hasNum=matchNumber(m)!=null, hasScore=!!m.score;
+    return { hasNum, hasScore, h: 8 + (hasNum?15:0) + 22 + 22 + (hasScore?16:0) }; };
+  let maxH=CHAMP_H;
+  for(let r=0;r<total;r++) for(const m of byRound[r]) maxH=Math.max(maxH, boxInfo(m).h);
+  const rowUnit=maxH+VGAP, n0=byRound[0].length;
+  const centers={};
+  byRound[0].forEach((m,i)=>{ centers['0_'+i]=HEADH + i*rowUnit + rowUnit/2; });
+  for(let r=1;r<total;r++) byRound[r].forEach((m,j)=>{
+    const a=centers[(r-1)+'_'+(2*j)], b=centers[(r-1)+'_'+(2*j+1)];
+    centers[r+'_'+j]=(a!=null&&b!=null)?(a+b)/2:(a!=null?a:(b!=null?b:HEADH+rowUnit/2));
+  });
+  centers[maxR+'_0']= byRound[total-1].length? centers[(total-1)+'_0'] : HEADH+rowUnit/2;
+  const width=(maxR+1)*(COLW+HGAP)-HGAP, height=HEADH + n0*rowUnit + 8;
+  let body="";
+  // linjer
+  for(let r=1;r<total;r++) byRound[r].forEach((m,j)=>{
+    const px=r*(COLW+HGAP), py=centers[r+'_'+j], fx=(r-1)*(COLW+HGAP)+COLW, midX=fx+HGAP/2;
+    const f0=centers[(r-1)+'_'+(2*j)], f1=centers[(r-1)+'_'+(2*j+1)];
+    const L=(x1,y1,x2,y2)=>{ body+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#b9b19a" stroke-width="2"/>`; };
+    if(f0!=null&&f1!=null){ L(fx,f0,midX,f0); L(fx,f1,midX,f1); L(midX,f0,midX,f1); L(midX,py,px,py); }
+    else { const fy=f0!=null?f0:f1; if(fy!=null) L(fx,fy,px,py); }
+  });
+  { const r=maxR, px=r*(COLW+HGAP), py=centers[maxR+'_0'], fx=(r-1)*(COLW+HGAP)+COLW, fy=centers[(total-1)+'_0'];
+    if(fy!=null) body+=`<line x1="${fx}" y1="${fy}" x2="${px}" y2="${py}" stroke="#b9b19a" stroke-width="2"/>`; }
+  // rubriker
+  for(let r=0;r<total;r++) body+=svgText(r*(COLW+HGAP)+COLW/2, 14, roundName(r,total).toUpperCase(), {size:11,weight:'bold',fill:'#6b6356',anchor:'middle'});
+  body+=svgText(maxR*(COLW+HGAP)+COLW/2, 14, 'MÄSTARE', {size:11,weight:'bold',fill:'#6b6356',anchor:'middle'});
+  // matchrutor
+  for(let r=0;r<total;r++) byRound[r].forEach((m,i)=>{
+    const x=r*(COLW+HGAP), bi=boxInfo(m), h=bi.h, top=Math.round(centers[r+'_'+i]-h/2);
+    body+=`<rect x="${x}" y="${top}" width="${COLW}" height="${h}" rx="6" fill="#fff" stroke="#bbb"/>`;
+    body+=`<rect x="${x}" y="${top}" width="5" height="${h}" fill="${col}"/>`;
+    let yy=top+4;
+    if(bi.hasNum){ yy+=12; body+=svgText(x+9, yy, '#'+matchNumber(m), {size:10,weight:'bold',fill:'#6b6356'}); yy+=3; }
+    const p1w=m.winner&&m.winner===m.p1, p2w=m.winner&&m.winner===m.p2;
+    yy+=16; body+=svgText(x+9, yy, (m.p1==null?(m.round===0?'BYE':'—'):truncStr(dispName(m.p1),26))+(p1w?' 🏆':''), {size:13,weight:p1w?'bold':'normal',fill:p1w?'#2e7d32':'#26211c'});
+    yy+=5; body+=`<line x1="${x+2}" y1="${yy}" x2="${x+COLW-2}" y2="${yy}" stroke="#eee"/>`;
+    yy+=17; body+=svgText(x+9, yy, (m.p2==null?(m.round===0?'BYE':'—'):truncStr(dispName(m.p2),26))+(p2w?' 🏆':''), {size:13,weight:p2w?'bold':'normal',fill:p2w?'#2e7d32':'#26211c'});
+    if(bi.hasScore){ yy+=15; body+=svgText(x+9, yy, m.score, {size:11,fill:'#555'}); }
+  });
+  // mästar-box
+  { const x=maxR*(COLW+HGAP), cy=centers[maxR+'_0'], top=Math.round(cy-CHAMP_H/2);
+    body+=`<rect x="${x}" y="${top}" width="${COLW}" height="${CHAMP_H}" rx="8" fill="#fff" stroke="${col}" stroke-width="2"/>`;
+    body+=svgText(x+COLW/2, top+24, '🏆 KLUBBMÄSTARE', {size:10,fill:'#8a6d00',anchor:'middle'});
+    body+=svgText(x+COLW/2, top+47, dispName(cls.champion)||'–', {size:16,weight:'bold',anchor:'middle'});
+  }
+  return {body, width, height};
+}
+// Skapa en PNG-bild av den valda stegen och spara där användaren väljer.
+function exportBracketImage(cls){
+  if(!totalRounds(cls)){ alert("Stegen är tom – bygg den först."); return; }
+  const PAD=20, TITLE_H=36, SCALE=2;
+  const {body, width, height}=buildBracketSVG(cls);
+  const W=width+PAD*2, H=height+TITLE_H+PAD;
+  const title=`Dalarö TK · KM ${tournamentYear()} · ${cls.name}${cls.champion?' · 🏆 '+dispName(cls.champion):''}`;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">`+
+    `<rect width="100%" height="100%" fill="#ffffff"/>`+
+    `<text x="${PAD}" y="26" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="bold" fill="#b5362b">${escXml(title)}</text>`+
+    `<g transform="translate(${PAD},${TITLE_H})">${body}</g></svg>`;
+  const url=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}));
+  const img=new Image();
+  img.onload=()=>{
+    try{
+      const canvas=document.createElement("canvas");
+      canvas.width=Math.round(W*SCALE); canvas.height=Math.round(H*SCALE);
+      const ctx=canvas.getContext("2d");
+      ctx.setTransform(SCALE,0,0,SCALE,0,0);
+      ctx.drawImage(img,0,0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(b=>{
+        if(!b){ alert("Kunde inte skapa bilden."); return; }
+        const p=n=>String(n).padStart(2,"0"), d=new Date();
+        const stamp=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`;
+        saveBlob(b, `Stege-${cls.name.replace(/[^\wåäöÅÄÖ -]/g,'').trim()}-${stamp}.png`);
+      }, "image/png");
+    }catch(err){ URL.revokeObjectURL(url); alert("Kunde inte skapa bilden: "+err.message); }
+  };
+  img.onerror=()=>{ URL.revokeObjectURL(url); alert("Kunde inte rendera stegen till bild."); };
+  img.src=url;
+}
 
 /* ----- Toolbar / export / import ----- */
 document.getElementById("courtsInput").onchange=e=>{
