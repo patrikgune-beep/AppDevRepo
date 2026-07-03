@@ -307,6 +307,8 @@ function newState(){
   return {
     courts: 2,
     lang: "sv",
+    logo: null,
+    bgColor: null,
     migratedV2: true,
     extraCourts: {},
     lockedDays: {},
@@ -329,6 +331,8 @@ function normalize(s){
   if(!s.tournament.name) s.tournament.name="Klubbmästerskap";
   if(typeof s.arranger!=="string" || !s.arranger.trim()) s.arranger="Dalarö Tennisklubb";
   if(s.lang!=="en") s.lang="sv";
+  if(typeof s.logo!=="string") s.logo=null;
+  if(typeof s.bgColor!=="string") s.bgColor=null;
   if(!s.organizer || typeof s.organizer!=="object") s.organizer={ name:"", phone:"", email:"" };
   if(typeof s.venue!=="string") s.venue="";
   if(!s.extraCourts) s.extraCourts={};
@@ -638,6 +642,8 @@ const EN = {
   "⬇ Exportera säkerhetskopia":"⬇ Export backup", "⬆ Importera säkerhetskopia":"⬆ Import backup",
   "Nollställ":"Reset", "🗑 Ny turnering, Nollställ allt":"🗑 New tournament, reset all",
   "Språk / Language":"Language", "Svenska":"Swedish", "English":"English",
+  "Logga & bakgrund":"Logo & background", "🖼 Ladda upp logga":"🖼 Upload logo",
+  "↺ Standardlogga":"↺ Default logo", "Bakgrundsfärg":"Background colour", "↺ Standardfärg":"↺ Default colour",
   // Klasser & deltagare
   "Klasser":"Classes", "♻ Nollställ stegar & schema (behåll deltagare)":"♻ Reset brackets & schedule (keep players)",
   "➕ Lägg till klass":"➕ Add class", "✏️ Döp om klass":"✏️ Rename class", "🙈 Dölj klass":"🙈 Hide class",
@@ -727,11 +733,26 @@ function applyLang(){
   if(a) translateDOM(a);
 }
 
+/* ---------------- Logga & bakgrund (anpassningsbart) ---------------- */
+// Loggan: egen uppladdad bild om sådan finns, annars klubbmärket (LOGO_SVG).
+function logoMarkup(){
+  return state.logo
+    ? `<img src="${state.logo}" alt="Logga" style="width:100%;height:100%;object-fit:contain">`
+    : LOGO_SVG;
+}
+// Applicera vald bakgrundsfärg och logga (körs vid varje render).
+function applyTheme(){
+  document.body.style.background = state.bgColor || "";   // tom = CSS-standard (--cream)
+  const lh=document.getElementById("logoHolder");
+  if(lh) lh.innerHTML=logoMarkup();
+}
+
 /* ---------------- Rendering ---------------- */
 const app=document.getElementById("app");
 
 function render(){
   ensureDay();
+  applyTheme();
   document.getElementById("appTitle").textContent = state.tournament.name || "Klubbmästerskap";
   document.getElementById("appSub").textContent = `${arrangerName()} · ${tournamentRangeText()}`;
   renderTabs();
@@ -846,7 +867,7 @@ function renderAbout(){
   app.innerHTML=`
    <div class="card">
      <div class="row" style="align-items:center;gap:14px">
-       <div style="width:56px;height:56px;flex:0 0 auto">${LOGO_SVG}</div>
+       <div style="width:56px;height:56px;flex:0 0 auto">${logoMarkup()}</div>
        <div>
          <h2 style="margin:0">Klubbmästerskap – Dalarö Tennisklubb</h2>
          <p class="small muted" style="margin:2px 0 0">Lokal app för att planera och genomföra KM. All data sparas i din webbläsare.</p>
@@ -908,6 +929,28 @@ function renderAbout(){
    </div>`;
 }
 
+// Läs in en uppladdad logga; rasterbilder skalas ned (max 512 px), SVG behålls som vektor.
+function loadLogoFile(file){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const src=reader.result;
+    if(file.type==="image/svg+xml"){ state.logo=src; save(); render(); return; }
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=512, scale=Math.min(1, MAX/Math.max(img.width,img.height));
+      const w=Math.max(1,Math.round(img.width*scale)), h=Math.max(1,Math.round(img.height*scale));
+      const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+      cv.getContext("2d").drawImage(img,0,0,w,h);
+      try{ state.logo=cv.toDataURL("image/png"); }catch(err){ state.logo=src; }
+      save(); render();
+    };
+    img.onerror=()=>alert("Kunde inte läsa bilden.");
+    img.src=src;
+  };
+  reader.onerror=()=>alert("Kunde inte läsa filen.");
+  reader.readAsDataURL(file);
+}
+
 /* ----- Tab: Turneringsinformation (första fliken) ----- */
 function renderInfo(){
   const t=state.tournament, o=state.organizer||{};
@@ -944,6 +987,30 @@ function renderInfo(){
      </p>
    </div>
    <div class="card no-print">
+     <h2>Logga &amp; bakgrund</h2>
+     <div class="row" style="align-items:flex-start;gap:24px">
+       <div>
+         <p class="small muted" style="margin:0 0 6px">Logga (visas uppe till vänster och på utskrifter)</p>
+         <div class="row" style="align-items:center">
+           <div style="width:64px;height:64px;flex:0 0 auto;border:1px solid var(--line);border-radius:8px;background:#fff;padding:4px">${logoMarkup()}</div>
+           <div>
+             <button class="btn ghost mini" id="logoBtn">🖼 Ladda upp logga</button>
+             ${state.logo?'<button class="btn gray mini" id="logoReset">↺ Standardlogga</button>':''}
+             <p class="small muted" style="margin:6px 0 0">PNG/JPG/SVG. Bilden skalas ned automatiskt.</p>
+           </div>
+         </div>
+         <input type="file" id="logoFile" accept="image/*" style="display:none">
+       </div>
+       <div>
+         <p class="small muted" style="margin:0 0 6px">Bakgrundsfärg</p>
+         <div class="row" style="align-items:center">
+           <input type="color" id="bgColor" value="${state.bgColor||'#f4f1e6'}" style="width:48px;height:34px;padding:2px;border:1px solid var(--line);border-radius:6px;background:#fff">
+           <button class="btn gray mini" id="bgReset">↺ Standardfärg</button>
+         </div>
+       </div>
+     </div>
+   </div>
+   <div class="card no-print">
      <h2>Tävlingsledare</h2>
      <div class="row">
        <label class="small" style="flex:1;min-width:180px">Namn<br><input type="text" id="oName" value="${esc(o.name)}" style="width:100%;max-width:280px"></label>
@@ -973,6 +1040,19 @@ function renderInfo(){
    </div>`;
   // Språkval
   document.getElementById("langSel").onchange=e=>{ state.lang=e.target.value==="en"?"en":"sv"; save(); render(); };
+  // Logga: ladda upp (skalas ned), samt återställ till standardlogga
+  document.getElementById("logoBtn").onclick=()=>document.getElementById("logoFile").click();
+  document.getElementById("logoFile").onchange=e=>{
+    const f=e.target.files[0]; e.target.value=""; if(!f) return;
+    if(!/^image\//.test(f.type)){ alert("Välj en bildfil (PNG, JPG eller SVG)."); return; }
+    loadLogoFile(f);
+  };
+  const logoReset=document.getElementById("logoReset");
+  if(logoReset) logoReset.onclick=()=>{ if(confirm("Återgå till standardloggan (klubbmärket)?")){ state.logo=null; save(); render(); } };
+  // Bakgrundsfärg
+  document.getElementById("bgColor").oninput=e=>{ state.bgColor=e.target.value; save(); applyTheme(); };
+  document.getElementById("bgColor").onchange=e=>{ state.bgColor=e.target.value; save(); render(); };
+  document.getElementById("bgReset").onclick=()=>{ state.bgColor=null; save(); render(); };
   // Spara namn/datum/banor
   document.getElementById("saveInfo").onclick=()=>{
     const name=document.getElementById("tName").value.trim();
@@ -2172,7 +2252,7 @@ function doPrint(html){
 }
 function printHeader(title){
   return `<div style="display:flex;align-items:center;gap:16px;border-bottom:3px solid #b5362b;padding-bottom:8px;margin-bottom:14px">
-     <span style="display:inline-block;width:64px;height:64px;flex:0 0 auto">${LOGO_SVG}</span>
+     <span style="display:inline-block;width:64px;height:64px;flex:0 0 auto">${logoMarkup()}</span>
      <h1 style="margin:0;color:#b5362b;font-family:'Arial Narrow',Arial">
        ${arrangerName()} · ${state.tournament.name||"Klubbmästerskap"} ${tournamentYear()}<br>
        <span style="font-size:16px;font-weight:normal;color:#26211c">${title}</span></h1>
