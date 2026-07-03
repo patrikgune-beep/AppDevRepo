@@ -883,7 +883,8 @@ function renderClasses(){
   app.innerHTML=`
    <div class="toolbar no-print">
      <button class="btn ghost" id="resetBrSched">♻ Nollställ stegar &amp; schema (behåll deltagare)</button>
-     <span class="muted small">Lottar om stegarna och rensar alla scheman/resultat – deltagarna behålls. Namn, datum och säkerhetskopia finns under <b>Turneringsinformation</b>.</span>
+     <button class="btn gray" id="clearOneBrSched">🗑 Rensa stege &amp; schema för ${cls.name}</button>
+     <span class="muted small">Töm alla (eller vald klass) stegar och scheman – deltagarna behålls. Namn, datum och säkerhetskopia finns under <b>Turneringsinformation</b>.</span>
    </div>
    <div class="card no-print">
      <h2>Klasser</h2>
@@ -988,6 +989,7 @@ function renderClasses(){
   };
   document.getElementById("goBracket").onclick=()=>{ui.tab="bracket";render();};
   document.getElementById("resetBrSched").onclick=resetBracketsAndSchedule;
+  document.getElementById("clearOneBrSched").onclick=()=>clearBracketOf(cls);
 }
 // Rensar HELA appen: deltagare, stegar, scheman, datum. Används av båda nollställ-knapparna.
 function resetEverything(){
@@ -998,14 +1000,12 @@ function resetEverything(){
   try{ location.reload(); }catch(e){ save(); ui={tab:"classes",classId:state.classes[0].id,day:null}; ensureDay(); render(); }
 }
 // Nollställer stegar OCH scheman (inkl. resultat) i alla klasser men behåller deltagarna
-// i Klasser & deltagare. Bygger om stegarna direkt utifrån deltagarlistorna.
+// i Klasser & deltagare. Stegarna TÖMS (byggs inte om) – deltagarlistorna är kvar och
+// stegen byggs på nytt först när man låser deltagarna igen.
 function resetBracketsAndSchedule(){
-  if(!confirm("Nollställ Stege och Schema (inkl. alla resultat) i alla klasser?\nDeltagarna i Klasser & deltagare behålls och stegarna lottas om på nytt. Detta kan inte ångras.")) return;
-  state.classes.forEach(c=>{
-    c.matches=[]; c.champion=null;
-    if(c.participants.length>=2) buildBracket(c);   // lotta om stegen från deltagarlistan
-  });
-  state.extraCourts={}; state.lockedDays={}; state.planCourts={};
+  if(!confirm("Nollställ Stege och Schema (inkl. alla resultat) i alla klasser?\nAlla stegar och scheman töms medan deltagarna i Klasser & deltagare behålls. Detta kan inte ångras.")) return;
+  state.classes.forEach(c=>{ c.matches=[]; c.champion=null; });   // töm stege+schema, behåll deltagare
+  state.extraCourts={}; state.lockedDays={}; state.planCourts={}; state.planFinalDays={};
   save(); render();
 }
 // Rensar HELA schemat (alla dagar) men behåller stegar och deltagare.
