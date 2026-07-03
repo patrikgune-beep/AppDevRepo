@@ -313,6 +313,7 @@ function newState(){
     migratedV2: true,
     extraCourts: {},
     lockedDays: {},
+    planCourts: {},
     tournament: defaultTournament(),
     classes: DEFAULT_CLASSES.map((c,i)=>({
       id:"c"+i, name:c.name, type:c.type,
@@ -328,6 +329,7 @@ function normalize(s){
   if(!s.extraCourts) s.extraCourts={};
   if(!s.lockedDays) s.lockedDays={};
   if(!s.planFinalDays) s.planFinalDays={};
+  if(!s.planCourts) s.planCourts={};
   s.classes=s.classes||[];
   // Engångsmigrering (annars återskapas klasser som användaren tagit bort/döpt om).
   if(!s.migratedV2){
@@ -944,7 +946,7 @@ function resetBracketsAndSchedule(){
     c.matches=[]; c.champion=null;
     if(c.participants.length>=2) buildBracket(c);   // lotta om stegen från deltagarlistan
   });
-  state.extraCourts={}; state.lockedDays={};
+  state.extraCourts={}; state.lockedDays={}; state.planCourts={};
   save(); render();
 }
 // Rensar HELA schemat (alla dagar) men behåller stegar och deltagare.
@@ -1638,17 +1640,26 @@ function buildFullPlan(){
     }
     cls.matches.filter(m=>m.manual).forEach(m=>{ assign[days[avail[A-1]].date].push({id:m.id, classId:cls.id, type:cls.type, round:99}); });
   });
-  const out={ byDay:{}, extraByDay:{}, leftoverByDay:{}, finalDayByClass, hasLeftover:false };
+  const out={ byDay:{}, extraByDay:{}, courtsByDay:{}, overriddenByDay:{}, leftoverByDay:{}, finalDayByClass, hasLeftover:false };
+  const MAXC=8, pc=state.planCourts||{};
   days.forEach(d=>{
     const ms=assign[d.date];
-    out.byDay[d.date]=[]; out.extraByDay[d.date]=0; out.leftoverByDay[d.date]=[];
+    const override = pc[d.date]!=null ? Math.max(1,Math.min(MAXC,pc[d.date])) : null;
+    out.byDay[d.date]=[]; out.leftoverByDay[d.date]=[]; out.overriddenByDay[d.date]=(override!=null);
+    out.courtsByDay[d.date]=override!=null?override:Math.max(1,state.courts);
+    out.extraByDay[d.date]=out.courtsByDay[d.date]-Math.max(1,state.courts);
     if(!ms.length) return;
-    let best=null, usedExtra=0;
-    for(let extra=0; extra<=2; extra++){
-      best=packPlanDay(d.date, ms, Math.max(1, state.courts+extra)); usedExtra=extra;
-      if(!best.leftover.length) break;
+    let best, usedCourts;
+    if(override!=null){
+      usedCourts=override; best=packPlanDay(d.date, ms, usedCourts);
+    } else {
+      // Rekommendera minsta antal banor från grundantalet som rymmer alla matcher.
+      usedCourts=Math.max(1,state.courts);
+      for(let c=Math.max(1,state.courts); c<=MAXC; c++){ best=packPlanDay(d.date, ms, c); usedCourts=c; if(!best.leftover.length) break; }
     }
-    out.byDay[d.date]=best.placed; out.extraByDay[d.date]=usedExtra; out.leftoverByDay[d.date]=best.leftover;
+    out.byDay[d.date]=best.placed; out.courtsByDay[d.date]=usedCourts;
+    out.extraByDay[d.date]=usedCourts-Math.max(1,state.courts);
+    out.leftoverByDay[d.date]=best.leftover;
     if(best.leftover.length) out.hasLeftover=true;
   });
   return out;
@@ -1661,8 +1672,8 @@ function transferPlanDay(date){
   if(!entries.length){ alert("Inga planerade matcher denna dag."); return; }
   if(realMatches().some(m=>m.day===date) && !confirm(`${dayShort(date)} har redan matcher i schemat. Skriv över med planeringen?`)) return;
   realMatches().forEach(m=>{ if(m.day===date){ m.day=null;m.court=null;m.time=null; } });
-  const extra=plan.extraByDay[date]||0;
-  if(extra>0) state.extraCourts[date]=extra; else delete state.extraCourts[date];
+  const extra=(plan.courtsByDay[date]||state.courts)-state.courts;
+  if(extra!==0) state.extraCourts[date]=extra; else delete state.extraCourts[date];
   entries.forEach(e=>{ const r=findMatch(e.id); if(r){ r.m.day=date; r.m.court=e.court; r.m.time=e.time; } });
   save(); render();
   const lo=(plan.leftoverByDay[date]||[]).length;
@@ -1677,8 +1688,8 @@ function transferWholePlan(){
   getDays().forEach(d=>{
     if(dayLocked(d.date)) return;
     realMatches().forEach(m=>{ if(m.day===d.date){ m.day=null;m.court=null;m.time=null; } });
-    const extra=plan.extraByDay[d.date]||0;
-    if(extra>0) state.extraCourts[d.date]=extra; else delete state.extraCourts[d.date];
+    const extra=(plan.courtsByDay[d.date]||state.courts)-state.courts;
+    if(extra!==0) state.extraCourts[d.date]=extra; else delete state.extraCourts[d.date];
     (plan.byDay[d.date]||[]).forEach(e=>{ const r=findMatch(e.id); if(r){ r.m.day=d.date; r.m.court=e.court; r.m.time=e.time; } });
   });
   save(); render();
@@ -1701,7 +1712,10 @@ function renderPlanner(){
   const dayCards=days.map(d=>{
     const entries=(plan.byDay[d.date]||[]).slice().sort((a,b)=>(a.time-b.time)||(a.court-b.court));
     const extra=plan.extraByDay[d.date]||0;
+    const courtsUsed=plan.courtsByDay[d.date]||state.courts;
+    const overridden=plan.overriddenByDay[d.date];
     const leftover=plan.leftoverByDay[d.date]||[];
+    const courtOpts=Array.from({length:8},(_,i)=>`<option value="${i+1}" ${courtsUsed===i+1?'selected':''}>${i+1} ban${i+1>1?'or':'a'}</option>`).join("");
     const rows=entries.map(e=>{
       const c=getClass(e.classId); const r=findMatch(e.id); const m=r?r.m:null;
       const who=m&&m.p1&&m.p2 ? `${dispName(m.p1)} – ${dispName(m.p2)}` : `<span class="muted">${m?stageName(c,m):''} – deltagare avgörs av tidigare omgång</span>`;
@@ -1715,7 +1729,13 @@ function renderPlanner(){
     return `<div class="card">
       <div class="row" style="align-items:center">
         <h2 style="margin:0">${d.dow} ${d.short}</h2>
-        ${extra?`<span class="badge" style="background:#fdeecf;color:#8a6d00">➕ ${extra} extra bana${extra>1?'or':''} föreslås</span>`:''}
+        <label class="small" title="Ändra antal banor denna dag – planeringen räknas om">🎾
+          <select data-courts="${d.date}">${courtOpts}</select></label>
+        ${overridden
+          ? `<span class="badge" style="background:#e6eef7;color:#2f5c86">egen baninställning</span>
+             <button class="btn ghost mini" data-resetcourts="${d.date}" title="Återgå till rekommenderat antal banor">↺ rek.</button>`
+          : (extra>0?`<span class="badge" style="background:#fdeecf;color:#8a6d00">➕ rekommenderat: ${courtsUsed} banor</span>`
+                    :`<span class="badge" style="background:#eef3ea;color:#4a6b3a">grundantal (${courtsUsed})</span>`)}
         ${isPlanFinalDay(d.date)?'<span class="badge done">Finaldag</span>':''}
         ${lockBadge}
         <span style="flex:1"></span>
@@ -1724,7 +1744,7 @@ function renderPlanner(){
       ${entries.length?`<div style="overflow-x:auto"><table class="results" style="margin-top:8px"><thead><tr>
          <th>Tid</th><th>Bana</th><th style="text-align:left">Klass</th><th style="text-align:left">Omgång</th><th style="text-align:left">Match</th></tr></thead>
          <tbody>${rows}</tbody></table></div>`:'<p class="muted small" style="margin:8px 0 0">Inga matcher planerade denna dag.</p>'}
-      ${leftover.length?`<p class="small" style="color:#b5362b;margin:8px 0 0">⚠ ${leftover.length} match(er) fick inte plats denna dag ens med extra banor – flytta någon klass finaldag eller lägg till fler dagar.</p>`:''}
+      ${leftover.length?`<p class="small" style="color:#b5362b;margin:8px 0 0">⚠ ${leftover.length} match(er) fick inte plats på ${courtsUsed} ban${courtsUsed>1?'or':'a'} denna dag – öka antalet banor ovan, flytta någon klass finaldag eller lägg till fler dagar.</p>`:''}
     </div>`;
   }).join("");
   app.innerHTML=`
@@ -1737,8 +1757,12 @@ function renderPlanner(){
      <div style="overflow-x:auto"><table class="results"><thead><tr>
        <th style="text-align:left">Klass</th><th>Typ</th><th>Omgångar</th><th style="text-align:left">Finaldag</th></tr></thead>
        <tbody>${clsRows||`<tr><td colspan="4" class="muted">Inga stegar byggda ännu – bygg stegar under Klasser &amp; deltagare.</td></tr>`}</tbody></table></div>
+     <p class="small muted" style="margin:10px 0 0">Varje dag visar det <b>rekommenderade</b> antalet banor (utgår från grundantalet ${state.courts}
+       och höjs bara om matcherna inte får plats). Du kan ändra antal banor per dag i respektive dagskort – planeringen räknas då om.
+       <b>🔄 Rensa &amp; planera om</b> nollställer dina egna baninställningar och återgår till rekommendationen.</p>
      <div class="toolbar" style="margin-top:12px">
        <button class="btn" id="transferAll">➡ Överför HELA planeringen till schemat</button>
+       <button class="btn ghost" id="replanAll">🔄 Rensa &amp; planera om</button>
        ${plan.hasLeftover?'<span class="small" style="color:#b5362b">⚠ Vissa matcher får inte plats – se röd text nedan.</span>':'<span class="small" style="color:#2e7d32">✓ Alla matcher får plats i planeringen.</span>'}
      </div>
    </div>
@@ -1747,7 +1771,22 @@ function renderPlanner(){
     state.planFinalDays[sel.dataset.fd]=sel.value; save(); render();
   });
   document.querySelectorAll("button[data-transfer]").forEach(b=>b.onclick=()=>transferPlanDay(b.dataset.transfer));
+  // Ändra antal banor för en dag -> planeringen räknas om.
+  document.querySelectorAll("select[data-courts]").forEach(sel=>sel.onchange=()=>{
+    state.planCourts=state.planCourts||{};
+    state.planCourts[sel.dataset.courts]=parseInt(sel.value,10)||state.courts;
+    save(); render();
+  });
+  // Återställ en dags baninställning till rekommendationen.
+  document.querySelectorAll("button[data-resetcourts]").forEach(b=>b.onclick=()=>{
+    if(state.planCourts) delete state.planCourts[b.dataset.resetcourts];
+    save(); render();
+  });
   document.getElementById("transferAll").onclick=transferWholePlan;
+  document.getElementById("replanAll").onclick=()=>{
+    if(!confirm("Rensa dina egna baninställningar och planera om utifrån rekommenderat antal banor (grundantal " + state.courts + ")?")) return;
+    state.planCourts={}; save(); render();
+  };
 }
 
 /* ----- Tab: Deltagarlista (per person, utifrån namn) ----- */
