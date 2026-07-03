@@ -170,13 +170,7 @@
 </header>
 
 <main>
-  <div class="toolbar no-print">
-    <button class="btn ghost mini" id="exportBtn">⬇ Exportera (säkerhetskopia)</button>
-    <button class="btn ghost mini" id="importBtn">⬆ Importera</button>
-    <input type="file" id="importFile" accept="application/json" style="display:none" />
-    <span class="spacer" style="flex:1"></span>
-    <label class="small">Banor: <input type="number" id="courtsInput" min="1" max="8" style="width:56px"></label>
-  </div>
+  <input type="file" id="importFile" accept="application/json" style="display:none" />
   <div id="app"></div>
 </main>
 
@@ -195,7 +189,7 @@ const SV_MON = ["jan","feb","mar","apr","maj","jun","jul","aug","sep","okt","nov
 function parseDate(s){ if(!s) return null; const [y,m,d]=s.split("-").map(Number); const dt=new Date(y,m-1,d); return isNaN(dt)?null:dt; }
 function isoDate(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0"); }
 function fmtShort(dt){ return dt.getDate()+" "+SV_MON[dt.getMonth()]; }
-function defaultTournament(){ const y=new Date().getFullYear(); return {start:`${y}-07-04`, end:`${y}-07-11`}; }
+function defaultTournament(){ const y=new Date().getFullYear(); return {name:"Klubbmästerskap", start:`${y}-07-04`, end:`${y}-07-11`}; }
 // Lista över turneringens dagar {date, dow, short}
 function getDays(){
   const t=state.tournament||{};
@@ -315,6 +309,8 @@ function newState(){
     lockedDays: {},
     planCourts: {},
     tournament: defaultTournament(),
+    organizer: { name:"", phone:"", email:"" },
+    venue: "",
     classes: DEFAULT_CLASSES.map((c,i)=>({
       id:"c"+i, name:c.name, type:c.type,
       ranked: RANKED_CLASSES.has(c.name), seeds: 4, catNo: i+1,
@@ -326,6 +322,9 @@ function newState(){
 function normalize(s){
   if(!s.tournament) s.tournament=defaultTournament();
   if(!s.tournament.start||!s.tournament.end) s.tournament=defaultTournament();
+  if(!s.tournament.name) s.tournament.name="Klubbmästerskap";
+  if(!s.organizer || typeof s.organizer!=="object") s.organizer={ name:"", phone:"", email:"" };
+  if(typeof s.venue!=="string") s.venue="";
   if(!s.extraCourts) s.extraCourts={};
   if(!s.lockedDays) s.lockedDays={};
   if(!s.planFinalDays) s.planFinalDays={};
@@ -621,10 +620,11 @@ const app=document.getElementById("app");
 
 function render(){
   ensureDay();
+  document.getElementById("appTitle").textContent = state.tournament.name || "Klubbmästerskap";
   document.getElementById("appSub").textContent = `Dalarö Tennisklubb · ${tournamentRangeText()}`;
   renderTabs();
-  document.getElementById("courtsInput").value=state.courts;
-  if(ui.tab==="classes") renderClasses();
+  if(ui.tab==="info") renderInfo();
+  else if(ui.tab==="classes") renderClasses();
   else if(ui.tab==="bracket") renderBracketTab();
   else if(ui.tab==="schedule") renderSchedule();
   else if(ui.tab==="planner") renderPlanner();
@@ -634,7 +634,7 @@ function render(){
   else if(ui.tab==="about") renderAbout();
 }
 function renderTabs(){
-  const tabs=[["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["planner","Auto-planering"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["stats","Statistik"],["about","Om appen"]];
+  const tabs=[["info","Turneringsinformation"],["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["planner","Auto-planering"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["stats","Statistik"],["about","Om appen"]];
   document.getElementById("tabs").innerHTML=tabs.map(([k,l])=>
     `<button class="${ui.tab===k?'active':''}" data-tab="${k}">${l}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{ui.tab=b.dataset.tab;render();});
@@ -743,7 +743,8 @@ function renderAbout(){
         ingen server och inget konto behövs.</p>
      <h3 style="color:var(--red)">Så här används appen</h3>
      <ol class="small" style="line-height:1.7">
-       <li><b>Klasser &amp; deltagare:</b> ange turneringens datum, klistra in deltagare per klass (en rad per spelare/par),
+       <li><b>Turneringsinformation:</b> ange turneringens namn, datum, antal banor, tävlingsledare och spelplats, samt exportera/importera säkerhetskopia.</li>
+       <li><b>Klasser &amp; deltagare:</b> klistra in deltagare per klass (en rad per spelare/par),
            välj ev. seedning (antal seedade), och lås deltagarna för att bygga stegen.</li>
        <li><b>Stege:</b> registrera resultat och välj vinnare – vinnaren förs automatiskt vidare och nästa match blir spelklar.</li>
        <li><b>Schema:</b> generera dagens schema automatiskt eller lägg/flytta matcher manuellt (08–21), byt bana/dag, lägg till extra banor per dag.</li>
@@ -784,8 +785,8 @@ function renderAbout(){
            <b>Klassfärg</b> – varje klass har en egen färg (vänsterkant på matcher, färgprick i listor) så att klasserna är lätta att skilja åt.</li>
      </ul>
      <h3 style="color:var(--red)">Säkerhetskopiering</h3>
-     <p class="small">Använd <b>Exportera</b> (uppe till vänster) för att spara en JSON-fil (filnamnet får datum + klockslag),
-        och <b>Importera</b> för att återställa eller flytta turneringen till en annan dator.</p>
+     <p class="small">Under <b>Turneringsinformation</b> använder du <b>Exportera säkerhetskopia</b> för att spara en JSON-fil
+        (filnamnet får datum + klockslag), och <b>Importera säkerhetskopia</b> för att återställa eller flytta turneringen till en annan dator.</p>
      <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
      <p class="small muted">
        <b>Version (denna sidas senaste ändring):</b> ${appVersionText()}<br>
@@ -794,29 +795,86 @@ function renderAbout(){
    </div>`;
 }
 
+/* ----- Tab: Turneringsinformation (första fliken) ----- */
+function renderInfo(){
+  const t=state.tournament, o=state.organizer||{};
+  const esc=s=>String(s==null?"":s).replace(/"/g,"&quot;");
+  app.innerHTML=`
+   <div class="card no-print">
+     <h2>Turnering</h2>
+     <p class="small muted">Namn, datum och antal banor för turneringen. Dagar och veckodagar i schemat skapas utifrån datumintervallet.</p>
+     <div class="row">
+       <label class="small" style="flex:1;min-width:220px">Turneringens namn<br>
+         <input type="text" id="tName" value="${esc(t.name)}" placeholder="Klubbmästerskap" style="width:100%;max-width:360px"></label>
+     </div>
+     <div class="row" style="margin-top:10px">
+       <label class="small">Startdatum <input type="date" id="tStart" value="${esc(t.start)}"></label>
+       <label class="small">Slutdatum <input type="date" id="tEnd" value="${esc(t.end)}"></label>
+       <label class="small">Antal banor (grundantal) <input type="number" id="tCourts" min="1" max="8" value="${state.courts}" style="width:60px"></label>
+       <button class="btn" id="saveInfo">💾 Spara</button>
+     </div>
+     <p class="small" style="margin:8px 0 0">
+       <span class="pill">${tournamentRangeText()}</span>
+       <span class="muted">&nbsp;Finaler för ungdomsklasser näst sista dagen, övriga sista dagen. Banantalet kan justeras per dag i Schema/Auto-planering.</span>
+     </p>
+   </div>
+   <div class="card no-print">
+     <h2>Tävlingsledare</h2>
+     <div class="row">
+       <label class="small" style="flex:1;min-width:180px">Namn<br><input type="text" id="oName" value="${esc(o.name)}" style="width:100%;max-width:280px"></label>
+       <label class="small" style="flex:1;min-width:150px">Telefon<br><input type="tel" id="oPhone" value="${esc(o.phone)}" style="width:100%;max-width:200px"></label>
+       <label class="small" style="flex:1;min-width:200px">E-post<br><input type="email" id="oMail" value="${esc(o.email)}" style="width:100%;max-width:280px"></label>
+     </div>
+   </div>
+   <div class="card no-print">
+     <h2>Spelplats / adress</h2>
+     <textarea id="venue" placeholder="T.ex. Dalarö Tennisklubb, Odinsvägen 5, 137 70 Dalarö" style="min-height:64px">${String(state.venue||"")}</textarea>
+   </div>
+   <div class="card no-print">
+     <h2>Säkerhetskopia</h2>
+     <p class="small muted">Spara hela turneringen som en JSON-fil (filnamnet får datum + klockslag), eller läs in en tidigare kopia
+       för att återställa eller flytta turneringen till en annan dator.</p>
+     <div class="row">
+       <button class="btn ghost" id="exportBtn">⬇ Exportera säkerhetskopia</button>
+       <button class="btn ghost" id="importBtn">⬆ Importera säkerhetskopia</button>
+     </div>
+   </div>
+   <div class="card no-print">
+     <h2>Nollställ</h2>
+     <div class="row" style="align-items:center">
+       <button class="btn gray" id="newTournament">🗑 Ny turnering, Nollställ allt</button>
+       <span class="muted small">Tömmer deltagare, stegar och scheman i alla klasser (kan inte ångras).</span>
+     </div>
+   </div>`;
+  // Spara namn/datum/banor
+  document.getElementById("saveInfo").onclick=()=>{
+    const name=document.getElementById("tName").value.trim();
+    const s=document.getElementById("tStart").value, e=document.getElementById("tEnd").value;
+    if(!s||!e){ alert("Ange både start- och slutdatum."); return; }
+    if(parseDate(e) < parseDate(s)){ alert("Slutdatum måste vara samma dag eller efter startdatum."); return; }
+    let c=parseInt(document.getElementById("tCourts").value,10); if(isNaN(c)||c<1)c=1; if(c>8)c=8;
+    state.tournament={ ...state.tournament, name:name||"Klubbmästerskap", start:s, end:e };
+    state.courts=c;
+    ensureDay(); save(); render();
+  };
+  // Tävlingsledare + spelplats sparas löpande
+  const bindSave=(id,fn)=>{ const el=document.getElementById(id); if(el) el.oninput=()=>{ fn(el.value); save(); }; };
+  bindSave("oName", v=>{ state.organizer.name=v; });
+  bindSave("oPhone", v=>{ state.organizer.phone=v; });
+  bindSave("oMail", v=>{ state.organizer.email=v; });
+  bindSave("venue", v=>{ state.venue=v; });
+  document.getElementById("exportBtn").onclick=exportBackup;
+  document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
+  document.getElementById("newTournament").onclick=resetEverything;
+}
+
 /* ----- Tab 1: Klasser & deltagare ----- */
 function renderClasses(){
   const cls=getClass(ui.classId)||state.classes[0]; ui.classId=cls.id;
   app.innerHTML=`
    <div class="toolbar no-print">
-     <button class="btn gray" id="newTournament">🗑 Ny turnering, Nollställ allt</button>
-     <span class="muted small">Tömmer deltagare, stegar och scheman i alla klasser.</span>
-     <span style="flex:1"></span>
      <button class="btn ghost" id="resetBrSched">♻ Nollställ stegar &amp; schema (behåll deltagare)</button>
-     <span class="muted small">Lottar om stegarna och rensar alla scheman/resultat – deltagarna behålls.</span>
-   </div>
-   <div class="card no-print">
-     <h2>Turnering</h2>
-     <p class="small muted">Ange årtal och datum för turneringen. Dagar och veckodagar i schemat skapas utifrån intervallet.</p>
-     <div class="row">
-       <label class="small">Startdatum <input type="date" id="tStart" value="${state.tournament.start}"></label>
-       <label class="small">Slutdatum <input type="date" id="tEnd" value="${state.tournament.end}"></label>
-       <button class="btn" id="saveDates">💾 Spara turneringsdatum</button>
-     </div>
-     <p class="small" style="margin:8px 0 0">
-       <span class="pill">${tournamentRangeText()}</span>
-       <span class="muted">&nbsp;Finaler för ungdomsklasser näst sista dagen, övriga sista dagen.</span>
-     </p>
+     <span class="muted small">Lottar om stegarna och rensar alla scheman/resultat – deltagarna behålls. Namn, datum och säkerhetskopia finns under <b>Turneringsinformation</b>.</span>
    </div>
    <div class="card no-print">
      <h2>Klasser</h2>
@@ -877,13 +935,6 @@ function renderClasses(){
      </div>`:''}
    </div>`;
   // grid
-  document.getElementById("saveDates").onclick=()=>{
-    const s=document.getElementById("tStart").value, e=document.getElementById("tEnd").value;
-    if(!s||!e){ alert("Ange både start- och slutdatum."); return; }
-    if(parseDate(e) < parseDate(s)){ alert("Slutdatum måste vara samma dag eller efter startdatum."); return; }
-    state.tournament={start:s, end:e};
-    ensureDay(); save(); render();
-  };
   document.getElementById("clsGrid").innerHTML=state.classes.map(c=>{
     const done=c.champion?`<span class="badge done">✓ ${dispName(c.champion)}</span>`:"";
     return `<div class="classcard ${c.id===cls.id?'active':''}" data-id="${c.id}" style="${c.hidden?'opacity:.45':''}">
@@ -927,7 +978,6 @@ function renderClasses(){
     replaceParticipant(cls, oldEntry, nn);
   };
   document.getElementById("goBracket").onclick=()=>{ui.tab="bracket";render();};
-  document.getElementById("newTournament").onclick=resetEverything;
   document.getElementById("resetBrSched").onclick=resetBracketsAndSchedule;
 }
 // Rensar HELA appen: deltagare, stegar, scheman, datum. Används av båda nollställ-knapparna.
@@ -977,7 +1027,7 @@ function renderBracketTab(){
      <div class="row">
        <span class="sw" style="background:${classColor(cls)};width:16px;height:16px;border-radius:4px;display:inline-block"></span>
        <label class="small">Klass:
-         <select id="clsSel">${visibleClasses().map(c=>`<option value="${c.id}" ${c.id===cls.id?'selected':''}>${c.name}</option>`).join("")}</select>
+         <select id="clsSel">${visibleClasses().map(c=>{ const has=c.matches.some(m=>!m.manual); return `<option value="${c.id}" ${c.id===cls.id?'selected':''}${has?' style="font-weight:bold"':''}>${has?'✅ ':''}${c.name}</option>`; }).join("")}</select>
        </label>
        <span class="badge ${cls.type}">${cls.type==='youth'?'Ungdom 9–13':'Senior 13–21'}</span>
        ${isRanked(cls)?`<span class="badge" style="background:#f6efd2;color:#8a6d00">★ Seedas (top ${seedCountOf(cls)})</span>`:''}
@@ -2217,26 +2267,22 @@ function exportBracketImage(cls){
   img.src=url;
 }
 
-/* ----- Toolbar / export / import ----- */
-document.getElementById("courtsInput").onchange=e=>{
-  let v=parseInt(e.target.value,10); if(isNaN(v)||v<1)v=1; if(v>8)v=8;
-  state.courts=v; save(); render();
-};
-document.getElementById("exportBtn").onclick=()=>{
+/* ----- Export / import (säkerhetskopia) – anropas från Turneringsinformation ----- */
+function exportBackup(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
   const p=n=>String(n).padStart(2,"0"), d=new Date();
   const stamp=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`;
   a.download=`DalaroKM-backup-${stamp}.json`;   // t.ex. DalaroKM-backup-2026-07-04_14-30.json
   a.click();
-};
-document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
+}
 document.getElementById("importFile").onchange=e=>{
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
   r.onload=()=>{ try{ state=normalize(JSON.parse(r.result)); save(); ui.classId=state.classes[0].id; ensureDay(); render(); alert("Importerat!"); }
     catch(err){ alert("Kunde inte läsa filen."); } };
   r.readAsText(f);
+  e.target.value="";   // tillåt att importera samma fil igen
 };
 
 /* ----- Logotyp (SVG-återgivning av klubbmärket) ----- */
