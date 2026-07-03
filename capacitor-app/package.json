@@ -1,0 +1,20 @@
+{
+  "name": "dalaro-km",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dalarö TK Klubbmästerskap – Capacitor-wrapper för iOS (och Android)",
+  "scripts": {
+    "copyweb": "node copyweb.js",
+    "sync": "npm run copyweb && npx cap sync",
+    "open:ios": "npx cap open ios",
+    "add:ios": "npm run copyweb && npx cap add ios"
+  },
+  "dependencies": {
+    "@capacitor/app": "^6.0.2",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/ios": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0"
+  }
+}

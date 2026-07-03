@@ -1,0 +1,2337 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Klubbmästerskap – Dalarö Tennisklubb</title>
+<style>
+  :root{
+    --cream:#f4f1e6;
+    --paper:#fbf9f1;
+    --red:#b5362b;
+    --red-dark:#8f2a21;
+    --sky:#84b6d6;
+    --green:#3f6b39;
+    --ink:#26211c;
+    --line:#d8d1bd;
+    --gold:#c9a227;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:"Segoe UI",Arial,Helvetica,sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    line-height:1.4;
+  }
+  header.app{
+    background:var(--paper);
+    border-bottom:4px solid var(--red);
+    display:flex;align-items:center;gap:18px;
+    padding:14px 22px;
+    position:sticky;top:0;z-index:30;
+  }
+  header.app .logo{width:64px;height:64px;flex:0 0 auto}
+  header.app h1{
+    margin:0;font-size:22px;letter-spacing:.5px;
+    font-family:"Arial Narrow",Arial,sans-serif;text-transform:uppercase;
+    color:var(--red);
+  }
+  header.app .sub{margin:0;font-size:12px;color:#6b6356;text-transform:uppercase;letter-spacing:2px}
+  header.app .spacer{flex:1}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap}
+  .tabs button{
+    border:none;background:transparent;padding:10px 16px;cursor:pointer;
+    font-size:14px;font-weight:600;color:#6b6356;border-radius:8px 8px 0 0;
+  }
+  .tabs button.active{background:var(--red);color:#fff}
+  .tabs button:hover:not(.active){background:#eee5cf}
+  main{max-width:1280px;margin:0 auto;padding:20px}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  button.btn{
+    background:var(--red);color:#fff;border:none;border-radius:7px;
+    padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  button.btn:hover{background:var(--red-dark)}
+  button.btn.ghost{background:#fff;color:var(--red);border:1.5px solid var(--red)}
+  button.btn.ghost:hover{background:#f7ece2}
+  button.btn.mini{padding:4px 9px;font-size:12px}
+  button.btn.gray{background:#776f60}
+  button.btn.gray:hover{background:#5f584c}
+  select,input,textarea{font-family:inherit;font-size:13px}
+  select,input[type=text]{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#fff}
+  textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--line);border-radius:8px;resize:vertical;background:#fff}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+  .card h2{margin:0 0 10px;font-size:17px;color:var(--red)}
+  .grid-classes{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .classcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;transition:.15s}
+  .classcard:hover{border-color:var(--red);box-shadow:0 3px 10px rgba(0,0,0,.07)}
+  .classcard.active{border-color:var(--red);box-shadow:0 0 0 2px var(--red) inset}
+  .classcard .ttl{font-weight:700;font-size:14px}
+  .classcard .meta{font-size:12px;color:#6b6356;margin-top:4px}
+  .badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
+  .badge.youth{background:#e7f0f6;color:#2c6285}
+  .badge.adult{background:#f6e9e0;color:var(--red)}
+  .badge.done{background:#e3f1de;color:var(--green)}
+  /* Bracket – absolut balanserat träd */
+  .bracketwrap{overflow-x:auto;padding:6px 4px 20px}
+  .bracket{position:relative}
+  .bracket .rhead{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;text-align:center;font-weight:700}
+  .match{
+    background:#fff;border:1px solid var(--line);border-radius:9px;
+    position:absolute;z-index:1;box-sizing:border-box;
+  }
+  .match.champbox{border:none;background:transparent}
+  .match .slot.swapsel{background:#fff3bf;outline:2px solid #f0a500;border-radius:5px}
+  .mno{display:inline-block;font-size:10px;font-weight:700;color:#fff;background:#6b6356;border-radius:4px;padding:0 5px;margin-right:5px;letter-spacing:.5px}
+  .match .slot{display:flex;align-items:center;gap:6px;padding:7px 9px;border-bottom:1px dashed var(--line)}
+  .match .slot:last-of-type{border-bottom:none}
+  .match .slot .nm{flex:1;font-size:13px;cursor:pointer;border-radius:5px;padding:2px 4px}
+  .match .slot .nm:hover{background:#f3eada}
+  .match .slot.win .nm{font-weight:800;color:var(--green)}
+  .match .slot.bye .nm{color:#b3aa98;font-style:italic}
+  .match .slot.tbd .nm{color:#b3aa98;font-style:italic}
+  .match .scorerow{display:flex;gap:6px;padding:6px 9px;background:#faf6ec;border-top:1px solid var(--line);align-items:center}
+  .match .scorerow input{flex:1;min-width:0}
+  .match .scorerow .winsel{flex:1;min-width:0;max-width:46%;border:1px solid var(--gold);border-radius:5px;background:#fff;font-weight:600}
+  .match .sched-tag{font-size:10px;color:#6b6356;padding:2px 9px 6px}
+  .champion{background:linear-gradient(#fff,#fbf4df);border:2px solid var(--gold);text-align:center;padding:14px;border-radius:10px}
+  .champion .lbl{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--gold)}
+  .champion .who{font-size:18px;font-weight:800;margin-top:4px}
+  /* Schedule */
+  .daybar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .daybar button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;text-align:center;line-height:1.2}
+  .daybar button.active{background:var(--red);color:#fff;border-color:var(--red)}
+  .daybar button .dow{display:block;font-weight:700}
+  .daybar button .dt{display:block;font-size:11px;opacity:.8}
+  .daybar button .cnt{display:block;font-size:10px;margin-top:2px;color:var(--gold)}
+  .schedtable{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .schedtable th,.schedtable td{border:1px solid var(--line);padding:6px;vertical-align:top;font-size:12px}
+  .schedtable th{background:var(--red);color:#fff;font-size:12px}
+  .schedtable td.time{background:#faf6ec;font-weight:700;white-space:nowrap;text-align:center}
+  .schedtable td.lunch{background:#f0eada;text-align:center;color:#8f8775}
+  .slotcell{min-height:34px}
+  .mtile{background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--red);border-radius:6px;padding:5px 7px;margin-bottom:4px}
+  .mtile.conflict{background:#fde9e9;box-shadow:inset 0 0 0 2px #d11}
+  .mtile .cls{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b6356;display:flex;align-items:center;gap:4px}
+  .mtile .cls .stage{margin-left:auto;font-weight:700;color:#8a8270;white-space:nowrap;display:flex;align-items:center;gap:3px}
+  .mtile .cls .stage .cup{font-size:12px}
+  .mtile.locked{opacity:.92}
+  .mtile.locked .lockmark{color:#b5362b;font-weight:700}
+  .unschedgroup{width:100%}
+  .unschedgroup .ghead{font-size:12px;font-weight:700;color:#26211c;margin:10px 0 6px;display:flex;align-items:center;gap:6px}
+  .unschedgroup .ghead .sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+  .unschedgroup .items{display:flex;flex-wrap:wrap;gap:8px}
+  .mtile .cdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .schedtable td.pausrow{background:#efe9db;color:#8a8270;text-align:center;font-size:11px;font-style:italic}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 12px;padding:10px 12px;background:var(--paper);border:1px solid var(--line);border-radius:8px}
+  .legend .item{display:flex;align-items:center;gap:6px;font-size:12px}
+  .legend .sw{width:13px;height:13px;border-radius:3px;display:inline-block;flex:0 0 auto}
+  .classcard .sw{width:12px;height:12px;border-radius:3px;display:inline-block;vertical-align:middle;margin-right:5px}
+  .mtile .vs{font-size:12px;font-weight:600;margin:2px 0}
+  .mtile .ctrls{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px}
+  .mtile select{font-size:11px;padding:2px 3px}
+  .unsched{display:flex;flex-wrap:wrap;gap:8px}
+  .empty{color:#8a8270}
+  .hint{font-size:12px;color:#6b6356;background:#faf6ec;border:1px dashed var(--line);border-radius:8px;padding:10px 12px;margin-bottom:14px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{font-size:11px;background:#eee5cf;border-radius:20px;padding:2px 9px}
+  table.results{width:100%;border-collapse:collapse;background:#fff}
+  table.results th,table.results td{border:1px solid var(--line);padding:7px 9px;font-size:13px;text-align:left}
+  table.results th{background:#faf6ec}
+  .muted{color:#8a8270}
+  .small{font-size:12px}
+  /* print */
+  #printArea{display:none}
+  .brpage{position:relative;overflow:hidden;background:#fff}
+  @page land{ size:A4 landscape; margin:6mm }
+  @media print{
+    header.app,.tabs,.toolbar,.daybar,#app,.no-print{display:none !important}
+    body{background:#fff}
+    #printArea{display:block;padding:0}
+    #printArea h1{color:#000}
+    .mtile .ctrls{display:none}
+    /* Stege som träd: en liggande A4 per klass */
+    .brpage{width:1040px;height:730px;page:land;break-after:page;page-break-after:always}
+    .brpage:last-child{break-after:auto;page-break-after:auto}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<header class="app">
+  <div class="logo" id="logoHolder"></div>
+  <div>
+    <h1 id="appTitle">Klubbmästerskap</h1>
+    <p class="sub" id="appSub">Dalarö Tennisklubb</p>
+  </div>
+  <div class="spacer"></div>
+  <div class="tabs" id="tabs"></div>
+</header>
+
+<main>
+  <input type="file" id="importFile" accept="application/json" style="display:none" />
+  <div id="app"></div>
+</main>
+
+<div id="printArea"></div>
+
+<script>
+/* =========================================================
+   Dalarö Tennisklubb – Klubbmästerskap. Lokal app (localStorage).
+   ========================================================= */
+
+const LS_KEY = "km_dalaro";
+
+// --- Turneringsdagar beräknas från turneringens start- och slutdatum ---
+const SV_DOW = ["Söndag","Måndag","Tisdag","Onsdag","Torsdag","Fredag","Lördag"];
+const SV_MON = ["jan","feb","mar","apr","maj","jun","jul","aug","sep","okt","nov","dec"];
+function parseDate(s){ if(!s) return null; const [y,m,d]=s.split("-").map(Number); const dt=new Date(y,m-1,d); return isNaN(dt)?null:dt; }
+function isoDate(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0"); }
+function fmtShort(dt){ return dt.getDate()+" "+SV_MON[dt.getMonth()]; }
+function defaultTournament(){ const y=new Date().getFullYear(); return {name:"Klubbmästerskap", start:`${y}-07-04`, end:`${y}-07-11`}; }
+// Lista över turneringens dagar {date, dow, short}
+function getDays(){
+  const t=state.tournament||{};
+  const start=parseDate(t.start), end=parseDate(t.end);
+  const out=[];
+  if(!start||!end||end<start) return out;
+  let cur=new Date(start), guard=0;
+  while(cur<=end && guard++<120){
+    out.push({date:isoDate(cur), dow:SV_DOW[cur.getDay()], short:fmtShort(cur)});
+    cur.setDate(cur.getDate()+1);
+  }
+  return out;
+}
+function adultFinalDay(){ const d=getDays(); return d.length?d[d.length-1].date:null; }            // sista dagen
+function youthFinalDay(){ const d=getDays(); return d.length>1?d[d.length-2].date:(d[0]?d[0].date:null); } // näst sista dagen
+function tournamentYear(){ const d=getDays(); return d.length?parseDate(d[0].date).getFullYear():""; }
+// Arrangör (visas i rubriken och på utskrifter). Ändras under Turneringsinformation.
+function arrangerName(){ return (state.arranger||"").trim() || "Dalarö Tennisklubb"; }
+function tournamentRangeText(){
+  const d=getDays(); if(!d.length) return "datum ej satt";
+  const a=parseDate(d[0].date), b=parseDate(d[d.length-1].date);
+  return `${a.getDate()} ${SV_MON[a.getMonth()]} – ${b.getDate()} ${SV_MON[b.getMonth()]} ${b.getFullYear()}`;
+}
+
+const DEFAULT_CLASSES = [
+  {name:"Damsingel",        type:"adult"},
+  {name:"Herrsingel",       type:"adult"},
+  {name:"Herrdubbel",       type:"adult"},
+  {name:"Damdubbel",        type:"adult"},
+  {name:"Mixeddubbel",      type:"adult"},
+  {name:"Juniorveteran",    type:"adult"},
+  {name:"Veteransingel",    type:"adult"},
+  {name:"Generationsdubbel",type:"adult"},
+  {name:"Pojksingel Äldre", type:"youth"},
+  {name:"Flicksingel Äldre",type:"youth"},
+  {name:"Juniordubbel",     type:"youth"},
+  {name:"Pojksingel Yngre", type:"youth"},
+  {name:"Flicksingel Yngre",type:"youth"},
+  {name:"Minidubbel",       type:"youth"},
+];
+
+/* ---------- Klasser med seedning (endast top 4) ---------- */
+const RANKED_CLASSES = new Set(["Herrsingel","Herrdubbel","Mixeddubbel","Juniorveteran"]);
+const MAX_SEEDS = 4;
+
+/* ---------- Tidsluckor (minuter från midnatt) ----------
+   Ungdom: 30 min/match, vardagar 9–13, paus 30 min efter 3 matcher.
+   Senior: 60 min/match, alla dagar 13–21, paus 60 min efter 3 matcher.
+   Helg: seniorer spelar dessutom förmiddag 8–11 (3 matcher à 60 min, paus efter tre).
+   Lunch 12–13. */
+const MATCH_MIN_YOUTH = 30;
+const MATCH_MIN_SENIOR = 60;
+function buildZoneSlots(startMin, endMin, matchMin, perBreak, breakMin){
+  const out=[]; let t=startMin, c=0, guard=0;
+  while(t+matchMin<=endMin && guard++<400){
+    if(t>=720 && t<780){ t=780; c=0; continue; }   // lunchpaus 12:00–13:00
+    out.push(t); t+=matchMin; c++;
+    if(c%perBreak===0) t+=breakMin;                 // paus efter 3 matcher
+  }
+  return out;
+}
+// AUTOMATISK planering (paus efter var 3:e match kvarstår):
+//  Junior: vardag, första start 09:00, sista start ≤ 12:30 (lunch 12–13, 30 min match)
+//  Senior vardag: första start 13:00, sista start ≤ 20:00 (60 min match)
+//  Senior helg: första start 09:00, sista start ≤ 20:00 (60 min match)
+const YOUTH_SLOTS   = buildZoneSlots(540,780,MATCH_MIN_YOUTH,3,30);    // junior vardag 9–13
+const SENIOR_SLOTS  = buildZoneSlots(780,1260,MATCH_MIN_SENIOR,3,60);  // senior vardag 13–21
+const SENIOR_WEEKEND= buildZoneSlots(540,1260,MATCH_MIN_SENIOR,3,60);  // senior helg 9–21 (start 9)
+// Auto-tider för en klasstyp en given dag.
+function slotsFor(type, day){
+  if(type==="youth") return YOUTH_SLOTS;
+  return (day && isWeekend(day)) ? SENIOR_WEEKEND : SENIOR_SLOTS;
+}
+// Alla auto-tider en given dag kan ha (helg = endast senior 9–; vardag = junior 9–13 + senior 13–).
+function daySlots(day){
+  return isWeekend(day) ? SENIOR_WEEKEND : [...YOUTH_SLOTS, ...SENIOR_SLOTS];
+}
+// MANUELL schemaläggning: 08:00–21:00 för både junior (30 min-steg) och senior (60 min-steg).
+function manualSlots(type){
+  const step = type==="youth" ? MATCH_MIN_YOUTH : MATCH_MIN_SENIOR;
+  const out=[]; for(let t=480; t<=1260; t+=step) out.push(t); return out;
+}
+const ALL_SLOTS = [...new Set([...YOUTH_SLOTS,...SENIOR_WEEKEND,...SENIOR_SLOTS])].sort((a,b)=>a-b);
+function fmtMin(m){ return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); }
+function matchMinFor(type){ return type==="youth"?MATCH_MIN_YOUTH:MATCH_MIN_SENIOR; }
+// Radlängd i rutnätet (dagsberoende): helg = 60 min; vardag före 13:00 = 30, annars 60.
+function slotDur(t, day){ if(day && isWeekend(day)) return MATCH_MIN_SENIOR; return t<780 ? MATCH_MIN_YOUTH : MATCH_MIN_SENIOR; }
+function timeLabel(m, day){ return fmtMin(m)+"–"+fmtMin(m+slotDur(m, day)); }
+function hourLabel(m, day){ return timeLabel(m, day); }   // bakåtkompatibelt namn
+// Match-specifik tidsetikett (matchlängd utifrån klasstyp – korrekt även vid manuell placering).
+function matchLabel(m){ const d=matchMinFor(getClass(m.classId).type); return fmtMin(m.time)+"–"+fmtMin(m.time+d); }
+
+/* ---------- Spelarnamn ---------- */
+// Ta bort rank "(n)" i slutet av ett namn (för jämförelse/gruppering).
+function stripRank(name){ return String(name).replace(/\s*\(\d+\)\s*$/,"").trim(); }
+// Individuella spelarnamn i en match (dubbelpar delas på "/").
+function playersOf(m){
+  const out=[];
+  for(const side of [m.p1,m.p2]){
+    if(!side) continue;
+    for(const part of String(side).split("/")){
+      const nm=stripRank(part);
+      if(nm) out.push(nm);
+    }
+  }
+  return out;
+}
+
+/* ---------------- State ---------------- */
+let state = normalize(load() || newState());
+let ui = { tab:"classes", classId: state.classes[0].id, day: null };
+ensureDay();
+
+function newState(){
+  return {
+    courts: 2,
+    migratedV2: true,
+    extraCourts: {},
+    lockedDays: {},
+    planCourts: {},
+    tournament: defaultTournament(),
+    arranger: "Dalarö Tennisklubb",
+    organizer: { name:"", phone:"", email:"" },
+    venue: "",
+    classes: DEFAULT_CLASSES.map((c,i)=>({
+      id:"c"+i, name:c.name, type:c.type,
+      ranked: RANKED_CLASSES.has(c.name), seeds: 4, catNo: i+1,
+      participants:[], matches:[], champion:null
+    }))
+  };
+}
+// Säkerställ att äldre/importerade tillstånd har förväntade fält.
+function normalize(s){
+  if(!s.tournament) s.tournament=defaultTournament();
+  if(!s.tournament.start||!s.tournament.end) s.tournament=defaultTournament();
+  if(!s.tournament.name) s.tournament.name="Klubbmästerskap";
+  if(typeof s.arranger!=="string" || !s.arranger.trim()) s.arranger="Dalarö Tennisklubb";
+  if(!s.organizer || typeof s.organizer!=="object") s.organizer={ name:"", phone:"", email:"" };
+  if(typeof s.venue!=="string") s.venue="";
+  if(!s.extraCourts) s.extraCourts={};
+  if(!s.lockedDays) s.lockedDays={};
+  if(!s.planFinalDays) s.planFinalDays={};
+  if(!s.planCourts) s.planCourts={};
+  s.classes=s.classes||[];
+  // Engångsmigrering (annars återskapas klasser som användaren tagit bort/döpt om).
+  if(!s.migratedV2){
+    const renameMap={"Pojksingel":"Pojksingel Äldre","Flicksingel":"Flicksingel Äldre"};
+    s.classes.forEach(c=>{ if(renameMap[c.name]) c.name=renameMap[c.name]; });
+    [["Pojksingel Yngre","youth"],["Flicksingel Yngre","youth"],["Minidubbel","youth"]].forEach(([name,type])=>{
+      if(!s.classes.some(c=>c.name===name)){
+        s.classes.push({ id:"c"+uid(), name, type, ranked:false, seeds:4, catNo:s.classes.length+1,
+          participants:[], matches:[], champion:null });
+      }
+    });
+    s.migratedV2=true;
+  }
+  (s.classes||[]).forEach((c,ci)=>{
+    // Sätt/uppdatera seedningsflaggan utifrån klassnamnet (robust mot gammal data).
+    if(c.ranked===undefined) c.ranked = RANKED_CLASSES.has(c.name);
+    if(!(c.seeds>0)) c.seeds = 4;   // antal seedade (standard 4)
+    if(!(c.catNo>0)) c.catNo = ci+1; // matchnummer-kategori (första siffran)
+    // Migrera gamla heltimme-tider (9..20) till minuter (540..1200).
+    for(const m of (c.matches||[])){
+      if(m.time!=null && m.time>0 && m.time<60) m.time=m.time*60;
+    }
+  });
+  return s;
+}
+// Synliga (ej dolda) klasser – används i väljare, statistik och listor.
+function visibleClasses(){ return state.classes.filter(c=>!c.hidden); }
+// Klasshantering: lägg till, döp om, dölj/visa, ta bort.
+function addClass_(){
+  const name=(prompt("Namn på den nya klassen:")||"").trim();
+  if(!name) return;
+  if(state.classes.some(c=>c.name===name)){ alert("Det finns redan en klass med det namnet."); return; }
+  const youth=confirm("Är detta en juniorklass (spelas vardagar 9–13, 30 min/match)?\nOK = junior · Avbryt = senior");
+  state.classes.push({ id:"c"+uid(), name, type: youth?"youth":"adult",
+    ranked:false, seeds:4, catNo: state.classes.length+1,
+    participants:[], matches:[], champion:null });
+  ui.classId=state.classes[state.classes.length-1].id;
+  save(); render();
+}
+function renameClass(cls){
+  const nn=(prompt(`Nytt namn för klassen "${cls.name}":`, cls.name)||"").trim();
+  if(!nn || nn===cls.name) return;
+  if(state.classes.some(c=>c!==cls && c.name===nn)){ alert("Det finns redan en klass med det namnet."); return; }
+  cls.name=nn; save(); render();
+}
+function toggleHideClass(cls){
+  cls.hidden=!cls.hidden;
+  // När klassen döljs tas dess matcher bort ur schemat; när den visas igen dyker de
+  // spelklara matcherna upp i listan "Ej schemalagda matcher".
+  if(cls.hidden) cls.matches.forEach(m=>{ m.day=null; m.court=null; m.time=null; });
+  save(); render();
+}
+function deleteClass(cls){
+  const extra=cls.participants.length?` Klassen har ${cls.participants.length} deltagare och ${cls.matches.length} matcher som också tas bort.`:"";
+  if(!confirm(`Ta bort klassen "${cls.name}" permanent?${extra} Detta kan inte ångras.`)) return;
+  const i=state.classes.indexOf(cls);
+  if(i>=0) state.classes.splice(i,1);
+  if(!state.classes.length){ alert("Minst en klass måste finnas – skapar en ny tom klass."); state.classes.push({id:"c"+uid(),name:"Ny klass",type:"adult",ranked:false,seeds:4,catNo:1,participants:[],matches:[],champion:null}); }
+  if(!getClass(ui.classId)) ui.classId=state.classes[0].id;
+  save(); render();
+}
+// Ska klassen seedas?
+function isRanked(cls){ return cls.ranked!==undefined ? cls.ranked : RANKED_CLASSES.has(cls.name); }
+// Antal seedade i klassen (0 om ej seedad).
+function seedCountOf(cls){ return isRanked(cls) ? (cls.seeds>0?cls.seeds:4) : 0; }
+// Antal banor en specifik dag (bas + ev. extra 0–2).
+function courtsForDay(day){
+  const extra=(state.extraCourts && state.extraCourts[day]) || 0;
+  return Math.max(1, Math.min(8, state.courts + extra));
+}
+// Är dagens resultat låsta (skyddade mot oavsiktlig ändring)?
+function dayLocked(day){ return !!(day && state.lockedDays && state.lockedDays[day]); }
+function toggleDayLock(day){
+  if(!day) return;
+  state.lockedDays=state.lockedDays||{};
+  if(state.lockedDays[day]) delete state.lockedDays[day]; else state.lockedDays[day]=true;
+  save(); render();
+}
+function isWeekend(date){ const d=parseDate(date); const w=d?d.getDay():1; return w===0||w===6; }
+// Ungdom auto-schemaläggs endast vardagar (lör/sön = endast seniorer).
+function youthAllowedAuto(date){ return !isWeekend(date); }
+// Se till att vald dag finns i turneringens datumintervall.
+function ensureDay(){
+  const days=getDays();
+  if(!days.length){ ui.day=null; return; }
+  if(!ui.day || !days.some(d=>d.date===ui.day)) ui.day=days[0].date;
+}
+function load(){ try{ const r=localStorage.getItem(LS_KEY); return r?JSON.parse(r):null; }catch(e){ return null; } }
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function getClass(id){ return state.classes.find(c=>c.id===id); }
+// Distinkt färg per klass (utifrån klassens ordning) för att skilja matcher åt.
+const CLASS_COLORS = ["#d1495b","#3f88c5","#2e9e57","#8e44ad","#e07b16","#0e9aa7","#9A6324","#7a2e2e","#7f8c1e","#d81b8c","#5d6d7e"];
+function classColor(cls){ const i=state.classes.indexOf(cls); return CLASS_COLORS[(i<0?0:i)%CLASS_COLORS.length]; }
+function classColorId(id){ const c=getClass(id); return c?classColor(c):"#888"; }
+// Visningsnamn: dölj seedningssiffran "(n)" överallt utom i Klasser & deltagare.
+function dispName(x){ return x==null ? x : stripRank(x); }
+
+/* ----- Matchnummer (kategori*100 + löpande) ----- */
+function classCatNo(cls){ return cls.catNo>0 ? cls.catNo : state.classes.indexOf(cls)+1; }   // kategori (första siffran)
+function isByeMatch(m){ return !m.manual && m.round===0 && (m.p1===null || m.p2===null); }
+// Riktiga matcher i en klass i spelordning (byes räknas ej), bracket före manuella.
+function orderedRealMatches(cls){
+  const br=cls.matches.filter(m=>!m.manual && !isByeMatch(m)).sort((a,b)=>a.round-b.round||a.index-b.index);
+  const man=cls.matches.filter(m=>m.manual);
+  return [...br, ...man];
+}
+function matchNumber(m){
+  const cls=getClass(m.classId); if(!cls) return null;
+  const pos=orderedRealMatches(cls).indexOf(m);
+  return pos<0 ? null : classCatNo(cls)*100 + (pos+1);
+}
+function matchNoTag(m){ const n=matchNumber(m); return n==null?"":`<span class="mno">#${n}</span>`; }
+// Antal riktiga matcher som ska spelas i en klass (deltagare-1 + manuella).
+function realMatchCount(cls){
+  return Math.max(0, cls.participants.length-1) + cls.matches.filter(m=>m.manual).length;
+}
+// Ersätt en deltagare i en klass: nya deltagaren tar den gamlas plats i stege och schema.
+function replaceParticipant(cls, oldEntry, newBase){
+  newBase=(newBase||"").trim(); if(!newBase) return;
+  const rm=String(oldEntry).match(/\s*(\(\d+\))\s*$/);   // behåll ev. seedning "(n)"
+  const newEntry = newBase + (rm ? (" "+rm[1]) : "");
+  const i=cls.participants.indexOf(oldEntry);
+  if(i>=0) cls.participants[i]=newEntry;
+  for(const m of cls.matches){
+    if(m.p1===oldEntry) m.p1=newEntry;
+    if(m.p2===oldEntry) m.p2=newEntry;
+    if(m.winner===oldEntry) m.winner=newEntry;
+  }
+  if(cls.champion===oldEntry) cls.champion=newEntry;
+  save(); render();
+}
+
+/* ---------------- Bracket / stege ---------------- */
+function seedOrder(size){
+  let s=[1];
+  while(s.length<size){
+    const len=s.length*2, n=[];
+    for(const x of s){ n.push(x); n.push(len+1-x); }
+    s=n;
+  }
+  return s;
+}
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function buildBracket(cls){
+  const manuals = cls.matches.filter(m=>m.manual); // behåll manuellt inlagda matcher
+  cls.matches=[]; cls.champion=null;
+  // Rensa ev. tidigare rank, behåll ordning. Seedning (top 4) endast i utvalda klasser.
+  let names = cls.participants.map(stripRank).filter(Boolean);
+  const ranked = isRanked(cls);
+  const nSeeds = ranked ? Math.min(seedCountOf(cls), names.length) : 0;
+  // Notera rankade med siffra inom parentes bakom namnet och spara i deltagarlistan.
+  for(let i=0;i<nSeeds;i++) names[i] = names[i] + ` (${i+1})`;
+  cls.participants = names.slice();
+  const n=names.length;
+  if(n<2){ cls.matches.push(...manuals); return; }
+  let size=1; while(size<n) size*=2;
+  const order=seedOrder(size);              // slot-index -> seed-nummer (1..size)
+  const slots=new Array(size).fill(null);   // null = BYE
+  // Seeds på standardpositioner (1 & 2 i motsatta halvor osv) -> kan ej mötas tidigt.
+  for(let s=1;s<=nSeeds;s++) slots[order.indexOf(s)] = names[s-1];
+  // Byes ges till de högst seedade (slots med högst seed-nummer, ej seedplatser).
+  const byes=size-n;
+  const byeSlots=new Set();
+  const byOrderDesc=[...Array(size).keys()].sort((a,b)=>order[b]-order[a]);
+  for(const idx of byOrderDesc){
+    if(byeSlots.size>=byes) break;
+    if(order[idx]<=nSeeds) continue;        // seedplats får inte vara bye
+    byeSlots.add(idx);
+  }
+  // Övriga (oseedade) spelare lottas slumpmässigt in i resterande platser.
+  const rest=shuffle(names.slice(nSeeds));
+  const emptyIdx=[...Array(size).keys()].filter(idx=>order[idx]>nSeeds && !byeSlots.has(idx));
+  emptyIdx.forEach((idx,i)=>{ slots[idx]=rest[i] ?? null; });
+  // Bygg ronderna.
+  const rounds=Math.log2(size);
+  for(let r=0;r<rounds;r++){
+    const cnt=size/Math.pow(2,r+1);
+    for(let i=0;i<cnt;i++){
+      const m={ id:uid(), classId:cls.id, round:r, index:i,
+        p1:null,p2:null, winner:null, score:"", day:null, court:null, time:null };
+      if(r===0){ m.p1=slots[i*2]; m.p2=slots[i*2+1]; }
+      cls.matches.push(m);
+    }
+  }
+  cls.matches.push(...manuals);
+  resolveByes(cls);
+}
+function matchOf(cls,r,i){ return cls.matches.find(m=>m.round===r&&m.index===i); }
+// Skicka vinnaren till rätt plats i nästa omgång. Returnerar true om något ändrades.
+function propagateSlot(cls,m){
+  if(!m.winner) return false;
+  const nr=m.round+1, ni=Math.floor(m.index/2), slot=m.index%2;
+  const next=matchOf(cls,nr,ni);
+  if(!next){ // finalen
+    if(cls.champion!==m.winner){ cls.champion=m.winner; return true; }
+    return false;
+  }
+  if(slot===0){ if(next.p1!==m.winner){ next.p1=m.winner; return true; } }
+  else        { if(next.p2!==m.winner){ next.p2=m.winner; return true; } }
+  return false;
+}
+// Iterativ upplösning: auto-vinst på BYE i omgång 0 + framåtflyttning av vinnare.
+function resolveByes(cls){
+  let changed=true, guard=0;
+  while(changed && guard++<200){
+    changed=false;
+    for(const m of cls.matches){
+      if(m.manual) continue;
+      if(m.round===0 && !m.winner){
+        if(m.p1!==null && m.p2===null){ m.winner=m.p1; m.score="WO"; changed=true; }
+        else if(m.p2!==null && m.p1===null){ m.winner=m.p2; m.score="WO"; changed=true; }
+      }
+      if(m.winner && propagateSlot(cls,m)) changed=true;
+    }
+  }
+}
+function recompChampion(cls){
+  cls.champion=null;
+  const fm=cls.matches.find(x=>x.round===totalRounds(cls)-1);
+  if(fm&&fm.winner) cls.champion=fm.winner;
+}
+function setWinner(cls,m,winner){
+  m.winner=winner; m._wo=false;
+  if(m.manual){ save(); render(); return; }   // manuell match: ingen stege-framflyttning
+  clearDownstream(cls,m);   // ta bort ev. felaktig nedströms-placering
+  resolveByes(cls);         // flytta vinnaren framåt -> nästa match blir spelklar
+  recompChampion(cls);
+  save(); render();
+}
+// Registrera/ändra resultat via vinnar-väljaren. key = 'p1' | 'p2' | '' (rensa).
+function registerWinner(cls,m,key){
+  if(key===""){                 // rensa vinnare
+    m.winner=null;
+    if(!m.manual){ clearDownstream(cls,m); resolveByes(cls); recompChampion(cls); }
+    save(); render(); return;
+  }
+  setWinner(cls, m, key==="p1"?m.p1:m.p2);
+}
+function clearDownstream(cls,m){
+  const nr=m.round+1, ni=Math.floor(m.index/2), slot=m.index%2;
+  const next=matchOf(cls,nr,ni);
+  if(!next) return;
+  const cur = slot===0?next.p1:next.p2;
+  // töm platsen och eventuell vinnare nedströms
+  if(slot===0) next.p1=null; else next.p2=null;
+  if(next.winner){ const w=next.winner; next.winner=null; next.score=""; clearDownstream(cls,next); }
+}
+function roundName(r,total){
+  const fromEnd=total-1-r;
+  if(fromEnd===0) return "Final";
+  if(fromEnd===1) return "Semifinal";
+  if(fromEnd===2) return "Kvartsfinal";
+  return "Omgång "+(r+1);
+}
+function totalRounds(cls){
+  const br=cls.matches.filter(m=>!m.manual);
+  if(!br.length) return 0;
+  return Math.max(...br.map(m=>m.round))+1;
+}
+function isReady(m){ return m.p1 && m.p2 && !m.winner; }
+function isFinal(cls,m){ return !m.manual && m.round===totalRounds(cls)-1; }
+// Kort etikett för vilken omgång/final en match avser (t.ex. "Omgång 2", "Semifinal", "Final").
+function stageName(cls,m){ return m.manual ? "Manuell" : roundName(m.round, totalRounds(cls)); }
+// Etikett-HTML för matchrubriken: omgång/final till höger, pokal längst till höger för finaler.
+function stageTag(cls,m){
+  return `<span class="stage">${stageName(cls,m)}${isFinal(cls,m)?' <span class="cup">🏆</span>':''}</span>`;
+}
+// Skapa en manuell match (ej del av stegen) och placera den på dagen.
+function createManualMatch(cls,p1,p2,day){
+  const m={id:uid(),classId:cls.id,manual:true,round:null,index:null,
+           p1,p2,winner:null,score:"",day:null,court:null,time:null};
+  cls.matches.push(m);
+  const res=manualPlace(m,day);
+  if(!res.ok) alert(res.msg+' Matchen lades under "Ej schemalagda".');
+  else if(res.warn) alert(res.warn);
+  save(); render();
+}
+function deleteMatch(id){
+  for(const c of state.classes){
+    const i=c.matches.findIndex(x=>x.id===id);
+    if(i>=0){ c.matches.splice(i,1); break; }
+  }
+  save(); render();
+}
+
+/* ---------------- Rendering ---------------- */
+const app=document.getElementById("app");
+
+function render(){
+  ensureDay();
+  document.getElementById("appTitle").textContent = state.tournament.name || "Klubbmästerskap";
+  document.getElementById("appSub").textContent = `${arrangerName()} · ${tournamentRangeText()}`;
+  renderTabs();
+  if(ui.tab==="info") renderInfo();
+  else if(ui.tab==="classes") renderClasses();
+  else if(ui.tab==="bracket") renderBracketTab();
+  else if(ui.tab==="schedule") renderSchedule();
+  else if(ui.tab==="planner") renderPlanner();
+  else if(ui.tab==="participants") renderParticipants();
+  else if(ui.tab==="print") renderPrintTab();
+  else if(ui.tab==="stats") renderStats();
+  else if(ui.tab==="about") renderAbout();
+}
+function renderTabs(){
+  const tabs=[["info","Turneringsinformation"],["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["planner","Auto-planering"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["stats","Statistik"],["about","Om appen"]];
+  document.getElementById("tabs").innerHTML=tabs.map(([k,l])=>
+    `<button class="${ui.tab===k?'active':''}" data-tab="${k}">${l}</button>`).join("");
+  document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{ui.tab=b.dataset.tab;render();});
+}
+
+/* ----- Versionsstämpel (utifrån när denna index.html senast sparades) ----- */
+function appVersionText(){
+  const d=new Date(document.lastModified);
+  if(isNaN(d)) return document.lastModified || "okänd";
+  const p=n=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/* ----- Tab: Statistik ----- */
+function renderStats(){
+  const days=getDays(), classes=visibleClasses();
+  if(!days.length){ app.innerHTML=`<div class="card"><h2>Statistik</h2><p class="muted">Ange turneringens datum under <b>Klasser &amp; deltagare</b> först.</p></div>`; return; }
+  const all=realMatches();
+  const schedOf=(cid,date)=> all.filter(m=>m.classId===cid && m.day===date).length;
+
+  // Fördela klassens kvarvarande (oschemalagda) matcher jämnt över dagarna t.o.m. finalen.
+  function suggestPerDay(cls){
+    const arr=days.map(()=>0);
+    const fd=cls.type==="youth"?youthFinalDay():adultFinalDay();
+    const fi=days.findIndex(d=>d.date===fd);
+    const D=fi<0?days.length:fi+1;
+    const kvar=Math.max(0, realMatchCount(cls) - all.filter(m=>m.classId===cls.id && m.day).length);
+    if(D<=0 || kvar<=0) return arr;
+    const base=Math.floor(kvar/D), extra=kvar%D;
+    for(let di=0; di<Math.min(D,days.length); di++) arr[di]=base + (di >= D-extra ? 1 : 0);
+    return arr;
+  }
+  // 1) Matris kategori × dag (schemalagda matcher) + Kvar + förslag/dag (rött inom parentes)
+  let colTot=days.map(()=>0), grand=0, tKvar=0;
+  let rowsHtml="";
+  classes.forEach(c=>{
+    let rowTot=0, cells="";
+    const sugg=suggestPerDay(c);
+    days.forEach((d,di)=>{
+      const n=schedOf(c.id,d.date); rowTot+=n; colTot[di]+=n;
+      const s=sugg[di];
+      cells+=`<td>${n||''}${s>0?` <span style="color:#c0392b;font-weight:700">(${s})</span>`:''}</td>`;
+    });
+    grand+=rowTot;
+    const kvar=Math.max(0, realMatchCount(c) - rowTot); tKvar+=kvar;
+    rowsHtml+=`<tr><td style="text-align:left"><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td>${cells}<td><b>${rowTot||''}</b></td><td><b>${kvar||''}</b></td></tr>`;
+  });
+  let html=`<div class="card"><h2>Matcher per kategori och dag (schemalagda)</h2>
+    <p class="small muted">Antal schemalagda matcher per dag och kategori. <b>Kvar</b> = matcher kvar att schemalägga t.o.m. finalen.
+    Röd siffra <span style="color:#c0392b;font-weight:700">(n)</span> = förslag på hur många kvarvarande matcher som bör läggas den dagen fram till finalen.</p>
+    <div style="overflow-x:auto"><table class="results"><thead><tr><th style="text-align:left">Kategori</th>${days.map(d=>`<th>${d.dow.slice(0,3)}<br>${d.short}</th>`).join("")}<th>Totalt</th><th>Kvar</th></tr></thead><tbody>
+    ${rowsHtml}
+    <tr style="background:#faf6ec"><td style="text-align:left"><b>Totalt/dag</b></td>${colTot.map(n=>`<td><b>${n||''}</b></td>`).join("")}<td><b>${grand}</b></td><td><b>${tKvar||''}</b></td></tr>
+    </tbody></table></div></div>`;
+
+  // 2) Totalt i turneringen och per kategori
+  let tPlay=0,tSched=0,tDone=0, r2="";
+  classes.forEach(c=>{
+    const play=realMatchCount(c);
+    const s=all.filter(m=>m.classId===c.id && m.day).length;
+    const done=all.filter(m=>m.classId===c.id && m.winner && m.p1 && m.p2 && !isByeMatch(m)).length;
+    tPlay+=play;tSched+=s;tDone+=done;
+    if(play>0||s>0) r2+=`<tr><td style="text-align:left"><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td><td>${play}</td><td>${s}</td><td>${done}</td><td>${Math.max(0,play-done)}</td></tr>`;
+  });
+  html+=`<div class="card"><h2>Antal matcher totalt</h2>
+    <p class="small muted">"Att spela" = totalt antal matcher i kategorin (deltagare − 1 + manuella).</p>
+    <table class="results"><thead><tr><th style="text-align:left">Kategori</th><th>Att spela</th><th>Schemalagda</th><th>Spelade</th><th>Kvar</th></tr></thead><tbody>
+    ${r2}
+    <tr style="background:#faf6ec"><td style="text-align:left"><b>Hela turneringen</b></td><td><b>${tPlay}</b></td><td><b>${tSched}</b></td><td><b>${tDone}</b></td><td><b>${Math.max(0,tPlay-tDone)}</b></td></tr>
+    </tbody></table></div>`;
+
+  // 3) Matcher/dag som krävs till finalerna
+  let r3="";
+  classes.forEach(c=>{
+    const play=realMatchCount(c); if(play===0) return;
+    const fd=c.type==="youth"?youthFinalDay():adultFinalDay();
+    const idx=days.findIndex(d=>d.date===fd);
+    const daysBefore=idx<0?days.length:idx;
+    const beforeFinal=Math.max(0,play-1);
+    const perDay=daysBefore>0?Math.ceil(beforeFinal/daysBefore):beforeFinal;
+    r3+=`<tr><td style="text-align:left">${c.name}</td><td>${play}</td><td>${idx<0?'–':dayLong(fd)}</td><td>${daysBefore}</td><td><b>${perDay}</b></td></tr>`;
+  });
+  const totalDays=days.length;
+  html+=`<div class="card"><h2>Matcher/dag som krävs till finalerna</h2>
+    <p class="small muted">Antal matcher per dag (summa över alla banor) som behöver spelas för att hinna klart före respektive finaldag.</p>
+    <table class="results"><thead><tr><th style="text-align:left">Kategori</th><th>Matcher totalt</th><th>Final</th><th>Dagar före final</th><th>Matcher/dag som krävs</th></tr></thead><tbody>
+    ${r3}
+    <tr style="background:#faf6ec"><td style="text-align:left"><b>Hela turneringen (snitt)</b></td><td><b>${tPlay}</b></td><td>–</td><td><b>${totalDays}</b></td><td><b>${totalDays>0?Math.ceil(tPlay/totalDays):tPlay}</b></td></tr>
+    </tbody></table></div>`;
+
+  app.innerHTML=html;
+}
+
+/* ----- Tab: Om appen ----- */
+function renderAbout(){
+  app.innerHTML=`
+   <div class="card">
+     <div class="row" style="align-items:center;gap:14px">
+       <div style="width:56px;height:56px;flex:0 0 auto">${LOGO_SVG}</div>
+       <div>
+         <h2 style="margin:0">Klubbmästerskap – Dalarö Tennisklubb</h2>
+         <p class="small muted" style="margin:2px 0 0">Lokal app för att planera och genomföra KM. All data sparas i din webbläsare.</p>
+       </div>
+     </div>
+     <p style="margin-top:14px">Appen hanterar hela turneringen från deltagare till färdiga resultat, helt lokalt i webbläsaren –
+        ingen server och inget konto behövs.</p>
+     <h3 style="color:var(--red)">Så här används appen</h3>
+     <ol class="small" style="line-height:1.7">
+       <li><b>Turneringsinformation:</b> ange turneringens namn, datum, antal banor, tävlingsledare och spelplats, samt exportera/importera säkerhetskopia.</li>
+       <li><b>Klasser &amp; deltagare:</b> klistra in deltagare per klass (en rad per spelare/par),
+           välj ev. seedning (antal seedade), och lås deltagarna för att bygga stegen.</li>
+       <li><b>Stege:</b> registrera resultat och välj vinnare – vinnaren förs automatiskt vidare och nästa match blir spelklar.</li>
+       <li><b>Schema:</b> generera dagens schema automatiskt eller lägg/flytta matcher manuellt (08–21), byt bana/dag, lägg till extra banor per dag.</li>
+       <li><b>Deltagarlista:</b> se varje person och vilka klasser hen deltar i (dubbelpar uppdelade).</li>
+       <li><b>Resultat &amp; utskrift:</b> skriv ut resultatlistor, matchscheman, blankt schema och alla stegar (med klubblogga).</li>
+     </ol>
+     <h3 style="color:var(--red)">Planeringsregler</h3>
+     <ul class="small" style="line-height:1.7">
+       <li>Auto: junior 30 min (vardag 9–13), senior 60 min (vardag 13–21, helg 9–21). Paus efter var 3:e match, lunch 12–13.</li>
+       <li>Lör/sön spelar endast seniorer. Max 3 matcher/dag/person, aldrig samtidigt på två banor.</li>
+       <li>Manuellt kan matcher läggas 08:00–21:00 och i paus-/lunchluckor (t.ex. paus efter 2, eller 4 i rad).</li>
+       <li>Seedade spelare kan inte mötas i första omgången.</li>
+       <li>Nästa omgång i en klass schemaläggs (auto) först när föregående omgång är färdigspelad – kan
+           släppas med <b>Tillåt senare omgångar</b> i Schema-fliken.</li>
+       <li>Ungdomsfinaler läggs näst sista dagen, övriga finaler sista dagen (kan ändras per klass i <b>Auto-planering</b>).</li>
+       <li><b>Auto-planering</b> (egen flik) planerar hela turneringen på en gång: välj finaldag per klass, utnyttjar
+           starttider 08–20 och pauser vid behov, föreslår en extra bana om matcherna inte får plats, och kan lägga
+           seniormatcher redan 09–13 när juniorklasserna är färdigspelade (utom på finaldagar). Varje dags förslag kan
+           föras över till det riktiga schemat med ett klick.</li>
+       <li><b>Lås dagens resultat</b> i Schema-fliken skyddar en dags matcher (resultat, tider, banor) mot oavsiktlig ändring
+           tills du låser upp dagen igen.</li>
+     </ul>
+     <h3 style="color:var(--red)">Färger, felkoder &amp; markeringar</h3>
+     <ul class="small" style="line-height:1.7;list-style:none;padding-left:0">
+       <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#fde9e9;box-shadow:inset 0 0 0 2px #d11;vertical-align:middle;margin-right:8px"></span>
+           <b style="color:#b5362b">Röd match (felkod)</b> – schemakrock: samma bana &amp; tid dubbelbokad, samma spelare på två banor samtidigt, eller fler än 3 matcher samma dag för en spelare. Åtgärda genom att flytta bana/tid/dag.</li>
+       <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#efe9db;vertical-align:middle;margin-right:8px"></span>
+           <b style="color:#8a8270">Grå rad</b> – paus / ledig lucka (kan schemaläggas manuellt).</li>
+       <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#f0eada;vertical-align:middle;margin-right:8px"></span>
+           <b style="color:#8f8775">Ljus rad 🍽</b> – lunchpaus 12–13.</li>
+       <li><span style="color:#c0392b;font-weight:700;margin-right:6px">(n)</span>
+           <b style="color:#c0392b">Röd siffra inom parentes</b> (Statistik) – förslag på antal kvarvarande matcher som bör läggas den dagen för att hinna till finalen.</li>
+       <li><span style="color:var(--green);margin-right:6px">🏆</span>
+           <b style="color:#2e7d32">Grön vinnare</b> – registrerad vinnare/klubbmästare.</li>
+       <li><span style="margin-right:6px">🔒</span>
+           <b style="color:#b5362b">Lås</b> – dagen (eller matchen) är låst mot ändring; lås upp i Schema-fliken.</li>
+       <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#3f88c5;vertical-align:middle;margin-right:8px"></span>
+           <b>Klassfärg</b> – varje klass har en egen färg (vänsterkant på matcher, färgprick i listor) så att klasserna är lätta att skilja åt.</li>
+     </ul>
+     <h3 style="color:var(--red)">Säkerhetskopiering</h3>
+     <p class="small">Under <b>Turneringsinformation</b> använder du <b>Exportera säkerhetskopia</b> för att spara en JSON-fil
+        (filnamnet får datum + klockslag), och <b>Importera säkerhetskopia</b> för att återställa eller flytta turneringen till en annan dator.</p>
+     <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
+     <p class="small muted">
+       <b>Version (denna sidas senaste ändring):</b> ${appVersionText()}<br>
+       Dalarö Tennisklubb · fristående webbapp (index.html).
+     </p>
+   </div>`;
+}
+
+/* ----- Tab: Turneringsinformation (första fliken) ----- */
+function renderInfo(){
+  const t=state.tournament, o=state.organizer||{};
+  const esc=s=>String(s==null?"":s).replace(/"/g,"&quot;");
+  app.innerHTML=`
+   <div class="card no-print">
+     <h2>Turnering</h2>
+     <p class="small muted">Namn, datum och antal banor för turneringen. Dagar och veckodagar i schemat skapas utifrån datumintervallet.</p>
+     <div class="row">
+       <label class="small" style="flex:1;min-width:220px">Turneringens namn<br>
+         <input type="text" id="tName" value="${esc(t.name)}" placeholder="Klubbmästerskap" style="width:100%;max-width:360px"></label>
+       <label class="small" style="flex:1;min-width:220px">Arrangör<br>
+         <input type="text" id="tArranger" value="${esc(state.arranger)}" placeholder="Dalarö Tennisklubb" style="width:100%;max-width:360px"></label>
+     </div>
+     <p class="small muted" style="margin:6px 0 0">Arrangören visas under rubriken i alla flikar (t.ex. <i>Dalarö Tennisklubb · ${tournamentRangeText()}</i>) och på utskrifter.</p>
+     <div class="row" style="margin-top:10px">
+       <label class="small">Startdatum <input type="date" id="tStart" value="${esc(t.start)}"></label>
+       <label class="small">Slutdatum <input type="date" id="tEnd" value="${esc(t.end)}"></label>
+       <label class="small">Antal banor (grundantal) <input type="number" id="tCourts" min="1" max="8" value="${state.courts}" style="width:60px"></label>
+       <button class="btn" id="saveInfo">💾 Spara</button>
+     </div>
+     <p class="small" style="margin:8px 0 0">
+       <span class="pill">${tournamentRangeText()}</span>
+       <span class="muted">&nbsp;Finaler för ungdomsklasser näst sista dagen, övriga sista dagen. Banantalet kan justeras per dag i Schema/Auto-planering.</span>
+     </p>
+   </div>
+   <div class="card no-print">
+     <h2>Tävlingsledare</h2>
+     <div class="row">
+       <label class="small" style="flex:1;min-width:180px">Namn<br><input type="text" id="oName" value="${esc(o.name)}" style="width:100%;max-width:280px"></label>
+       <label class="small" style="flex:1;min-width:150px">Telefon<br><input type="tel" id="oPhone" value="${esc(o.phone)}" style="width:100%;max-width:200px"></label>
+       <label class="small" style="flex:1;min-width:200px">E-post<br><input type="email" id="oMail" value="${esc(o.email)}" style="width:100%;max-width:280px"></label>
+     </div>
+   </div>
+   <div class="card no-print">
+     <h2>Spelplats / adress</h2>
+     <textarea id="venue" placeholder="T.ex. Dalarö Tennisklubb, Odinsvägen 5, 137 70 Dalarö" style="min-height:64px">${String(state.venue||"")}</textarea>
+   </div>
+   <div class="card no-print">
+     <h2>Säkerhetskopia</h2>
+     <p class="small muted">Spara hela turneringen som en JSON-fil (filnamnet får datum + klockslag), eller läs in en tidigare kopia
+       för att återställa eller flytta turneringen till en annan dator.</p>
+     <div class="row">
+       <button class="btn ghost" id="exportBtn">⬇ Exportera säkerhetskopia</button>
+       <button class="btn ghost" id="importBtn">⬆ Importera säkerhetskopia</button>
+     </div>
+   </div>
+   <div class="card no-print">
+     <h2>Nollställ</h2>
+     <div class="row" style="align-items:center">
+       <button class="btn gray" id="newTournament">🗑 Ny turnering, Nollställ allt</button>
+       <span class="muted small">Tömmer deltagare, stegar och scheman i alla klasser (kan inte ångras).</span>
+     </div>
+   </div>`;
+  // Spara namn/datum/banor
+  document.getElementById("saveInfo").onclick=()=>{
+    const name=document.getElementById("tName").value.trim();
+    const s=document.getElementById("tStart").value, e=document.getElementById("tEnd").value;
+    if(!s||!e){ alert("Ange både start- och slutdatum."); return; }
+    if(parseDate(e) < parseDate(s)){ alert("Slutdatum måste vara samma dag eller efter startdatum."); return; }
+    let c=parseInt(document.getElementById("tCourts").value,10); if(isNaN(c)||c<1)c=1; if(c>8)c=8;
+    const arr=document.getElementById("tArranger").value.trim();
+    state.tournament={ ...state.tournament, name:name||"Klubbmästerskap", start:s, end:e };
+    state.arranger=arr||"Dalarö Tennisklubb";
+    state.courts=c;
+    ensureDay(); save(); render();
+  };
+  // Tävlingsledare + spelplats sparas löpande
+  const bindSave=(id,fn)=>{ const el=document.getElementById(id); if(el) el.oninput=()=>{ fn(el.value); save(); }; };
+  bindSave("oName", v=>{ state.organizer.name=v; });
+  bindSave("oPhone", v=>{ state.organizer.phone=v; });
+  bindSave("oMail", v=>{ state.organizer.email=v; });
+  bindSave("venue", v=>{ state.venue=v; });
+  document.getElementById("exportBtn").onclick=exportBackup;
+  document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
+  document.getElementById("newTournament").onclick=resetEverything;
+}
+
+/* ----- Tab 1: Klasser & deltagare ----- */
+function renderClasses(){
+  const cls=getClass(ui.classId)||state.classes[0]; ui.classId=cls.id;
+  app.innerHTML=`
+   <div class="toolbar no-print">
+     <button class="btn ghost" id="resetBrSched">♻ Nollställ stegar &amp; schema (behåll deltagare)</button>
+     <button class="btn gray" id="clearOneBrSched">🗑 Rensa stege &amp; schema för ${cls.name}</button>
+     <span class="muted small">Töm alla (eller vald klass) stegar och scheman – deltagarna behålls. Namn, datum och säkerhetskopia finns under <b>Turneringsinformation</b>.</span>
+   </div>
+   <div class="card no-print">
+     <h2>Klasser</h2>
+     <p class="small muted">Klicka på en klass för att klistra in deltagare och bygga stegen. Dolda klasser visas gråade här men syns inte i övriga flikar.</p>
+     <div class="grid-classes" id="clsGrid"></div>
+     <div class="row" style="margin-top:12px">
+       <button class="btn mini" id="addClassBtn">➕ Lägg till klass</button>
+     </div>
+   </div>
+   <div class="card">
+     <h2>${cls.name}
+        <span class="badge ${cls.type}">${cls.type==='youth'?'Ungdom 9–13':'Senior 13–21'}</span>
+        ${isRanked(cls)?`<span class="badge" style="background:#f6efd2;color:#8a6d00">★ Seedas (top ${seedCountOf(cls)})</span>`:'<span class="badge" style="background:#eee;color:#777">Ingen seedning</span>'}
+        ${cls.hidden?'<span class="badge" style="background:#e8e8e8;color:#666">🙈 Dold</span>':''}</h2>
+     <div class="row" style="margin:6px 0 10px">
+       <button class="btn ghost mini" id="renameClsBtn">✏️ Döp om klass</button>
+       <button class="btn ghost mini" id="hideClsBtn">${cls.hidden?'👁 Visa klass':'🙈 Dölj klass'}</button>
+       <button class="btn gray mini" id="deleteClsBtn">🗑 Ta bort klass</button>
+     </div>
+     <div class="hint">
+       Klistra in deltagare – <b>en rad per deltagare</b>. För dubbelklasser: skriv paret på en rad,
+       t.ex. <i>Anna Andersson / Björn Berg</i>.
+       ${isRanked(cls)
+         ? `De <b>${seedCountOf(cls)} översta</b> raderna blir <b>rank 1–${seedCountOf(cls)}</b> (visas som t.ex. <i>Namn (1)</i>) och placeras så att de inte möts i första omgången.`
+         : 'Lottningen är helt slumpmässig (ingen seedning).'}
+       När du låser deltagarna byggs stegen utifrån listan.
+     </div>
+     <label class="small" style="display:block;margin:0 0 10px">
+       <input type="checkbox" id="rankToggle" ${isRanked(cls)?'checked':''}>
+       <b>Seeda denna klass</b> &nbsp;·&nbsp; antal seedade:
+       <select id="seedCount" ${isRanked(cls)?'':'disabled'}>
+         ${[2,4,8,16,32].map(n=>`<option value="${n}" ${(cls.seeds||4)===n?'selected':''}>${n}</option>`).join("")}
+       </select>
+       (rank 1–${seedCountOf(cls)||4})
+     </label>
+     <label class="small" style="display:block;margin:0 0 10px">
+       Matchnummer-kategori (första siffran):
+       <input type="number" id="catNo" min="1" max="99" value="${classCatNo(cls)}" style="width:60px">
+       – matcher numreras <b>${classCatNo(cls)}01, ${classCatNo(cls)}02 …</b>
+     </label>
+     <textarea id="partsInput" placeholder="Anna Andersson&#10;Björn Berg&#10;Carl Carlsson&#10;...">${cls.participants.join("\n")}</textarea>
+     <div class="toolbar" style="margin-top:10px">
+       <button class="btn" id="saveParts">🔒 Lås deltagare &amp; bygg stege</button>
+       <span class="pill">${cls.participants.length} deltagare</span>
+       ${cls.matches.length?`<span class="pill">${totalRounds(cls)} omgångar</span>`:""}
+       <button class="btn ghost mini" id="goBracket" ${cls.matches.length?'':'disabled'}>Visa stege →</button>
+       <span style="flex:1"></span>
+       <button class="btn gray mini" id="clearParts" ${cls.participants.length?'':'disabled'}>🗑 Rensa deltagare (raderar stegen)</button>
+     </div>
+     ${cls.participants.length?`
+     <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+       <span class="small">Ersätt deltagare:</span>
+       <select id="replSel">${cls.participants.map(p=>`<option value="${String(p).replace(/"/g,'&quot;')}">${dispName(p)}</option>`).join("")}</select>
+       <span class="small">med</span>
+       <input type="text" id="replNew" placeholder="nytt namn / par" style="min-width:180px">
+       <button class="btn mini" id="replBtn">🔁 Ersätt</button>
+       <span class="muted small">– den nya tar den gamlas plats i stege och schema.</span>
+     </div>`:''}
+   </div>`;
+  // grid
+  document.getElementById("clsGrid").innerHTML=state.classes.map(c=>{
+    const done=c.champion?`<span class="badge done">✓ ${dispName(c.champion)}</span>`:"";
+    return `<div class="classcard ${c.id===cls.id?'active':''}" data-id="${c.id}" style="${c.hidden?'opacity:.45':''}">
+      <div class="ttl"><span class="sw" style="background:${classColor(c)}"></span>${c.name} ${isRanked(c)?`<span title="Seedas – top ${seedCountOf(c)}" style="color:#c9a227">★</span>`:''} ${c.hidden?'🙈':''}</div>
+      <div class="meta">
+        <span class="badge ${c.type}">${c.type==='youth'?'Ungdom':'Senior'}</span>
+        &nbsp;${c.participants.length} delt. ${done}
+      </div></div>`;
+  }).join("");
+  document.querySelectorAll("#clsGrid .classcard").forEach(el=>
+    el.onclick=()=>{ui.classId=el.dataset.id;render();});
+  document.getElementById("addClassBtn").onclick=addClass_;
+  document.getElementById("renameClsBtn").onclick=()=>renameClass(cls);
+  document.getElementById("hideClsBtn").onclick=()=>toggleHideClass(cls);
+  document.getElementById("deleteClsBtn").onclick=()=>deleteClass(cls);
+  function applySeedChange(){
+    // Om stegen redan är byggd: erbjud att lotta om så att ändringen slår igenom direkt.
+    if(cls.matches.some(m=>!m.manual) && confirm("Lotta om stegen nu så att seedningsändringen tillämpas? (Registrerade resultat och schemaläggning för klassen försvinner.)"))
+      buildBracket(cls);
+    save(); render();
+  }
+  document.getElementById("rankToggle").onchange=e=>{ cls.ranked=e.target.checked; applySeedChange(); };
+  document.getElementById("seedCount").onchange=e=>{ cls.seeds=parseInt(e.target.value,10)||4; applySeedChange(); };
+  document.getElementById("catNo").onchange=e=>{ cls.catNo=Math.max(1,parseInt(e.target.value,10)||1); save(); render(); };
+  document.getElementById("saveParts").onclick=()=>{
+    const lines=document.getElementById("partsInput").value.split("\n").map(s=>s.trim()).filter(Boolean);
+    cls.participants=lines;
+    buildBracket(cls);
+    save(); render();
+  };
+  document.getElementById("clearParts").onclick=()=>{
+    if(!confirm(`Rensa alla deltagare i ${cls.name}? Stegen raderas.`)) return;
+    cls.participants=[]; cls.matches=[]; cls.champion=null;
+    save(); render();
+  };
+  const replBtn=document.getElementById("replBtn");
+  if(replBtn) replBtn.onclick=()=>{
+    const oldEntry=document.getElementById("replSel").value;
+    const nn=document.getElementById("replNew").value.trim();
+    if(!nn){ alert("Skriv namnet på den nya deltagaren."); return; }
+    replaceParticipant(cls, oldEntry, nn);
+  };
+  document.getElementById("goBracket").onclick=()=>{ui.tab="bracket";render();};
+  document.getElementById("resetBrSched").onclick=resetBracketsAndSchedule;
+  document.getElementById("clearOneBrSched").onclick=()=>clearBracketOf(cls);
+}
+// Rensar HELA appen: deltagare, stegar, scheman, datum. Används av båda nollställ-knapparna.
+function resetEverything(){
+  if(!confirm("Ny turnering – nollställ ALLT (deltagare, stegar och scheman i alla klasser)? Detta kan inte ångras.")) return;
+  // Robust nollställning: rensa lagringen och ladda om sidan -> helt färskt tillstånd.
+  try{ localStorage.removeItem(LS_KEY); }catch(e){}
+  state=newState();
+  try{ location.reload(); }catch(e){ save(); ui={tab:"classes",classId:state.classes[0].id,day:null}; ensureDay(); render(); }
+}
+// Nollställer stegar OCH scheman (inkl. resultat) i alla klasser men behåller deltagarna
+// i Klasser & deltagare. Stegarna TÖMS (byggs inte om) – deltagarlistorna är kvar och
+// stegen byggs på nytt först när man låser deltagarna igen.
+function resetBracketsAndSchedule(){
+  if(!confirm("Nollställ Stege och Schema (inkl. alla resultat) i alla klasser?\nAlla stegar och scheman töms medan deltagarna i Klasser & deltagare behålls. Detta kan inte ångras.")) return;
+  state.classes.forEach(c=>{ c.matches=[]; c.champion=null; });   // töm stege+schema, behåll deltagare
+  state.extraCourts={}; state.lockedDays={}; state.planCourts={}; state.planFinalDays={};
+  save(); render();
+}
+// Rensar HELA schemat (alla dagar) men behåller stegar och deltagare.
+function clearAllSchedule(){
+  if(!confirm("Rensa HELA schemat (alla dagar)? Matcherna blir oschemalagda – stegar och deltagare påverkas inte.")) return;
+  realMatches().forEach(m=>{ m.day=null; m.court=null; m.time=null; });
+  save(); render();
+}
+// Rensar stegen (matcher, resultat, mästare) för EN klass – deltagarna behålls.
+function clearBracketOf(cls){
+  if(!confirm(`Rensa stegen för ${cls.name}? Lottning, resultat och schemaläggning för klassen tas bort (deltagarna behålls).`)) return;
+  cls.matches=[]; cls.champion=null;
+  save(); render();
+}
+// Lottar om / bygger stegen på nytt utifrån deltagarlistan.
+function rebuildBracketOf(cls){
+  if(cls.participants.length<2){ alert("Klassen har färre än 2 deltagare."); return; }
+  if(cls.matches.some(m=>m.winner) && !confirm("Lotta om stegen? Registrerade resultat och schemaläggning för klassen försvinner.")) return;
+  buildBracket(cls);
+  save(); render();
+}
+
+/* ----- Tab 2: Stege ----- */
+function renderBracketTab(){
+  const cls=getClass(ui.classId)||state.classes[0];
+  app.innerHTML=`
+   <div class="card no-print">
+     <div class="row">
+       <span class="sw" style="background:${classColor(cls)};width:16px;height:16px;border-radius:4px;display:inline-block"></span>
+       <label class="small">Klass:
+         <select id="clsSel">${visibleClasses().map(c=>{ const has=c.matches.some(m=>!m.manual); return `<option value="${c.id}" ${c.id===cls.id?'selected':''}${has?' style="font-weight:bold"':''}>${has?'✅ ':''}${c.name}</option>`; }).join("")}</select>
+       </label>
+       <span class="badge ${cls.type}">${cls.type==='youth'?'Ungdom 9–13':'Senior 13–21'}</span>
+       ${isRanked(cls)?`<span class="badge" style="background:#f6efd2;color:#8a6d00">★ Seedas (top ${seedCountOf(cls)})</span>`:''}
+       ${cls.champion?`<span class="badge done">🏆 Mästare: ${dispName(cls.champion)}</span>`:""}
+     </div>
+     ${(isRanked(cls) && cls.matches.some(m=>!m.manual) && !cls.participants.some(p=>/\(\d+\)\s*$/.test(p)))
+       ? `<div class="hint" style="border-color:#c9a227;background:#fbf6e3;margin-top:10px">
+            ⚠ Denna stege byggdes <b>utan seedning</b>. Klicka <b>🔁 Lotta om / bygg stege</b> för att seeda de ${seedCountOf(cls)} översta (1–${seedCountOf(cls)}).
+          </div>` : ''}
+     <p class="small muted" style="margin:8px 0 0">
+       Skriv resultatet i rutan och välj <b>vinnare</b> i listan (eller klicka på spelarens namn).
+       Vinnaren förs automatiskt vidare och nästa match blir spelklar i <b>Schema → Ej schemalagda</b>.</p>
+     ${ui.swapMode?`<div class="hint" style="border-color:#f0a500;background:#fff8e6;margin-top:10px">
+        🔀 <b>Bytesläge på:</b> klicka på en spelare i första omgången och sedan på en annan – de byter plats. (Berörda resultat nollställs.)</div>`:''}
+     <div class="row" style="margin-top:10px">
+       <button class="btn ${ui.swapMode?'':'ghost'} mini" id="swapMode">🔀 Byt spelare ${ui.swapMode?'(på)':''}</button>
+       <button class="btn ghost mini" id="rebuildBr">🔁 Lotta om / bygg stege</button>
+       <button class="btn gray mini" id="clearBr">🗑 Rensa flik (denna stege)</button>
+       <span style="flex:1"></span>
+       <button class="btn ghost mini" id="imgBr">📷 Spara bild av stege</button>
+       <button class="btn mini" id="printBr">🖨 Skriv ut stege</button>
+     </div>
+     ${cls.participants.length?`
+     <div class="row" style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+       <span class="small">Ersätt deltagare:</span>
+       <select id="replSelBr">${cls.participants.map(p=>`<option value="${String(p).replace(/"/g,'&quot;')}">${dispName(p)}</option>`).join("")}</select>
+       <span class="small">med</span>
+       <input type="text" id="replNewBr" placeholder="nytt namn / par" style="min-width:170px">
+       <button class="btn mini" id="replBtnBr">🔁 Ersätt</button>
+       <span class="muted small">– den nya tar den gamlas plats i stege och schema.</span>
+     </div>`:''}
+   </div>
+   <div id="bracketWrap"></div>`;
+  document.getElementById("clsSel").onchange=e=>{ui.classId=e.target.value; ui.swapSel=null; render();};
+  document.getElementById("rebuildBr").onclick=()=>rebuildBracketOf(cls);
+  document.getElementById("clearBr").onclick=()=>clearBracketOf(cls);
+  document.getElementById("swapMode").onclick=()=>{ ui.swapMode=!ui.swapMode; ui.swapSel=null; render(); };
+  document.getElementById("printBr").onclick=()=>printOneBracket(cls);
+  document.getElementById("imgBr").onclick=()=>exportBracketImage(cls);
+  const replBtnBr=document.getElementById("replBtnBr");
+  if(replBtnBr) replBtnBr.onclick=()=>{
+    const oldEntry=document.getElementById("replSelBr").value;
+    const nn=document.getElementById("replNewBr").value.trim();
+    if(!nn){ alert("Skriv namnet på den nya deltagaren."); return; }
+    replaceParticipant(cls, oldEntry, nn);
+  };
+  const wrap=document.getElementById("bracketWrap");
+  if(!cls.matches.length){
+    if(cls.participants.length>=2){
+      wrap.innerHTML=`<div class="card"><p class="muted">Stegen är tom. Klassen har ${cls.participants.length} deltagare – klicka <b>🔁 Lotta om / bygg stege</b> ovan för att skapa lottningen.</p></div>`;
+    } else {
+      wrap.innerHTML=`<div class="card"><p class="muted">Inga deltagare ännu. Gå till <b>Klasser &amp; deltagare</b> och klistra in deltagare.</p></div>`;
+    }
+    return;
+  }
+  const total=totalRounds(cls);
+  let html=`<div class="bracketwrap"><div class="bracket">`;
+  // rubriker per omgång + mästare
+  for(let r=0;r<total;r++) html+=`<div class="rhead" data-rh="${r}">${roundName(r,total)}</div>`;
+  html+=`<div class="rhead" data-rh="${total}">Mästare</div>`;
+  // matcher (platt lista, positioneras av layoutBracket)
+  for(let r=0;r<total;r++){
+    cls.matches.filter(m=>m.round===r).sort((a,b)=>a.index-b.index).forEach(m=>{ html+=matchHTML(cls,m,total); });
+  }
+  // mästar-box som en "match" i sista kolumnen
+  html+=`<div class="match champbox" data-r="${total}" data-i="0" style="border-left:5px solid ${classColor(cls)}">
+      <div class="champion" style="border-top:5px solid ${classColor(cls)};border-radius:8px">
+        <div class="lbl">🏆 Klubbmästare</div>
+        <div class="who">${dispName(cls.champion)||"–"}</div></div></div>`;
+  html+=`</div></div>`;
+  wrap.innerHTML=html;
+  // events
+  cls.matches.forEach(m=>{
+    ["p1","p2"].forEach(slot=>{
+      const el=document.getElementById(`nm_${m.id}_${slot}`);
+      if(el) el.onclick=()=>{
+        if(ui.swapMode) handleSwapClick(cls,m,slot);
+        else if(m[slot]) setWinner(cls,m,m[slot]);
+      };
+    });
+    const sc=document.getElementById(`sc_${m.id}`);
+    if(sc) sc.onchange=()=>{ m.score=sc.value; save(); };
+    const ws=document.getElementById(`win_${m.id}`);
+    if(ws) ws.onchange=()=>{ registerWinner(cls,m,ws.value); };
+  });
+  requestAnimationFrame(()=>layoutBracketEl(document.querySelector('.bracket')));
+}
+// Balanserad trädlayout: final centrerad, jämna avstånd, tydliga vinkellinjer.
+function layoutBracketEl(br){
+  if(!br) return {width:0,height:0};
+  const COLW=210, HGAP=52, VGAP=14, HEADH=24;
+  const byRound={};
+  br.querySelectorAll('.match').forEach(el=>{ const r=+el.dataset.r,i=+el.dataset.i; (byRound[r]=byRound[r]||[])[i]=el; });
+  const rounds=Object.keys(byRound).map(Number).sort((a,b)=>a-b);
+  const maxR=rounds[rounds.length-1];
+  // 1) sätt bredd, mät höjder
+  let maxH=0;
+  br.querySelectorAll('.match').forEach(el=>{ el.style.width=COLW+'px'; });
+  br.querySelectorAll('.match').forEach(el=>{ maxH=Math.max(maxH, el.offsetHeight); });
+  const rowUnit=maxH+VGAP;
+  const n0=(byRound[0]||[]).filter(Boolean).length;
+  // 2) beräkna vertikala centrum
+  const centers={};
+  (byRound[0]||[]).forEach((el,i)=>{ if(el) centers['0_'+i]=HEADH + i*rowUnit + rowUnit/2; });
+  for(let r=1;r<=maxR;r++){
+    (byRound[r]||[]).forEach((el,j)=>{
+      if(!el) return;
+      const a=centers[(r-1)+'_'+(2*j)], b=centers[(r-1)+'_'+(2*j+1)];
+      centers[r+'_'+j] = (a!=null&&b!=null) ? (a+b)/2 : (a!=null?a : (b!=null?b : HEADH+rowUnit/2));
+    });
+  }
+  // 3) positionera matcher (inline position så det funkar även i exporterad bild)
+  rounds.forEach(r=>{
+    (byRound[r]||[]).forEach((el,i)=>{
+      if(!el) return;
+      el.style.position='absolute'; el.style.zIndex='1';
+      el.style.left=(r*(COLW+HGAP))+'px';
+      el.style.top=Math.round(centers[r+'_'+i]-el.offsetHeight/2)+'px';
+    });
+  });
+  // 4) rubriker
+  br.querySelectorAll('.rhead').forEach(h=>{ const r=+h.dataset.rh; h.style.position='absolute'; h.style.left=(r*(COLW+HGAP))+'px'; h.style.top='0px'; h.style.width=COLW+'px'; });
+  // 5) container-storlek
+  const width=(maxR+1)*(COLW+HGAP)-HGAP;
+  const height=HEADH + Math.max(1,n0)*rowUnit + 8;
+  br.style.width=width+'px'; br.style.height=height+'px';
+  // 6) linjer
+  const ns='http://www.w3.org/2000/svg';
+  const oldsvg=br.querySelector('svg.brlines'); if(oldsvg) oldsvg.remove();
+  const svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('class','brlines');
+  svg.style.cssText=`position:absolute;left:0;top:0;width:${width}px;height:${height}px;pointer-events:none;z-index:0`;
+  const L=(x1,y1,x2,y2)=>{ const l=document.createElementNS(ns,'line'); l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2); l.setAttribute('stroke','#b9b19a'); l.setAttribute('stroke-width','2'); svg.appendChild(l); };
+  for(let r=1;r<=maxR;r++){
+    (byRound[r]||[]).forEach((el,j)=>{
+      if(!el) return;
+      const px=r*(COLW+HGAP), py=centers[r+'_'+j];
+      const fx=(r-1)*(COLW+HGAP)+COLW, midX=fx+HGAP/2;
+      const f0=centers[(r-1)+'_'+(2*j)], f1=centers[(r-1)+'_'+(2*j+1)];
+      if(f0!=null && f1!=null){
+        L(fx,f0,midX,f0); L(fx,f1,midX,f1); L(midX,f0,midX,f1); L(midX,py,px,py);
+      } else {
+        const fy=(f0!=null?f0:f1); if(fy!=null){ L(fx,fy,px,py); }
+      }
+    });
+  }
+  br.insertBefore(svg, br.firstChild);
+  return {width, height};
+}
+function matchHTML(cls,m,total){
+  const sel=ui.swapSel;
+  const slotHTML=(p,key)=>{
+    let cl="slot", nm=dispName(p);
+    if(p===null){ cl+= (m.round===0?" bye":" tbd"); nm=(m.round===0?"BYE":"– vinnare –"); }
+    if(m.winner && p && m.winner===p) cl+=" win";
+    if(sel && sel.id===m.id && sel.key===key) cl+=" swapsel";
+    return `<div class="${cl}"><span class="nm" id="nm_${m.id}_${key}">${nm||""}</span>${m.winner===p?' 🏆':''}</div>`;
+  };
+  const sched = m.day?`<div class="sched-tag">${matchNoTag(m)}📅 ${dayShort(m.day)} · ${m.time!=null?matchLabel(m):'-'} · Bana ${m.court||'-'}</div>`
+                     :(matchNumber(m)!=null?`<div class="sched-tag">${matchNoTag(m)}</div>`:"");
+  return `<div class="match" data-r="${m.round}" data-i="${m.index}" style="border-left:5px solid ${classColor(cls)}">
+     ${slotHTML(m.p1,"p1")}
+     ${slotHTML(m.p2,"p2")}
+     ${ (m.p1&&m.p2) ? `<div class="scorerow">
+         <input type="text" id="sc_${m.id}" value="${m.score||''}" placeholder="ex. 6-3 6-4">
+         <select id="win_${m.id}" class="winsel" title="Välj vinnare">
+           <option value="">Vinnare?</option>
+           <option value="p1" ${m.winner===m.p1?'selected':''}>${dispName(m.p1)}</option>
+           <option value="p2" ${m.winner===m.p2?'selected':''}>${dispName(m.p2)}</option>
+         </select>
+       </div>`:""}
+     ${sched}
+   </div>`;
+}
+// Byt plats på två spelare i omgång 0 (inom samma klass).
+function handleSwapClick(cls,m,slot){
+  if(m.round!==0 || !m[slot]) return;            // endast riktiga spelare i första omgången
+  if(!ui.swapSel){ ui.swapSel={id:m.id,key:slot}; render(); return; }
+  if(ui.swapSel.id===m.id && ui.swapSel.key===slot){ ui.swapSel=null; render(); return; }
+  const A=cls.matches.find(x=>x.id===ui.swapSel.id), aKey=ui.swapSel.key;
+  if(!A){ ui.swapSel=null; render(); return; }
+  const tmp=A[aKey]; A[aKey]=m[slot]; m[slot]=tmp;   // byt plats
+  [A,m].forEach(x=>{ if(x.winner){ x.winner=null; x.score=""; } clearDownstream(cls,x); });
+  ui.swapSel=null;
+  resolveByes(cls); recompChampion(cls); save(); render();
+}
+window.addEventListener('resize', ()=>{ if(ui.tab==='bracket') layoutBracketEl(document.querySelector('.bracket')); });
+
+function dayShort(date){ const d=getDays().find(x=>x.date===date); return d?`${d.dow.slice(0,3)} ${d.short}`:date; }
+function dayLong(date){ const d=getDays().find(x=>x.date===date); return d?`${d.dow} ${d.short}`:date; }
+
+/* ----- Tab 3: Schema ----- */
+function renderSchedule(){
+  app.innerHTML=`
+   <div class="hint no-print">
+     Auto-planering (paus efter var 3:e match, lunch 12–13):
+     <b>Junior</b> 30 min – vardag, första start 09:00 (sista ≤ 12:30).
+     <b>Senior</b> 60 min – vardag från 13:00, <b>helg från 09:00</b> (sista start ≤ 20:00). Lör/sön: endast seniorer.
+     <b>Manuellt</b> kan matcher läggas 08:00–21:00 för både junior och senior – även i paus-/lunchluckor
+     (t.ex. paus efter 2 matcher eller 4 i rad) via tidsväljaren på matchen. Bocka i "Visa alla tider" nedan
+     för att se hela rutnätet. Max 3 matcher/dag/person och aldrig samtidigt på två banor.
+     Ungdomsfinaler läggs ${youthFinalDay()?dayLong(youthFinalDay()):'näst sista dagen'},
+     övriga finaler ${adultFinalDay()?dayLong(adultFinalDay()):'sista dagen'}.
+   </div>
+   <div class="daybar no-print" id="daybar"></div>
+   <div class="toolbar no-print">
+     <button class="btn" id="genDay">⚙ Generera schema för dagen</button>
+     <button class="btn ghost" id="clearDay">Töm dagens schema</button>
+     <button class="btn ${dayLocked(ui.day)?'':'ghost'}" id="lockDay" title="Lås dagens resultat så att de inte ändras av misstag">${dayLocked(ui.day)?'🔓 Lås upp dagens resultat':'🔒 Lås dagens resultat'}</button>
+     <button class="btn gray" id="clearSched">🗑 Rensa flik (hela schemat)</button>
+     <button class="btn ghost mini" id="printSched">🖨 Skriv ut dagens schema</button>
+     <button class="btn ghost mini" id="printBlank">🖨 Skriv ut blankt schema</button>
+     <label class="small"><input type="checkbox" id="fullGrid" ${ui.fullGrid?'checked':''}> Visa alla tider (08–21)</label>
+     <label class="small" title="Auto-schemaläggning får lägga in matcher i nästa omgång även om föregående omgång i klassen inte är färdigspelad">
+       <input type="checkbox" id="earlyRounds" ${state.allowEarlyRounds?'checked':''}> Tillåt senare omgångar</label>
+     <span style="flex:1"></span>
+     <label class="small">Extra banor denna dag:
+       <select id="extraCourts">${[0,1,2].map(v=>`<option value="${v}" ${((state.extraCourts[ui.day]||0)===v)?'selected':''}>+${v}</option>`).join("")}</select>
+     </label>
+     <span class="pill">${courtsForDay(ui.day)} banor totalt</span>
+   </div>
+   <div class="card no-print">
+     <h2>Lägg till match i schemat (${dayShort(ui.day)})</h2>
+     <div class="row">
+       <label class="small">Klass:
+         <select id="addClass">${visibleClasses().map(c=>`<option value="${c.id}">${c.name}</option>`).join("")}</select>
+       </label>
+       <button class="btn" id="randMatch">🎲 Slumpa in ny match</button>
+       <span class="muted small">– slumpar två deltagare ur vald klass</span>
+     </div>
+     <div class="row" style="margin-top:10px">
+       <span class="small">Eller välj spelare:</span>
+       <select id="addP1"></select>
+       <span class="muted">vs</span>
+       <select id="addP2"></select>
+       <button class="btn" id="addMatch">➕ Lägg in match</button>
+     </div>
+   </div>
+   <div class="card no-print">
+     <h2>Sök i schemat</h2>
+     <div class="row">
+       <input type="text" id="schedSearch" placeholder="🔎 Klass eller deltagare…" value="${(ui.schedSearch||'').replace(/"/g,'&quot;')}" style="min-width:220px">
+       <label class="small"><input type="radio" name="schedScope" value="day" ${ui.schedScope!=='all'?'checked':''}> Vald dag (${dayShort(ui.day)})</label>
+       <label class="small"><input type="radio" name="schedScope" value="all" ${ui.schedScope==='all'?'checked':''}> Hela schemat</label>
+       ${(ui.schedSearch||'').trim()?`<button class="btn ghost mini" id="clrSchedSearch">✕ Rensa</button>`:''}
+     </div>
+     <div id="schedSearchRes"></div>
+   </div>
+   <div id="schedWrap"></div>
+   <div class="card no-print">
+     <h2>Ej schemalagda, spelklara matcher</h2>
+     <div class="unsched" id="unsched"></div>
+   </div>`;
+  // daybar
+  document.getElementById("daybar").innerHTML=getDays().map(d=>{
+    const cnt=allMatches().filter(m=>m.day===d.date).length;
+    return `<button class="${ui.day===d.date?'active':''}" data-d="${d.date}">
+       <span class="dow">${dayLocked(d.date)?'🔒 ':''}${d.dow}</span><span class="dt">${d.short}</span>
+       ${cnt?`<span class="cnt">${cnt} matcher</span>`:""}</button>`;
+  }).join("");
+  document.querySelectorAll("#daybar button").forEach(b=>b.onclick=()=>{ui.day=b.dataset.d;render();});
+  document.getElementById("genDay").onclick=()=>{
+    if(dayLocked(ui.day)){ alert("Dagen är låst. Lås upp den först för att ändra schemat."); return; }
+    generateDay(ui.day); save(); render();
+  };
+  document.getElementById("clearDay").onclick=()=>{
+    if(dayLocked(ui.day)){ alert("Dagen är låst. Lås upp den först för att tömma schemat."); return; }
+    if(!confirm("Töm schemat för "+dayShort(ui.day)+"? Matcherna blir oschemalagda igen.")) return;
+    realMatches().forEach(m=>{ if(m.day===ui.day){m.day=null;m.court=null;m.time=null;} });
+    save(); render();
+  };
+  document.getElementById("lockDay").onclick=()=>toggleDayLock(ui.day);
+  document.getElementById("clearSched").onclick=clearAllSchedule;
+  document.getElementById("printBlank").onclick=()=>printBlankSchedule();
+  document.getElementById("fullGrid").onchange=e=>{ ui.fullGrid=e.target.checked; render(); };
+  document.getElementById("earlyRounds").onchange=e=>{ state.allowEarlyRounds=e.target.checked; save(); render(); };
+  // Sök i schemat (klass/deltagare, vald dag eller hela schemat)
+  const ss=document.getElementById("schedSearch");
+  ss.oninput=e=>{ ui.schedSearch=e.target.value; renderSchedSearch(); };
+  document.querySelectorAll('input[name="schedScope"]').forEach(r=>r.onchange=e=>{ ui.schedScope=e.target.value; renderSchedSearch(); });
+  const css2=document.getElementById("clrSchedSearch"); if(css2) css2.onclick=()=>{ ui.schedSearch=""; render(); };
+  renderSchedSearch();
+  document.getElementById("extraCourts").onchange=e=>{
+    const v=parseInt(e.target.value,10)||0;
+    if(v) state.extraCourts[ui.day]=v; else delete state.extraCourts[ui.day];
+    save(); render();
+  };
+  // Lägg till match – fyll spelarlistor från vald klass
+  const addClass=document.getElementById("addClass");
+  const addP1=document.getElementById("addP1"), addP2=document.getElementById("addP2");
+  function fillPlayers(){
+    const c=getClass(addClass.value);
+    const opts='<option value="">– välj –</option>'+c.participants.map(p=>`<option value="${p}">${dispName(p)}</option>`).join("");
+    addP1.innerHTML=opts; addP2.innerHTML=opts;
+  }
+  addClass.onchange=fillPlayers; fillPlayers();
+  document.getElementById("randMatch").onclick=()=>{
+    const c=getClass(addClass.value);
+    if(c.participants.length<2){ alert("Klassen har färre än 2 deltagare. Klistra in deltagare först."); return; }
+    const pool=c.participants.slice();
+    const a=pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+    const b=pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+    createManualMatch(c,a,b,ui.day);
+  };
+  document.getElementById("addMatch").onclick=()=>{
+    const c=getClass(addClass.value);
+    const p1=addP1.value, p2=addP2.value;
+    if(!p1||!p2){ alert("Välj två spelare."); return; }
+    if(p1===p2){ alert("Välj två olika spelare/par."); return; }
+    createManualMatch(c,p1,p2,ui.day);
+  };
+  document.getElementById("printSched").onclick=()=>printSchedule(ui.day);
+  renderSchedGrid();
+  renderUnsched();
+}
+function allMatches(){ return state.classes.flatMap(c=>c.matches.map(m=>({...m,_cls:c}))); }
+function realMatches(){ // riktiga matchobjekt (inte kopior)
+  return state.classes.flatMap(c=>c.matches);
+}
+function findMatch(id){ for(const c of state.classes){ const m=c.matches.find(x=>x.id===id); if(m) return {m,c}; } return null; }
+
+function conflicts(day){
+  // returnera set av match-id med bana/tid-krock, spelarkrock (samma tid) eller >3 matcher/dag
+  const bad=new Set();
+  const ms=realMatches().filter(m=>m.day===day && m.time!=null);
+  // bana/tid-krock
+  const seen={};
+  for(const m of ms){ const k=m.time+"#"+m.court; if(seen[k]){ bad.add(m.id); bad.add(seen[k]); } else seen[k]=m.id; }
+  // spelarkrock samma tid (samma person på två banor)
+  const byTime={};
+  for(const m of ms){ (byTime[m.time]=byTime[m.time]||[]).push(m); }
+  for(const t in byTime){
+    const pseen={};
+    for(const m of byTime[t]) for(const p of playersOf(m)){
+      if(pseen[p]){ bad.add(m.id); bad.add(pseen[p]); } else pseen[p]=m.id;
+    }
+  }
+  // fler än 3 matcher samma dag för en person
+  const cnt={};
+  for(const m of ms) for(const p of playersOf(m)){ (cnt[p]=cnt[p]||[]).push(m.id); }
+  for(const p in cnt){ if(cnt[p].length>3) cnt[p].forEach(id=>bad.add(id)); }
+  return bad;
+}
+// Hur många matcher en av matchens spelare redan har den dagen (exkl. matchen själv).
+function playerDayCount(day,m){
+  const ps=playersOf(m); let mx=0;
+  for(const p of ps){
+    const c=realMatches().filter(x=>x.day===day&&x.id!==m.id&&x.time!=null&&playersOf(x).includes(p)).length;
+    if(c>mx) mx=c;
+  }
+  return mx;
+}
+// Spelar någon i matchen redan på tiden t den dagen (annan bana)?
+function sameTimeBusy(day,t,m){
+  const ps=playersOf(m);
+  return realMatches().some(x=>x.day===day&&x.time===t&&x.id!==m.id&&x.time!=null&&
+     playersOf(x).some(p=>ps.includes(p)));
+}
+
+// Sök i schemat: matcha klassnamn eller deltagarnamn, vald dag eller hela schemat.
+function renderSchedSearch(){
+  const box=document.getElementById("schedSearchRes"); if(!box) return;
+  const q=(ui.schedSearch||"").trim().toLowerCase();
+  if(!q){ box.innerHTML=""; return; }
+  const scopeAll = ui.schedScope==='all';
+  const hits=[];
+  for(const c of state.classes) for(const m of c.matches){
+    if(!m.day) continue;                          // endast schemalagda matcher
+    if(!scopeAll && m.day!==ui.day) continue;
+    const clsHit=c.name.toLowerCase().includes(q);
+    const plHit=playersOf(m).some(p=>p.toLowerCase().includes(q));
+    if(clsHit||plHit) hits.push({m,c});
+  }
+  hits.sort((a,b)=>{ const da=a.m.day, db=b.m.day; return da<db?-1:da>db?1:((a.m.time||0)-(b.m.time||0)); });
+  if(!hits.length){ box.innerHTML=`<p class="small muted" style="margin:10px 0 0">Inga matcher matchar "${ui.schedSearch}" ${scopeAll?'i hela schemat':'på '+dayShort(ui.day)}.</p>`; return; }
+  const played=hits.filter(h=>h.m.winner), upcoming=hits.filter(h=>!h.m.winner);
+  const table=(list,title)=>{
+    if(!list.length) return "";
+    let h=`<h3 style="margin:12px 0 4px">${title} <span class="small muted">(${list.length})</span></h3>
+      <table class="results"><thead><tr><th>Nr</th><th>Klass</th><th>Dag</th><th>Tid</th><th>Bana</th><th>Match</th><th>Resultat</th></tr></thead><tbody>`;
+    for(const {m,c} of list){
+      const vs=`${dispName(m.p1)||'<i style="color:#b3aa98">väntar</i>'} – ${dispName(m.p2)||'<i style="color:#b3aa98">väntar</i>'}`;
+      h+=`<tr><td>${matchNumber(m)??'-'}</td><td><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td>
+        <td>${dayShort(m.day)}</td><td>${m.time!=null?matchLabel(m):'-'}</td><td>${m.court||'-'}</td>
+        <td>${vs}</td><td>${m.winner?`<b>${m.score||'WO'}</b> 🏆 ${dispName(m.winner)}`:''}</td></tr>`;
+    }
+    return h+`</tbody></table>`;
+  };
+  box.innerHTML = table(upcoming,"Kommande/ospelade") + table(played,"Spelade (med resultat)");
+}
+function dayTimes(day){
+  return [...new Set([...daySlots(day),
+     ...realMatches().filter(m=>m.day===day&&m.time!=null).map(m=>m.time)])].sort((a,b)=>a-b);
+}
+// Hela manuella rutnätet 08:00–21:00 (30 min-steg) + ev. schemalagda tider.
+function fullDayTimes(day){
+  const out=[]; for(let t=480;t<=1260;t+=30) out.push(t);
+  return [...new Set([...out,
+     ...realMatches().filter(m=>m.day===day&&m.time!=null).map(m=>m.time)])].sort((a,b)=>a-b);
+}
+function renderSchedGrid(){
+  const wrap=document.getElementById("schedWrap");
+  const day=ui.day;
+  const courts=courtsForDay(day);
+  const bad=conflicts(day);
+  const times = ui.fullGrid ? fullDayTimes(day) : dayTimes(day);
+  // Färgförklaring för klasserna (de som har matcher)
+  const used=state.classes.filter(c=>c.matches.length);
+  const legend = used.length
+    ? `<div class="legend no-print">${used.map(c=>`<span class="item"><span class="sw" style="background:${classColor(c)}"></span>${c.name}</span>`).join("")}</div>`
+    : "";
+  let html=`<table class="schedtable"><thead><tr><th>Tid</th>${
+     Array.from({length:courts},(_,i)=>`<th>Bana ${i+1}</th>`).join("")}</tr></thead><tbody>`;
+  let prevEnd=null;
+  for(const t of times){
+    // Visa paus-/lunchluckor i normalläge (i "visa alla tider" är alla rader redan med).
+    if(!ui.fullGrid && prevEnd!=null && t>prevEnd){
+      const isLunch = prevEnd<780 && t>=780;               // luckan täcker 12–13
+      const cl = isLunch ? 'lunch' : 'pausrow';
+      const txt= isLunch ? '🍽 Lunchpaus' : '⏸ Paus – ledig lucka (kan schemaläggas manuellt)';
+      html+=`<tr><td class="time">${fmtMin(prevEnd)}–${fmtMin(t)}</td><td class="${cl}" colspan="${courts}">${txt}</td></tr>`;
+    }
+    const lunchRow = ui.fullGrid && (t===720 || t===750);
+    html+=`<tr><td class="time">${timeLabel(t, day)}${lunchRow?' 🍽':''}</td>`;
+    for(let ct=1;ct<=courts;ct++){
+      const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct&&!getClass(m.classId).hidden);
+      html+=`<td class="slotcell">${here.map(m=>mtileHTML(m,bad)).join("")}</td>`;
+    }
+    html+=`</tr>`;
+    prevEnd = Math.max(prevEnd||0, t + slotDur(t, day));
+  }
+  html+=`</tbody></table>`;
+  wrap.innerHTML=legend+html;
+  bindTileCtrls();
+}
+function mtileHTML(m,bad){
+  const c=getClass(m.classId);
+  const conf=bad.has(m.id)?" conflict":"";
+  const dayCourts=courtsForDay(m.day||ui.day);
+  const courtOpts=Array.from({length:dayCourts},(_,i)=>`<option value="${i+1}" ${m.court===i+1?'selected':''}>Bana ${i+1}</option>`).join("");
+  const tset=[...new Set([...manualSlots(c.type), ...(m.time!=null?[m.time]:[])])].sort((a,b)=>a-b);
+  const timeOpts=tset.map(t=>`<option value="${t}" ${m.time===t?'selected':''}>${fmtMin(t)}</option>`).join("");
+  const dayOpts=getDays().map(d=>`<option value="${d.date}" ${m.day===d.date?'selected':''}>${d.dow.slice(0,3)} ${d.short}</option>`).join("");
+  const col=classColor(c);
+  const locked=dayLocked(m.day);
+  const winsel=(m.p1&&m.p2)?`<div class="ctrls no-print" style="margin-top:3px">
+       <input type="text" data-f="score" value="${m.score||''}" placeholder="resultat" style="flex:1;min-width:40px" ${locked?'disabled':''}>
+       <select data-f="winner" title="Registrera vinnare (uppdaterar stegen)" ${locked?'disabled':''}>
+         <option value="">Vinnare?</option>
+         <option value="p1" ${m.winner===m.p1?'selected':''}>${dispName(m.p1)}</option>
+         <option value="p2" ${m.winner===m.p2?'selected':''}>${dispName(m.p2)}</option>
+       </select>
+     </div>`:"";
+  return `<div class="mtile${conf}${locked?' locked':''}" data-id="${m.id}" style="border-left-color:${col}">
+     <div class="cls"><span class="cdot" style="background:${col}"></span>${matchNoTag(m)}${c.name}${locked?' <span class="lockmark">🔒</span>':''}${stageTag(c,m)}</div>
+     <div class="vs">${dispName(m.p1)||'?'} <span class="muted">vs</span> ${dispName(m.p2)||'?'}${m.winner?` <span style="color:var(--green)">🏆 ${dispName(m.winner)}</span>`:''}</div>
+     ${winsel}
+     <div class="ctrls no-print">
+       <select data-f="day" ${locked?'disabled':''}>${dayOpts}</select>
+       <select data-f="time" ${locked?'disabled':''}>${timeOpts}</select>
+       <select data-f="court" ${locked?'disabled':''}>${courtOpts}</select>
+       <button class="btn gray mini" data-f="remove" ${locked?'disabled':''}>✕</button>
+     </div></div>`;
+}
+function bindTileCtrls(){
+  document.querySelectorAll(".mtile").forEach(tile=>{
+    const id=tile.dataset.id; const {m}=findMatch(id)||{};
+    if(!m) return;
+    tile.querySelectorAll("select,input,button").forEach(ctrl=>{
+      const f=ctrl.dataset.f; if(!f) return;
+      if(f==="score"){ ctrl.onchange=()=>{ m.score=ctrl.value; save(); }; }
+      else if(f==="winner"){ ctrl.onchange=()=>{ registerWinner(getClass(m.classId), m, ctrl.value); }; }
+      else if(f==="remove"){ ctrl.onclick=()=>{ m.day=null;m.court=null;m.time=null; save(); render(); }; }
+      else if(ctrl.tagName==="SELECT"){
+        ctrl.onchange=()=>{
+          if(f==="day"){
+            m.day=ctrl.value;
+            if(getClass(m.classId).type==="youth" && isWeekend(m.day))
+              alert("Obs: ungdomsklass på helg – normalt spelar endast seniorer lör/sön.");
+          } else m[f]= parseInt(ctrl.value,10);
+          save(); render();
+        };
+      }
+    });
+  });
+}
+function renderUnsched(){
+  const box=document.getElementById("unsched");
+  // Gruppera de spelklara, oschemalagda matcherna per klass (klassordning) för tydlig överblick.
+  const groups=visibleClasses().map(c=>({
+    c, ms: c.matches.filter(m=>isReady(m)&&!m.day).sort((a,b)=>(matchNumber(a)||0)-(matchNumber(b)||0))
+  })).filter(g=>g.ms.length);
+  if(!groups.length){ box.innerHTML=`<span class="muted">Inga spelklara matcher väntar på schemaläggning.</span>`; return; }
+  box.innerHTML=groups.map(({c,ms})=>{
+    const col=classColor(c);
+    const tiles=ms.map(m=>`<div class="mtile" style="width:240px;border-left-color:${col}">
+      <div class="cls"><span class="cdot" style="background:${col}"></span>${matchNoTag(m)}${c.name}${stageTag(c,m)}</div>
+      <div class="vs">${dispName(m.p1)} <span class="muted">vs</span> ${dispName(m.p2)}</div>
+      <div class="ctrls"><button class="btn mini" data-place="${m.id}">➕ Lägg in ${dayShort(ui.day)}</button>
+      ${m.manual?`<button class="btn gray mini" data-del="${m.id}">🗑 Ta bort</button>`:""}</div>
+    </div>`).join("");
+    return `<div class="unschedgroup">
+      <div class="ghead"><span class="sw" style="background:${col}"></span>${c.name} <span class="muted small">(${ms.length} match${ms.length===1?'':'er'})</span></div>
+      <div class="items">${tiles}</div></div>`;
+  }).join("");
+  box.querySelectorAll("[data-place]").forEach(b=>b.onclick=()=>{
+    const {m}=findMatch(b.dataset.place);
+    const res=manualPlace(m, ui.day);
+    if(!res.ok) alert(res.msg);
+    else if(res.warn) alert(res.warn);
+    save(); render();
+  });
+  box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
+    if(confirm("Ta bort den manuella matchen?")) deleteMatch(b.dataset.del);
+  });
+}
+
+/* ----- Schemaläggning ----- */
+function dayHasFinalsAllowed(cls,m,day){
+  if(!isFinal(cls,m)) return true;
+  return cls.type==="youth" ? day===youthFinalDay() : day===adultFinalDay();
+}
+// Auto: ungdom endast vardagar; senior alla dagar.
+function canPlayDayAuto(cls,day){ return cls.type==="youth" ? youthAllowedAuto(day) : true; }
+// Försök placera m på dagen. opts.manual = strunta i veckodagsregeln (men varna ej här).
+// opts.requireUnused = placera bara om ingen av spelarna redan spelar den dagen.
+function placeMatch(m,day,opts={}){
+  const cls=getClass(m.classId);
+  if(!opts.manual && !canPlayDayAuto(cls,day)) return false;
+  if(playerDayCount(day,m) >= 3) return false;                  // max 3 matcher/dag/person
+  if(opts.requireUnused && playerDayCount(day,m) > 0) return false;
+  const courts=courtsForDay(day);
+  for(const t of slotsFor(cls.type, day)){
+    if(sameTimeBusy(day,t,m)) continue;                         // ej samma tid på annan bana
+    for(let ct=1;ct<=courts;ct++){
+      if(realMatches().some(x=>x.day===day&&x.time===t&&x.court===ct&&x.id!==m.id)) continue;
+      m.day=day; m.court=ct; m.time=t; return true;
+    }
+  }
+  return false;
+}
+// Manuell placering (via knappar): tillåt flera matcher/dag (max 3), varna vid avvikelse.
+function manualPlace(m,day){
+  const cls=getClass(m.classId);
+  if(playerDayCount(day,m) >= 3)
+    return {ok:false, msg:"En av spelarna har redan 3 matcher den dagen (max 3 tillåts)."};
+  if(!placeMatch(m,day,{manual:true}))
+    return {ok:false, msg:`Ingen ledig tid på ${dayShort(day)} (banor upptagna eller spelarkrock vid alla tider).`};
+  let warn="";
+  if(cls.type==="youth" && isWeekend(day))
+    warn="Obs: ungdomsklass schemalagd på helg – normalt spelar endast seniorer lör/sön.";
+  return {ok:true, warn};
+}
+// Är alla matcher i en omgång färdigspelade (byes räknas som klara)?
+function roundComplete(cls,r){
+  const ms=cls.matches.filter(m=>m.round===r);
+  return ms.length>0 && ms.every(m=>m.winner);
+}
+// Auto: spela klart en hel omgång i klassen innan nästa omgång schemaläggs
+// (kan stängas av via "Tillåt senare omgångar" i Schema-fliken).
+function roundReadyForAuto(cls,m){
+  if(state.allowEarlyRounds) return true;
+  if(m.manual || m.round===0) return true;
+  return roundComplete(cls, m.round-1);
+}
+function generateDay(day){
+  const sortFn=(a,b)=>((a.round==null?99:a.round)-(b.round==null?99:b.round));
+  const ok=(m,cls)=>!cls.hidden && dayHasFinalsAllowed(cls,m,day) && canPlayDayAuto(cls,day) && roundReadyForAuto(cls,m);
+  // Pass 1: prioritera matcher där ingen spelare redan spelar den dagen (undvik flera/dag).
+  realMatches().filter(m=>isReady(m)&&!m.day).sort(sortFn).forEach(m=>{
+    const cls=getClass(m.classId);
+    if(ok(m,cls)) placeMatch(m,day,{requireUnused:true});
+  });
+  // Pass 2: fyll resten (upp till 3 matcher/dag/person).
+  realMatches().filter(m=>isReady(m)&&!m.day).sort(sortFn).forEach(m=>{
+    const cls=getClass(m.classId);
+    if(ok(m,cls)) placeMatch(m,day);
+  });
+}
+
+/* ================= Hel turneringsplanering (egen flik) ================= */
+// Vald finaldag för en klass (fallback till standard: ungdom näst sista, övriga sista dagen).
+function classFinalDay(cls){
+  const days=getDays();
+  const chosen=state.planFinalDays && state.planFinalDays[cls.id];
+  const def = cls.type==="youth" ? youthFinalDay() : adultFinalDay();
+  let d = (chosen && days.some(x=>x.date===chosen)) ? chosen : def;
+  if(cls.type==="youth" && d && isWeekend(d)){          // juniorfinal måste vara vardag
+    const idx=days.findIndex(x=>x.date===d);
+    for(let i=idx;i>=0;i--){ if(!isWeekend(days[i].date)){ d=days[i].date; break; } }
+  }
+  return d;
+}
+// Är dagen en finaldag för någon (synlig) klass?
+function isPlanFinalDay(date){ return visibleClasses().some(c=>c.matches.some(m=>!m.manual)&&classFinalDay(c)===date); }
+// Kandidat-starttider (minuter) i prioritetsordning för en typ/dag. seniorEarly = juniorer klara.
+function planCandidateTimes(type, date, seniorEarly){
+  const push=(a,s,e,step)=>{ for(let t=s;t<=e;t+=step) a.push(t); return a; };
+  if(type==="youth"){
+    return [...push([],540,750,30), 510, 480, ...push([],780,1230,30)]; // 9–12:30, sen 8:30/8, sist eftermiddag
+  }
+  if(isWeekend(date)) return [...push([],540,1200,60), 480];            // 9–20, sen 8 (reserv)
+  const early = seniorEarly ? push([],540,720,60) : [];                // 9–12 om juniorer klara
+  return [...push([],780,1200,60), ...early, 480];                     // 13–20, ev. 9–12, sist 8
+}
+function planOverlap(a1,a2,b1,b2){ return a1<b2 && b1<a2; }
+// Placera en dags matcher på ett givet antal banor. Returnerar {placed,leftover}.
+function packPlanDay(date, dayMatches, courts){
+  const juniors=dayMatches.filter(x=>x.type==="youth");
+  const seniorEarly = !isWeekend(date) && juniors.length===0 && !isPlanFinalDay(date);
+  const courtIv=Array.from({length:courts},()=>[]);
+  const placed=[], leftover=[];
+  // Juniorer först (morgon), sedan seniorer; inom typ efter omgång.
+  const order=[...dayMatches].sort((a,b)=>(a.type===b.type?0:(a.type==="youth"?-1:1)) || (a.round-b.round));
+  for(const x of order){
+    const dur=x.type==="youth"?MATCH_MIN_YOUTH:MATCH_MIN_SENIOR;
+    let done=false;
+    for(const t of planCandidateTimes(x.type,date,seniorEarly)){
+      for(let ci=0;ci<courts;ci++){
+        if(courtIv[ci].some(iv=>planOverlap(t,t+dur,iv[0],iv[1]))) continue;
+        courtIv[ci].push([t,t+dur]);
+        placed.push({id:x.id, classId:x.classId, court:ci+1, time:t, type:x.type, round:x.round});
+        done=true; break;
+      }
+      if(done) break;
+    }
+    if(!done) leftover.push(x);
+  }
+  return {placed, leftover};
+}
+// Bygg hela turneringens planering (deterministiskt utifrån stegar + valda finaldagar).
+function buildFullPlan(){
+  const days=getDays();
+  const assign={}; days.forEach(d=>assign[d.date]=[]);
+  const finalDayByClass={};
+  visibleClasses().forEach(cls=>{
+    if(!cls.matches.some(m=>!m.manual)) return;
+    const fd=classFinalDay(cls); finalDayByClass[cls.id]=fd;
+    const fi=days.findIndex(d=>d.date===fd);
+    const lastIdx=fi<0?days.length-1:fi;
+    // Tillåtna dagar t.o.m. finaldagen (juniorer ej helg).
+    let avail=[];
+    for(let i=0;i<=lastIdx;i++){ if(cls.type==="youth" && isWeekend(days[i].date)) continue; avail.push(i); }
+    if(!avail.length) avail=[lastIdx<0?0:lastIdx];
+    const A=avail.length, R=totalRounds(cls);
+    // Startdag (position i avail) för varje omgång – jämnt fördelat, finalen sist.
+    const startPos=r=> R<=1 ? A-1 : Math.min(A-1, Math.round(r*(A-1)/(R-1)));
+    // Fördela varje omgångs matcher över dagarna från omgångens startdag fram till
+    // dagen före nästa omgångs start – så att inga mellanliggande dagar står tomma i
+    // onödan. Finalomgången ligger enbart på sin egen (final)dag. Omgångsordningen
+    // bevaras alltid (alla matcher i omgång r ligger före omgång r+1).
+    for(let r=0;r<R;r++){
+      const ms=cls.matches.filter(m=>!m.manual && !isByeMatch(m) && m.round===r).sort((a,b)=>a.index-b.index);
+      if(!ms.length) continue;
+      const from=startPos(r);
+      const to = r<R-1 ? Math.max(from, startPos(r+1)-1) : from;
+      const span=[]; for(let k=from;k<=to;k++) span.push(avail[k]);
+      if(!span.length) span.push(avail[Math.min(from,A-1)]);
+      ms.forEach((m,idx)=>{ assign[days[span[idx%span.length]].date].push({id:m.id, classId:cls.id, type:cls.type, round:r}); });
+    }
+    cls.matches.filter(m=>m.manual).forEach(m=>{ assign[days[avail[A-1]].date].push({id:m.id, classId:cls.id, type:cls.type, round:99}); });
+  });
+  const out={ byDay:{}, extraByDay:{}, courtsByDay:{}, overriddenByDay:{}, leftoverByDay:{}, finalDayByClass, hasLeftover:false };
+  const MAXC=8, pc=state.planCourts||{};
+  days.forEach(d=>{
+    const ms=assign[d.date];
+    const override = pc[d.date]!=null ? Math.max(1,Math.min(MAXC,pc[d.date])) : null;
+    out.byDay[d.date]=[]; out.leftoverByDay[d.date]=[]; out.overriddenByDay[d.date]=(override!=null);
+    out.courtsByDay[d.date]=override!=null?override:Math.max(1,state.courts);
+    out.extraByDay[d.date]=out.courtsByDay[d.date]-Math.max(1,state.courts);
+    if(!ms.length) return;
+    let best, usedCourts;
+    if(override!=null){
+      usedCourts=override; best=packPlanDay(d.date, ms, usedCourts);
+    } else {
+      // Rekommendera minsta antal banor från grundantalet som rymmer alla matcher.
+      usedCourts=Math.max(1,state.courts);
+      for(let c=Math.max(1,state.courts); c<=MAXC; c++){ best=packPlanDay(d.date, ms, c); usedCourts=c; if(!best.leftover.length) break; }
+    }
+    out.byDay[d.date]=best.placed; out.courtsByDay[d.date]=usedCourts;
+    out.extraByDay[d.date]=usedCourts-Math.max(1,state.courts);
+    out.leftoverByDay[d.date]=best.leftover;
+    if(best.leftover.length) out.hasLeftover=true;
+  });
+  return out;
+}
+// Överför en dags planering till det riktiga schemat.
+function transferPlanDay(date){
+  if(dayLocked(date)){ alert("Dagen är låst i schemat. Lås upp den först för att skriva över."); return; }
+  const plan=buildFullPlan();
+  const entries=plan.byDay[date]||[];
+  if(!entries.length){ alert("Inga planerade matcher denna dag."); return; }
+  if(realMatches().some(m=>m.day===date) && !confirm(`${dayShort(date)} har redan matcher i schemat. Skriv över med planeringen?`)) return;
+  realMatches().forEach(m=>{ if(m.day===date){ m.day=null;m.court=null;m.time=null; } });
+  const extra=(plan.courtsByDay[date]||state.courts)-state.courts;
+  if(extra!==0) state.extraCourts[date]=extra; else delete state.extraCourts[date];
+  entries.forEach(e=>{ const r=findMatch(e.id); if(r){ r.m.day=date; r.m.court=e.court; r.m.time=e.time; } });
+  save(); render();
+  const lo=(plan.leftoverByDay[date]||[]).length;
+  if(lo) alert(`Obs: ${lo} match(er) fick inte plats ${dayShort(date)} ens med extra bana(or).`);
+}
+// Överför hela turneringens planering (hoppar över låsta dagar).
+function transferWholePlan(){
+  const plan=buildFullPlan();
+  const locked=getDays().filter(d=>dayLocked(d.date));
+  if(locked.length && !confirm(`${locked.length} låst(a) dag(ar) hoppas över. Fortsätt?`)) return;
+  if(!confirm("Överför HELA planeringen till det riktiga schemat? Befintligt schema på olåsta dagar skrivs över.")) return;
+  getDays().forEach(d=>{
+    if(dayLocked(d.date)) return;
+    realMatches().forEach(m=>{ if(m.day===d.date){ m.day=null;m.court=null;m.time=null; } });
+    const extra=(plan.courtsByDay[d.date]||state.courts)-state.courts;
+    if(extra!==0) state.extraCourts[d.date]=extra; else delete state.extraCourts[d.date];
+    (plan.byDay[d.date]||[]).forEach(e=>{ const r=findMatch(e.id); if(r){ r.m.day=d.date; r.m.court=e.court; r.m.time=e.time; } });
+  });
+  save(); render();
+  if(plan.hasLeftover) alert("Obs: vissa matcher fick inte plats – se röd markering i planeringen.");
+}
+function renderPlanner(){
+  const days=getDays();
+  if(!days.length){ app.innerHTML=`<div class="card"><h2>Auto-planering</h2><p class="muted">Ange turneringens datum under <b>Klasser &amp; deltagare</b> först.</p></div>`; return; }
+  const classes=visibleClasses().filter(c=>c.matches.some(m=>!m.manual));
+  const plan=buildFullPlan();
+  const clsRows=classes.map(c=>{
+    const opts=days.filter(d=> c.type==="youth" ? !isWeekend(d.date) : true)
+      .map(d=>`<option value="${d.date}" ${classFinalDay(c)===d.date?'selected':''}>${d.dow.slice(0,3)} ${d.short}</option>`).join("");
+    return `<tr>
+      <td style="text-align:left"><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td>
+      <td><span class="badge ${c.type}">${c.type==='youth'?'Ungdom':'Senior'}</span></td>
+      <td><b>${totalRounds(c)}</b> omg.</td>
+      <td><select data-fd="${c.id}">${opts}</select></td></tr>`;
+  }).join("");
+  const dayCards=days.map(d=>{
+    const entries=(plan.byDay[d.date]||[]).slice().sort((a,b)=>(a.time-b.time)||(a.court-b.court));
+    const extra=plan.extraByDay[d.date]||0;
+    const courtsUsed=plan.courtsByDay[d.date]||state.courts;
+    const overridden=plan.overriddenByDay[d.date];
+    const leftover=plan.leftoverByDay[d.date]||[];
+    const courtOpts=Array.from({length:8},(_,i)=>`<option value="${i+1}" ${courtsUsed===i+1?'selected':''}>${i+1} ban${i+1>1?'or':'a'}</option>`).join("");
+    const rows=entries.map(e=>{
+      const c=getClass(e.classId); const r=findMatch(e.id); const m=r?r.m:null;
+      const who=m&&m.p1&&m.p2 ? `${dispName(m.p1)} – ${dispName(m.p2)}` : `<span class="muted">${m?stageName(c,m):''} – deltagare avgörs av tidigare omgång</span>`;
+      return `<tr>
+        <td>${fmtMin(e.time)}</td><td>Bana ${e.court}</td>
+        <td style="text-align:left"><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td>
+        <td style="text-align:left">${m?stageName(c,m):''}${m&&isFinal(c,m)?' 🏆':''}</td>
+        <td style="text-align:left">${who}</td></tr>`;
+    }).join("");
+    const lockBadge=dayLocked(d.date)?'<span class="badge" style="background:#f6d9d5;color:#b5362b">🔒 låst</span>':'';
+    return `<div class="card">
+      <div class="row" style="align-items:center">
+        <h2 style="margin:0">${d.dow} ${d.short}</h2>
+        <label class="small" title="Ändra antal banor denna dag – planeringen räknas om">🎾
+          <select data-courts="${d.date}">${courtOpts}</select></label>
+        ${overridden
+          ? `<span class="badge" style="background:#e6eef7;color:#2f5c86">egen baninställning</span>
+             <button class="btn ghost mini" data-resetcourts="${d.date}" title="Återgå till rekommenderat antal banor">↺ rek.</button>`
+          : (extra>0?`<span class="badge" style="background:#fdeecf;color:#8a6d00">➕ rekommenderat: ${courtsUsed} banor</span>`
+                    :`<span class="badge" style="background:#eef3ea;color:#4a6b3a">grundantal (${courtsUsed})</span>`)}
+        ${isPlanFinalDay(d.date)?'<span class="badge done">Finaldag</span>':''}
+        ${lockBadge}
+        <span style="flex:1"></span>
+        <button class="btn mini" data-transfer="${d.date}" ${dayLocked(d.date)?'disabled':''}>➡ Överför till schemat</button>
+      </div>
+      ${entries.length?`<div style="overflow-x:auto"><table class="results" style="margin-top:8px"><thead><tr>
+         <th>Tid</th><th>Bana</th><th style="text-align:left">Klass</th><th style="text-align:left">Omgång</th><th style="text-align:left">Match</th></tr></thead>
+         <tbody>${rows}</tbody></table></div>`:'<p class="muted small" style="margin:8px 0 0">Inga matcher planerade denna dag.</p>'}
+      ${leftover.length?`<p class="small" style="color:#b5362b;margin:8px 0 0">⚠ ${leftover.length} match(er) fick inte plats på ${courtsUsed} ban${courtsUsed>1?'or':'a'} denna dag – öka antalet banor ovan, flytta någon klass finaldag eller lägg till fler dagar.</p>`:''}
+    </div>`;
+  }).join("");
+  app.innerHTML=`
+   <div class="card no-print">
+     <h2>Auto-planering – hela turneringen</h2>
+     <p class="small muted">Planerar alla klassers alla matcher över hela turneringen. Välj vilken dag varje klass ska spela
+       <b>final</b> – tidigare omgångar fördelas automatiskt på dagarna före. Vid behov nyttjas starttider 08–20 och en
+       extra bana föreslås. Seniormatcher kan läggas 09–13 när juniorklasserna är färdigspelade (utom på finaldagar).
+       Planeringen är ett <b>förslag</b> – för över den dag för dag, eller hela turneringen på en gång, till det riktiga schemat.</p>
+     <div style="overflow-x:auto"><table class="results"><thead><tr>
+       <th style="text-align:left">Klass</th><th>Typ</th><th>Omgångar</th><th style="text-align:left">Finaldag</th></tr></thead>
+       <tbody>${clsRows||`<tr><td colspan="4" class="muted">Inga stegar byggda ännu – bygg stegar under Klasser &amp; deltagare.</td></tr>`}</tbody></table></div>
+     <p class="small muted" style="margin:10px 0 0">Varje dag visar det <b>rekommenderade</b> antalet banor (utgår från grundantalet ${state.courts}
+       och höjs bara om matcherna inte får plats). Du kan ändra antal banor per dag i respektive dagskort – planeringen räknas då om.
+       <b>🔄 Rensa &amp; planera om</b> nollställer dina egna baninställningar och återgår till rekommendationen.</p>
+     <div class="toolbar" style="margin-top:12px">
+       <button class="btn" id="transferAll">➡ Överför HELA planeringen till schemat</button>
+       <button class="btn ghost" id="replanAll">🔄 Rensa &amp; planera om</button>
+       ${plan.hasLeftover?'<span class="small" style="color:#b5362b">⚠ Vissa matcher får inte plats – se röd text nedan.</span>':'<span class="small" style="color:#2e7d32">✓ Alla matcher får plats i planeringen.</span>'}
+     </div>
+   </div>
+   ${dayCards}`;
+  document.querySelectorAll("select[data-fd]").forEach(sel=>sel.onchange=()=>{
+    state.planFinalDays[sel.dataset.fd]=sel.value; save(); render();
+  });
+  document.querySelectorAll("button[data-transfer]").forEach(b=>b.onclick=()=>transferPlanDay(b.dataset.transfer));
+  // Ändra antal banor för en dag -> planeringen räknas om.
+  document.querySelectorAll("select[data-courts]").forEach(sel=>sel.onchange=()=>{
+    state.planCourts=state.planCourts||{};
+    state.planCourts[sel.dataset.courts]=parseInt(sel.value,10)||state.courts;
+    save(); render();
+  });
+  // Återställ en dags baninställning till rekommendationen.
+  document.querySelectorAll("button[data-resetcourts]").forEach(b=>b.onclick=()=>{
+    if(state.planCourts) delete state.planCourts[b.dataset.resetcourts];
+    save(); render();
+  });
+  document.getElementById("transferAll").onclick=transferWholePlan;
+  document.getElementById("replanAll").onclick=()=>{
+    if(!confirm("Rensa dina egna baninställningar och planera om utifrån rekommenderat antal banor (grundantal " + state.courts + ")?")) return;
+    state.planCourts={}; save(); render();
+  };
+}
+
+/* ----- Tab: Deltagarlista (per person, utifrån namn) ----- */
+function participantIndex(filterId){
+  const map=new Map(); // namn -> Set(klassnamn)
+  const classes = filterId ? state.classes.filter(c=>c.id===filterId) : visibleClasses();
+  for(const c of classes){
+    for(const line of c.participants){
+      for(const part of String(line).split("/")){
+        const nm=stripRank(part);
+        if(!nm) continue;
+        if(!map.has(nm)) map.set(nm,new Set());
+        map.get(nm).add(c.name);
+      }
+    }
+  }
+  return [...map.entries()]
+    .map(([name,set])=>({name, classes:[...set]}))
+    .sort((a,b)=> a.name.localeCompare(b.name,"sv"));
+}
+// Byt ut ett individnamn i en sträng (dubbelpar delas på "/"), behåll ev. rank "(n)".
+function replaceIndivName(str, oldName, newName){
+  if(str==null) return str;
+  return String(str).split("/").map(part=>{
+    const t=part.trim();
+    const rm=t.match(/\s*(\(\d+\))\s*$/);
+    const rank=rm?(" "+rm[1]):"";
+    return stripRank(t)===oldName ? (newName+rank) : t;
+  }).join(" / ");
+}
+// Döp om en spelare överallt: deltagarlistor, matcher, vinnare, mästare.
+function renamePlayer(oldName,newName){
+  oldName=(oldName||"").trim(); newName=(newName||"").trim();
+  if(!newName || oldName===newName) return;
+  for(const c of state.classes){
+    c.participants=c.participants.map(p=>replaceIndivName(p,oldName,newName));
+    for(const m of c.matches){
+      m.p1=replaceIndivName(m.p1,oldName,newName);
+      m.p2=replaceIndivName(m.p2,oldName,newName);
+      if(m.winner) m.winner=replaceIndivName(m.winner,oldName,newName);
+    }
+    if(c.champion) c.champion=replaceIndivName(c.champion,oldName,newName);
+  }
+  save(); render();
+}
+// Alla riktiga matcher där en person deltar – inkl. matcher där motståndaren
+// ännu inte är klar (t.ex. seedad spelare i omgång 2 som väntar på vinnare).
+function playerMatches(name, filterId){
+  const res=[];
+  const classes = filterId ? state.classes.filter(c=>c.id===filterId) : visibleClasses();
+  for(const c of classes) for(const m of c.matches){
+    if((m.p1 || m.p2) && !isByeMatch(m) && playersOf(m).includes(name)) res.push({m,c});
+  }
+  return res.sort((a,b)=>{
+    const da=(a.m.day||"9"), db=(b.m.day||"9");
+    return da<db?-1:da>db?1:((a.m.time||0)-(b.m.time||0));
+  });
+}
+function renderParticipants(){
+  const fid=ui.partClass||"";
+  const fcls=fid?getClass(fid):null;
+  const idx=participantIndex(fid);
+  const q=(ui.playerSearch||"").trim().toLowerCase();
+  const classOpts=`<option value="">Alla klasser</option>`+visibleClasses().map(c=>`<option value="${c.id}" ${fid===c.id?'selected':''}>${c.name} (${c.participants.length})</option>`).join("");
+  let html=`<div class="card no-print">
+     <h2>Deltagarlista &amp; sök</h2>
+     <p class="small muted">Välj klass för att söka/lista deltagare i en specifik klass (eller "Alla klasser"). Dubbelpar delas på "/".</p>
+     <div class="row">
+       <label class="small">Klass: <select id="partClass">${classOpts}</select></label>
+       <input type="text" id="playerSearch" placeholder="🔎 Sök deltagare…" value="${(ui.playerSearch||'').replace(/"/g,'&quot;')}" style="min-width:200px">
+       ${q?`<button class="btn ghost mini" id="clrSearch">✕ Rensa</button>`:''}
+       <span class="pill">${idx.length} personer${fcls?` i ${fcls.name}`:''}</span>
+       <button class="btn ghost mini" id="printParts">🖨 Skriv ut deltagarlista</button>
+       <button class="btn ghost mini" id="printPartsCls">🖨 Skriv ut per klass</button>
+     </div>
+   </div>`;
+  const bindTop=()=>{
+    document.getElementById("partClass").onchange=e=>{ ui.partClass=e.target.value; render(); };
+    const si=document.getElementById("playerSearch");
+    si.oninput=e=>{ ui.playerSearch=e.target.value; ui._sf=true; render(); };
+    if(ui._sf){ const el=document.getElementById("playerSearch"); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length); } ui._sf=false; }
+    const clr=document.getElementById("clrSearch"); if(clr) clr.onclick=()=>{ ui.playerSearch=""; render(); };
+    document.getElementById("printParts").onclick=()=>printParticipants(fid);
+    document.getElementById("printPartsCls").onclick=()=>printParticipantsByClass(fid);
+  };
+  if(!idx.length){
+    html+=`<div class="card"><p class="muted">Inga deltagare ${fcls?`i <b>${fcls.name}</b>`:'inlagda ännu'}. Lägg in deltagare under <b>Klasser & deltagare</b>.</p></div>`;
+    app.innerHTML=html; bindTop(); return;
+  }
+  // Sökresultat: matchande deltagares inplanerade matcher
+  if(q){
+    const matched=idx.filter(r=>r.name.toLowerCase().includes(q));
+    html+=`<div class="card"><h2>Sökresultat${fcls?` i ${fcls.name}`:''}</h2>`;
+    if(!matched.length) html+=`<p class="muted">Ingen deltagare matchar "${ui.playerSearch}".</p>`;
+    for(const r of matched){
+      const pm=playerMatches(r.name, fid);
+      html+=`<h3 style="margin:14px 0 4px">${r.name} <span class="small muted">(${r.classes.join(", ")})</span></h3>`;
+      if(!pm.length){ html+=`<p class="small muted">Inga matcher.</p>`; continue; }
+      html+=`<table class="results"><thead><tr><th>Nr</th><th>Klass</th><th>Dag</th><th>Tid</th><th>Bana</th><th>Motstånd</th><th>Resultat</th></tr></thead><tbody>`;
+      for(const {m,c} of pm){
+        const vs=`${dispName(m.p1)||'<i style="color:#b3aa98">väntar på motståndare</i>'} – ${dispName(m.p2)||'<i style="color:#b3aa98">väntar på motståndare</i>'}`;
+        html+=`<tr><td>${matchNumber(m)??'-'}</td><td><span class="cdot" style="background:${classColor(c)}"></span>${c.name} <span class="small muted">(${m.manual?'manuell':roundName(m.round,totalRounds(c))})</span></td>
+          <td>${m.day?dayShort(m.day):'<i>ej schemalagd</i>'}</td><td>${m.time!=null?matchLabel(m):'-'}</td><td>${m.court||'-'}</td>
+          <td>${vs}</td><td>${m.winner?`${m.score||'WO'} (🏆 ${dispName(m.winner)})`:''}</td></tr>`;
+      }
+      html+=`</tbody></table>`;
+    }
+    html+=`</div>`;
+  }
+  // Full lista med byt-namn
+  html+=`<div class="card"><table class="results"><thead>
+     <tr><th>Namn</th><th>${fcls?'Klass':'Antal klasser'}</th><th>${fcls?'':'Klasser'}</th><th class="no-print"></th></tr></thead><tbody>`;
+  for(const r of idx)
+    html+=`<tr><td>${r.name}</td><td>${fcls?r.classes.join(", "):r.classes.length}</td><td>${fcls?'':r.classes.join(", ")}</td>
+      <td class="no-print"><button class="btn ghost mini" data-rename="${r.name.replace(/"/g,'&quot;')}">✏️ Byt namn</button>
+      <button class="btn ghost mini" data-find="${r.name.replace(/"/g,'&quot;')}">🔎 Matcher</button></td></tr>`;
+  html+=`</tbody></table></div>`;
+  app.innerHTML=html;
+  bindTop();
+  document.querySelectorAll("[data-rename]").forEach(b=>b.onclick=()=>{
+    const old=b.dataset.rename;
+    const nn=prompt(`Byt namn på "${old}" – nytt namn (uppdateras i alla klasser, stegar, schema och resultat):`, old);
+    if(nn && nn.trim() && nn.trim()!==old) renamePlayer(old, nn.trim());
+  });
+  document.querySelectorAll("[data-find]").forEach(b=>b.onclick=()=>{ ui.playerSearch=b.dataset.find; render(); });
+}
+function printParticipants(fid){
+  const idx=participantIndex(fid);
+  const fcls=fid?getClass(fid):null;
+  let html=printHeader("Deltagarlista"+(fcls?` – ${fcls.name}`:""));
+  html+=`<table class="results"><thead><tr><th>Namn</th><th>Klasser</th></tr></thead><tbody>`;
+  for(const r of idx) html+=`<tr><td>${r.name}</td><td>${r.classes.join(", ")}</td></tr>`;
+  html+=`</tbody></table>`;
+  doPrint(html);
+}
+function printParticipantsByClass(fid){
+  const classes=(fid?state.classes.filter(c=>c.id===fid):visibleClasses()).filter(c=>c.participants.length);
+  if(!classes.length){ alert("Inga deltagare att skriva ut."); return; }
+  let html=printHeader("Deltagare per klass");
+  for(const c of classes){
+    html+=`<h3 style="color:var(--red);margin:14px 0 4px">${c.name} <span style="font-weight:normal;font-size:13px;color:#666">(${c.participants.length} deltagare)</span></h3>`;
+    html+=`<ol style="margin:0 0 12px 22px;font-size:13px;line-height:1.6">`+c.participants.map(p=>`<li>${dispName(p)}</li>`).join("")+`</ol>`;
+  }
+  doPrint(html);
+}
+
+/* ----- Tab 4: Resultat & utskrift ----- */
+function renderPrintTab(){
+  app.innerHTML=`
+   <div class="card no-print">
+     <h2>Resultatlistor &amp; utskrifter</h2>
+     <div class="row">
+       <label class="small">Dag:
+         <select id="resDay">${getDays().map(d=>`<option value="${d.date}" ${ui.day===d.date?'selected':''}>${d.dow} ${d.short}</option>`).join("")}</select>
+       </label>
+       <button class="btn" id="printResults">🖨 Skriv ut resultatlista (vald dag)</button>
+       <button class="btn ghost" id="printSched2">🖨 Skriv ut matchschema (vald dag)</button>
+       <button class="btn ghost" id="printBrackets">🖨 Skriv ut alla stegar</button>
+       <button class="btn ghost" id="printBlank2">🖨 Skriv ut blankt schema</button>
+       <button class="btn" id="printChamps">🏆 Skriv ut alla klubbmästare</button>
+     </div>
+   </div>
+   <div id="resPreview"></div>`;
+  document.getElementById("resDay").onchange=e=>{ui.day=e.target.value;renderPrintTab();};
+  document.getElementById("printResults").onclick=()=>printResults(ui.day);
+  document.getElementById("printSched2").onclick=()=>printSchedule(ui.day);
+  document.getElementById("printBrackets").onclick=()=>printBrackets();
+  document.getElementById("printBlank2").onclick=()=>printBlankSchedule();
+  document.getElementById("printChamps").onclick=()=>printChampions();
+  // förhandsvisning av resultat
+  document.getElementById("resPreview").innerHTML=resultsHTML(ui.day);
+}
+function resultsHTML(day){
+  const played=realMatches().filter(m=>m.day===day&&m.winner&&m.p1&&m.p2);
+  const upcoming=realMatches().filter(m=>m.day===day&&!m.winner&&m.p1&&m.p2);
+  let h=`<div class="card"><h2>Resultat – ${dayShort(day)}</h2>`;
+  if(!played.length) h+=`<p class="muted">Inga färdigspelade matcher registrerade denna dag.</p>`;
+  else{
+    h+=`<table class="results"><thead><tr><th>Nr</th><th>Tid</th><th>Bana</th><th>Klass</th><th>Match</th><th>Resultat</th><th>Vinnare</th></tr></thead><tbody>`;
+    played.sort((a,b)=>(a.time||0)-(b.time||0)).forEach(m=>{
+      const c=getClass(m.classId);
+      h+=`<tr><td>${matchNumber(m)??'-'}</td><td>${m.time!=null?matchLabel(m):'-'}</td><td>${m.court||'-'}</td><td>${c.name}</td>
+        <td>${dispName(m.p1)} – ${dispName(m.p2)}</td><td>${m.score||'WO'}</td><td><b>${dispName(m.winner)}</b></td></tr>`;
+    });
+    h+=`</tbody></table>`;
+  }
+  h+=`</div>`;
+  if(upcoming.length){
+    h+=`<div class="card"><h2>Ospelade matcher kvar denna dag</h2><table class="results"><tbody>`;
+    upcoming.sort((a,b)=>(a.time||0)-(b.time||0)).forEach(m=>{
+      const c=getClass(m.classId);
+      h+=`<tr><td>${matchNumber(m)??'-'}</td><td>${m.time!=null?matchLabel(m):'-'}</td><td>Bana ${m.court||'-'}</td><td>${c.name}</td><td>${dispName(m.p1)} – ${dispName(m.p2)}</td></tr>`;
+    });
+    h+=`</tbody></table></div>`;
+  }
+  return h;
+}
+
+/* ----- Print helpers ----- */
+function doPrint(html){
+  const pa=document.getElementById("printArea");
+  pa.innerHTML=html;
+  window.print();
+}
+function printHeader(title){
+  return `<div style="display:flex;align-items:center;gap:16px;border-bottom:3px solid #b5362b;padding-bottom:8px;margin-bottom:14px">
+     <span style="display:inline-block;width:64px;height:64px;flex:0 0 auto">${LOGO_SVG}</span>
+     <h1 style="margin:0;color:#b5362b;font-family:'Arial Narrow',Arial">
+       ${arrangerName()} · ${state.tournament.name||"Klubbmästerskap"} ${tournamentYear()}<br>
+       <span style="font-size:16px;font-weight:normal;color:#26211c">${title}</span></h1>
+   </div>`;
+}
+// Blankt matchschema att fylla i för hand.
+function printBlankSchedule(){
+  const courts=courtsForDay(ui.day);
+  let html=printHeader(`Matchschema (blankt)&nbsp;&nbsp; Datum: ____________&nbsp;&nbsp; Dag: ____________`);
+  html+=`<table class="schedtable" style="width:100%"><thead><tr><th style="width:120px">Tid</th>${
+     Array.from({length:courts},(_,i)=>`<th>Bana ${i+1}</th>`).join("")}</tr></thead><tbody>`;
+  let lunchShown=false;
+  for(const t of daySlots(ui.day)){
+    if(!lunchShown && t>=780){ html+=`<tr><td class="time">12:00–13:00</td><td colspan="${courts}" style="text-align:center">Lunchpaus</td></tr>`; lunchShown=true; }
+    html+=`<tr><td class="time">${timeLabel(t, ui.day)}</td>`;
+    for(let ct=1;ct<=courts;ct++){
+      html+=`<td style="height:44px"></td>`;
+    }
+    html+=`</tr>`;
+  }
+  html+=`</tbody></table>`;
+  doPrint(html);
+}
+function printResults(day){
+  doPrint(printHeader("Resultatlista – "+dayLong(day))+resultsHTML(day));
+}
+function printSchedule(day){
+  const courts=courtsForDay(day);
+  let html=printHeader("Matchschema – "+dayLong(day));
+  html+=`<table class="schedtable" style="width:100%"><thead><tr><th>Tid</th>${
+     Array.from({length:courts},(_,i)=>`<th>Bana ${i+1}</th>`).join("")}</tr></thead><tbody>`;
+  let prevEnd=null;
+  for(const t of dayTimes(day)){
+    if(prevEnd!=null && t>prevEnd){
+      const isLunch = prevEnd<780 && t>=780;
+      html+=`<tr><td class="time">${fmtMin(prevEnd)}–${fmtMin(t)}</td><td colspan="${courts}" style="text-align:center;color:#888;font-style:italic">${isLunch?'Lunchpaus':'Paus'}</td></tr>`;
+    }
+    html+=`<tr><td class="time">${timeLabel(t, day)}</td>`;
+    for(let ct=1;ct<=courts;ct++){
+      const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct&&!getClass(m.classId).hidden);
+      html+=`<td>${here.map(m=>{const c=getClass(m.classId);const n=matchNumber(m);return `<div style="border-left:5px solid ${classColor(c)};padding-left:5px;margin:2px 0">${n!=null?`<b>#${n}</b> `:''}<b>${c.name}</b><br>${dispName(m.p1)} – ${dispName(m.p2)}${isFinal(c,m)?' <i>(final)</i>':''}</div>`;}).join("")}</td>`;
+    }
+    html+=`</tr>`;
+    prevEnd = Math.max(prevEnd||0, t + slotDur(t, day));
+  }
+  html+=`</tbody></table>`;
+  doPrint(html);
+}
+/* ----- Utskrift av stege som träd (en liggande A4 per klass, skalad att passa) ----- */
+function printBracketBox(cls,m){
+  const rowh=(p,win)=>`<div style="padding:4px 7px;border-bottom:1px solid #ddd;${win?'font-weight:800;color:#2e7d32':''}">${p==null?(m.round===0?'BYE':'—'):dispName(p)}${win?' 🏆':''}</div>`;
+  const n=matchNumber(m);
+  return `<div class="match" data-r="${m.round}" data-i="${m.index}" style="border:1px solid #bbb;border-left:5px solid ${classColor(cls)};border-radius:6px;background:#fff">
+     ${n!=null?`<div style="font-size:10px;font-weight:700;color:#6b6356;padding:2px 7px 0">#${n}</div>`:''}
+     ${rowh(m.p1, m.winner&&m.winner===m.p1)}
+     ${rowh(m.p2, m.winner&&m.winner===m.p2)}
+     ${m.score?`<div style="padding:2px 7px;font-size:11px;color:#555;background:#faf6ec">${m.score}</div>`:''}
+   </div>`;
+}
+function buildPrintBracket(cls){
+  const total=totalRounds(cls);
+  let html=`<div class="bracket" style="position:relative">`;
+  for(let r=0;r<total;r++) html+=`<div class="rhead" data-rh="${r}" style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#6b6356;text-align:center;font-weight:700">${roundName(r,total)}</div>`;
+  html+=`<div class="rhead" data-rh="${total}" style="font-size:12px;text-align:center;font-weight:700;color:#6b6356">MÄSTARE</div>`;
+  for(let r=0;r<total;r++) cls.matches.filter(m=>m.round===r).sort((a,b)=>a.index-b.index).forEach(m=>{ html+=printBracketBox(cls,m); });
+  html+=`<div class="match champbox" data-r="${total}" data-i="0" style="border:2px solid ${classColor(cls)};border-radius:8px;text-align:center;padding:12px;background:#fff">
+       <div style="font-size:10px;letter-spacing:2px;color:#8a6d00">🏆 KLUBBMÄSTARE</div>
+       <div style="font-size:16px;font-weight:800;margin-top:4px">${dispName(cls.champion)||'–'}</div></div>`;
+  html+=`</div>`;
+  return html;
+}
+function printBracketPages(list){
+  const PAGE_W=1040, PAGE_H=730, TITLE_H=30;   // ungefärlig utskriftsyta för A4 liggande (px)
+  const withBr=list.filter(c=>totalRounds(c));
+  if(!withBr.length){ alert("Ingen stege att skriva ut – bygg en stege först."); return; }
+  let pages="";
+  for(const cls of withBr){
+    const meas=document.createElement("div");
+    meas.style.cssText="position:fixed;left:-20000px;top:0";
+    meas.innerHTML=buildPrintBracket(cls);
+    document.body.appendChild(meas);
+    const brEl=meas.querySelector(".bracket");
+    const size=layoutBracketEl(brEl);
+    const natW=size.width||brEl.scrollWidth, natH=size.height||brEl.scrollHeight;
+    const inner=brEl.outerHTML;
+    document.body.removeChild(meas);
+    const scale=Math.min(PAGE_W/natW, (PAGE_H-TITLE_H)/natH);
+    const offX=Math.max(0,(PAGE_W - natW*scale)/2);
+    pages+=`<div class="brpage">
+       <div style="font-family:'Arial Narrow',Arial;color:#b5362b;font-weight:bold;font-size:15px;padding:0 0 6px">${arrangerName()} · ${state.tournament.name||"KM"} ${tournamentYear()} · Stege – ${cls.name}${cls.champion?` · 🏆 ${dispName(cls.champion)}`:''}</div>
+       <div style="position:relative;height:${PAGE_H-TITLE_H}px"><div style="position:absolute;left:${Math.round(offX)}px;top:0;transform:scale(${scale});transform-origin:top left">${inner}</div></div>
+     </div>`;
+  }
+  document.getElementById("printArea").innerHTML=pages;
+  window.print();
+}
+function printOneBracket(cls){ printBracketPages([cls]); }   // stege-fliken
+function printBrackets(){ printBracketPages(visibleClasses()); } // "Skriv ut alla stegar"
+// Utskrift: alla klubbmästare (en rad per klass) – att skriva ut när KM är avgjort.
+function printChampions(){
+  const cls=visibleClasses();
+  let html=printHeader("Klubbmästare "+tournamentYear());
+  html+=`<table class="results" style="width:100%"><thead><tr>
+      <th style="text-align:left;width:44px">Klass</th><th style="text-align:left"></th><th style="text-align:left">🏆 Klubbmästare</th></tr></thead><tbody>`;
+  cls.forEach(c=>{
+    const champ=c.champion?dispName(c.champion):'<span style="color:#999">– ej avgjord –</span>';
+    html+=`<tr>
+      <td style="text-align:left"><span class="cdot" style="background:${classColor(c)};display:inline-block;width:12px;height:12px;border-radius:3px"></span></td>
+      <td style="text-align:left"><b>${c.name}</b></td>
+      <td style="text-align:left;font-size:16px">${c.champion?'🏆 ':''}<b>${champ}</b></td></tr>`;
+  });
+  html+=`</tbody></table>
+    <p class="small muted" style="margin-top:18px">${arrangerName()} · ${state.tournament.name||"Klubbmästerskap"} ${tournamentYear()} · ${tournamentRangeText()}</p>`;
+  doPrint(html);
+}
+
+// Spara en blob på plats användaren väljer (File System Access API) – annars nedladdning.
+async function saveBlob(blob, filename){
+  if(window.showSaveFilePicker){
+    try{
+      const ext=filename.split('.').pop();
+      const handle=await window.showSaveFilePicker({ suggestedName:filename,
+        types:[{description:'Bild', accept:{ ['image/'+(ext==='jpg'?'jpeg':ext)]:['.'+ext] }}] });
+      const w=await handle.createWritable(); await w.write(blob); await w.close(); return true;
+    }catch(e){ if(e && e.name==='AbortError') return false; /* faller igenom till nedladdning */ }
+  }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1500); return true;
+}
+function escXml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function svgText(x,y,txt,o={}){
+  return `<text x="${x}" y="${y}" font-family="Arial,Helvetica,sans-serif" font-size="${o.size||13}"`+
+    `${o.weight?` font-weight="${o.weight}"`:''}${o.anchor?` text-anchor="${o.anchor}"`:''} fill="${o.fill||'#26211c'}">${escXml(txt)}</text>`;
+}
+function truncStr(s,n){ s=String(s); return s.length>n ? s.slice(0,n-1)+'…' : s; }
+// Bygg stegen som REN SVG (rutor/text/linjer) – rasteriseras utan taint.
+function buildBracketSVG(cls){
+  const total=totalRounds(cls);
+  const COLW=210, HGAP=52, VGAP=16, HEADH=26, CHAMP_H=64, col=classColor(cls);
+  const byRound={};
+  for(let r=0;r<total;r++) byRound[r]=cls.matches.filter(m=>m.round===r).sort((a,b)=>a.index-b.index);
+  const maxR=total;
+  const boxInfo=m=>{ const hasNum=matchNumber(m)!=null, hasScore=!!m.score;
+    return { hasNum, hasScore, h: 8 + (hasNum?15:0) + 22 + 22 + (hasScore?16:0) }; };
+  let maxH=CHAMP_H;
+  for(let r=0;r<total;r++) for(const m of byRound[r]) maxH=Math.max(maxH, boxInfo(m).h);
+  const rowUnit=maxH+VGAP, n0=byRound[0].length;
+  const centers={};
+  byRound[0].forEach((m,i)=>{ centers['0_'+i]=HEADH + i*rowUnit + rowUnit/2; });
+  for(let r=1;r<total;r++) byRound[r].forEach((m,j)=>{
+    const a=centers[(r-1)+'_'+(2*j)], b=centers[(r-1)+'_'+(2*j+1)];
+    centers[r+'_'+j]=(a!=null&&b!=null)?(a+b)/2:(a!=null?a:(b!=null?b:HEADH+rowUnit/2));
+  });
+  centers[maxR+'_0']= byRound[total-1].length? centers[(total-1)+'_0'] : HEADH+rowUnit/2;
+  const width=(maxR+1)*(COLW+HGAP)-HGAP, height=HEADH + n0*rowUnit + 8;
+  let body="";
+  // linjer
+  for(let r=1;r<total;r++) byRound[r].forEach((m,j)=>{
+    const px=r*(COLW+HGAP), py=centers[r+'_'+j], fx=(r-1)*(COLW+HGAP)+COLW, midX=fx+HGAP/2;
+    const f0=centers[(r-1)+'_'+(2*j)], f1=centers[(r-1)+'_'+(2*j+1)];
+    const L=(x1,y1,x2,y2)=>{ body+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#b9b19a" stroke-width="2"/>`; };
+    if(f0!=null&&f1!=null){ L(fx,f0,midX,f0); L(fx,f1,midX,f1); L(midX,f0,midX,f1); L(midX,py,px,py); }
+    else { const fy=f0!=null?f0:f1; if(fy!=null) L(fx,fy,px,py); }
+  });
+  { const r=maxR, px=r*(COLW+HGAP), py=centers[maxR+'_0'], fx=(r-1)*(COLW+HGAP)+COLW, fy=centers[(total-1)+'_0'];
+    if(fy!=null) body+=`<line x1="${fx}" y1="${fy}" x2="${px}" y2="${py}" stroke="#b9b19a" stroke-width="2"/>`; }
+  // rubriker
+  for(let r=0;r<total;r++) body+=svgText(r*(COLW+HGAP)+COLW/2, 14, roundName(r,total).toUpperCase(), {size:11,weight:'bold',fill:'#6b6356',anchor:'middle'});
+  body+=svgText(maxR*(COLW+HGAP)+COLW/2, 14, 'MÄSTARE', {size:11,weight:'bold',fill:'#6b6356',anchor:'middle'});
+  // matchrutor
+  for(let r=0;r<total;r++) byRound[r].forEach((m,i)=>{
+    const x=r*(COLW+HGAP), bi=boxInfo(m), h=bi.h, top=Math.round(centers[r+'_'+i]-h/2);
+    body+=`<rect x="${x}" y="${top}" width="${COLW}" height="${h}" rx="6" fill="#fff" stroke="#bbb"/>`;
+    body+=`<rect x="${x}" y="${top}" width="5" height="${h}" fill="${col}"/>`;
+    let yy=top+4;
+    if(bi.hasNum){ yy+=12; body+=svgText(x+9, yy, '#'+matchNumber(m), {size:10,weight:'bold',fill:'#6b6356'}); yy+=3; }
+    const p1w=m.winner&&m.winner===m.p1, p2w=m.winner&&m.winner===m.p2;
+    yy+=16; body+=svgText(x+9, yy, (m.p1==null?(m.round===0?'BYE':'—'):truncStr(dispName(m.p1),26))+(p1w?' 🏆':''), {size:13,weight:p1w?'bold':'normal',fill:p1w?'#2e7d32':'#26211c'});
+    yy+=5; body+=`<line x1="${x+2}" y1="${yy}" x2="${x+COLW-2}" y2="${yy}" stroke="#eee"/>`;
+    yy+=17; body+=svgText(x+9, yy, (m.p2==null?(m.round===0?'BYE':'—'):truncStr(dispName(m.p2),26))+(p2w?' 🏆':''), {size:13,weight:p2w?'bold':'normal',fill:p2w?'#2e7d32':'#26211c'});
+    if(bi.hasScore){ yy+=15; body+=svgText(x+9, yy, m.score, {size:11,fill:'#555'}); }
+  });
+  // mästar-box
+  { const x=maxR*(COLW+HGAP), cy=centers[maxR+'_0'], top=Math.round(cy-CHAMP_H/2);
+    body+=`<rect x="${x}" y="${top}" width="${COLW}" height="${CHAMP_H}" rx="8" fill="#fff" stroke="${col}" stroke-width="2"/>`;
+    body+=svgText(x+COLW/2, top+24, '🏆 KLUBBMÄSTARE', {size:10,fill:'#8a6d00',anchor:'middle'});
+    body+=svgText(x+COLW/2, top+47, dispName(cls.champion)||'–', {size:16,weight:'bold',anchor:'middle'});
+  }
+  return {body, width, height};
+}
+// Skapa en PNG-bild av den valda stegen och spara där användaren väljer.
+function exportBracketImage(cls){
+  if(!totalRounds(cls)){ alert("Stegen är tom – bygg den först."); return; }
+  const PAD=20, TITLE_H=36, SCALE=2;
+  const {body, width, height}=buildBracketSVG(cls);
+  const W=width+PAD*2, H=height+TITLE_H+PAD;
+  const title=`${arrangerName()} · ${state.tournament.name||"KM"} ${tournamentYear()} · ${cls.name}${cls.champion?' · 🏆 '+dispName(cls.champion):''}`;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">`+
+    `<rect width="100%" height="100%" fill="#ffffff"/>`+
+    `<text x="${PAD}" y="26" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="bold" fill="#b5362b">${escXml(title)}</text>`+
+    `<g transform="translate(${PAD},${TITLE_H})">${body}</g></svg>`;
+  const url=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}));
+  const img=new Image();
+  img.onload=()=>{
+    try{
+      const canvas=document.createElement("canvas");
+      canvas.width=Math.round(W*SCALE); canvas.height=Math.round(H*SCALE);
+      const ctx=canvas.getContext("2d");
+      ctx.setTransform(SCALE,0,0,SCALE,0,0);
+      ctx.drawImage(img,0,0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(b=>{
+        if(!b){ alert("Kunde inte skapa bilden."); return; }
+        const p=n=>String(n).padStart(2,"0"), d=new Date();
+        const stamp=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`;
+        saveBlob(b, `Stege-${cls.name.replace(/[^\wåäöÅÄÖ -]/g,'').trim()}-${stamp}.png`);
+      }, "image/png");
+    }catch(err){ URL.revokeObjectURL(url); alert("Kunde inte skapa bilden: "+err.message); }
+  };
+  img.onerror=()=>{ URL.revokeObjectURL(url); alert("Kunde inte rendera stegen till bild."); };
+  img.src=url;
+}
+
+/* ----- Export / import (säkerhetskopia) – anropas från Turneringsinformation ----- */
+function exportBackup(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  const p=n=>String(n).padStart(2,"0"), d=new Date();
+  const stamp=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`;
+  a.download=`DalaroKM-backup-${stamp}.json`;   // t.ex. DalaroKM-backup-2026-07-04_14-30.json
+  a.click();
+}
+document.getElementById("importFile").onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ state=normalize(JSON.parse(r.result)); save(); ui.classId=state.classes[0].id; ensureDay(); render(); alert("Importerat!"); }
+    catch(err){ alert("Kunde inte läsa filen."); } };
+  r.readAsText(f);
+  e.target.value="";   // tillåt att importera samma fil igen
+};
+
+/* ----- Logotyp (SVG-återgivning av klubbmärket) ----- */
+const LOGO_SVG = `
+<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dalarö Tennisklubb">
+  <defs>
+    <path id="arcTop" d="M14,50 a36,36 0 0 1 72,0" fill="none"/>
+    <path id="arcBot" d="M16,50 a34,34 0 0 0 68,0" fill="none"/>
+  </defs>
+  <circle cx="50" cy="50" r="48" fill="#f4f1e6" stroke="#26211c" stroke-width="2"/>
+  <circle cx="50" cy="50" r="44" fill="none" stroke="#b5362b" stroke-width="1.5"/>
+  <!-- mittmotiv: himmel, kulle, fästning -->
+  <clipPath id="mid"><circle cx="50" cy="50" r="26"/></clipPath>
+  <g clip-path="url(#mid)">
+    <rect x="24" y="24" width="52" height="52" fill="#84b6d6"/>
+    <path d="M24,62 Q50,44 76,62 L76,76 L24,76 Z" fill="#3f6b39"/>
+    <g fill="#b5362b" stroke="#7a241c" stroke-width="0.5">
+      <rect x="42" y="44" width="16" height="14"/>
+      <rect x="40" y="40" width="6" height="6"/>
+      <rect x="54" y="40" width="6" height="6"/>
+      <polygon points="42,44 50,38 58,44"/>
+    </g>
+  </g>
+  <!-- korsade racketar -->
+  <g stroke="#b5362b" stroke-width="2.4" fill="none">
+    <ellipse cx="33" cy="66" rx="6" ry="8" transform="rotate(-35 33 66)"/>
+    <line x1="36" y1="70" x2="46" y2="80"/>
+    <ellipse cx="67" cy="66" rx="6" ry="8" transform="rotate(35 67 66)"/>
+    <line x1="64" y1="70" x2="54" y2="80"/>
+  </g>
+  <text font-family="Arial Narrow,Arial" font-weight="bold" fill="#b5362b" font-size="11" letter-spacing="2">
+    <textPath href="#arcTop" startOffset="50%" text-anchor="middle">DALARÖ</textPath>
+  </text>
+  <text font-family="Arial Narrow,Arial" font-weight="bold" fill="#b5362b" font-size="8" letter-spacing="2">
+    <textPath href="#arcBot" startOffset="50%" text-anchor="middle">TENNIS · KLUBB</textPath>
+  </text>
+</svg>`;
+document.getElementById("logoHolder").innerHTML=LOGO_SVG;
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+node_modules/
+*.log
+.DS_Store
+
+# Genereras på Mac med: npx cap add ios
+/ios/App/Pods/
+/ios/App/App/public/
+/ios/App/build/
+/ios/DerivedData/

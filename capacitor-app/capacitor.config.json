@@ -1,0 +1,9 @@
+{
+  "appId": "se.dalarotk.km",
+  "appName": "Dalarö KM",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#f4f1e6"
+  }
+}
