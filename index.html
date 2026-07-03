@@ -206,6 +206,8 @@ function getDays(){
 function adultFinalDay(){ const d=getDays(); return d.length?d[d.length-1].date:null; }            // sista dagen
 function youthFinalDay(){ const d=getDays(); return d.length>1?d[d.length-2].date:(d[0]?d[0].date:null); } // näst sista dagen
 function tournamentYear(){ const d=getDays(); return d.length?parseDate(d[0].date).getFullYear():""; }
+// Arrangör (visas i rubriken och på utskrifter). Ändras under Turneringsinformation.
+function arrangerName(){ return (state.arranger||"").trim() || "Dalarö Tennisklubb"; }
 function tournamentRangeText(){
   const d=getDays(); if(!d.length) return "datum ej satt";
   const a=parseDate(d[0].date), b=parseDate(d[d.length-1].date);
@@ -309,6 +311,7 @@ function newState(){
     lockedDays: {},
     planCourts: {},
     tournament: defaultTournament(),
+    arranger: "Dalarö Tennisklubb",
     organizer: { name:"", phone:"", email:"" },
     venue: "",
     classes: DEFAULT_CLASSES.map((c,i)=>({
@@ -323,6 +326,7 @@ function normalize(s){
   if(!s.tournament) s.tournament=defaultTournament();
   if(!s.tournament.start||!s.tournament.end) s.tournament=defaultTournament();
   if(!s.tournament.name) s.tournament.name="Klubbmästerskap";
+  if(typeof s.arranger!=="string" || !s.arranger.trim()) s.arranger="Dalarö Tennisklubb";
   if(!s.organizer || typeof s.organizer!=="object") s.organizer={ name:"", phone:"", email:"" };
   if(typeof s.venue!=="string") s.venue="";
   if(!s.extraCourts) s.extraCourts={};
@@ -621,7 +625,7 @@ const app=document.getElementById("app");
 function render(){
   ensureDay();
   document.getElementById("appTitle").textContent = state.tournament.name || "Klubbmästerskap";
-  document.getElementById("appSub").textContent = `Dalarö Tennisklubb · ${tournamentRangeText()}`;
+  document.getElementById("appSub").textContent = `${arrangerName()} · ${tournamentRangeText()}`;
   renderTabs();
   if(ui.tab==="info") renderInfo();
   else if(ui.tab==="classes") renderClasses();
@@ -806,7 +810,10 @@ function renderInfo(){
      <div class="row">
        <label class="small" style="flex:1;min-width:220px">Turneringens namn<br>
          <input type="text" id="tName" value="${esc(t.name)}" placeholder="Klubbmästerskap" style="width:100%;max-width:360px"></label>
+       <label class="small" style="flex:1;min-width:220px">Arrangör<br>
+         <input type="text" id="tArranger" value="${esc(state.arranger)}" placeholder="Dalarö Tennisklubb" style="width:100%;max-width:360px"></label>
      </div>
+     <p class="small muted" style="margin:6px 0 0">Arrangören visas under rubriken i alla flikar (t.ex. <i>Dalarö Tennisklubb · ${tournamentRangeText()}</i>) och på utskrifter.</p>
      <div class="row" style="margin-top:10px">
        <label class="small">Startdatum <input type="date" id="tStart" value="${esc(t.start)}"></label>
        <label class="small">Slutdatum <input type="date" id="tEnd" value="${esc(t.end)}"></label>
@@ -853,7 +860,9 @@ function renderInfo(){
     if(!s||!e){ alert("Ange både start- och slutdatum."); return; }
     if(parseDate(e) < parseDate(s)){ alert("Slutdatum måste vara samma dag eller efter startdatum."); return; }
     let c=parseInt(document.getElementById("tCourts").value,10); if(isNaN(c)||c<1)c=1; if(c>8)c=8;
+    const arr=document.getElementById("tArranger").value.trim();
     state.tournament={ ...state.tournament, name:name||"Klubbmästerskap", start:s, end:e };
+    state.arranger=arr||"Dalarö Tennisklubb";
     state.courts=c;
     ensureDay(); save(); render();
   };
@@ -2045,7 +2054,7 @@ function printHeader(title){
   return `<div style="display:flex;align-items:center;gap:16px;border-bottom:3px solid #b5362b;padding-bottom:8px;margin-bottom:14px">
      <span style="display:inline-block;width:64px;height:64px;flex:0 0 auto">${LOGO_SVG}</span>
      <h1 style="margin:0;color:#b5362b;font-family:'Arial Narrow',Arial">
-       Dalarö Tennisklubb · Klubbmästerskap ${tournamentYear()}<br>
+       ${arrangerName()} · ${state.tournament.name||"Klubbmästerskap"} ${tournamentYear()}<br>
        <span style="font-size:16px;font-weight:normal;color:#26211c">${title}</span></h1>
    </div>`;
 }
@@ -2133,7 +2142,7 @@ function printBracketPages(list){
     const scale=Math.min(PAGE_W/natW, (PAGE_H-TITLE_H)/natH);
     const offX=Math.max(0,(PAGE_W - natW*scale)/2);
     pages+=`<div class="brpage">
-       <div style="font-family:'Arial Narrow',Arial;color:#b5362b;font-weight:bold;font-size:15px;padding:0 0 6px">Dalarö TK · KM ${tournamentYear()} · Stege – ${cls.name}${cls.champion?` · 🏆 ${dispName(cls.champion)}`:''}</div>
+       <div style="font-family:'Arial Narrow',Arial;color:#b5362b;font-weight:bold;font-size:15px;padding:0 0 6px">${arrangerName()} · ${state.tournament.name||"KM"} ${tournamentYear()} · Stege – ${cls.name}${cls.champion?` · 🏆 ${dispName(cls.champion)}`:''}</div>
        <div style="position:relative;height:${PAGE_H-TITLE_H}px"><div style="position:absolute;left:${Math.round(offX)}px;top:0;transform:scale(${scale});transform-origin:top left">${inner}</div></div>
      </div>`;
   }
@@ -2156,7 +2165,7 @@ function printChampions(){
       <td style="text-align:left;font-size:16px">${c.champion?'🏆 ':''}<b>${champ}</b></td></tr>`;
   });
   html+=`</tbody></table>
-    <p class="small muted" style="margin-top:18px">Dalarö Tennisklubb · Klubbmästerskap ${tournamentYear()} · ${tournamentRangeText()}</p>`;
+    <p class="small muted" style="margin-top:18px">${arrangerName()} · ${state.tournament.name||"Klubbmästerskap"} ${tournamentYear()} · ${tournamentRangeText()}</p>`;
   doPrint(html);
 }
 
@@ -2240,7 +2249,7 @@ function exportBracketImage(cls){
   const PAD=20, TITLE_H=36, SCALE=2;
   const {body, width, height}=buildBracketSVG(cls);
   const W=width+PAD*2, H=height+TITLE_H+PAD;
-  const title=`Dalarö TK · KM ${tournamentYear()} · ${cls.name}${cls.champion?' · 🏆 '+dispName(cls.champion):''}`;
+  const title=`${arrangerName()} · ${state.tournament.name||"KM"} ${tournamentYear()} · ${cls.name}${cls.champion?' · 🏆 '+dispName(cls.champion):''}`;
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">`+
     `<rect width="100%" height="100%" fill="#ffffff"/>`+
     `<text x="${PAD}" y="26" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="bold" fill="#b5362b">${escXml(title)}</text>`+
