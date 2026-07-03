@@ -113,7 +113,15 @@
   .slotcell{min-height:34px}
   .mtile{background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--red);border-radius:6px;padding:5px 7px;margin-bottom:4px}
   .mtile.conflict{background:#fde9e9;box-shadow:inset 0 0 0 2px #d11}
-  .mtile .cls{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b6356}
+  .mtile .cls{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b6356;display:flex;align-items:center;gap:4px}
+  .mtile .cls .stage{margin-left:auto;font-weight:700;color:#8a8270;white-space:nowrap;display:flex;align-items:center;gap:3px}
+  .mtile .cls .stage .cup{font-size:12px}
+  .mtile.locked{opacity:.92}
+  .mtile.locked .lockmark{color:#b5362b;font-weight:700}
+  .unschedgroup{width:100%}
+  .unschedgroup .ghead{font-size:12px;font-weight:700;color:#26211c;margin:10px 0 6px;display:flex;align-items:center;gap:6px}
+  .unschedgroup .ghead .sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+  .unschedgroup .items{display:flex;flex-wrap:wrap;gap:8px}
   .mtile .cdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
   .schedtable td.pausrow{background:#efe9db;color:#8a8270;text-align:center;font-size:11px;font-style:italic}
   .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 12px;padding:10px 12px;background:var(--paper);border:1px solid var(--line);border-radius:8px}
@@ -304,6 +312,7 @@ function newState(){
     courts: 2,
     migratedV2: true,
     extraCourts: {},
+    lockedDays: {},
     tournament: defaultTournament(),
     classes: DEFAULT_CLASSES.map((c,i)=>({
       id:"c"+i, name:c.name, type:c.type,
@@ -317,6 +326,8 @@ function normalize(s){
   if(!s.tournament) s.tournament=defaultTournament();
   if(!s.tournament.start||!s.tournament.end) s.tournament=defaultTournament();
   if(!s.extraCourts) s.extraCourts={};
+  if(!s.lockedDays) s.lockedDays={};
+  if(!s.planFinalDays) s.planFinalDays={};
   s.classes=s.classes||[];
   // Engångsmigrering (annars återskapas klasser som användaren tagit bort/döpt om).
   if(!s.migratedV2){
@@ -364,6 +375,9 @@ function renameClass(cls){
 }
 function toggleHideClass(cls){
   cls.hidden=!cls.hidden;
+  // När klassen döljs tas dess matcher bort ur schemat; när den visas igen dyker de
+  // spelklara matcherna upp i listan "Ej schemalagda matcher".
+  if(cls.hidden) cls.matches.forEach(m=>{ m.day=null; m.court=null; m.time=null; });
   save(); render();
 }
 function deleteClass(cls){
@@ -383,6 +397,14 @@ function seedCountOf(cls){ return isRanked(cls) ? (cls.seeds>0?cls.seeds:4) : 0;
 function courtsForDay(day){
   const extra=(state.extraCourts && state.extraCourts[day]) || 0;
   return Math.max(1, Math.min(8, state.courts + extra));
+}
+// Är dagens resultat låsta (skyddade mot oavsiktlig ändring)?
+function dayLocked(day){ return !!(day && state.lockedDays && state.lockedDays[day]); }
+function toggleDayLock(day){
+  if(!day) return;
+  state.lockedDays=state.lockedDays||{};
+  if(state.lockedDays[day]) delete state.lockedDays[day]; else state.lockedDays[day]=true;
+  save(); render();
 }
 function isWeekend(date){ const d=parseDate(date); const w=d?d.getDay():1; return w===0||w===6; }
 // Ungdom auto-schemaläggs endast vardagar (lör/sön = endast seniorer).
@@ -568,6 +590,12 @@ function totalRounds(cls){
 }
 function isReady(m){ return m.p1 && m.p2 && !m.winner; }
 function isFinal(cls,m){ return !m.manual && m.round===totalRounds(cls)-1; }
+// Kort etikett för vilken omgång/final en match avser (t.ex. "Omgång 2", "Semifinal", "Final").
+function stageName(cls,m){ return m.manual ? "Manuell" : roundName(m.round, totalRounds(cls)); }
+// Etikett-HTML för matchrubriken: omgång/final till höger, pokal längst till höger för finaler.
+function stageTag(cls,m){
+  return `<span class="stage">${stageName(cls,m)}${isFinal(cls,m)?' <span class="cup">🏆</span>':''}</span>`;
+}
 // Skapa en manuell match (ej del av stegen) och placera den på dagen.
 function createManualMatch(cls,p1,p2,day){
   const m={id:uid(),classId:cls.id,manual:true,round:null,index:null,
@@ -597,13 +625,14 @@ function render(){
   if(ui.tab==="classes") renderClasses();
   else if(ui.tab==="bracket") renderBracketTab();
   else if(ui.tab==="schedule") renderSchedule();
+  else if(ui.tab==="planner") renderPlanner();
   else if(ui.tab==="participants") renderParticipants();
   else if(ui.tab==="print") renderPrintTab();
   else if(ui.tab==="stats") renderStats();
   else if(ui.tab==="about") renderAbout();
 }
 function renderTabs(){
-  const tabs=[["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["stats","Statistik"],["about","Om appen"]];
+  const tabs=[["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["planner","Auto-planering"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["stats","Statistik"],["about","Om appen"]];
   document.getElementById("tabs").innerHTML=tabs.map(([k,l])=>
     `<button class="${ui.tab===k?'active':''}" data-tab="${k}">${l}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{ui.tab=b.dataset.tab;render();});
@@ -725,6 +754,32 @@ function renderAbout(){
        <li>Lör/sön spelar endast seniorer. Max 3 matcher/dag/person, aldrig samtidigt på två banor.</li>
        <li>Manuellt kan matcher läggas 08:00–21:00 och i paus-/lunchluckor (t.ex. paus efter 2, eller 4 i rad).</li>
        <li>Seedade spelare kan inte mötas i första omgången.</li>
+       <li>Nästa omgång i en klass schemaläggs (auto) först när föregående omgång är färdigspelad – kan
+           släppas med <b>Tillåt senare omgångar</b> i Schema-fliken.</li>
+       <li>Ungdomsfinaler läggs näst sista dagen, övriga finaler sista dagen (kan ändras per klass i <b>Auto-planering</b>).</li>
+       <li><b>Auto-planering</b> (egen flik) planerar hela turneringen på en gång: välj finaldag per klass, utnyttjar
+           starttider 08–20 och pauser vid behov, föreslår en extra bana om matcherna inte får plats, och kan lägga
+           seniormatcher redan 09–13 när juniorklasserna är färdigspelade (utom på finaldagar). Varje dags förslag kan
+           föras över till det riktiga schemat med ett klick.</li>
+       <li><b>Lås dagens resultat</b> i Schema-fliken skyddar en dags matcher (resultat, tider, banor) mot oavsiktlig ändring
+           tills du låser upp dagen igen.</li>
+     </ul>
+     <h3 style="color:var(--red)">Färger, felkoder &amp; markeringar</h3>
+     <ul class="small" style="line-height:1.7;list-style:none;padding-left:0">
+       <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#fde9e9;box-shadow:inset 0 0 0 2px #d11;vertical-align:middle;margin-right:8px"></span>
+           <b style="color:#b5362b">Röd match (felkod)</b> – schemakrock: samma bana &amp; tid dubbelbokad, samma spelare på två banor samtidigt, eller fler än 3 matcher samma dag för en spelare. Åtgärda genom att flytta bana/tid/dag.</li>
+       <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#efe9db;vertical-align:middle;margin-right:8px"></span>
+           <b style="color:#8a8270">Grå rad</b> – paus / ledig lucka (kan schemaläggas manuellt).</li>
+       <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#f0eada;vertical-align:middle;margin-right:8px"></span>
+           <b style="color:#8f8775">Ljus rad 🍽</b> – lunchpaus 12–13.</li>
+       <li><span style="color:#c0392b;font-weight:700;margin-right:6px">(n)</span>
+           <b style="color:#c0392b">Röd siffra inom parentes</b> (Statistik) – förslag på antal kvarvarande matcher som bör läggas den dagen för att hinna till finalen.</li>
+       <li><span style="color:var(--green);margin-right:6px">🏆</span>
+           <b style="color:#2e7d32">Grön vinnare</b> – registrerad vinnare/klubbmästare.</li>
+       <li><span style="margin-right:6px">🔒</span>
+           <b style="color:#b5362b">Lås</b> – dagen (eller matchen) är låst mot ändring; lås upp i Schema-fliken.</li>
+       <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#3f88c5;vertical-align:middle;margin-right:8px"></span>
+           <b>Klassfärg</b> – varje klass har en egen färg (vänsterkant på matcher, färgprick i listor) så att klasserna är lätta att skilja åt.</li>
      </ul>
      <h3 style="color:var(--red)">Säkerhetskopiering</h3>
      <p class="small">Använd <b>Exportera</b> (uppe till vänster) för att spara en JSON-fil (filnamnet får datum + klockslag),
@@ -744,6 +799,9 @@ function renderClasses(){
    <div class="toolbar no-print">
      <button class="btn gray" id="newTournament">🗑 Ny turnering, Nollställ allt</button>
      <span class="muted small">Tömmer deltagare, stegar och scheman i alla klasser.</span>
+     <span style="flex:1"></span>
+     <button class="btn ghost" id="resetBrSched">♻ Nollställ stegar &amp; schema (behåll deltagare)</button>
+     <span class="muted small">Lottar om stegarna och rensar alla scheman/resultat – deltagarna behålls.</span>
    </div>
    <div class="card no-print">
      <h2>Turnering</h2>
@@ -868,6 +926,7 @@ function renderClasses(){
   };
   document.getElementById("goBracket").onclick=()=>{ui.tab="bracket";render();};
   document.getElementById("newTournament").onclick=resetEverything;
+  document.getElementById("resetBrSched").onclick=resetBracketsAndSchedule;
 }
 // Rensar HELA appen: deltagare, stegar, scheman, datum. Används av båda nollställ-knapparna.
 function resetEverything(){
@@ -876,6 +935,17 @@ function resetEverything(){
   try{ localStorage.removeItem(LS_KEY); }catch(e){}
   state=newState();
   try{ location.reload(); }catch(e){ save(); ui={tab:"classes",classId:state.classes[0].id,day:null}; ensureDay(); render(); }
+}
+// Nollställer stegar OCH scheman (inkl. resultat) i alla klasser men behåller deltagarna
+// i Klasser & deltagare. Bygger om stegarna direkt utifrån deltagarlistorna.
+function resetBracketsAndSchedule(){
+  if(!confirm("Nollställ Stege och Schema (inkl. alla resultat) i alla klasser?\nDeltagarna i Klasser & deltagare behålls och stegarna lottas om på nytt. Detta kan inte ångras.")) return;
+  state.classes.forEach(c=>{
+    c.matches=[]; c.champion=null;
+    if(c.participants.length>=2) buildBracket(c);   // lotta om stegen från deltagarlistan
+  });
+  state.extraCourts={}; state.lockedDays={};
+  save(); render();
 }
 // Rensar HELA schemat (alla dagar) men behåller stegar och deltagare.
 function clearAllSchedule(){
@@ -1114,6 +1184,7 @@ function renderSchedule(){
    <div class="toolbar no-print">
      <button class="btn" id="genDay">⚙ Generera schema för dagen</button>
      <button class="btn ghost" id="clearDay">Töm dagens schema</button>
+     <button class="btn ${dayLocked(ui.day)?'':'ghost'}" id="lockDay" title="Lås dagens resultat så att de inte ändras av misstag">${dayLocked(ui.day)?'🔓 Lås upp dagens resultat':'🔒 Lås dagens resultat'}</button>
      <button class="btn gray" id="clearSched">🗑 Rensa flik (hela schemat)</button>
      <button class="btn ghost mini" id="printSched">🖨 Skriv ut dagens schema</button>
      <button class="btn ghost mini" id="printBlank">🖨 Skriv ut blankt schema</button>
@@ -1162,16 +1233,21 @@ function renderSchedule(){
   document.getElementById("daybar").innerHTML=getDays().map(d=>{
     const cnt=allMatches().filter(m=>m.day===d.date).length;
     return `<button class="${ui.day===d.date?'active':''}" data-d="${d.date}">
-       <span class="dow">${d.dow}</span><span class="dt">${d.short}</span>
+       <span class="dow">${dayLocked(d.date)?'🔒 ':''}${d.dow}</span><span class="dt">${d.short}</span>
        ${cnt?`<span class="cnt">${cnt} matcher</span>`:""}</button>`;
   }).join("");
   document.querySelectorAll("#daybar button").forEach(b=>b.onclick=()=>{ui.day=b.dataset.d;render();});
-  document.getElementById("genDay").onclick=()=>{ generateDay(ui.day); save(); render(); };
+  document.getElementById("genDay").onclick=()=>{
+    if(dayLocked(ui.day)){ alert("Dagen är låst. Lås upp den först för att ändra schemat."); return; }
+    generateDay(ui.day); save(); render();
+  };
   document.getElementById("clearDay").onclick=()=>{
+    if(dayLocked(ui.day)){ alert("Dagen är låst. Lås upp den först för att tömma schemat."); return; }
     if(!confirm("Töm schemat för "+dayShort(ui.day)+"? Matcherna blir oschemalagda igen.")) return;
     realMatches().forEach(m=>{ if(m.day===ui.day){m.day=null;m.court=null;m.time=null;} });
     save(); render();
   };
+  document.getElementById("lockDay").onclick=()=>toggleDayLock(ui.day);
   document.getElementById("clearSched").onclick=clearAllSchedule;
   document.getElementById("printBlank").onclick=()=>printBlankSchedule();
   document.getElementById("fullGrid").onchange=e=>{ ui.fullGrid=e.target.checked; render(); };
@@ -1325,7 +1401,7 @@ function renderSchedGrid(){
     const lunchRow = ui.fullGrid && (t===720 || t===750);
     html+=`<tr><td class="time">${timeLabel(t, day)}${lunchRow?' 🍽':''}</td>`;
     for(let ct=1;ct<=courts;ct++){
-      const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct);
+      const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct&&!getClass(m.classId).hidden);
       html+=`<td class="slotcell">${here.map(m=>mtileHTML(m,bad)).join("")}</td>`;
     }
     html+=`</tr>`;
@@ -1344,23 +1420,24 @@ function mtileHTML(m,bad){
   const timeOpts=tset.map(t=>`<option value="${t}" ${m.time===t?'selected':''}>${fmtMin(t)}</option>`).join("");
   const dayOpts=getDays().map(d=>`<option value="${d.date}" ${m.day===d.date?'selected':''}>${d.dow.slice(0,3)} ${d.short}</option>`).join("");
   const col=classColor(c);
+  const locked=dayLocked(m.day);
   const winsel=(m.p1&&m.p2)?`<div class="ctrls no-print" style="margin-top:3px">
-       <input type="text" data-f="score" value="${m.score||''}" placeholder="resultat" style="flex:1;min-width:40px">
-       <select data-f="winner" title="Registrera vinnare (uppdaterar stegen)">
+       <input type="text" data-f="score" value="${m.score||''}" placeholder="resultat" style="flex:1;min-width:40px" ${locked?'disabled':''}>
+       <select data-f="winner" title="Registrera vinnare (uppdaterar stegen)" ${locked?'disabled':''}>
          <option value="">Vinnare?</option>
          <option value="p1" ${m.winner===m.p1?'selected':''}>${dispName(m.p1)}</option>
          <option value="p2" ${m.winner===m.p2?'selected':''}>${dispName(m.p2)}</option>
        </select>
      </div>`:"";
-  return `<div class="mtile${conf}" data-id="${m.id}" style="border-left-color:${col}">
-     <div class="cls"><span class="cdot" style="background:${col}"></span>${matchNoTag(m)}${c.name}${isFinal(c,m)?' · FINAL':''}</div>
+  return `<div class="mtile${conf}${locked?' locked':''}" data-id="${m.id}" style="border-left-color:${col}">
+     <div class="cls"><span class="cdot" style="background:${col}"></span>${matchNoTag(m)}${c.name}${locked?' <span class="lockmark">🔒</span>':''}${stageTag(c,m)}</div>
      <div class="vs">${dispName(m.p1)||'?'} <span class="muted">vs</span> ${dispName(m.p2)||'?'}${m.winner?` <span style="color:var(--green)">🏆 ${dispName(m.winner)}</span>`:''}</div>
      ${winsel}
      <div class="ctrls no-print">
-       <select data-f="day">${dayOpts}</select>
-       <select data-f="time">${timeOpts}</select>
-       <select data-f="court">${courtOpts}</select>
-       <button class="btn gray mini" data-f="remove">✕</button>
+       <select data-f="day" ${locked?'disabled':''}>${dayOpts}</select>
+       <select data-f="time" ${locked?'disabled':''}>${timeOpts}</select>
+       <select data-f="court" ${locked?'disabled':''}>${courtOpts}</select>
+       <button class="btn gray mini" data-f="remove" ${locked?'disabled':''}>✕</button>
      </div></div>`;
 }
 function bindTileCtrls(){
@@ -1386,19 +1463,23 @@ function bindTileCtrls(){
   });
 }
 function renderUnsched(){
-  const list=realMatches().filter(m=>isReady(m)&&!m.day&&!getClass(m.classId).hidden);
   const box=document.getElementById("unsched");
-  if(!list.length){ box.innerHTML=`<span class="muted">Inga spelklara matcher väntar på schemaläggning.</span>`; return; }
-  box.innerHTML=list.map(m=>{
-    const c=getClass(m.classId);
-    const stage = m.manual ? "Manuell match" : `${isFinal(c,m)?'FINAL · ':''}${roundName(m.round,totalRounds(c))}`;
+  // Gruppera de spelklara, oschemalagda matcherna per klass (klassordning) för tydlig överblick.
+  const groups=visibleClasses().map(c=>({
+    c, ms: c.matches.filter(m=>isReady(m)&&!m.day).sort((a,b)=>(matchNumber(a)||0)-(matchNumber(b)||0))
+  })).filter(g=>g.ms.length);
+  if(!groups.length){ box.innerHTML=`<span class="muted">Inga spelklara matcher väntar på schemaläggning.</span>`; return; }
+  box.innerHTML=groups.map(({c,ms})=>{
     const col=classColor(c);
-    return `<div class="mtile" style="width:240px;border-left-color:${col}">
-      <div class="cls"><span class="cdot" style="background:${col}"></span>${matchNoTag(m)}${c.name} · ${stage}</div>
+    const tiles=ms.map(m=>`<div class="mtile" style="width:240px;border-left-color:${col}">
+      <div class="cls"><span class="cdot" style="background:${col}"></span>${matchNoTag(m)}${c.name}${stageTag(c,m)}</div>
       <div class="vs">${dispName(m.p1)} <span class="muted">vs</span> ${dispName(m.p2)}</div>
       <div class="ctrls"><button class="btn mini" data-place="${m.id}">➕ Lägg in ${dayShort(ui.day)}</button>
       ${m.manual?`<button class="btn gray mini" data-del="${m.id}">🗑 Ta bort</button>`:""}</div>
-    </div>`;
+    </div>`).join("");
+    return `<div class="unschedgroup">
+      <div class="ghead"><span class="sw" style="background:${col}"></span>${c.name} <span class="muted small">(${ms.length} match${ms.length===1?'':'er'})</span></div>
+      <div class="items">${tiles}</div></div>`;
   }).join("");
   box.querySelectorAll("[data-place]").forEach(b=>b.onclick=()=>{
     const {m}=findMatch(b.dataset.place);
@@ -1473,6 +1554,188 @@ function generateDay(day){
     const cls=getClass(m.classId);
     if(ok(m,cls)) placeMatch(m,day);
   });
+}
+
+/* ================= Hel turneringsplanering (egen flik) ================= */
+// Vald finaldag för en klass (fallback till standard: ungdom näst sista, övriga sista dagen).
+function classFinalDay(cls){
+  const days=getDays();
+  const chosen=state.planFinalDays && state.planFinalDays[cls.id];
+  const def = cls.type==="youth" ? youthFinalDay() : adultFinalDay();
+  let d = (chosen && days.some(x=>x.date===chosen)) ? chosen : def;
+  if(cls.type==="youth" && d && isWeekend(d)){          // juniorfinal måste vara vardag
+    const idx=days.findIndex(x=>x.date===d);
+    for(let i=idx;i>=0;i--){ if(!isWeekend(days[i].date)){ d=days[i].date; break; } }
+  }
+  return d;
+}
+// Är dagen en finaldag för någon (synlig) klass?
+function isPlanFinalDay(date){ return visibleClasses().some(c=>c.matches.some(m=>!m.manual)&&classFinalDay(c)===date); }
+// Kandidat-starttider (minuter) i prioritetsordning för en typ/dag. seniorEarly = juniorer klara.
+function planCandidateTimes(type, date, seniorEarly){
+  const push=(a,s,e,step)=>{ for(let t=s;t<=e;t+=step) a.push(t); return a; };
+  if(type==="youth"){
+    return [...push([],540,750,30), 510, 480, ...push([],780,1230,30)]; // 9–12:30, sen 8:30/8, sist eftermiddag
+  }
+  if(isWeekend(date)) return [...push([],540,1200,60), 480];            // 9–20, sen 8 (reserv)
+  const early = seniorEarly ? push([],540,720,60) : [];                // 9–12 om juniorer klara
+  return [...push([],780,1200,60), ...early, 480];                     // 13–20, ev. 9–12, sist 8
+}
+function planOverlap(a1,a2,b1,b2){ return a1<b2 && b1<a2; }
+// Placera en dags matcher på ett givet antal banor. Returnerar {placed,leftover}.
+function packPlanDay(date, dayMatches, courts){
+  const juniors=dayMatches.filter(x=>x.type==="youth");
+  const seniorEarly = !isWeekend(date) && juniors.length===0 && !isPlanFinalDay(date);
+  const courtIv=Array.from({length:courts},()=>[]);
+  const placed=[], leftover=[];
+  // Juniorer först (morgon), sedan seniorer; inom typ efter omgång.
+  const order=[...dayMatches].sort((a,b)=>(a.type===b.type?0:(a.type==="youth"?-1:1)) || (a.round-b.round));
+  for(const x of order){
+    const dur=x.type==="youth"?MATCH_MIN_YOUTH:MATCH_MIN_SENIOR;
+    let done=false;
+    for(const t of planCandidateTimes(x.type,date,seniorEarly)){
+      for(let ci=0;ci<courts;ci++){
+        if(courtIv[ci].some(iv=>planOverlap(t,t+dur,iv[0],iv[1]))) continue;
+        courtIv[ci].push([t,t+dur]);
+        placed.push({id:x.id, classId:x.classId, court:ci+1, time:t, type:x.type, round:x.round});
+        done=true; break;
+      }
+      if(done) break;
+    }
+    if(!done) leftover.push(x);
+  }
+  return {placed, leftover};
+}
+// Bygg hela turneringens planering (deterministiskt utifrån stegar + valda finaldagar).
+function buildFullPlan(){
+  const days=getDays();
+  const assign={}; days.forEach(d=>assign[d.date]=[]);
+  const finalDayByClass={};
+  visibleClasses().forEach(cls=>{
+    if(!cls.matches.some(m=>!m.manual)) return;
+    const fd=classFinalDay(cls); finalDayByClass[cls.id]=fd;
+    const fi=days.findIndex(d=>d.date===fd);
+    const lastIdx=fi<0?days.length-1:fi;
+    // Tillåtna dagar t.o.m. finaldagen (juniorer ej helg).
+    let avail=[];
+    for(let i=0;i<=lastIdx;i++){ if(cls.type==="youth" && isWeekend(days[i].date)) continue; avail.push(i); }
+    if(!avail.length) avail=[lastIdx<0?0:lastIdx];
+    const A=avail.length, R=totalRounds(cls);
+    const dayIdxForRound=r=> avail[ R<=1 ? A-1 : Math.min(A-1, Math.round(r*(A-1)/(R-1))) ];
+    cls.matches.filter(m=>!m.manual && !isByeMatch(m)).sort((a,b)=>a.round-b.round||a.index-b.index)
+      .forEach(m=>{ assign[days[dayIdxForRound(m.round)].date].push({id:m.id, classId:cls.id, type:cls.type, round:m.round}); });
+    cls.matches.filter(m=>m.manual).forEach(m=>{ assign[days[avail[A-1]].date].push({id:m.id, classId:cls.id, type:cls.type, round:99}); });
+  });
+  const out={ byDay:{}, extraByDay:{}, leftoverByDay:{}, finalDayByClass, hasLeftover:false };
+  days.forEach(d=>{
+    const ms=assign[d.date];
+    out.byDay[d.date]=[]; out.extraByDay[d.date]=0; out.leftoverByDay[d.date]=[];
+    if(!ms.length) return;
+    let best=null, usedExtra=0;
+    for(let extra=0; extra<=2; extra++){
+      best=packPlanDay(d.date, ms, Math.max(1, state.courts+extra)); usedExtra=extra;
+      if(!best.leftover.length) break;
+    }
+    out.byDay[d.date]=best.placed; out.extraByDay[d.date]=usedExtra; out.leftoverByDay[d.date]=best.leftover;
+    if(best.leftover.length) out.hasLeftover=true;
+  });
+  return out;
+}
+// Överför en dags planering till det riktiga schemat.
+function transferPlanDay(date){
+  if(dayLocked(date)){ alert("Dagen är låst i schemat. Lås upp den först för att skriva över."); return; }
+  const plan=buildFullPlan();
+  const entries=plan.byDay[date]||[];
+  if(!entries.length){ alert("Inga planerade matcher denna dag."); return; }
+  if(realMatches().some(m=>m.day===date) && !confirm(`${dayShort(date)} har redan matcher i schemat. Skriv över med planeringen?`)) return;
+  realMatches().forEach(m=>{ if(m.day===date){ m.day=null;m.court=null;m.time=null; } });
+  const extra=plan.extraByDay[date]||0;
+  if(extra>0) state.extraCourts[date]=extra; else delete state.extraCourts[date];
+  entries.forEach(e=>{ const r=findMatch(e.id); if(r){ r.m.day=date; r.m.court=e.court; r.m.time=e.time; } });
+  save(); render();
+  const lo=(plan.leftoverByDay[date]||[]).length;
+  if(lo) alert(`Obs: ${lo} match(er) fick inte plats ${dayShort(date)} ens med extra bana(or).`);
+}
+// Överför hela turneringens planering (hoppar över låsta dagar).
+function transferWholePlan(){
+  const plan=buildFullPlan();
+  const locked=getDays().filter(d=>dayLocked(d.date));
+  if(locked.length && !confirm(`${locked.length} låst(a) dag(ar) hoppas över. Fortsätt?`)) return;
+  if(!confirm("Överför HELA planeringen till det riktiga schemat? Befintligt schema på olåsta dagar skrivs över.")) return;
+  getDays().forEach(d=>{
+    if(dayLocked(d.date)) return;
+    realMatches().forEach(m=>{ if(m.day===d.date){ m.day=null;m.court=null;m.time=null; } });
+    const extra=plan.extraByDay[d.date]||0;
+    if(extra>0) state.extraCourts[d.date]=extra; else delete state.extraCourts[d.date];
+    (plan.byDay[d.date]||[]).forEach(e=>{ const r=findMatch(e.id); if(r){ r.m.day=d.date; r.m.court=e.court; r.m.time=e.time; } });
+  });
+  save(); render();
+  if(plan.hasLeftover) alert("Obs: vissa matcher fick inte plats – se röd markering i planeringen.");
+}
+function renderPlanner(){
+  const days=getDays();
+  if(!days.length){ app.innerHTML=`<div class="card"><h2>Auto-planering</h2><p class="muted">Ange turneringens datum under <b>Klasser &amp; deltagare</b> först.</p></div>`; return; }
+  const classes=visibleClasses().filter(c=>c.matches.some(m=>!m.manual));
+  const plan=buildFullPlan();
+  const clsRows=classes.map(c=>{
+    const opts=days.filter(d=> c.type==="youth" ? !isWeekend(d.date) : true)
+      .map(d=>`<option value="${d.date}" ${classFinalDay(c)===d.date?'selected':''}>${d.dow.slice(0,3)} ${d.short}</option>`).join("");
+    return `<tr>
+      <td style="text-align:left"><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td>
+      <td><span class="badge ${c.type}">${c.type==='youth'?'Ungdom':'Senior'}</span></td>
+      <td><b>${totalRounds(c)}</b> omg.</td>
+      <td><select data-fd="${c.id}">${opts}</select></td></tr>`;
+  }).join("");
+  const dayCards=days.map(d=>{
+    const entries=(plan.byDay[d.date]||[]).slice().sort((a,b)=>(a.time-b.time)||(a.court-b.court));
+    const extra=plan.extraByDay[d.date]||0;
+    const leftover=plan.leftoverByDay[d.date]||[];
+    const rows=entries.map(e=>{
+      const c=getClass(e.classId); const r=findMatch(e.id); const m=r?r.m:null;
+      const who=m&&m.p1&&m.p2 ? `${dispName(m.p1)} – ${dispName(m.p2)}` : `<span class="muted">${m?stageName(c,m):''} – deltagare avgörs av tidigare omgång</span>`;
+      return `<tr>
+        <td>${fmtMin(e.time)}</td><td>Bana ${e.court}</td>
+        <td style="text-align:left"><span class="cdot" style="background:${classColor(c)}"></span>${c.name}</td>
+        <td style="text-align:left">${m?stageName(c,m):''}${m&&isFinal(c,m)?' 🏆':''}</td>
+        <td style="text-align:left">${who}</td></tr>`;
+    }).join("");
+    const lockBadge=dayLocked(d.date)?'<span class="badge" style="background:#f6d9d5;color:#b5362b">🔒 låst</span>':'';
+    return `<div class="card">
+      <div class="row" style="align-items:center">
+        <h2 style="margin:0">${d.dow} ${d.short}</h2>
+        ${extra?`<span class="badge" style="background:#fdeecf;color:#8a6d00">➕ ${extra} extra bana${extra>1?'or':''} föreslås</span>`:''}
+        ${isPlanFinalDay(d.date)?'<span class="badge done">Finaldag</span>':''}
+        ${lockBadge}
+        <span style="flex:1"></span>
+        <button class="btn mini" data-transfer="${d.date}" ${dayLocked(d.date)?'disabled':''}>➡ Överför till schemat</button>
+      </div>
+      ${entries.length?`<div style="overflow-x:auto"><table class="results" style="margin-top:8px"><thead><tr>
+         <th>Tid</th><th>Bana</th><th style="text-align:left">Klass</th><th style="text-align:left">Omgång</th><th style="text-align:left">Match</th></tr></thead>
+         <tbody>${rows}</tbody></table></div>`:'<p class="muted small" style="margin:8px 0 0">Inga matcher planerade denna dag.</p>'}
+      ${leftover.length?`<p class="small" style="color:#b5362b;margin:8px 0 0">⚠ ${leftover.length} match(er) fick inte plats denna dag ens med extra banor – flytta någon klass finaldag eller lägg till fler dagar.</p>`:''}
+    </div>`;
+  }).join("");
+  app.innerHTML=`
+   <div class="card no-print">
+     <h2>Auto-planering – hela turneringen</h2>
+     <p class="small muted">Planerar alla klassers alla matcher över hela turneringen. Välj vilken dag varje klass ska spela
+       <b>final</b> – tidigare omgångar fördelas automatiskt på dagarna före. Vid behov nyttjas starttider 08–20 och en
+       extra bana föreslås. Seniormatcher kan läggas 09–13 när juniorklasserna är färdigspelade (utom på finaldagar).
+       Planeringen är ett <b>förslag</b> – för över den dag för dag, eller hela turneringen på en gång, till det riktiga schemat.</p>
+     <div style="overflow-x:auto"><table class="results"><thead><tr>
+       <th style="text-align:left">Klass</th><th>Typ</th><th>Omgångar</th><th style="text-align:left">Finaldag</th></tr></thead>
+       <tbody>${clsRows||`<tr><td colspan="4" class="muted">Inga stegar byggda ännu – bygg stegar under Klasser &amp; deltagare.</td></tr>`}</tbody></table></div>
+     <div class="toolbar" style="margin-top:12px">
+       <button class="btn" id="transferAll">➡ Överför HELA planeringen till schemat</button>
+       ${plan.hasLeftover?'<span class="small" style="color:#b5362b">⚠ Vissa matcher får inte plats – se röd text nedan.</span>':'<span class="small" style="color:#2e7d32">✓ Alla matcher får plats i planeringen.</span>'}
+     </div>
+   </div>
+   ${dayCards}`;
+  document.querySelectorAll("select[data-fd]").forEach(sel=>sel.onchange=()=>{
+    state.planFinalDays[sel.dataset.fd]=sel.value; save(); render();
+  });
+  document.querySelectorAll("button[data-transfer]").forEach(b=>b.onclick=()=>transferPlanDay(b.dataset.transfer));
+  document.getElementById("transferAll").onclick=transferWholePlan;
 }
 
 /* ----- Tab: Deltagarlista (per person, utifrån namn) ----- */
@@ -1632,6 +1895,7 @@ function renderPrintTab(){
        <button class="btn ghost" id="printSched2">🖨 Skriv ut matchschema (vald dag)</button>
        <button class="btn ghost" id="printBrackets">🖨 Skriv ut alla stegar</button>
        <button class="btn ghost" id="printBlank2">🖨 Skriv ut blankt schema</button>
+       <button class="btn" id="printChamps">🏆 Skriv ut alla klubbmästare</button>
      </div>
    </div>
    <div id="resPreview"></div>`;
@@ -1640,6 +1904,7 @@ function renderPrintTab(){
   document.getElementById("printSched2").onclick=()=>printSchedule(ui.day);
   document.getElementById("printBrackets").onclick=()=>printBrackets();
   document.getElementById("printBlank2").onclick=()=>printBlankSchedule();
+  document.getElementById("printChamps").onclick=()=>printChampions();
   // förhandsvisning av resultat
   document.getElementById("resPreview").innerHTML=resultsHTML(ui.day);
 }
@@ -1717,7 +1982,7 @@ function printSchedule(day){
     }
     html+=`<tr><td class="time">${timeLabel(t, day)}</td>`;
     for(let ct=1;ct<=courts;ct++){
-      const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct);
+      const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct&&!getClass(m.classId).hidden);
       html+=`<td>${here.map(m=>{const c=getClass(m.classId);const n=matchNumber(m);return `<div style="border-left:5px solid ${classColor(c)};padding-left:5px;margin:2px 0">${n!=null?`<b>#${n}</b> `:''}<b>${c.name}</b><br>${dispName(m.p1)} – ${dispName(m.p2)}${isFinal(c,m)?' <i>(final)</i>':''}</div>`;}).join("")}</td>`;
     }
     html+=`</tr>`;
@@ -1776,6 +2041,23 @@ function printBracketPages(list){
 }
 function printOneBracket(cls){ printBracketPages([cls]); }   // stege-fliken
 function printBrackets(){ printBracketPages(visibleClasses()); } // "Skriv ut alla stegar"
+// Utskrift: alla klubbmästare (en rad per klass) – att skriva ut när KM är avgjort.
+function printChampions(){
+  const cls=visibleClasses();
+  let html=printHeader("Klubbmästare "+tournamentYear());
+  html+=`<table class="results" style="width:100%"><thead><tr>
+      <th style="text-align:left;width:44px">Klass</th><th style="text-align:left"></th><th style="text-align:left">🏆 Klubbmästare</th></tr></thead><tbody>`;
+  cls.forEach(c=>{
+    const champ=c.champion?dispName(c.champion):'<span style="color:#999">– ej avgjord –</span>';
+    html+=`<tr>
+      <td style="text-align:left"><span class="cdot" style="background:${classColor(c)};display:inline-block;width:12px;height:12px;border-radius:3px"></span></td>
+      <td style="text-align:left"><b>${c.name}</b></td>
+      <td style="text-align:left;font-size:16px">${c.champion?'🏆 ':''}<b>${champ}</b></td></tr>`;
+  });
+  html+=`</tbody></table>
+    <p class="small muted" style="margin-top:18px">Dalarö Tennisklubb · Klubbmästerskap ${tournamentYear()} · ${tournamentRangeText()}</p>`;
+  doPrint(html);
+}
 
 // Spara en blob på plats användaren väljer (File System Access API) – annars nedladdning.
 async function saveBlob(blob, filename){
