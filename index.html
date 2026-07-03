@@ -1621,9 +1621,21 @@ function buildFullPlan(){
     for(let i=0;i<=lastIdx;i++){ if(cls.type==="youth" && isWeekend(days[i].date)) continue; avail.push(i); }
     if(!avail.length) avail=[lastIdx<0?0:lastIdx];
     const A=avail.length, R=totalRounds(cls);
-    const dayIdxForRound=r=> avail[ R<=1 ? A-1 : Math.min(A-1, Math.round(r*(A-1)/(R-1))) ];
-    cls.matches.filter(m=>!m.manual && !isByeMatch(m)).sort((a,b)=>a.round-b.round||a.index-b.index)
-      .forEach(m=>{ assign[days[dayIdxForRound(m.round)].date].push({id:m.id, classId:cls.id, type:cls.type, round:m.round}); });
+    // Startdag (position i avail) för varje omgång – jämnt fördelat, finalen sist.
+    const startPos=r=> R<=1 ? A-1 : Math.min(A-1, Math.round(r*(A-1)/(R-1)));
+    // Fördela varje omgångs matcher över dagarna från omgångens startdag fram till
+    // dagen före nästa omgångs start – så att inga mellanliggande dagar står tomma i
+    // onödan. Finalomgången ligger enbart på sin egen (final)dag. Omgångsordningen
+    // bevaras alltid (alla matcher i omgång r ligger före omgång r+1).
+    for(let r=0;r<R;r++){
+      const ms=cls.matches.filter(m=>!m.manual && !isByeMatch(m) && m.round===r).sort((a,b)=>a.index-b.index);
+      if(!ms.length) continue;
+      const from=startPos(r);
+      const to = r<R-1 ? Math.max(from, startPos(r+1)-1) : from;
+      const span=[]; for(let k=from;k<=to;k++) span.push(avail[k]);
+      if(!span.length) span.push(avail[Math.min(from,A-1)]);
+      ms.forEach((m,idx)=>{ assign[days[span[idx%span.length]].date].push({id:m.id, classId:cls.id, type:cls.type, round:r}); });
+    }
     cls.matches.filter(m=>m.manual).forEach(m=>{ assign[days[avail[A-1]].date].push({id:m.id, classId:cls.id, type:cls.type, round:99}); });
   });
   const out={ byDay:{}, extraByDay:{}, leftoverByDay:{}, finalDayByClass, hasLeftover:false };
