@@ -743,6 +743,8 @@ function logoMarkup(){
 // Applicera vald bakgrundsfärg och logga (körs vid varje render).
 function applyTheme(){
   document.body.style.background = state.bgColor || "";   // tom = CSS-standard (--cream)
+  const hdr=document.querySelector("header.app");         // huvudet med flikarna – samma färg
+  if(hdr) hdr.style.background = state.bgColor || "";
   const lh=document.getElementById("logoHolder");
   if(lh) lh.innerHTML=logoMarkup();
 }
