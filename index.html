@@ -306,6 +306,7 @@ ensureDay();
 function newState(){
   return {
     courts: 2,
+    lang: "sv",
     migratedV2: true,
     extraCourts: {},
     lockedDays: {},
@@ -327,6 +328,7 @@ function normalize(s){
   if(!s.tournament.start||!s.tournament.end) s.tournament=defaultTournament();
   if(!s.tournament.name) s.tournament.name="Klubbmästerskap";
   if(typeof s.arranger!=="string" || !s.arranger.trim()) s.arranger="Dalarö Tennisklubb";
+  if(s.lang!=="en") s.lang="sv";
   if(!s.organizer || typeof s.organizer!=="object") s.organizer={ name:"", phone:"", email:"" };
   if(typeof s.venue!=="string") s.venue="";
   if(!s.extraCourts) s.extraCourts={};
@@ -619,6 +621,112 @@ function deleteMatch(id){
   save(); render();
 }
 
+/* ---------------- Språk (svenska / engelska) ---------------- */
+// Ordlista svensk källsträng -> engelska. Appen är skriven på svenska; vid engelskt
+// läge översätts gränssnittet efter varje render (textnoder + placeholder/title).
+const EN = {
+  // Flikar
+  "Turneringsinformation":"Tournament info", "Klasser & deltagare":"Classes & players",
+  "Stege":"Bracket", "Schema":"Schedule", "Auto-planering":"Auto planning",
+  "Deltagarlista":"Player list", "Resultat & utskrift":"Results & printing",
+  "Statistik":"Statistics", "Om appen":"About",
+  // Turneringsinformation
+  "Turnering":"Tournament", "Turneringens namn":"Tournament name", "Arrangör":"Organiser",
+  "Startdatum":"Start date", "Slutdatum":"End date", "Antal banor (grundantal)":"Number of courts (base)",
+  "💾 Spara":"💾 Save", "Tävlingsledare":"Tournament director", "Namn":"Name", "Telefon":"Phone",
+  "E-post":"Email", "Spelplats / adress":"Venue / address", "Säkerhetskopia":"Backup",
+  "⬇ Exportera säkerhetskopia":"⬇ Export backup", "⬆ Importera säkerhetskopia":"⬆ Import backup",
+  "Nollställ":"Reset", "🗑 Ny turnering, Nollställ allt":"🗑 New tournament, reset all",
+  "Språk / Language":"Language", "Svenska":"Swedish", "English":"English",
+  // Klasser & deltagare
+  "Klasser":"Classes", "♻ Nollställ stegar & schema (behåll deltagare)":"♻ Reset brackets & schedule (keep players)",
+  "➕ Lägg till klass":"➕ Add class", "✏️ Döp om klass":"✏️ Rename class", "🙈 Dölj klass":"🙈 Hide class",
+  "👁 Visa klass":"👁 Show class", "🗑 Ta bort klass":"🗑 Delete class",
+  "🔒 Lås deltagare & bygg stege":"🔒 Lock players & build bracket", "Visa stege →":"Show bracket →",
+  "🗑 Rensa deltagare (raderar stegen)":"🗑 Clear players (deletes bracket)", "🔁 Ersätt":"🔁 Replace",
+  "Ersätt deltagare:":"Replace player:", "med":"with", "Ungdom 9–13":"Youth 9–13", "Senior 13–21":"Senior 13–21",
+  "Ungdom":"Youth", "Senior":"Senior", "🙈 Dold":"🙈 Hidden", "Ingen seedning":"No seeding",
+  "Matchnummer-kategori (första siffran):":"Match-number category (first digit):",
+  "Seeda denna klass":"Seed this class", "Ersätt deltagare:":"Replace player:",
+  // Stege
+  "Klass:":"Class:", "🔀 Byt spelare":"🔀 Swap players", "🔁 Lotta om / bygg stege":"🔁 Redraw / build bracket",
+  "🗑 Rensa flik (denna stege)":"🗑 Clear tab (this bracket)", "📷 Spara bild av stege":"📷 Save bracket image",
+  "🖨 Skriv ut stege":"🖨 Print bracket", "Mästare":"Champion", "🏆 Klubbmästare":"🏆 Club champion",
+  "Final":"Final", "Semifinal":"Semi-final", "Kvartsfinal":"Quarter-final",
+  // Schema
+  "⚙ Generera schema för dagen":"⚙ Generate schedule for the day", "Töm dagens schema":"Clear the day's schedule",
+  "🔒 Lås dagens resultat":"🔒 Lock the day's results", "🔓 Lås upp dagens resultat":"🔓 Unlock the day's results",
+  "🗑 Rensa flik (hela schemat)":"🗑 Clear tab (whole schedule)", "🖨 Skriv ut dagens schema":"🖨 Print the day's schedule",
+  "🖨 Skriv ut blankt schema":"🖨 Print blank schedule", "🎲 Slumpa in ny match":"🎲 Random new match",
+  "➕ Lägg in match":"➕ Add match", "✕ Rensa":"✕ Clear", "Sök i schemat":"Search the schedule",
+  "Ej schemalagda, spelklara matcher":"Unscheduled, ready matches", "Vald dag":"Selected day",
+  "Hela schemat":"Whole schedule", "Eller välj spelare:":"Or pick players:", "Tid":"Time", "Bana":"Court",
+  "Klass":"Class", "Match":"Match", "Omgång":"Round", "Vinnare?":"Winner?", "resultat":"result",
+  "Tillåt senare omgångar":"Allow later rounds", "🗑 Ta bort":"🗑 Remove",
+  // Auto-planering
+  "Auto-planering – hela turneringen":"Auto planning – whole tournament", "Typ":"Type", "Omgångar":"Rounds",
+  "Finaldag":"Final day", "➡ Överför HELA planeringen till schemat":"➡ Transfer the WHOLE plan to the schedule",
+  "🔄 Rensa & planera om":"🔄 Reset & re-plan", "➡ Överför till schemat":"➡ Transfer to schedule",
+  "↺ rek.":"↺ rec.", "Finaldag":"Final day", "Banor:":"Courts:",
+  // Deltagarlista / Resultat
+  "Deltagarlista & sök":"Player list & search", "🖨 Skriv ut deltagarlista":"🖨 Print player list",
+  "🖨 Skriv ut per klass":"🖨 Print per class", "✏️ Byt namn":"✏️ Rename", "🔎 Matcher":"🔎 Matches",
+  "Resultatlistor & utskrifter":"Result lists & printouts", "Dag:":"Day:",
+  "🖨 Skriv ut resultatlista (vald dag)":"🖨 Print result list (selected day)",
+  "🖨 Skriv ut matchschema (vald dag)":"🖨 Print match schedule (selected day)",
+  "🖨 Skriv ut alla stegar":"🖨 Print all brackets", "🏆 Skriv ut alla klubbmästare":"🏆 Print all club champions",
+  "Ospelade matcher kvar denna dag":"Unplayed matches left this day", "Resultat":"Result", "Nr":"No",
+  // Statistik
+  "Statistik":"Statistics", "Matcher per kategori och dag (schemalagda)":"Matches per category and day (scheduled)",
+  "Antal matcher totalt":"Total number of matches", "Matcher/dag som krävs till finalerna":"Matches/day required for the finals",
+  "Kategori":"Category", "Totalt":"Total", "Kvar":"Left", "Att spela":"To play", "Schemalagda":"Scheduled", "Spelade":"Played",
+  // Om appen
+  "Så här används appen":"How to use the app", "Planeringsregler":"Planning rules",
+  "Färger, felkoder & markeringar":"Colours, error codes & markers", "Säkerhetskopiering":"Backup",
+  // Diverse
+  "Mästare":"Champion", "vs":"vs", "grundantal":"base"
+};
+function t(s){ return (state.lang==="en" && EN[s]!=null) ? EN[s] : s; }
+const _MONTHS_EN = {jan:"Jan",feb:"Feb",mar:"Mar",apr:"Apr",maj:"May",jun:"Jun",jul:"Jul",aug:"Aug",sep:"Sep",okt:"Oct",nov:"Nov",dec:"Dec"};
+const _DOW_EN = {"Söndag":"Sunday","Måndag":"Monday","Tisdag":"Tuesday","Onsdag":"Wednesday","Torsdag":"Thursday","Fredag":"Friday","Lördag":"Saturday",
+  "Sön":"Sun","Mån":"Mon","Tis":"Tue","Ons":"Wed","Tor":"Thu","Fre":"Fri","Lör":"Sat"};
+// Dynamiska strängar (antal, veckodagar, datum) som inte finns exakt i ordlistan.
+function translateDynamic(s){
+  let m, out=s;
+  if(m=s.match(/^(\d+) deltagare$/)) return m[1]+" players";
+  if(m=s.match(/^(\d+) delt\.$/)) return m[1]+" players";
+  if(m=s.match(/^(\d+) omgångar$/)) return m[1]+" rounds";
+  if(m=s.match(/^(\d+) match(?:er)?$/)) return m[1]+(m[1]==="1"?" match":" matches");
+  if(m=s.match(/^(\d+) banor totalt$/)) return m[1]+" courts total";
+  if(m=s.match(/^🗑 Rensa stege & schema för (.+)$/)) return "🗑 Clear bracket & schedule for "+m[1];
+  if(m=s.match(/^➕ Lägg in (.+)$/)) return "➕ Add "+m[1];
+  if(m=s.match(/^(\d+) omg\.$/)) return m[1]+" rounds";
+  // veckodagar (hela ord)
+  for(const [sv,en] of Object.entries(_DOW_EN)) out=out.replace(new RegExp("\\b"+sv+"\\b","g"), en);
+  // månadsförkortningar i datum ("3 aug" -> "3 Aug")
+  out=out.replace(/(\d+)\s+(jan|feb|mar|apr|maj|jun|jul|aug|sep|okt|nov|dec)\b/g,(_,d,mo)=>d+" "+_MONTHS_EN[mo]);
+  return out;
+}
+// Översätt allt textinnehåll i ett DOM-träd till engelska.
+function translateDOM(root){
+  const w=document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  const nodes=[]; let node; while(node=w.nextNode()) nodes.push(node);
+  for(const nd of nodes){
+    const raw=nd.nodeValue, key=raw.trim(); if(!key) continue;
+    let val = EN[key];
+    if(val==null){ const dyn=translateDynamic(key); if(dyn!==key) val=dyn; }
+    if(val!=null && val!==key) nd.nodeValue = raw.replace(key, val);
+  }
+  root.querySelectorAll("[placeholder]").forEach(el=>{ const v=EN[el.getAttribute("placeholder").trim()]; if(v) el.setAttribute("placeholder", v); });
+  root.querySelectorAll("[title]").forEach(el=>{ const v=EN[el.getAttribute("title").trim()]; if(v) el.setAttribute("title", v); });
+}
+function applyLang(){
+  if(state.lang!=="en") return;
+  const tabs=document.getElementById("tabs"), a=document.getElementById("app");
+  if(tabs) translateDOM(tabs);
+  if(a) translateDOM(a);
+}
+
 /* ---------------- Rendering ---------------- */
 const app=document.getElementById("app");
 
@@ -636,6 +744,7 @@ function render(){
   else if(ui.tab==="print") renderPrintTab();
   else if(ui.tab==="stats") renderStats();
   else if(ui.tab==="about") renderAbout();
+  applyLang();   // översätt gränssnittet till engelska om valt
 }
 function renderTabs(){
   const tabs=[["info","Turneringsinformation"],["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["planner","Auto-planering"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["stats","Statistik"],["about","Om appen"]];
@@ -805,6 +914,15 @@ function renderInfo(){
   const esc=s=>String(s==null?"":s).replace(/"/g,"&quot;");
   app.innerHTML=`
    <div class="card no-print">
+     <h2>Språk / Language</h2>
+     <label class="small">Språk / Language:
+       <select id="langSel">
+         <option value="sv" ${state.lang!=="en"?"selected":""}>Svenska</option>
+         <option value="en" ${state.lang==="en"?"selected":""}>English</option>
+       </select>
+     </label>
+   </div>
+   <div class="card no-print">
      <h2>Turnering</h2>
      <p class="small muted">Namn, datum och antal banor för turneringen. Dagar och veckodagar i schemat skapas utifrån datumintervallet.</p>
      <div class="row">
@@ -853,6 +971,8 @@ function renderInfo(){
        <span class="muted small">Tömmer deltagare, stegar och scheman i alla klasser (kan inte ångras).</span>
      </div>
    </div>`;
+  // Språkval
+  document.getElementById("langSel").onchange=e=>{ state.lang=e.target.value==="en"?"en":"sv"; save(); render(); };
   // Spara namn/datum/banor
   document.getElementById("saveInfo").onclick=()=>{
     const name=document.getElementById("tName").value.trim();
