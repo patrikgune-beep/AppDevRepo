@@ -113,6 +113,8 @@
   .slotcell{min-height:34px}
   .mtile{background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--red);border-radius:6px;padding:5px 7px;margin-bottom:4px}
   .mtile.conflict{background:#fde9e9;box-shadow:inset 0 0 0 2px #d11}
+  .mtile .conflictmsg{color:#b5362b;font-size:10px;font-weight:600;margin:3px 0 2px;line-height:1.35}
+  .mtile .conflictmsg span{display:block}
   .mtile .cls{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b6356;display:flex;align-items:center;gap:4px}
   .mtile .cls .stage{margin-left:auto;font-weight:700;color:#8a8270;white-space:nowrap;display:flex;align-items:center;gap:3px}
   .mtile .cls .stage .cup{font-size:12px}
@@ -1487,6 +1489,16 @@ function renderSchedule(){
      </div>
      <div id="schedSearchRes"></div>
    </div>
+   <div class="hint no-print" style="border-color:#e0a3a3;background:#fdf1f1">
+     <b style="color:#b5362b">🔴 Röd match (felkod) = schemakrock.</b> En match markeras röd när den krockar med schemat.
+     Den exakta orsaken visas i rött inuti matchrutan. Det finns tre orsaker:
+     <ul style="margin:6px 0 0;padding-left:18px">
+       <li><b>Dubbelbokad bana</b> – två matcher ligger på <b>samma bana och tid</b>. Flytta någon av dem till en annan bana eller tid.</li>
+       <li><b>Spelarkrock</b> – <b>samma spelare</b> (eller par) är inbokad på <b>två banor samtidigt</b>. Flytta en av matcherna till en annan tid.</li>
+       <li><b>För många matcher</b> – en spelare har <b>fler än 3 matcher samma dag</b>. Flytta någon match till en annan dag.</li>
+     </ul>
+     <span class="muted">Rätta genom att ändra <b>dag</b>, <b>tid</b> eller <b>bana</b> på matchen – markeringen försvinner när krocken är löst.</span>
+   </div>
    <div id="schedWrap"></div>
    <div class="card no-print">
      <h2>Ej schemalagda, spelklara matcher</h2>
@@ -1560,26 +1572,32 @@ function realMatches(){ // riktiga matchobjekt (inte kopior)
 }
 function findMatch(id){ for(const c of state.classes){ const m=c.matches.find(x=>x.id===id); if(m) return {m,c}; } return null; }
 
+// Returnerar en Map: match-id -> Set av orsakstexter (varför matchen är röd/felkod).
+// .has(id) fungerar precis som förr; .get(id) ger de konkreta orsakerna.
 function conflicts(day){
-  // returnera set av match-id med bana/tid-krock, spelarkrock (samma tid) eller >3 matcher/dag
-  const bad=new Set();
+  const bad=new Map();
+  const add=(id,msg)=>{ if(!bad.has(id)) bad.set(id,new Set()); bad.get(id).add(msg); };
   const ms=realMatches().filter(m=>m.day===day && m.time!=null);
-  // bana/tid-krock
+  // 1) Bana/tid dubbelbokad – två matcher på samma bana och tid.
   const seen={};
-  for(const m of ms){ const k=m.time+"#"+m.court; if(seen[k]){ bad.add(m.id); bad.add(seen[k]); } else seen[k]=m.id; }
-  // spelarkrock samma tid (samma person på två banor)
+  for(const m of ms){ const k=m.time+"#"+m.court;
+    if(seen[k]){ const msg=`Dubbelbokad bana: bana ${m.court} kl ${fmtMin(m.time)} är bokad för fler än en match`; add(m.id,msg); add(seen[k],msg); }
+    else seen[k]=m.id;
+  }
+  // 2) Spelarkrock – samma spelare inbokad på två banor samtidigt.
   const byTime={};
   for(const m of ms){ (byTime[m.time]=byTime[m.time]||[]).push(m); }
   for(const t in byTime){
     const pseen={};
     for(const m of byTime[t]) for(const p of playersOf(m)){
-      if(pseen[p]){ bad.add(m.id); bad.add(pseen[p]); } else pseen[p]=m.id;
+      if(pseen[p]){ const msg=`Spelarkrock: ${p} är inbokad på två banor samtidigt kl ${fmtMin(+t)}`; add(m.id,msg); add(pseen[p],msg); }
+      else pseen[p]=m.id;
     }
   }
-  // fler än 3 matcher samma dag för en person
+  // 3) För många matcher – en spelare har fler än 3 matcher samma dag.
   const cnt={};
   for(const m of ms) for(const p of playersOf(m)){ (cnt[p]=cnt[p]||[]).push(m.id); }
-  for(const p in cnt){ if(cnt[p].length>3) cnt[p].forEach(id=>bad.add(id)); }
+  for(const p in cnt){ if(cnt[p].length>3){ const msg=`För många matcher: ${p} har ${cnt[p].length} matcher denna dag (max 3)`; cnt[p].forEach(id=>add(id,msg)); } }
   return bad;
 }
 // Hur många matcher en av matchens spelare redan har den dagen (exkl. matchen själv).
@@ -1677,6 +1695,10 @@ function renderSchedGrid(){
 function mtileHTML(m,bad){
   const c=getClass(m.classId);
   const conf=bad.has(m.id)?" conflict":"";
+  const reasons=bad.has(m.id)?[...bad.get(m.id)]:[];
+  const escAttr=s=>String(s).replace(/"/g,"&quot;");
+  const conflictMsg=reasons.length
+    ? `<div class="conflictmsg" title="${escAttr(reasons.join(" • "))}">⚠ ${reasons.map(r=>`<span>${r}</span>`).join("")}</div>` : "";
   const dayCourts=courtsForDay(m.day||ui.day);
   const courtOpts=Array.from({length:dayCourts},(_,i)=>`<option value="${i+1}" ${m.court===i+1?'selected':''}>Bana ${i+1}</option>`).join("");
   const tset=[...new Set([...manualSlots(c.type), ...(m.time!=null?[m.time]:[])])].sort((a,b)=>a-b);
@@ -1695,6 +1717,7 @@ function mtileHTML(m,bad){
   return `<div class="mtile${conf}${locked?' locked':''}" data-id="${m.id}" style="border-left-color:${col}">
      <div class="cls"><span class="cdot" style="background:${col}"></span>${matchNoTag(m)}${c.name}${locked?' <span class="lockmark">🔒</span>':''}${stageTag(c,m)}</div>
      <div class="vs">${dispName(m.p1)||'?'} <span class="muted">vs</span> ${dispName(m.p2)||'?'}${m.winner?` <span style="color:var(--green)">🏆 ${dispName(m.winner)}</span>`:''}</div>
+     ${conflictMsg}
      ${winsel}
      <div class="ctrls no-print">
        <select data-f="day" ${locked?'disabled':''}>${dayOpts}</select>
