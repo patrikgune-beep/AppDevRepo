@@ -10,6 +10,7 @@
     --paper:#fbf9f1;
     --red:#b5362b;
     --red-dark:#8f2a21;
+    --head:#b5362b;
     --sky:#84b6d6;
     --green:#3f6b39;
     --ink:#26211c;
@@ -35,7 +36,7 @@
   header.app h1{
     margin:0;font-size:22px;letter-spacing:.5px;
     font-family:"Arial Narrow",Arial,sans-serif;text-transform:uppercase;
-    color:var(--red);
+    color:var(--head);
   }
   header.app .sub{margin:0;font-size:12px;color:#6b6356;text-transform:uppercase;letter-spacing:2px}
   header.app .spacer{flex:1}
@@ -62,7 +63,7 @@
   select,input[type=text]{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#fff}
   textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--line);border-radius:8px;resize:vertical;background:#fff}
   .card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
-  .card h2{margin:0 0 10px;font-size:17px;color:var(--red)}
+  .card h2{margin:0 0 10px;font-size:17px;color:var(--head)}
   .grid-classes{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
   .classcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;transition:.15s}
   .classcard:hover{border-color:var(--red);box-shadow:0 3px 10px rgba(0,0,0,.07)}
@@ -311,6 +312,7 @@ function newState(){
     lang: "sv",
     logo: null,
     bgColor: null,
+    headColor: null,
     migratedV2: true,
     extraCourts: {},
     lockedDays: {},
@@ -335,6 +337,7 @@ function normalize(s){
   if(s.lang!=="en") s.lang="sv";
   if(typeof s.logo!=="string") s.logo=null;
   if(typeof s.bgColor!=="string") s.bgColor=null;
+  if(typeof s.headColor!=="string") s.headColor=null;
   if(!s.organizer || typeof s.organizer!=="object") s.organizer={ name:"", phone:"", email:"" };
   if(typeof s.venue!=="string") s.venue="";
   if(!s.extraCourts) s.extraCourts={};
@@ -646,6 +649,7 @@ const EN = {
   "Språk / Language":"Language", "Svenska":"Swedish", "English":"English",
   "Logga & bakgrund":"Logo & background", "🖼 Ladda upp logga":"🖼 Upload logo",
   "↺ Standardlogga":"↺ Default logo", "Bakgrundsfärg":"Background colour", "↺ Standardfärg":"↺ Default colour",
+  "Rubrikfärg (alla flikar & utskrifter)":"Heading colour (all tabs & printouts)",
   // Klasser & deltagare
   "Klasser":"Classes", "♻ Nollställ stegar & schema (behåll deltagare)":"♻ Reset brackets & schedule (keep players)",
   "➕ Lägg till klass":"➕ Add class", "✏️ Döp om klass":"✏️ Rename class", "🙈 Dölj klass":"🙈 Hide class",
@@ -695,6 +699,8 @@ const EN = {
   "Mästare":"Champion", "vs":"vs", "grundantal":"base"
 };
 function t(s){ return (state.lang==="en" && EN[s]!=null) ? EN[s] : s; }
+// Välj text efter språk – används för längre instruktionstexter (svensk / engelsk).
+function L(sv,en){ return state.lang==="en" ? en : sv; }
 const _MONTHS_EN = {jan:"Jan",feb:"Feb",mar:"Mar",apr:"Apr",maj:"May",jun:"Jun",jul:"Jul",aug:"Aug",sep:"Sep",okt:"Oct",nov:"Nov",dec:"Dec"};
 const _DOW_EN = {"Söndag":"Sunday","Måndag":"Monday","Tisdag":"Tuesday","Onsdag":"Wednesday","Torsdag":"Thursday","Fredag":"Friday","Lördag":"Saturday",
   "Sön":"Sun","Mån":"Mon","Tis":"Tue","Ons":"Wed","Tor":"Thu","Fre":"Fri","Lör":"Sat"};
@@ -742,11 +748,14 @@ function logoMarkup(){
     ? `<img src="${state.logo}" alt="Logga" style="width:100%;height:100%;object-fit:contain">`
     : LOGO_SVG;
 }
-// Applicera vald bakgrundsfärg och logga (körs vid varje render).
+// Rubrikfärg (används i appen och på utskrifter). Standard = klubbröd.
+function headColor(){ return (state.headColor||"").trim() || "#b5362b"; }
+// Applicera vald bakgrundsfärg, rubrikfärg och logga (körs vid varje render).
 function applyTheme(){
   document.body.style.background = state.bgColor || "";   // tom = CSS-standard (--cream)
   const hdr=document.querySelector("header.app");         // huvudet med flikarna – samma färg
   if(hdr) hdr.style.background = state.bgColor || "";
+  document.documentElement.style.setProperty("--head", state.headColor || "#b5362b");
   const lh=document.getElementById("logoHolder");
   if(lh) lh.innerHTML=logoMarkup();
 }
@@ -757,6 +766,7 @@ const app=document.getElementById("app");
 function render(){
   ensureDay();
   applyTheme();
+  document.title = `${state.tournament.name||"Klubbmästerskap"} – ${arrangerName()}`;
   document.getElementById("appTitle").textContent = state.tournament.name || "Klubbmästerskap";
   document.getElementById("appSub").textContent = `${arrangerName()} · ${tournamentRangeText()}`;
   renderTabs();
@@ -873,62 +883,54 @@ function renderAbout(){
      <div class="row" style="align-items:center;gap:14px">
        <div style="width:56px;height:56px;flex:0 0 auto">${logoMarkup()}</div>
        <div>
-         <h2 style="margin:0">Klubbmästerskap – Dalarö Tennisklubb</h2>
-         <p class="small muted" style="margin:2px 0 0">Lokal app för att planera och genomföra KM. All data sparas i din webbläsare.</p>
+         <h2 style="margin:0">${L('Klubbmästerskap','Club championship')} – ${arrangerName()}</h2>
+         <p class="small muted" style="margin:2px 0 0">${L('Lokal app för att planera och genomföra KM. All data sparas i din webbläsare.','Local app for planning and running the club championship. All data is stored in your browser.')}</p>
        </div>
      </div>
-     <p style="margin-top:14px">Appen hanterar hela turneringen från deltagare till färdiga resultat, helt lokalt i webbläsaren –
-        ingen server och inget konto behövs.</p>
-     <h3 style="color:var(--red)">Så här används appen</h3>
+     <p style="margin-top:14px">${L('Appen hanterar hela turneringen från deltagare till färdiga resultat, helt lokalt i webbläsaren – ingen server och inget konto behövs.','The app handles the whole tournament from players to final results, entirely locally in the browser – no server and no account needed.')}</p>
+     <h3 style="color:var(--head)">${L('Så här används appen','How to use the app')}</h3>
      <ol class="small" style="line-height:1.7">
-       <li><b>Turneringsinformation:</b> ange turneringens namn, datum, antal banor, tävlingsledare och spelplats, samt exportera/importera säkerhetskopia.</li>
-       <li><b>Klasser &amp; deltagare:</b> klistra in deltagare per klass (en rad per spelare/par),
-           välj ev. seedning (antal seedade), och lås deltagarna för att bygga stegen.</li>
-       <li><b>Stege:</b> registrera resultat och välj vinnare – vinnaren förs automatiskt vidare och nästa match blir spelklar.</li>
-       <li><b>Schema:</b> generera dagens schema automatiskt eller lägg/flytta matcher manuellt (08–21), byt bana/dag, lägg till extra banor per dag.</li>
-       <li><b>Deltagarlista:</b> se varje person och vilka klasser hen deltar i (dubbelpar uppdelade).</li>
-       <li><b>Resultat &amp; utskrift:</b> skriv ut resultatlistor, matchscheman, blankt schema och alla stegar (med klubblogga).</li>
+       <li><b>${L('Turneringsinformation:','Tournament info:')}</b> ${L('ange turneringens namn, datum, antal banor, tävlingsledare och spelplats, samt exportera/importera säkerhetskopia.','enter the tournament\'s name, dates, number of courts, tournament director and venue, and export/import a backup.')}</li>
+       <li><b>${L('Klasser &amp; deltagare:','Classes &amp; players:')}</b> ${L('klistra in deltagare per klass (en rad per spelare/par), välj ev. seedning (antal seedade), och lås deltagarna för att bygga stegen.','paste players per class (one row per player/pair), choose seeding if any, and lock the players to build the bracket.')}</li>
+       <li><b>${L('Stege:','Bracket:')}</b> ${L('registrera resultat och välj vinnare – vinnaren förs automatiskt vidare och nästa match blir spelklar.','enter results and pick winners – the winner advances automatically and the next match becomes ready.')}</li>
+       <li><b>${L('Schema:','Schedule:')}</b> ${L('generera dagens schema automatiskt eller lägg/flytta matcher manuellt (08–21), byt bana/dag, lägg till extra banor per dag.','generate the day\'s schedule automatically or add/move matches manually (08–21), change court/day, add extra courts per day.')}</li>
+       <li><b>${L('Deltagarlista:','Player list:')}</b> ${L('se varje person och vilka klasser hen deltar i (dubbelpar uppdelade).','see each person and which classes they play in (doubles pairs split).')}</li>
+       <li><b>${L('Resultat &amp; utskrift:','Results &amp; printing:')}</b> ${L('skriv ut resultatlistor, matchscheman, blankt schema och alla stegar (med klubblogga).','print result lists, match schedules, a blank schedule and all brackets (with the club logo).')}</li>
      </ol>
-     <h3 style="color:var(--red)">Planeringsregler</h3>
+     <h3 style="color:var(--head)">${L('Planeringsregler','Planning rules')}</h3>
      <ul class="small" style="line-height:1.7">
-       <li>Auto: junior 30 min (vardag 9–13), senior 60 min (vardag 13–21, helg 9–21). Paus efter var 3:e match, lunch 12–13.</li>
-       <li>Lör/sön spelar endast seniorer. Max 3 matcher/dag/person, aldrig samtidigt på två banor.</li>
-       <li>Manuellt kan matcher läggas 08:00–21:00 och i paus-/lunchluckor (t.ex. paus efter 2, eller 4 i rad).</li>
-       <li>Seedade spelare kan inte mötas i första omgången.</li>
-       <li>Nästa omgång i en klass schemaläggs (auto) först när föregående omgång är färdigspelad – kan
-           släppas med <b>Tillåt senare omgångar</b> i Schema-fliken.</li>
-       <li>Ungdomsfinaler läggs näst sista dagen, övriga finaler sista dagen (kan ändras per klass i <b>Auto-planering</b>).</li>
-       <li><b>Auto-planering</b> (egen flik) planerar hela turneringen på en gång: välj finaldag per klass, utnyttjar
-           starttider 08–20 och pauser vid behov, föreslår en extra bana om matcherna inte får plats, och kan lägga
-           seniormatcher redan 09–13 när juniorklasserna är färdigspelade (utom på finaldagar). Varje dags förslag kan
-           föras över till det riktiga schemat med ett klick.</li>
-       <li><b>Lås dagens resultat</b> i Schema-fliken skyddar en dags matcher (resultat, tider, banor) mot oavsiktlig ändring
-           tills du låser upp dagen igen.</li>
+       <li>${L('Auto: junior 30 min (vardag 9–13), senior 60 min (vardag 13–21, helg 9–21). Paus efter var 3:e match, lunch 12–13.','Auto: junior 30 min (weekdays 9–13), senior 60 min (weekdays 13–21, weekend 9–21). Break after every 3rd match, lunch 12–13.')}</li>
+       <li>${L('Lör/sön spelar endast seniorer. Max 3 matcher/dag/person, aldrig samtidigt på två banor.','Sat/Sun only seniors play. Max 3 matches/day/person, never on two courts at the same time.')}</li>
+       <li>${L('Manuellt kan matcher läggas 08:00–21:00 och i paus-/lunchluckor (t.ex. paus efter 2, eller 4 i rad).','Manually, matches can be placed 08:00–21:00 and in break/lunch gaps (e.g. break after 2, or 4 in a row).')}</li>
+       <li>${L('Seedade spelare kan inte mötas i första omgången.','Seeded players cannot meet in the first round.')}</li>
+       <li>${L('Nästa omgång i en klass schemaläggs (auto) först när föregående omgång är färdigspelad – kan släppas med <b>Tillåt senare omgångar</b> i Schema-fliken.','The next round in a class is scheduled (auto) only when the previous round is finished – can be overridden with <b>Allow later rounds</b> in the Schedule tab.')}</li>
+       <li>${L('Ungdomsfinaler läggs näst sista dagen, övriga finaler sista dagen (kan ändras per klass i <b>Auto-planering</b>).','Youth finals are placed on the second-to-last day, other finals on the last day (can be changed per class in <b>Auto planning</b>).')}</li>
+       <li>${L('<b>Auto-planering</b> (egen flik) planerar hela turneringen på en gång: välj finaldag per klass, utnyttjar starttider 08–20 och pauser vid behov, föreslår en extra bana om matcherna inte får plats, och kan lägga seniormatcher redan 09–13 när juniorklasserna är färdigspelade (utom på finaldagar). Varje dags förslag kan föras över till det riktiga schemat med ett klick.','<b>Auto planning</b> (own tab) plans the whole tournament at once: choose the final day per class, uses start times 08–20 and breaks when needed, suggests an extra court when matches don\'t fit, and can place senior matches as early as 09–13 when the youth classes are finished (except on final days). Each day\'s proposal can be transferred to the real schedule with one click.')}</li>
+       <li>${L('<b>Lås dagens resultat</b> i Schema-fliken skyddar en dags matcher (resultat, tider, banor) mot oavsiktlig ändring tills du låser upp dagen igen.','<b>Lock the day\'s results</b> in the Schedule tab protects a day\'s matches (results, times, courts) from accidental changes until you unlock the day again.')}</li>
      </ul>
-     <h3 style="color:var(--red)">Färger, felkoder &amp; markeringar</h3>
+     <h3 style="color:var(--head)">${L('Färger, felkoder &amp; markeringar','Colours, error codes &amp; markers')}</h3>
      <ul class="small" style="line-height:1.7;list-style:none;padding-left:0">
        <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#fde9e9;box-shadow:inset 0 0 0 2px #d11;vertical-align:middle;margin-right:8px"></span>
-           <b style="color:#b5362b">Röd match (felkod)</b> – schemakrock: samma bana &amp; tid dubbelbokad, samma spelare på två banor samtidigt, eller fler än 3 matcher samma dag för en spelare. Åtgärda genom att flytta bana/tid/dag.</li>
+           <b style="color:#b5362b">${L('Röd match (felkod)','Red match (error code)')}</b> – ${L('schemakrock: samma bana &amp; tid dubbelbokad, samma spelare på två banor samtidigt, eller fler än 3 matcher samma dag för en spelare. Åtgärda genom att flytta bana/tid/dag.','schedule conflict: same court &amp; time double-booked, same player on two courts at once, or more than 3 matches the same day for a player. Fix by moving court/time/day.')}</li>
        <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#efe9db;vertical-align:middle;margin-right:8px"></span>
-           <b style="color:#8a8270">Grå rad</b> – paus / ledig lucka (kan schemaläggas manuellt).</li>
+           <b style="color:#8a8270">${L('Grå rad','Grey row')}</b> – ${L('paus / ledig lucka (kan schemaläggas manuellt).','break / free slot (can be scheduled manually).')}</li>
        <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#f0eada;vertical-align:middle;margin-right:8px"></span>
-           <b style="color:#8f8775">Ljus rad 🍽</b> – lunchpaus 12–13.</li>
+           <b style="color:#8f8775">${L('Ljus rad 🍽','Light row 🍽')}</b> – ${L('lunchpaus 12–13.','lunch break 12–13.')}</li>
        <li><span style="color:#c0392b;font-weight:700;margin-right:6px">(n)</span>
-           <b style="color:#c0392b">Röd siffra inom parentes</b> (Statistik) – förslag på antal kvarvarande matcher som bör läggas den dagen för att hinna till finalen.</li>
+           <b style="color:#c0392b">${L('Röd siffra inom parentes','Red number in parentheses')}</b> ${L('(Statistik) – förslag på antal kvarvarande matcher som bör läggas den dagen för att hinna till finalen.','(Statistics) – suggested number of remaining matches to place that day to reach the final in time.')}</li>
        <li><span style="color:var(--green);margin-right:6px">🏆</span>
-           <b style="color:#2e7d32">Grön vinnare</b> – registrerad vinnare/klubbmästare.</li>
+           <b style="color:#2e7d32">${L('Grön vinnare','Green winner')}</b> – ${L('registrerad vinnare/klubbmästare.','registered winner/club champion.')}</li>
        <li><span style="margin-right:6px">🔒</span>
-           <b style="color:#b5362b">Lås</b> – dagen (eller matchen) är låst mot ändring; lås upp i Schema-fliken.</li>
+           <b style="color:#b5362b">${L('Lås','Lock')}</b> – ${L('dagen (eller matchen) är låst mot ändring; lås upp i Schema-fliken.','the day (or match) is locked against changes; unlock in the Schedule tab.')}</li>
        <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#3f88c5;vertical-align:middle;margin-right:8px"></span>
-           <b>Klassfärg</b> – varje klass har en egen färg (vänsterkant på matcher, färgprick i listor) så att klasserna är lätta att skilja åt.</li>
+           <b>${L('Klassfärg','Class colour')}</b> – ${L('varje klass har en egen färg (vänsterkant på matcher, färgprick i listor) så att klasserna är lätta att skilja åt.','each class has its own colour (left edge of matches, colour dot in lists) so classes are easy to tell apart.')}</li>
      </ul>
-     <h3 style="color:var(--red)">Säkerhetskopiering</h3>
-     <p class="small">Under <b>Turneringsinformation</b> använder du <b>Exportera säkerhetskopia</b> för att spara en JSON-fil
-        (filnamnet får datum + klockslag), och <b>Importera säkerhetskopia</b> för att återställa eller flytta turneringen till en annan dator.</p>
+     <h3 style="color:var(--head)">${L('Säkerhetskopiering','Backup')}</h3>
+     <p class="small">${L('Under <b>Turneringsinformation</b> använder du <b>Exportera säkerhetskopia</b> för att spara en JSON-fil (filnamnet får datum + klockslag), och <b>Importera säkerhetskopia</b> för att återställa eller flytta turneringen till en annan dator.','Under <b>Tournament info</b> you use <b>Export backup</b> to save a JSON file (the filename gets date + time), and <b>Import backup</b> to restore or move the tournament to another computer.')}</p>
      <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
      <p class="small muted">
-       <b>Version (denna sidas senaste ändring):</b> ${appVersionText()}<br>
-       Dalarö Tennisklubb · fristående webbapp (index.html).
+       <b>${L('Version (denna sidas senaste ändring):','Version (this page\'s last change):')}</b> ${appVersionText()}<br>
+       ${arrangerName()} · ${L('fristående webbapp (index.html).','standalone web app (index.html).')}
      </p>
    </div>`;
 }
@@ -1012,6 +1014,13 @@ function renderInfo(){
            <button class="btn gray mini" id="bgReset">↺ Standardfärg</button>
          </div>
        </div>
+       <div>
+         <p class="small muted" style="margin:0 0 6px">Rubrikfärg (alla flikar &amp; utskrifter)</p>
+         <div class="row" style="align-items:center">
+           <input type="color" id="headColor" value="${state.headColor||'#b5362b'}" style="width:48px;height:34px;padding:2px;border:1px solid var(--line);border-radius:6px;background:#fff">
+           <button class="btn gray mini" id="headReset">↺ Standardfärg</button>
+         </div>
+       </div>
      </div>
    </div>
    <div class="card no-print">
@@ -1057,6 +1066,10 @@ function renderInfo(){
   document.getElementById("bgColor").oninput=e=>{ state.bgColor=e.target.value; save(); applyTheme(); };
   document.getElementById("bgColor").onchange=e=>{ state.bgColor=e.target.value; save(); render(); };
   document.getElementById("bgReset").onclick=()=>{ state.bgColor=null; save(); render(); };
+  // Rubrikfärg
+  document.getElementById("headColor").oninput=e=>{ state.headColor=e.target.value; save(); applyTheme(); };
+  document.getElementById("headColor").onchange=e=>{ state.headColor=e.target.value; save(); render(); };
+  document.getElementById("headReset").onclick=()=>{ state.headColor=null; save(); render(); };
   // Spara namn/datum/banor
   document.getElementById("saveInfo").onclick=()=>{
     const name=document.getElementById("tName").value.trim();
@@ -1436,14 +1449,12 @@ function dayLong(date){ const d=getDays().find(x=>x.date===date); return d?`${d.
 function renderSchedule(){
   app.innerHTML=`
    <div class="hint no-print">
-     Auto-planering (paus efter var 3:e match, lunch 12–13):
-     <b>Junior</b> 30 min – vardag, första start 09:00 (sista ≤ 12:30).
-     <b>Senior</b> 60 min – vardag från 13:00, <b>helg från 09:00</b> (sista start ≤ 20:00). Lör/sön: endast seniorer.
-     <b>Manuellt</b> kan matcher läggas 08:00–21:00 för både junior och senior – även i paus-/lunchluckor
-     (t.ex. paus efter 2 matcher eller 4 i rad) via tidsväljaren på matchen. Bocka i "Visa alla tider" nedan
-     för att se hela rutnätet. Max 3 matcher/dag/person och aldrig samtidigt på två banor.
-     Ungdomsfinaler läggs ${youthFinalDay()?dayLong(youthFinalDay()):'näst sista dagen'},
-     övriga finaler ${adultFinalDay()?dayLong(adultFinalDay()):'sista dagen'}.
+     ${L('Auto-planering (paus efter var 3:e match, lunch 12–13):','Auto planning (break after every 3rd match, lunch 12–13):')}
+     <b>${L('Junior','Junior')}</b> ${L('30 min – vardag, första start 09:00 (sista ≤ 12:30).','30 min – weekdays, first start 09:00 (last ≤ 12:30).')}
+     <b>${L('Senior','Senior')}</b> ${L('60 min – vardag från 13:00, <b>helg från 09:00</b> (sista start ≤ 20:00). Lör/sön: endast seniorer.','60 min – weekdays from 13:00, <b>weekend from 09:00</b> (last start ≤ 20:00). Sat/Sun: seniors only.')}
+     <b>${L('Manuellt','Manually')}</b> ${L('kan matcher läggas 08:00–21:00 för både junior och senior – även i paus-/lunchluckor (t.ex. paus efter 2 matcher eller 4 i rad) via tidsväljaren på matchen. Bocka i "Visa alla tider" nedan för att se hela rutnätet. Max 3 matcher/dag/person och aldrig samtidigt på två banor.','matches can be placed 08:00–21:00 for both junior and senior – even in break/lunch gaps (e.g. break after 2 matches or 4 in a row) via the time selector on the match. Tick "Show all times" below to see the whole grid. Max 3 matches/day/person and never on two courts at the same time.')}
+     ${L('Ungdomsfinaler läggs','Youth finals are placed')} ${youthFinalDay()?dayLong(youthFinalDay()):L('näst sista dagen','the second-to-last day')},
+     ${L('övriga finaler','other finals')} ${adultFinalDay()?dayLong(adultFinalDay()):L('sista dagen','the last day')}.
    </div>
    <div class="daybar no-print" id="daybar"></div>
    <div class="toolbar no-print">
@@ -1490,14 +1501,13 @@ function renderSchedule(){
      <div id="schedSearchRes"></div>
    </div>
    <div class="hint no-print" style="border-color:#e0a3a3;background:#fdf1f1">
-     <b style="color:#b5362b">🔴 Röd match (felkod) = schemakrock.</b> En match markeras röd när den krockar med schemat.
-     Den exakta orsaken visas i rött inuti matchrutan. Det finns tre orsaker:
+     <b style="color:#b5362b">${L('🔴 Röd match (felkod) = schemakrock.','🔴 Red match (error code) = schedule conflict.')}</b> ${L('En match markeras röd när den krockar med schemat. Den exakta orsaken visas i rött inuti matchrutan. Det finns tre orsaker:','A match is marked red when it conflicts with the schedule. The exact reason is shown in red inside the match box. There are three causes:')}
      <ul style="margin:6px 0 0;padding-left:18px">
-       <li><b>Dubbelbokad bana</b> – två matcher ligger på <b>samma bana och tid</b>. Flytta någon av dem till en annan bana eller tid.</li>
-       <li><b>Spelarkrock</b> – <b>samma spelare</b> (eller par) är inbokad på <b>två banor samtidigt</b>. Flytta en av matcherna till en annan tid.</li>
-       <li><b>För många matcher</b> – en spelare har <b>fler än 3 matcher samma dag</b>. Flytta någon match till en annan dag.</li>
+       <li><b>${L('Dubbelbokad bana','Double-booked court')}</b> – ${L('två matcher ligger på <b>samma bana och tid</b>. Flytta någon av dem till en annan bana eller tid.','two matches are on the <b>same court and time</b>. Move one of them to another court or time.')}</li>
+       <li><b>${L('Spelarkrock','Player clash')}</b> – ${L('<b>samma spelare</b> (eller par) är inbokad på <b>två banor samtidigt</b>. Flytta en av matcherna till en annan tid.','the <b>same player</b> (or pair) is booked on <b>two courts at the same time</b>. Move one of the matches to another time.')}</li>
+       <li><b>${L('För många matcher','Too many matches')}</b> – ${L('en spelare har <b>fler än 3 matcher samma dag</b>. Flytta någon match till en annan dag.','a player has <b>more than 3 matches the same day</b>. Move a match to another day.')}</li>
      </ul>
-     <span class="muted">Rätta genom att ändra <b>dag</b>, <b>tid</b> eller <b>bana</b> på matchen – markeringen försvinner när krocken är löst.</span>
+     <span class="muted">${L('Rätta genom att ändra <b>dag</b>, <b>tid</b> eller <b>bana</b> på matchen – markeringen försvinner när krocken är löst.','Fix it by changing the <b>day</b>, <b>time</b> or <b>court</b> of the match – the marker disappears once the conflict is resolved.')}</span>
    </div>
    <div id="schedWrap"></div>
    <div class="card no-print">
@@ -1585,18 +1595,19 @@ function conflicts(day){
     else seen[k]=m.id;
   }
   // 2) Spelarkrock – samma spelare inbokad på två banor samtidigt.
+  // Deduplicera spelare inom EN match (samma namn i ett dubbellag/dubbelmatch räknas en gång).
   const byTime={};
   for(const m of ms){ (byTime[m.time]=byTime[m.time]||[]).push(m); }
   for(const t in byTime){
     const pseen={};
-    for(const m of byTime[t]) for(const p of playersOf(m)){
+    for(const m of byTime[t]) for(const p of new Set(playersOf(m))){
       if(pseen[p]){ const msg=`Spelarkrock: ${p} är inbokad på två banor samtidigt kl ${fmtMin(+t)}`; add(m.id,msg); add(pseen[p],msg); }
       else pseen[p]=m.id;
     }
   }
-  // 3) För många matcher – en spelare har fler än 3 matcher samma dag.
+  // 3) För många matcher – en spelare har fler än 3 matcher samma dag (dubbletter i en match räknas en gång).
   const cnt={};
-  for(const m of ms) for(const p of playersOf(m)){ (cnt[p]=cnt[p]||[]).push(m.id); }
+  for(const m of ms) for(const p of new Set(playersOf(m))){ (cnt[p]=cnt[p]||[]).push(m.id); }
   for(const p in cnt){ if(cnt[p].length>3){ const msg=`För många matcher: ${p} har ${cnt[p].length} matcher denna dag (max 3)`; cnt[p].forEach(id=>add(id,msg)); } }
   return bad;
 }
@@ -2211,7 +2222,7 @@ function printParticipantsByClass(fid){
   if(!classes.length){ alert("Inga deltagare att skriva ut."); return; }
   let html=printHeader("Deltagare per klass");
   for(const c of classes){
-    html+=`<h3 style="color:var(--red);margin:14px 0 4px">${c.name} <span style="font-weight:normal;font-size:13px;color:#666">(${c.participants.length} deltagare)</span></h3>`;
+    html+=`<h3 style="color:var(--head);margin:14px 0 4px">${c.name} <span style="font-weight:normal;font-size:13px;color:#666">(${c.participants.length} deltagare)</span></h3>`;
     html+=`<ol style="margin:0 0 12px 22px;font-size:13px;line-height:1.6">`+c.participants.map(p=>`<li>${dispName(p)}</li>`).join("")+`</ol>`;
   }
   doPrint(html);
@@ -2276,9 +2287,9 @@ function doPrint(html){
   window.print();
 }
 function printHeader(title){
-  return `<div style="display:flex;align-items:center;gap:16px;border-bottom:3px solid #b5362b;padding-bottom:8px;margin-bottom:14px">
+  return `<div style="display:flex;align-items:center;gap:16px;border-bottom:3px solid ${headColor()};padding-bottom:8px;margin-bottom:14px">
      <span style="display:inline-block;width:64px;height:64px;flex:0 0 auto">${logoMarkup()}</span>
-     <h1 style="margin:0;color:#b5362b;font-family:'Arial Narrow',Arial">
+     <h1 style="margin:0;color:${headColor()};font-family:'Arial Narrow',Arial">
        ${arrangerName()} · ${state.tournament.name||"Klubbmästerskap"} ${tournamentYear()}<br>
        <span style="font-size:16px;font-weight:normal;color:#26211c">${title}</span></h1>
    </div>`;
@@ -2367,7 +2378,7 @@ function printBracketPages(list){
     const scale=Math.min(PAGE_W/natW, (PAGE_H-TITLE_H)/natH);
     const offX=Math.max(0,(PAGE_W - natW*scale)/2);
     pages+=`<div class="brpage">
-       <div style="font-family:'Arial Narrow',Arial;color:#b5362b;font-weight:bold;font-size:15px;padding:0 0 6px">${arrangerName()} · ${state.tournament.name||"KM"} ${tournamentYear()} · Stege – ${cls.name}${cls.champion?` · 🏆 ${dispName(cls.champion)}`:''}</div>
+       <div style="font-family:'Arial Narrow',Arial;color:${headColor()};font-weight:bold;font-size:15px;padding:0 0 6px">${arrangerName()} · ${state.tournament.name||"KM"} ${tournamentYear()} · Stege – ${cls.name}${cls.champion?` · 🏆 ${dispName(cls.champion)}`:''}</div>
        <div style="position:relative;height:${PAGE_H-TITLE_H}px"><div style="position:absolute;left:${Math.round(offX)}px;top:0;transform:scale(${scale});transform-origin:top left">${inner}</div></div>
      </div>`;
   }
@@ -2477,7 +2488,7 @@ function exportBracketImage(cls){
   const title=`${arrangerName()} · ${state.tournament.name||"KM"} ${tournamentYear()} · ${cls.name}${cls.champion?' · 🏆 '+dispName(cls.champion):''}`;
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">`+
     `<rect width="100%" height="100%" fill="#ffffff"/>`+
-    `<text x="${PAD}" y="26" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="bold" fill="#b5362b">${escXml(title)}</text>`+
+    `<text x="${PAD}" y="26" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="bold" fill="${headColor()}">${escXml(title)}</text>`+
     `<g transform="translate(${PAD},${TITLE_H})">${body}</g></svg>`;
   const url=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}));
   const img=new Image();
