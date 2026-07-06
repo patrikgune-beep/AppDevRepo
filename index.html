@@ -84,6 +84,9 @@
   }
   .match.champbox{border:none;background:transparent}
   .match .slot.swapsel{background:#fff3bf;outline:2px solid #f0a500;border-radius:5px}
+  .match.moveable{cursor:pointer}
+  .match.moveable:hover{outline:2px dashed #2f80c9}
+  .match.movesel{outline:3px solid #2f80c9;background:#eaf4fc}
   .mno{display:inline-block;font-size:10px;font-weight:700;color:#fff;background:#6b6356;border-radius:4px;padding:0 5px;margin-right:5px;letter-spacing:.5px}
   .match .slot{display:flex;align-items:center;gap:6px;padding:7px 9px;border-bottom:1px dashed var(--line)}
   .match .slot:last-of-type{border-bottom:none}
@@ -1270,9 +1273,12 @@ function renderBracketTab(){
        Skriv resultatet i rutan och välj <b>vinnare</b> i listan (eller klicka på spelarens namn).
        Vinnaren förs automatiskt vidare och nästa match blir spelklar i <b>Schema → Ej schemalagda</b>.</p>
      ${ui.swapMode?`<div class="hint" style="border-color:#f0a500;background:#fff8e6;margin-top:10px">
-        🔀 <b>Bytesläge på:</b> klicka på en spelare i första omgången och sedan på en annan – de byter plats. (Berörda resultat nollställs.)</div>`:''}
+        🔀 <b>${L('Bytesläge på:','Swap mode on:')}</b> ${L('klicka på en spelare i första omgången och sedan på en annan – de byter plats. (Berörda resultat nollställs.)','click a player in the first round and then another – they swap places. (Affected results are cleared.)')}</div>`:''}
+     ${ui.moveMode?`<div class="hint" style="border-color:#2f80c9;background:#eaf4fc;margin-top:10px">
+        ↔ <b>${L('Flytta match på:','Move-match mode on:')}</b> ${L('klicka på en match i första omgången och sedan på en annan – de byter plats i trädet (hela paret). Så väljer du t.ex. vilken match som möter en seedad spelare i andra omgången. (Berörda resultat nollställs.)','click a match in the first round and then another – they swap positions in the tree (the whole pair). This is how you choose e.g. which match meets a seeded player in the second round. (Affected results are cleared.)')}</div>`:''}
      <div class="row" style="margin-top:10px">
-       <button class="btn ${ui.swapMode?'':'ghost'} mini" id="swapMode">🔀 Byt spelare ${ui.swapMode?'(på)':''}</button>
+       <button class="btn ${ui.swapMode?'':'ghost'} mini" id="swapMode">🔀 ${L('Byt spelare','Swap players')} ${ui.swapMode?'('+L('på','on')+')':''}</button>
+       <button class="btn ${ui.moveMode?'':'ghost'} mini" id="moveMode">↔ ${L('Flytta match','Move match')} ${ui.moveMode?'('+L('på','on')+')':''}</button>
        <button class="btn ghost mini" id="rebuildBr">🔁 Lotta om / bygg stege</button>
        <button class="btn gray mini" id="clearBr">🗑 Rensa flik (denna stege)</button>
        <span style="flex:1"></span>
@@ -1290,10 +1296,11 @@ function renderBracketTab(){
      </div>`:''}
    </div>
    <div id="bracketWrap"></div>`;
-  document.getElementById("clsSel").onchange=e=>{ui.classId=e.target.value; ui.swapSel=null; render();};
+  document.getElementById("clsSel").onchange=e=>{ui.classId=e.target.value; ui.swapSel=null; ui.moveSel=null; render();};
   document.getElementById("rebuildBr").onclick=()=>rebuildBracketOf(cls);
   document.getElementById("clearBr").onclick=()=>clearBracketOf(cls);
-  document.getElementById("swapMode").onclick=()=>{ ui.swapMode=!ui.swapMode; ui.swapSel=null; render(); };
+  document.getElementById("swapMode").onclick=()=>{ ui.swapMode=!ui.swapMode; if(ui.swapMode){ui.moveMode=false;ui.moveSel=null;} ui.swapSel=null; render(); };
+  document.getElementById("moveMode").onclick=()=>{ ui.moveMode=!ui.moveMode; if(ui.moveMode){ui.swapMode=false;ui.swapSel=null;} ui.moveSel=null; render(); };
   document.getElementById("printBr").onclick=()=>printOneBracket(cls);
   document.getElementById("imgBr").onclick=()=>exportBracketImage(cls);
   const replBtnBr=document.getElementById("replBtnBr");
@@ -1329,10 +1336,18 @@ function renderBracketTab(){
   html+=`</div></div>`;
   wrap.innerHTML=html;
   // events
+  // Flytta-match-läge: klick på hela matchrutan (första omgången) väljer/byter match.
+  if(ui.moveMode){
+    document.querySelectorAll('.match[data-r="0"]').forEach(el=>{
+      const i=+el.dataset.i, m=cls.matches.find(x=>x.round===0&&x.index===i);
+      if(m) el.onclick=()=>handleMoveClick(cls,m);
+    });
+  }
   cls.matches.forEach(m=>{
     ["p1","p2"].forEach(slot=>{
       const el=document.getElementById(`nm_${m.id}_${slot}`);
-      if(el) el.onclick=()=>{
+      if(el) el.onclick=(ev)=>{
+        if(ui.moveMode){ ev.stopPropagation(); handleMoveClick(cls,m); return; }
         if(ui.swapMode) handleSwapClick(cls,m,slot);
         else if(m[slot]) setWinner(cls,m,m[slot]);
       };
@@ -1417,7 +1432,8 @@ function matchHTML(cls,m,total){
   };
   const sched = m.day?`<div class="sched-tag">${matchNoTag(m)}📅 ${dayShort(m.day)} · ${m.time!=null?matchLabel(m):'-'} · Bana ${m.court||'-'}</div>`
                      :(matchNumber(m)!=null?`<div class="sched-tag">${matchNoTag(m)}</div>`:"");
-  return `<div class="match" data-r="${m.round}" data-i="${m.index}" style="border-left:5px solid ${classColor(cls)}">
+  const moveCls = (ui.moveMode && m.round===0) ? (ui.moveSel===m.id?" moveable movesel":" moveable") : "";
+  return `<div class="match${moveCls}" data-r="${m.round}" data-i="${m.index}" style="border-left:5px solid ${classColor(cls)}">
      ${slotHTML(m.p1,"p1")}
      ${slotHTML(m.p2,"p2")}
      ${ (m.p1&&m.p2) ? `<div class="scorerow">
@@ -1430,6 +1446,20 @@ function matchHTML(cls,m,total){
        </div>`:""}
      ${sched}
    </div>`;
+}
+// Byt plats på två hela matcher i omgång 0 (flyttar paren i trädet).
+function handleMoveClick(cls,m){
+  if(m.round!==0) return;
+  if(!ui.moveSel){ ui.moveSel=m.id; render(); return; }
+  if(ui.moveSel===m.id){ ui.moveSel=null; render(); return; }   // avmarkera
+  const A=cls.matches.find(x=>x.id===ui.moveSel);
+  if(!A){ ui.moveSel=null; render(); return; }
+  // Byt hela innehållet (båda spelarna) mellan matcherna.
+  const p1=A.p1, p2=A.p2; A.p1=m.p1; A.p2=m.p2; m.p1=p1; m.p2=p2;
+  // Nollställ ev. resultat och nedströms-placering för de berörda matcherna.
+  [A,m].forEach(x=>{ if(x.winner){ x.winner=null; x.score=""; } clearDownstream(cls,x); });
+  ui.moveSel=null;
+  resolveByes(cls); recompChampion(cls); save(); render();
 }
 // Byt plats på två spelare i omgång 0 (inom samma klass).
 function handleSwapClick(cls,m,slot){
