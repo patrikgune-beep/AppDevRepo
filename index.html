@@ -2393,26 +2393,36 @@ function requestText(r){
 }
 function renderRequests(){
   const days=getDays();
-  const type=ui.reqType||"unavail";
   const names=allParticipantNames();
+  // Redigeringsläge: förifyll formuläret med det valda önskemålet.
+  const editing = ui.reqEdit ? (state.requests||[]).find(r=>r.id===ui.reqEdit) : null;
+  if(ui.reqEdit && !editing) ui.reqEdit=null;   // borttaget under tiden
+  const type = ui.reqType || (editing?editing.type:"unavail");
+  const sameType = editing && editing.type===type;
+  const curPlayer = (ui.reqPlayer!=null) ? ui.reqPlayer : (editing?editing.player:"");
+  const curLevel = ui.reqLevel || (editing?editing.level:"wish");
+  const curDay = sameType ? (editing.day||"") : "";
+  const curFrom = (sameType && editing.type==="unavail") ? editing.from : 900;
+  const curTo = (sameType && editing.type==="unavail") ? editing.to : 1140;
+  const curMax = (sameType && editing.type==="maxperday") ? (editing.max>0?editing.max:1) : 1;
   const timeOpt=(sel)=>{ let o=""; for(let t=480;t<=1260;t+=30) o+=`<option value="${t}" ${sel===t?'selected':''}>${fmtMin(t)}</option>`; return o; };
-  const dayOpts=(withAll)=> (withAll?`<option value="">${L('Alla dagar','All days')}</option>`:"") +
-    days.map(d=>`<option value="${d.date}">${d.dow} ${d.short}</option>`).join("");
+  const dayOpts=(withAll,sel)=> (withAll?`<option value="" ${sel?'':'selected'}>${L('Alla dagar','All days')}</option>`:"") +
+    days.map(d=>`<option value="${d.date}" ${d.date===sel?'selected':''}>${d.dow} ${d.short}</option>`).join("");
   app.innerHTML=`
    <div class="card no-print">
      <h2>${L('Önskemål','Requests')}</h2>
      <p class="small muted">${L('Deltagare kan registrera önskemål om tider de vill slippa eller inte kan spela. <b>Önskar</b> = planeringen försöker ta hänsyn till det. <b>Tvingar</b> = ett krav som alltid respekteras vid schemaläggning och auto-planering. När den dag önskemålet avser passerat markeras det som klart (genomstruket).','Players can register requests about times they want to avoid or cannot play. <b>Wish</b> = the planner tries to honour it. <b>Require</b> = a hard constraint always respected in scheduling and auto planning. When the day the request refers to has passed it is marked done (struck through).')}</p>
    </div>
-   <div class="card no-print">
-     <h3 style="color:var(--head);margin-top:0">${L('Lägg till önskemål','Add request')}</h3>
+   <div class="card no-print" ${editing?'style="border-color:#2f80c9;box-shadow:0 0 0 2px #cfe4f6"':''}>
+     <h3 style="color:var(--head);margin-top:0">${editing?('✏️ '+L('Redigera önskemål','Edit request')):L('Lägg till önskemål','Add request')}</h3>
      <div class="row" style="align-items:flex-end">
        <label class="small">${L('Deltagare','Player')}<br>
-         <input type="text" id="reqPlayer" list="reqNames" value="${(ui.reqPlayer||'').replace(/"/g,'&quot;')}" placeholder="${L('Namn','Name')}" style="min-width:180px">
+         <input type="text" id="reqPlayer" list="reqNames" value="${String(curPlayer).replace(/"/g,'&quot;')}" placeholder="${L('Namn','Name')}" style="min-width:180px">
          <datalist id="reqNames">${names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join("")}</datalist></label>
        <label class="small">${L('Nivå','Level')}<br>
          <select id="reqLevel">
-           <option value="wish" ${ui.reqLevel!=='force'?'selected':''}>${L('Önskar','Wish')}</option>
-           <option value="force" ${ui.reqLevel==='force'?'selected':''}>${L('Tvingar','Require')}</option>
+           <option value="wish" ${curLevel!=='force'?'selected':''}>${L('Önskar','Wish')}</option>
+           <option value="force" ${curLevel==='force'?'selected':''}>${L('Tvingar','Require')}</option>
          </select></label>
        <label class="small">${L('Typ','Type')}<br>
          <select id="reqType">
@@ -2420,14 +2430,15 @@ function renderRequests(){
            <option value="maxperday" ${type==='maxperday'?'selected':''}>${L('Max matcher per dag','Max matches per day')}</option>
          </select></label>
        ${type==="unavail"?`
-         <label class="small">${L('Dag','Day')}<br><select id="reqDay">${dayOpts(false)}</select></label>
-         <label class="small">${L('Från','From')}<br><select id="reqFrom">${timeOpt(900)}</select></label>
-         <label class="small">${L('Till','To')}<br><select id="reqTo">${timeOpt(1140)}</select></label>
+         <label class="small">${L('Dag','Day')}<br><select id="reqDay">${dayOpts(false,curDay)}</select></label>
+         <label class="small">${L('Från','From')}<br><select id="reqFrom">${timeOpt(curFrom)}</select></label>
+         <label class="small">${L('Till','To')}<br><select id="reqTo">${timeOpt(curTo)}</select></label>
        `:`
-         <label class="small">${L('Max matcher/dag','Max matches/day')}<br><input type="number" id="reqMax" min="1" max="5" value="1" style="width:60px"></label>
-         <label class="small">${L('Dag','Day')}<br><select id="reqDay">${dayOpts(true)}</select></label>
+         <label class="small">${L('Max matcher/dag','Max matches/day')}<br><input type="number" id="reqMax" min="1" max="5" value="${curMax}" style="width:60px"></label>
+         <label class="small">${L('Dag','Day')}<br><select id="reqDay">${dayOpts(true,curDay)}</select></label>
        `}
-       <button class="btn" id="reqAdd">➕ ${L('Lägg till','Add')}</button>
+       <button class="btn" id="reqAdd">${editing?('💾 '+L('Spara ändringar','Save changes')):('➕ '+L('Lägg till','Add'))}</button>
+       ${editing?`<button class="btn ghost" id="reqCancel">${L('Avbryt','Cancel')}</button>`:''}
      </div>
    </div>
    <div class="card">
@@ -2440,11 +2451,13 @@ function renderRequests(){
     ui.reqLevel=document.getElementById("reqLevel").value;
     render();
   };
+  const resetReqForm=()=>{ ui.reqEdit=null; ui.reqPlayer=null; ui.reqLevel=null; ui.reqType=null; };
   document.getElementById("reqAdd").onclick=()=>{
     const player=document.getElementById("reqPlayer").value.trim();
     if(!player){ alert(L("Ange deltagarens namn.","Enter the player's name.")); return; }
     const level=document.getElementById("reqLevel").value==="force"?"force":"wish";
-    const r={ id:"r"+uid(), player, level, type };
+    // Behåll id om vi redigerar, annars nytt önskemål.
+    const r={ id: ui.reqEdit || ("r"+uid()), player, level, type };
     if(type==="unavail"){
       r.day=document.getElementById("reqDay").value||null;
       r.from=parseInt(document.getElementById("reqFrom").value,10);
@@ -2455,9 +2468,14 @@ function renderRequests(){
       r.max=Math.max(1,parseInt(document.getElementById("reqMax").value,10)||1);
       r.day=document.getElementById("reqDay").value||null;
     }
-    state.requests.push(r);
-    ui.reqPlayer=""; save(); render();
+    if(ui.reqEdit){
+      const i=state.requests.findIndex(x=>x.id===ui.reqEdit);
+      if(i>=0) state.requests[i]=r; else state.requests.push(r);
+    } else state.requests.push(r);
+    resetReqForm(); save(); render();
   };
+  const reqCancel=document.getElementById("reqCancel");
+  if(reqCancel) reqCancel.onclick=()=>{ resetReqForm(); render(); };
   // Lista – aktiva först, klara (passerade) sist och genomstrukna.
   const list=(state.requests||[]).map(r=>({r, done:requestDone(r)}))
     .sort((a,b)=> (a.done-b.done) || String(a.r.player).localeCompare(String(b.r.player),"sv"));
@@ -2483,10 +2501,19 @@ function renderRequests(){
         <td>${lvlBadge}</td>
         <td>${done?`✓ ${L('Klar','Done')}`:`<span class="muted">${L('Aktiv','Active')}</span>`}</td>
         <td style="text-align:left">${confCell}</td>
-        <td><button class="btn gray mini" data-delreq="${r.id}">🗑</button></td></tr>`;
+        <td style="white-space:nowrap">
+          <button class="btn ghost mini ${ui.reqEdit===r.id?'':''}" data-editreq="${r.id}" title="${L('Redigera','Edit')}">✏️</button>
+          <button class="btn gray mini" data-delreq="${r.id}" title="${L('Ta bort','Delete')}">🗑</button></td></tr>`;
     }).join("")}
     </tbody></table>`;
+  box.querySelectorAll("[data-editreq]").forEach(b=>b.onclick=()=>{
+    const r=(state.requests||[]).find(x=>x.id===b.dataset.editreq); if(!r) return;
+    ui.reqEdit=r.id; ui.reqType=r.type; ui.reqPlayer=r.player; ui.reqLevel=r.level;
+    render();
+    const card=document.querySelector('.card[style*="2f80c9"]'); if(card) card.scrollIntoView({behavior:'smooth',block:'center'});
+  });
   box.querySelectorAll("[data-delreq]").forEach(b=>b.onclick=()=>{
+    if(ui.reqEdit===b.dataset.delreq){ ui.reqEdit=null; ui.reqPlayer=null; ui.reqLevel=null; ui.reqType=null; }
     state.requests=state.requests.filter(x=>x.id!==b.dataset.delreq); save(); render();
   });
 }
