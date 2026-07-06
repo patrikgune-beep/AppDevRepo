@@ -119,6 +119,7 @@
   .mtile.conflict{background:#fde9e9;box-shadow:inset 0 0 0 2px #d11}
   .mtile .conflictmsg{color:#b5362b;font-size:10px;font-weight:600;margin:3px 0 2px;line-height:1.35}
   .mtile .conflictmsg span{display:block}
+  .mtile .softreq{color:#a56a00;font-size:10px;font-weight:600;margin:2px 0;line-height:1.3}
   .mtile .cls{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b6356;display:flex;align-items:center;gap:4px}
   .mtile .cls .stage{margin-left:auto;font-weight:700;color:#8a8270;white-space:nowrap;display:flex;align-items:center;gap:3px}
   .mtile .cls .stage .cup{font-size:12px}
@@ -913,6 +914,8 @@ function renderAbout(){
        <li>${L('Ungdomsfinaler läggs näst sista dagen, övriga finaler sista dagen (kan ändras per klass i <b>Auto-planering</b>).','Youth finals are placed on the second-to-last day, other finals on the last day (can be changed per class in <b>Auto planning</b>).')}</li>
        <li>${L('<b>Auto-planering</b> (egen flik) planerar hela turneringen på en gång: välj finaldag per klass, utnyttjar starttider 08–20 och pauser vid behov, föreslår en extra bana om matcherna inte får plats, och kan lägga seniormatcher redan 09–13 när juniorklasserna är färdigspelade (utom på finaldagar). Varje dags förslag kan föras över till det riktiga schemat med ett klick.','<b>Auto planning</b> (own tab) plans the whole tournament at once: choose the final day per class, uses start times 08–20 and breaks when needed, suggests an extra court when matches don\'t fit, and can place senior matches as early as 09–13 when the youth classes are finished (except on final days). Each day\'s proposal can be transferred to the real schedule with one click.')}</li>
        <li>${L('<b>Lås dagens resultat</b> i Schema-fliken skyddar en dags matcher (resultat, tider, banor) mot oavsiktlig ändring tills du låser upp dagen igen.','<b>Lock the day\'s results</b> in the Schedule tab protects a day\'s matches (results, times, courts) from accidental changes until you unlock the day again.')}</li>
+       <li>${L('<b>Önskemål</b> (egen flik): deltagare kan registrera tider de vill slippa/inte kan spela, eller max antal matcher per dag. <b>Tvingar</b> = krav som alltid respekteras vid auto-schema och auto-planering. <b>Önskar</b> = planeringen försöker ta hänsyn men kan frångå vid behov. När önskemålets dag passerat markeras det som klart (genomstruket).','<b>Requests</b> (own tab): players can register times they want to avoid/cannot play, or a max number of matches per day. <b>Require</b> = a hard constraint always respected in auto scheduling and auto planning. <b>Wish</b> = the planner tries to honour it but may deviate if needed. When the request\'s day has passed it is marked done (struck through).')}</li>
+       <li>${L('Krockar en schemalagd match med ett önskemål visas det på båda ställena: i <b>Schema</b> på matchrutan (rött för <b>Tvingar</b>, gult 🔸 för <b>Önskar</b>) och i <b>Önskemål</b> i kolumnen Schema (⚠ Krockar).','If a scheduled match conflicts with a request it is shown in both places: in <b>Schedule</b> on the match tile (red for <b>Require</b>, amber 🔸 for <b>Wish</b>) and in <b>Requests</b> in the Schedule column (⚠ Conflict).')}</li>
      </ul>
      <h3 style="color:var(--head)">${L('Färger, felkoder &amp; markeringar','Colours, error codes &amp; markers')}</h3>
      <ul class="small" style="line-height:1.7;list-style:none;padding-left:0">
@@ -926,6 +929,8 @@ function renderAbout(){
            <b style="color:#c0392b">${L('Röd siffra inom parentes','Red number in parentheses')}</b> ${L('(Statistik) – förslag på antal kvarvarande matcher som bör läggas den dagen för att hinna till finalen.','(Statistics) – suggested number of remaining matches to place that day to reach the final in time.')}</li>
        <li><span style="color:var(--green);margin-right:6px">🏆</span>
            <b style="color:#2e7d32">${L('Grön vinnare','Green winner')}</b> – ${L('registrerad vinnare/klubbmästare.','registered winner/club champion.')}</li>
+       <li><span style="margin-right:6px">🔸</span>
+           <b style="color:#a56a00">${L('Gul önskemåls-notering','Amber request note')}</b> – ${L('matchen krockar med ett <b>Önskar</b>-önskemål (mjukt). Tvingande önskemål visas i stället som röd match (felkod).','the match conflicts with a <b>Wish</b> request (soft). A Require request is shown instead as a red match (error code).')}</li>
        <li><span style="margin-right:6px">🔒</span>
            <b style="color:#b5362b">${L('Lås','Lock')}</b> – ${L('dagen (eller matchen) är låst mot ändring; lås upp i Schema-fliken.','the day (or match) is locked against changes; unlock in the Schedule tab.')}</li>
        <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#3f88c5;vertical-align:middle;margin-right:8px"></span>
@@ -1768,6 +1773,9 @@ function mtileHTML(m,bad){
   const escAttr=s=>String(s).replace(/"/g,"&quot;");
   const conflictMsg=reasons.length
     ? `<div class="conflictmsg" title="${escAttr(reasons.join(" • "))}">⚠ ${reasons.map(r=>`<span>${r}</span>`).join("")}</div>` : "";
+  // Mjukt önskemål (Önskar) som matchen krockar med – gul notering (tvingande visas rött ovan).
+  const softV = (m.p1&&m.p2) ? (requestTimeViolation(m,m.day,m.time,"wish") || requestDayViolation(m,m.day,"wish")) : null;
+  const softMsg = softV ? `<div class="softreq">🔸 ${L('Önskemål (Önskar)','Request (Wish)')}: ${softV.nm}</div>` : "";
   const dayCourts=courtsForDay(m.day||ui.day);
   const courtOpts=Array.from({length:dayCourts},(_,i)=>`<option value="${i+1}" ${m.court===i+1?'selected':''}>Bana ${i+1}</option>`).join("");
   const tset=[...new Set([...manualSlots(c.type), ...(m.time!=null?[m.time]:[])])].sort((a,b)=>a-b);
@@ -1787,6 +1795,7 @@ function mtileHTML(m,bad){
      <div class="cls"><span class="cdot" style="background:${col}"></span>${matchNoTag(m)}${c.name}${locked?' <span class="lockmark">🔒</span>':''}${stageTag(c,m)}</div>
      <div class="vs">${dispName(m.p1)||'?'} <span class="muted">vs</span> ${dispName(m.p2)||'?'}${m.winner?` <span style="color:var(--green)">🏆 ${dispName(m.winner)}</span>`:''}</div>
      ${conflictMsg}
+     ${softMsg}
      ${winsel}
      <div class="ctrls no-print">
        <select data-f="day" ${locked?'disabled':''}>${dayOpts}</select>
@@ -1897,6 +1906,18 @@ function requestDayViolation(m, day, level){
     }
   }
   return null;
+}
+// Schemalagda matcher som krockar med ett önskemål (för Önskemål-fliken).
+function requestConflictMatches(r){
+  const name=stripRank(r.player);
+  const sched=realMatches().filter(m=>m.day && m.time!=null && new Set(playersOf(m)).has(name));
+  if(r.type==="unavail"){
+    return sched.filter(m=>{ if(m.day!==r.day) return false; const dur=matchMinFor(getClass(m.classId).type); return m.time < r.to && r.from < m.time+dur; });
+  }
+  const max=r.max>0?r.max:1, byDay={}, out=[];
+  for(const m of sched){ if(r.day && m.day!==r.day) continue; (byDay[m.day]=byDay[m.day]||[]).push(m); }
+  for(const d in byDay){ if(byDay[d].length>max) out.push(...byDay[d]); }
+  return out;
 }
 // Försök placera m på dagen. opts.manual = strunta i veckodagsregeln (men varna ej här).
 // opts.requireUnused = placera bara om ingen av spelarna redan spelar den dagen.
@@ -2442,19 +2463,26 @@ function renderRequests(){
     .sort((a,b)=> (a.done-b.done) || String(a.r.player).localeCompare(String(b.r.player),"sv"));
   const box=document.getElementById("reqList");
   if(!list.length){ box.innerHTML=`<p class="small muted">${L('Inga önskemål registrerade ännu.','No requests registered yet.')}</p>`; return; }
+  const escA=s=>String(s).replace(/"/g,"&quot;");
   box.innerHTML=`<table class="results" style="width:100%"><thead><tr>
       <th style="text-align:left">${L('Deltagare','Player')}</th><th style="text-align:left">${L('Önskemål','Request')}</th>
-      <th>${L('Nivå','Level')}</th><th>${L('Status','Status')}</th><th></th></tr></thead><tbody>
+      <th>${L('Nivå','Level')}</th><th>${L('Status','Status')}</th><th style="text-align:left">${L('Schema','Schedule')}</th><th></th></tr></thead><tbody>
     ${list.map(({r,done})=>{
       const strike=done?'text-decoration:line-through;color:#9a927f':'';
       const lvlBadge=r.level==="force"
         ? `<span class="badge" style="background:#f6d9d5;color:#b5362b">${L('Tvingar','Require')}</span>`
         : `<span class="badge" style="background:#e6eef7;color:#2f5c86">${L('Önskar','Wish')}</span>`;
+      const cm=done?[]:requestConflictMatches(r);
+      const tip=cm.map(m=>`#${matchNumber(m)??'?'} ${dayShort(m.day)} ${m.time!=null?fmtMin(m.time):''}`).join(", ");
+      const confCell=cm.length
+        ? `<span class="badge" style="background:${r.level==='force'?'#fde9e9':'#fdf1df'};color:${r.level==='force'?'#b5362b':'#a56a00'}" title="${escA(tip)}">⚠ ${L('Krockar','Conflict')} (${cm.length})</span>`
+        : `<span class="muted small">${done?'':'✓ '+L('ingen krock','no conflict')}</span>`;
       return `<tr>
         <td style="text-align:left;${strike}">${r.player}</td>
         <td style="text-align:left;${strike}">${requestText(r)}</td>
         <td>${lvlBadge}</td>
         <td>${done?`✓ ${L('Klar','Done')}`:`<span class="muted">${L('Aktiv','Active')}</span>`}</td>
+        <td style="text-align:left">${confCell}</td>
         <td><button class="btn gray mini" data-delreq="${r.id}">🗑</button></td></tr>`;
     }).join("")}
     </tbody></table>`;
