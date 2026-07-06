@@ -330,6 +330,7 @@ function newState(){
     tournament: defaultTournament(),
     arranger: "Dalarö Tennisklubb",
     organizer: { name:"", phone:"", email:"" },
+    chairman: "",
     venue: "",
     classes: DEFAULT_CLASSES.map((c,i)=>({
       id:"c"+i, name:c.name, type:c.type,
@@ -350,6 +351,7 @@ function normalize(s){
   if(typeof s.headColor!=="string") s.headColor=null;
   if(!Array.isArray(s.requests)) s.requests=[];
   if(!s.organizer || typeof s.organizer!=="object") s.organizer={ name:"", phone:"", email:"" };
+  if(typeof s.chairman!=="string") s.chairman="";
   if(typeof s.venue!=="string") s.venue="";
   if(!s.extraCourts) s.extraCourts={};
   if(!s.lockedDays) s.lockedDays={};
@@ -1040,12 +1042,16 @@ function renderInfo(){
      </div>
    </div>
    <div class="card no-print">
-     <h2>Tävlingsledare</h2>
+     <h2>${L('Tävlingsledare &amp; ordförande','Tournament director &amp; chairman')}</h2>
      <div class="row">
-       <label class="small" style="flex:1;min-width:180px">Namn<br><input type="text" id="oName" value="${esc(o.name)}" style="width:100%;max-width:280px"></label>
-       <label class="small" style="flex:1;min-width:150px">Telefon<br><input type="tel" id="oPhone" value="${esc(o.phone)}" style="width:100%;max-width:200px"></label>
-       <label class="small" style="flex:1;min-width:200px">E-post<br><input type="email" id="oMail" value="${esc(o.email)}" style="width:100%;max-width:280px"></label>
+       <label class="small" style="flex:1;min-width:180px">${L('Tävlingsledare','Tournament director')}<br><input type="text" id="oName" value="${esc(o.name)}" style="width:100%;max-width:280px"></label>
+       <label class="small" style="flex:1;min-width:150px">${L('Telefon','Phone')}<br><input type="tel" id="oPhone" value="${esc(o.phone)}" style="width:100%;max-width:200px"></label>
+       <label class="small" style="flex:1;min-width:200px">${L('E-post','Email')}<br><input type="email" id="oMail" value="${esc(o.email)}" style="width:100%;max-width:280px"></label>
      </div>
+     <div class="row" style="margin-top:10px">
+       <label class="small" style="flex:1;min-width:180px">${L('Klubbens ordförande','Club chairman')}<br><input type="text" id="oChair" value="${esc(state.chairman)}" placeholder="${L('Namn','Name')}" style="width:100%;max-width:280px"></label>
+     </div>
+     <p class="small muted" style="margin:6px 0 0">${L('Tävlingsledare och ordförande visas som underskriftsrader på klubbmästardiplomen.','The tournament director and chairman appear as signature lines on the club-champion diplomas.')}</p>
    </div>
    <div class="card no-print">
      <h2>Spelplats / adress</h2>
@@ -1104,6 +1110,7 @@ function renderInfo(){
   bindSave("oName", v=>{ state.organizer.name=v; });
   bindSave("oPhone", v=>{ state.organizer.phone=v; });
   bindSave("oMail", v=>{ state.organizer.email=v; });
+  bindSave("oChair", v=>{ state.chairman=v; });
   bindSave("venue", v=>{ state.venue=v; });
   document.getElementById("exportBtn").onclick=exportBackup;
   document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
@@ -1294,6 +1301,7 @@ function renderBracketTab(){
        <span style="flex:1"></span>
        <button class="btn ghost mini" id="imgBr">📷 ${L('Spara bild av stege','Save bracket image')}</button>
        <button class="btn ghost mini" id="imgAllBr">📷 ${L('Bild av alla stegar','Image of all brackets')}</button>
+       ${cls.champion?`<button class="btn ghost mini" id="diplomaBr">🏅 ${L('Diplom','Diploma')}</button>`:''}
        <button class="btn mini" id="printBr">🖨 Skriv ut stege</button>
      </div>
      ${cls.participants.length?`
@@ -1315,6 +1323,7 @@ function renderBracketTab(){
   document.getElementById("printBr").onclick=()=>printOneBracket(cls);
   document.getElementById("imgBr").onclick=()=>exportBracketImage(cls);
   document.getElementById("imgAllBr").onclick=()=>exportAllBracketImages();
+  { const db=document.getElementById("diplomaBr"); if(db) db.onclick=()=>printChampionDiplomas(cls); }
   const replBtnBr=document.getElementById("replBtnBr");
   if(replBtnBr) replBtnBr.onclick=()=>{
     const oldEntry=document.getElementById("replSelBr").value;
@@ -2561,6 +2570,7 @@ function renderPrintTab(){
        <button class="btn ghost" id="imgAllBr2">📷 Spara alla stegar som bild</button>
        <button class="btn ghost" id="printBlank2">🖨 Skriv ut blankt schema</button>
        <button class="btn" id="printChamps">🏆 Skriv ut alla klubbmästare</button>
+       <button class="btn" id="printDiplomas">🏅 Skriv ut diplom (klubbmästare)</button>
      </div>
    </div>
    <div id="resPreview"></div>`;
@@ -2574,6 +2584,7 @@ function renderPrintTab(){
   document.getElementById("imgAllBr2").onclick=()=>exportAllBracketImages();
   document.getElementById("printBlank2").onclick=()=>printBlankSchedule();
   document.getElementById("printChamps").onclick=()=>printChampions();
+  document.getElementById("printDiplomas").onclick=()=>printChampionDiplomas();
   // förhandsvisning av resultat
   document.getElementById("resPreview").innerHTML=resultsHTML(ui.day);
 }
@@ -2737,6 +2748,41 @@ function printChampions(){
   html+=`</tbody></table>
     <p class="small muted" style="margin-top:18px">${arrangerName()} · ${state.tournament.name||"Klubbmästerskap"} ${tournamentYear()} · ${tournamentRangeText()}</p>`;
   doPrint(html);
+}
+// Underskriftsruta för diplom (linje + namn + roll).
+function diplomaSig(role, name){
+  return `<div style="flex:1;text-align:center">
+     <div style="border-top:1.5px solid #333;margin:0 12px 6px;height:26px"></div>
+     <div style="font-size:15px;font-weight:bold;min-height:18px">${name||'&nbsp;'}</div>
+     <div style="font-size:12px;color:#777;letter-spacing:1px">${role}</div>
+   </div>`;
+}
+// Diplom "Klubbmästare [Klass] [Årtal]" – ett per klass med mästare (A4 stående).
+function printChampionDiplomas(only){
+  const list = only ? [only] : visibleClasses().filter(c=>c.champion);
+  if(!list.length){ alert(L("Inga klubbmästare att skriva ut diplom för ännu.","No club champions to print diplomas for yet.")); return; }
+  const year=tournamentYear(), hc=headColor(), arr=arrangerName(), tname=state.tournament.name||"Klubbmästerskap";
+  const pages=list.map((c,i)=>{
+    const last=i===list.length-1;
+    return `<div style="page-break-after:${last?'auto':'always'};box-sizing:border-box;padding:6mm">
+      <div style="border:3px double ${hc};border-radius:14px;padding:30px 38px;min-height:252mm;display:flex;flex-direction:column;align-items:center;text-align:center;font-family:Georgia,'Times New Roman',serif">
+        <div style="width:110px;height:110px;margin-top:6px">${logoMarkup()}</div>
+        <div style="letter-spacing:5px;font-size:15px;color:#8a6d00;margin-top:14px">🏆 ${escXml(arr.toUpperCase())}</div>
+        <h1 style="font-size:44px;letter-spacing:8px;color:${hc};margin:14px 0 2px">${L('KLUBBMÄSTARE','CLUB CHAMPION')}</h1>
+        <div style="font-size:23px;color:#26211c">${escXml(c.name)} · ${year}</div>
+        <div style="width:130px;border-top:2px solid ${hc};margin:26px auto 18px"></div>
+        <div style="font-size:16px;color:#555">${L('utses härmed till klubbmästare','is hereby named club champion')}</div>
+        <div style="font-size:40px;font-weight:bold;margin:14px 0 10px;color:#111">${escXml(dispName(c.champion)||'–')}</div>
+        <div style="font-size:15px;color:#666;max-width:540px">${L(`i ${tname} ${year} arrangerat av ${arr}.`,`in ${tname} ${year} organised by ${arr}.`)}</div>
+        <div style="flex:1"></div>
+        <div style="display:flex;justify-content:space-around;width:100%;max-width:640px;margin-top:44px;gap:44px">
+          ${diplomaSig(L('Tävlingsledare','Tournament director'), escXml(state.organizer&&state.organizer.name||''))}
+          ${diplomaSig(L('Ordförande','Chairman'), escXml(state.chairman||''))}
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+  doPrint(pages);
 }
 
 // Spara en blob på plats användaren väljer (File System Access API) – annars nedladdning.
