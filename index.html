@@ -275,10 +275,15 @@ function daySlots(day){
   return isWeekend(day) ? SENIOR_WEEKEND : [...YOUTH_SLOTS, ...SENIOR_SLOTS];
 }
 // MANUELL schemaläggning: 08:00–21:00 för både junior (30 min-steg) och senior (60 min-steg).
+// Manuella starttider 08:00–21:00 i halvtimmessteg – seniorer kan startas på halvtimme
+// (matchen är ändå 60 min). Autoplanering använder heltimmar (SENIOR_SLOTS).
 function manualSlots(type){
-  const step = type==="youth" ? MATCH_MIN_YOUTH : MATCH_MIN_SENIOR;
-  const out=[]; for(let t=480; t<=1260; t+=step) out.push(t); return out;
+  const out=[]; for(let t=480; t<=1260; t+=30) out.push(t); return out;
 }
+// Överlappar två tidsintervall varandra?
+function timeOverlap(s1,e1,s2,e2){ return s1<e2 && s2<e1; }
+// Matchens längd i minuter (utifrån klasstyp).
+function matchDur(m){ return matchMinFor(getClass(m.classId).type); }
 const ALL_SLOTS = [...new Set([...YOUTH_SLOTS,...SENIOR_WEEKEND,...SENIOR_SLOTS])].sort((a,b)=>a-b);
 function fmtMin(m){ return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); }
 function matchMinFor(type){ return type==="youth"?MATCH_MIN_YOUTH:MATCH_MIN_SENIOR; }
@@ -908,7 +913,7 @@ function renderAbout(){
      <ul class="small" style="line-height:1.7">
        <li>${L('Auto: junior 30 min (vardag 9–13), senior 60 min (vardag 13–21, helg 9–21). Paus efter var 3:e match, lunch 12–13.','Auto: junior 30 min (weekdays 9–13), senior 60 min (weekdays 13–21, weekend 9–21). Break after every 3rd match, lunch 12–13.')}</li>
        <li>${L('Lör/sön spelar endast seniorer. Max 3 matcher/dag/person, aldrig samtidigt på två banor.','Sat/Sun only seniors play. Max 3 matches/day/person, never on two courts at the same time.')}</li>
-       <li>${L('Manuellt kan matcher läggas 08:00–21:00 och i paus-/lunchluckor (t.ex. paus efter 2, eller 4 i rad).','Manually, matches can be placed 08:00–21:00 and in break/lunch gaps (e.g. break after 2, or 4 in a row).')}</li>
+       <li>${L('Manuellt kan matcher läggas 08:00–21:00 och i paus-/lunchluckor (t.ex. paus efter 2, eller 4 i rad). Seniormatcher kan manuellt startas på halvtimme (t.ex. 11:30) men bokar ändå 60 min (till 12:30); autoplanering använder heltimmar.','Manually, matches can be placed 08:00–21:00 and in break/lunch gaps (e.g. break after 2, or 4 in a row). Senior matches can be started manually on the half hour (e.g. 11:30) but still occupy 60 min (until 12:30); auto planning uses whole hours.')}</li>
        <li>${L('Seedade spelare kan inte mötas i första omgången.','Seeded players cannot meet in the first round.')}</li>
        <li>${L('Nästa omgång i en klass schemaläggs (auto) först när föregående omgång är färdigspelad – kan släppas med <b>Tillåt senare omgångar</b> i Schema-fliken.','The next round in a class is scheduled (auto) only when the previous round is finished – can be overridden with <b>Allow later rounds</b> in the Schedule tab.')}</li>
        <li>${L('Ungdomsfinaler läggs näst sista dagen, övriga finaler sista dagen (kan ändras per klass i <b>Auto-planering</b>).','Youth finals are placed on the second-to-last day, other finals on the last day (can be changed per class in <b>Auto planning</b>).')}</li>
@@ -1508,7 +1513,7 @@ function renderSchedule(){
      ${L('Auto-planering (paus efter var 3:e match, lunch 12–13):','Auto planning (break after every 3rd match, lunch 12–13):')}
      <b>${L('Junior','Junior')}</b> ${L('30 min – vardag, första start 09:00 (sista ≤ 12:30).','30 min – weekdays, first start 09:00 (last ≤ 12:30).')}
      <b>${L('Senior','Senior')}</b> ${L('60 min – vardag från 13:00, <b>helg från 09:00</b> (sista start ≤ 20:00). Lör/sön: endast seniorer.','60 min – weekdays from 13:00, <b>weekend from 09:00</b> (last start ≤ 20:00). Sat/Sun: seniors only.')}
-     <b>${L('Manuellt','Manually')}</b> ${L('kan matcher läggas 08:00–21:00 för både junior och senior – även i paus-/lunchluckor (t.ex. paus efter 2 matcher eller 4 i rad) via tidsväljaren på matchen. Bocka i "Visa alla tider" nedan för att se hela rutnätet. Max 3 matcher/dag/person och aldrig samtidigt på två banor.','matches can be placed 08:00–21:00 for both junior and senior – even in break/lunch gaps (e.g. break after 2 matches or 4 in a row) via the time selector on the match. Tick "Show all times" below to see the whole grid. Max 3 matches/day/person and never on two courts at the same time.')}
+     <b>${L('Manuellt','Manually')}</b> ${L('kan matcher läggas 08:00–21:00 för både junior och senior – även i paus-/lunchluckor (t.ex. paus efter 2 matcher eller 4 i rad) via tidsväljaren på matchen. Seniormatcher kan manuellt startas på <b>halvtimme</b> (t.ex. 11:30) – matchen bokar ändå 60 min (till 12:30). Autoplanering använder heltimmar. Bocka i "Visa alla tider" nedan för att se hela rutnätet. Max 3 matcher/dag/person och aldrig samtidigt på två banor.','matches can be placed 08:00–21:00 for both junior and senior – even in break/lunch gaps (e.g. break after 2 matches or 4 in a row) via the time selector on the match. Senior matches can be started manually on the <b>half hour</b> (e.g. 11:30) – the match still occupies 60 min (until 12:30). Auto planning uses whole hours. Tick "Show all times" below to see the whole grid. Max 3 matches/day/person and never on two courts at the same time.')}
      ${L('Ungdomsfinaler läggs','Youth finals are placed')} ${youthFinalDay()?dayLong(youthFinalDay()):L('näst sista dagen','the second-to-last day')},
      ${L('övriga finaler','other finals')} ${adultFinalDay()?dayLong(adultFinalDay()):L('sista dagen','the last day')}.
    </div>
@@ -1644,21 +1649,25 @@ function conflicts(day){
   const bad=new Map();
   const add=(id,msg)=>{ if(!bad.has(id)) bad.set(id,new Set()); bad.get(id).add(msg); };
   const ms=realMatches().filter(m=>m.day===day && m.time!=null);
-  // 1) Bana/tid dubbelbokad – två matcher på samma bana och tid.
-  const seen={};
-  for(const m of ms){ const k=m.time+"#"+m.court;
-    if(seen[k]){ const msg=`Dubbelbokad bana: bana ${m.court} kl ${fmtMin(m.time)} är bokad för fler än en match`; add(m.id,msg); add(seen[k],msg); }
-    else seen[k]=m.id;
+  const end=m=>m.time+matchDur(m);   // matchens sluttid (60 min senior även vid halvtimmesstart)
+  // 1) Bana dubbelbokad – två matcher på samma bana med överlappande tid.
+  for(let i=0;i<ms.length;i++) for(let j=i+1;j<ms.length;j++){
+    const a=ms[i], b=ms[j];
+    if(a.court!==b.court) continue;
+    if(timeOverlap(a.time,end(a),b.time,end(b))){
+      const msg=`Dubbelbokad bana: bana ${a.court} – ${fmtMin(a.time)}–${fmtMin(end(a))} och ${fmtMin(b.time)}–${fmtMin(end(b))} överlappar`;
+      add(a.id,msg); add(b.id,msg);
+    }
   }
-  // 2) Spelarkrock – samma spelare inbokad på två banor samtidigt.
-  // Deduplicera spelare inom EN match (samma namn i ett dubbellag/dubbelmatch räknas en gång).
-  const byTime={};
-  for(const m of ms){ (byTime[m.time]=byTime[m.time]||[]).push(m); }
-  for(const t in byTime){
-    const pseen={};
-    for(const m of byTime[t]) for(const p of new Set(playersOf(m))){
-      if(pseen[p]){ const msg=`Spelarkrock: ${p} är inbokad på två banor samtidigt kl ${fmtMin(+t)}`; add(m.id,msg); add(pseen[p],msg); }
-      else pseen[p]=m.id;
+  // 2) Spelarkrock – samma spelare i två matcher med överlappande tid (oavsett bana).
+  // Deduplicera spelare inom EN match (samma namn i ett dubbellag räknas en gång).
+  for(let i=0;i<ms.length;i++) for(let j=i+1;j<ms.length;j++){
+    const a=ms[i], b=ms[j];
+    if(!timeOverlap(a.time,end(a),b.time,end(b))) continue;
+    const pb=new Set(playersOf(b));
+    for(const p of new Set(playersOf(a))) if(pb.has(p)){
+      const msg=`Spelarkrock: ${p} är inbokad på överlappande tider (${fmtMin(a.time)}–${fmtMin(end(a))} och ${fmtMin(b.time)}–${fmtMin(end(b))})`;
+      add(a.id,msg); add(b.id,msg);
     }
   }
   // 3) För många matcher – en spelare har fler än 3 matcher samma dag (dubbletter i en match räknas en gång).
@@ -1683,10 +1692,11 @@ function playerDayCount(day,m){
   }
   return mx;
 }
-// Spelar någon i matchen redan på tiden t den dagen (annan bana)?
+// Spelar någon i matchen redan på en överlappande tid den dagen (annan bana)?
 function sameTimeBusy(day,t,m){
-  const ps=playersOf(m);
-  return realMatches().some(x=>x.day===day&&x.time===t&&x.id!==m.id&&x.time!=null&&
+  const ps=playersOf(m), dur=matchMinFor(getClass(m.classId).type);
+  return realMatches().some(x=>x.day===day&&x.id!==m.id&&x.time!=null&&
+     timeOverlap(t,t+dur,x.time,x.time+matchDur(x)) &&
      playersOf(x).some(p=>ps.includes(p)));
 }
 
@@ -1927,12 +1937,13 @@ function placeMatch(m,day,opts={}){
   if(playerDayCount(day,m) >= 3) return false;                  // max 3 matcher/dag/person
   if(opts.requireUnused && playerDayCount(day,m) > 0) return false;
   if(requestDayViolation(m, day, "force")) return false;        // hårt önskemål: max matcher/dag
-  const courts=courtsForDay(day);
+  const courts=courtsForDay(day), dur=matchMinFor(cls.type);
   let fallback=null;   // första hårt-OK-slot även om ett Önskar-önskemål bryts
   for(const t of slotsFor(cls.type, day)){
-    if(sameTimeBusy(day,t,m)) continue;                         // ej samma tid på annan bana
+    if(sameTimeBusy(day,t,m)) continue;                         // ej överlappande tid på annan bana
     for(let ct=1;ct<=courts;ct++){
-      if(realMatches().some(x=>x.day===day&&x.time===t&&x.court===ct&&x.id!==m.id)) continue;
+      // Banan får inte vara upptagen av en överlappande match (t.ex. manuell halvtimmesmatch).
+      if(realMatches().some(x=>x.day===day&&x.court===ct&&x.id!==m.id&&x.time!=null&&timeOverlap(t,t+dur,x.time,x.time+matchDur(x)))) continue;
       if(requestTimeViolation(m, day, t, "force")) continue;    // hårt tidsförbud – hoppa alltid över
       // Mjukt önskemål (Önskar): spara som reserv men försök hitta en bättre tid.
       if(!opts.manual && (requestTimeViolation(m,day,t,"wish") || requestDayViolation(m,day,"wish"))){
