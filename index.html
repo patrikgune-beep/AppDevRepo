@@ -313,6 +313,7 @@ function newState(){
     logo: null,
     bgColor: null,
     headColor: null,
+    requests: [],
     migratedV2: true,
     extraCourts: {},
     lockedDays: {},
@@ -338,6 +339,7 @@ function normalize(s){
   if(typeof s.logo!=="string") s.logo=null;
   if(typeof s.bgColor!=="string") s.bgColor=null;
   if(typeof s.headColor!=="string") s.headColor=null;
+  if(!Array.isArray(s.requests)) s.requests=[];
   if(!s.organizer || typeof s.organizer!=="object") s.organizer={ name:"", phone:"", email:"" };
   if(typeof s.venue!=="string") s.venue="";
   if(!s.extraCourts) s.extraCourts={};
@@ -638,7 +640,7 @@ const EN = {
   "Turneringsinformation":"Tournament info", "Klasser & deltagare":"Classes & players",
   "Stege":"Bracket", "Schema":"Schedule", "Auto-planering":"Auto planning",
   "Deltagarlista":"Player list", "Resultat & utskrift":"Results & printing",
-  "Statistik":"Statistics", "Om appen":"About",
+  "Statistik":"Statistics", "Om appen":"About", "Önskemål":"Requests",
   // Turneringsinformation
   "Turnering":"Tournament", "Turneringens namn":"Tournament name", "Arrangör":"Organiser",
   "Startdatum":"Start date", "Slutdatum":"End date", "Antal banor (grundantal)":"Number of courts (base)",
@@ -774,6 +776,7 @@ function render(){
   else if(ui.tab==="classes") renderClasses();
   else if(ui.tab==="bracket") renderBracketTab();
   else if(ui.tab==="schedule") renderSchedule();
+  else if(ui.tab==="requests") renderRequests();
   else if(ui.tab==="planner") renderPlanner();
   else if(ui.tab==="participants") renderParticipants();
   else if(ui.tab==="print") renderPrintTab();
@@ -782,7 +785,7 @@ function render(){
   applyLang();   // översätt gränssnittet till engelska om valt
 }
 function renderTabs(){
-  const tabs=[["info","Turneringsinformation"],["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["planner","Auto-planering"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["stats","Statistik"],["about","Om appen"]];
+  const tabs=[["info","Turneringsinformation"],["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["requests","Önskemål"],["planner","Auto-planering"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["stats","Statistik"],["about","Om appen"]];
   document.getElementById("tabs").innerHTML=tabs.map(([k,l])=>
     `<button class="${ui.tab===k?'active':''}" data-tab="${k}">${l}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{ui.tab=b.dataset.tab;render();});
@@ -1609,6 +1612,13 @@ function conflicts(day){
   const cnt={};
   for(const m of ms) for(const p of new Set(playersOf(m))){ (cnt[p]=cnt[p]||[]).push(m.id); }
   for(const p in cnt){ if(cnt[p].length>3){ const msg=`För många matcher: ${p} har ${cnt[p].length} matcher denna dag (max 3)`; cnt[p].forEach(id=>add(id,msg)); } }
+  // 4) Tvingande deltagarönskemål som bryts (tid eller max matcher/dag).
+  for(const m of ms){
+    const tv=requestTimeViolation(m, day, m.time, "force");
+    if(tv) add(m.id, `Önskemål (krav): ${tv.nm} kan inte spela kl ${fmtMin(tv.r.from)}–${fmtMin(tv.r.to)} denna dag`);
+    const dv=requestDayViolation(m, day, "force");
+    if(dv) add(m.id, `Önskemål (krav): ${dv.nm} vill max spela ${dv.r.max>0?dv.r.max:1} match(er) per dag`);
+  }
   return bad;
 }
 // Hur många matcher en av matchens spelare redan har den dagen (exkl. matchen själv).
@@ -1797,6 +1807,49 @@ function dayHasFinalsAllowed(cls,m,day){
 }
 // Auto: ungdom endast vardagar; senior alla dagar.
 function canPlayDayAuto(cls,day){ return cls.type==="youth" ? youthAllowedAuto(day) : true; }
+
+/* ----- Deltagarönskemål (Önskar / Tvingar) ----- */
+// Alla önskemål för en spelare (matchar på namn utan rank).
+function requestsForPlayer(name){ name=stripRank(name); return (state.requests||[]).filter(r=>stripRank(r.player)===name); }
+// Antal schemalagda matcher en spelare (namn) har en viss dag (exkl. angiven match).
+function playerMatchCountOnDay(name, day, exceptId){
+  name=stripRank(name);
+  return realMatches().filter(x=>x.day===day && x.id!==exceptId && x.time!=null && new Set(playersOf(x)).has(name)).length;
+}
+// Lägsta hårda (Tvingar) max-matcher/dag för spelaren den dagen, annars null.
+function hardMaxPerDay(name, date){
+  let mn=null;
+  for(const r of requestsForPlayer(name)){
+    if(r.level==="force" && r.type==="maxperday" && (!r.day || r.day===date)){
+      const v=r.max>0?r.max:1; mn=(mn==null?v:Math.min(mn,v));
+    }
+  }
+  return mn;
+}
+// Bryter en placering av m på (day,time) mot ett tidsönskemål av given nivå ('force'|'wish')?
+function requestTimeViolation(m, day, time, level){
+  if(time==null) return null;
+  const dur=matchMinFor(getClass(m.classId).type);
+  for(const nm of new Set(playersOf(m))){
+    for(const r of requestsForPlayer(nm)){
+      if(r.level!==level || r.type!=="unavail") continue;
+      if(r.day===day && r.from!=null && r.to!=null && time < r.to && r.from < time+dur) return {r, nm};
+    }
+  }
+  return null;
+}
+// Bryter en placering av m på day mot ett max-matcher/dag-önskemål av given nivå?
+function requestDayViolation(m, day, level){
+  for(const nm of new Set(playersOf(m))){
+    for(const r of requestsForPlayer(nm)){
+      if(r.level!==level || r.type!=="maxperday") continue;
+      if(r.day && r.day!==day) continue;
+      const max=r.max>0?r.max:1;
+      if(playerMatchCountOnDay(nm, day, m.id) + 1 > max) return {r, nm};
+    }
+  }
+  return null;
+}
 // Försök placera m på dagen. opts.manual = strunta i veckodagsregeln (men varna ej här).
 // opts.requireUnused = placera bara om ingen av spelarna redan spelar den dagen.
 function placeMatch(m,day,opts={}){
@@ -1804,14 +1857,22 @@ function placeMatch(m,day,opts={}){
   if(!opts.manual && !canPlayDayAuto(cls,day)) return false;
   if(playerDayCount(day,m) >= 3) return false;                  // max 3 matcher/dag/person
   if(opts.requireUnused && playerDayCount(day,m) > 0) return false;
+  if(requestDayViolation(m, day, "force")) return false;        // hårt önskemål: max matcher/dag
   const courts=courtsForDay(day);
+  let fallback=null;   // första hårt-OK-slot även om ett Önskar-önskemål bryts
   for(const t of slotsFor(cls.type, day)){
     if(sameTimeBusy(day,t,m)) continue;                         // ej samma tid på annan bana
     for(let ct=1;ct<=courts;ct++){
       if(realMatches().some(x=>x.day===day&&x.time===t&&x.court===ct&&x.id!==m.id)) continue;
+      if(requestTimeViolation(m, day, t, "force")) continue;    // hårt tidsförbud – hoppa alltid över
+      // Mjukt önskemål (Önskar): spara som reserv men försök hitta en bättre tid.
+      if(!opts.manual && (requestTimeViolation(m,day,t,"wish") || requestDayViolation(m,day,"wish"))){
+        if(!fallback) fallback={ct,t}; continue;
+      }
       m.day=day; m.court=ct; m.time=t; return true;
     }
   }
+  if(fallback){ m.day=day; m.court=fallback.ct; m.time=fallback.t; return true; }
   return false;
 }
 // Manuell placering (via knappar): tillåt flera matcher/dag (max 3), varna vid avvikelse.
@@ -1820,10 +1881,13 @@ function manualPlace(m,day){
   if(playerDayCount(day,m) >= 3)
     return {ok:false, msg:"En av spelarna har redan 3 matcher den dagen (max 3 tillåts)."};
   if(!placeMatch(m,day,{manual:true}))
-    return {ok:false, msg:`Ingen ledig tid på ${dayShort(day)} (banor upptagna eller spelarkrock vid alla tider).`};
+    return {ok:false, msg:`Ingen ledig tid på ${dayShort(day)} (banor upptagna, spelarkrock eller tvingande önskemål vid alla tider).`};
   let warn="";
   if(cls.type==="youth" && isWeekend(day))
     warn="Obs: ungdomsklass schemalagd på helg – normalt spelar endast seniorer lör/sön.";
+  // Varna om placeringen bryter mot ett "Önskar"-önskemål (tillåts, men noteras).
+  const sv=requestTimeViolation(m,day,m.time,"wish")||requestDayViolation(m,day,"wish");
+  if(sv) warn=(warn?warn+"\n":"")+`Obs: matchen krockar med ett önskemål (Önskar) för ${sv.nm}.`;
   return {ok:true, warn};
 }
 // Är alla matcher i en omgång färdigspelade (byes räknas som klara)?
@@ -1885,21 +1949,30 @@ function packPlanDay(date, dayMatches, courts){
   const seniorEarly = !isWeekend(date) && juniors.length===0 && !isPlanFinalDay(date);
   const courtIv=Array.from({length:courts},()=>[]);
   const placed=[], leftover=[];
+  const pcount={};   // spelarnamn -> antal placerade den dagen (för hårt max/dag)
   // Juniorer först (morgon), sedan seniorer; inom typ efter omgång.
   const order=[...dayMatches].sort((a,b)=>(a.type===b.type?0:(a.type==="youth"?-1:1)) || (a.round-b.round));
   for(const x of order){
     const dur=x.type==="youth"?MATCH_MIN_YOUTH:MATCH_MIN_SENIOR;
-    let done=false;
+    const mm=findMatch(x.id), m=mm?mm.m:null;
+    const names=m?[...new Set(playersOf(m))]:[];
+    // Hårt önskemål (Tvingar): max matcher/dag – lägg som ej placerad om det överskrids.
+    if(names.some(nm=>{ const mx=hardMaxPerDay(nm,date); return mx!=null && (pcount[nm]||0)+1>mx; })){ leftover.push(x); continue; }
+    let slot=null, fb=null;
     for(const t of planCandidateTimes(x.type,date,seniorEarly)){
       for(let ci=0;ci<courts;ci++){
         if(courtIv[ci].some(iv=>planOverlap(t,t+dur,iv[0],iv[1]))) continue;
-        courtIv[ci].push([t,t+dur]);
-        placed.push({id:x.id, classId:x.classId, court:ci+1, time:t, type:x.type, round:x.round});
-        done=true; break;
+        if(m && requestTimeViolation(m,date,t,"force")) continue;              // hårt tidsförbud
+        if(m && requestTimeViolation(m,date,t,"wish")){ if(!fb) fb={ci,t}; continue; } // mjukt – reserv
+        slot={ci,t}; break;
       }
-      if(done) break;
+      if(slot) break;
     }
-    if(!done) leftover.push(x);
+    if(!slot) slot=fb;
+    if(!slot){ leftover.push(x); continue; }
+    courtIv[slot.ci].push([slot.t, slot.t+dur]);
+    placed.push({id:x.id, classId:x.classId, court:slot.ci+1, time:slot.t, type:x.type, round:x.round});
+    for(const nm of names) pcount[nm]=(pcount[nm]||0)+1;
   }
   return {placed, leftover};
 }
@@ -2226,6 +2299,120 @@ function printParticipantsByClass(fid){
     html+=`<ol style="margin:0 0 12px 22px;font-size:13px;line-height:1.6">`+c.participants.map(p=>`<li>${dispName(p)}</li>`).join("")+`</ol>`;
   }
   doPrint(html);
+}
+
+/* ----- Tab: Önskemål ----- */
+// Distinkta deltagarnamn (för namnval).
+function allParticipantNames(){
+  const set=new Set();
+  for(const c of state.classes) for(const line of c.participants) for(const part of String(line).split("/")){ const nm=stripRank(part); if(nm) set.add(nm); }
+  return [...set].sort((a,b)=>a.localeCompare(b,"sv"));
+}
+// Har den dag som önskemålet avser passerat? (jämförs mot dagens datum)
+function requestDone(r){
+  const today=isoDate(new Date());
+  if(r.type==="unavail") return r.day ? r.day < today : false;
+  const ref = r.day || (state.tournament && state.tournament.end);   // max/dag: hela turneringen om ingen dag
+  return ref ? ref < today : false;
+}
+// Läsbar beskrivning av ett önskemål.
+function requestText(r){
+  if(r.type==="unavail")
+    return `${L('Kan inte spela','Cannot play')} ${r.day?dayLong(r.day):'—'} ${L('kl','at')} ${fmtMin(r.from)}–${fmtMin(r.to)}`;
+  const n=r.max>0?r.max:1;
+  return `${L('Max','Max')} ${n} ${L('match(er) per dag','match(es) per day')}${r.day?` (${dayLong(r.day)})`:''}`;
+}
+function renderRequests(){
+  const days=getDays();
+  const type=ui.reqType||"unavail";
+  const names=allParticipantNames();
+  const timeOpt=(sel)=>{ let o=""; for(let t=480;t<=1260;t+=30) o+=`<option value="${t}" ${sel===t?'selected':''}>${fmtMin(t)}</option>`; return o; };
+  const dayOpts=(withAll)=> (withAll?`<option value="">${L('Alla dagar','All days')}</option>`:"") +
+    days.map(d=>`<option value="${d.date}">${d.dow} ${d.short}</option>`).join("");
+  app.innerHTML=`
+   <div class="card no-print">
+     <h2>${L('Önskemål','Requests')}</h2>
+     <p class="small muted">${L('Deltagare kan registrera önskemål om tider de vill slippa eller inte kan spela. <b>Önskar</b> = planeringen försöker ta hänsyn till det. <b>Tvingar</b> = ett krav som alltid respekteras vid schemaläggning och auto-planering. När den dag önskemålet avser passerat markeras det som klart (genomstruket).','Players can register requests about times they want to avoid or cannot play. <b>Wish</b> = the planner tries to honour it. <b>Require</b> = a hard constraint always respected in scheduling and auto planning. When the day the request refers to has passed it is marked done (struck through).')}</p>
+   </div>
+   <div class="card no-print">
+     <h3 style="color:var(--head);margin-top:0">${L('Lägg till önskemål','Add request')}</h3>
+     <div class="row" style="align-items:flex-end">
+       <label class="small">${L('Deltagare','Player')}<br>
+         <input type="text" id="reqPlayer" list="reqNames" value="${(ui.reqPlayer||'').replace(/"/g,'&quot;')}" placeholder="${L('Namn','Name')}" style="min-width:180px">
+         <datalist id="reqNames">${names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join("")}</datalist></label>
+       <label class="small">${L('Nivå','Level')}<br>
+         <select id="reqLevel">
+           <option value="wish" ${ui.reqLevel!=='force'?'selected':''}>${L('Önskar','Wish')}</option>
+           <option value="force" ${ui.reqLevel==='force'?'selected':''}>${L('Tvingar','Require')}</option>
+         </select></label>
+       <label class="small">${L('Typ','Type')}<br>
+         <select id="reqType">
+           <option value="unavail" ${type==='unavail'?'selected':''}>${L('Otillgänglig tid','Unavailable time')}</option>
+           <option value="maxperday" ${type==='maxperday'?'selected':''}>${L('Max matcher per dag','Max matches per day')}</option>
+         </select></label>
+       ${type==="unavail"?`
+         <label class="small">${L('Dag','Day')}<br><select id="reqDay">${dayOpts(false)}</select></label>
+         <label class="small">${L('Från','From')}<br><select id="reqFrom">${timeOpt(900)}</select></label>
+         <label class="small">${L('Till','To')}<br><select id="reqTo">${timeOpt(1140)}</select></label>
+       `:`
+         <label class="small">${L('Max matcher/dag','Max matches/day')}<br><input type="number" id="reqMax" min="1" max="5" value="1" style="width:60px"></label>
+         <label class="small">${L('Dag','Day')}<br><select id="reqDay">${dayOpts(true)}</select></label>
+       `}
+       <button class="btn" id="reqAdd">➕ ${L('Lägg till','Add')}</button>
+     </div>
+   </div>
+   <div class="card">
+     <h3 style="color:var(--head);margin-top:0">${L('Registrerade önskemål','Registered requests')}</h3>
+     <div id="reqList"></div>
+   </div>`;
+  document.getElementById("reqType").onchange=e=>{
+    ui.reqType=e.target.value;
+    ui.reqPlayer=document.getElementById("reqPlayer").value;
+    ui.reqLevel=document.getElementById("reqLevel").value;
+    render();
+  };
+  document.getElementById("reqAdd").onclick=()=>{
+    const player=document.getElementById("reqPlayer").value.trim();
+    if(!player){ alert(L("Ange deltagarens namn.","Enter the player's name.")); return; }
+    const level=document.getElementById("reqLevel").value==="force"?"force":"wish";
+    const r={ id:"r"+uid(), player, level, type };
+    if(type==="unavail"){
+      r.day=document.getElementById("reqDay").value||null;
+      r.from=parseInt(document.getElementById("reqFrom").value,10);
+      r.to=parseInt(document.getElementById("reqTo").value,10);
+      if(!r.day){ alert(L("Välj en dag.","Choose a day.")); return; }
+      if(r.to<=r.from){ alert(L("Sluttiden måste vara efter starttiden.","End time must be after start time.")); return; }
+    } else {
+      r.max=Math.max(1,parseInt(document.getElementById("reqMax").value,10)||1);
+      r.day=document.getElementById("reqDay").value||null;
+    }
+    state.requests.push(r);
+    ui.reqPlayer=""; save(); render();
+  };
+  // Lista – aktiva först, klara (passerade) sist och genomstrukna.
+  const list=(state.requests||[]).map(r=>({r, done:requestDone(r)}))
+    .sort((a,b)=> (a.done-b.done) || String(a.r.player).localeCompare(String(b.r.player),"sv"));
+  const box=document.getElementById("reqList");
+  if(!list.length){ box.innerHTML=`<p class="small muted">${L('Inga önskemål registrerade ännu.','No requests registered yet.')}</p>`; return; }
+  box.innerHTML=`<table class="results" style="width:100%"><thead><tr>
+      <th style="text-align:left">${L('Deltagare','Player')}</th><th style="text-align:left">${L('Önskemål','Request')}</th>
+      <th>${L('Nivå','Level')}</th><th>${L('Status','Status')}</th><th></th></tr></thead><tbody>
+    ${list.map(({r,done})=>{
+      const strike=done?'text-decoration:line-through;color:#9a927f':'';
+      const lvlBadge=r.level==="force"
+        ? `<span class="badge" style="background:#f6d9d5;color:#b5362b">${L('Tvingar','Require')}</span>`
+        : `<span class="badge" style="background:#e6eef7;color:#2f5c86">${L('Önskar','Wish')}</span>`;
+      return `<tr>
+        <td style="text-align:left;${strike}">${r.player}</td>
+        <td style="text-align:left;${strike}">${requestText(r)}</td>
+        <td>${lvlBadge}</td>
+        <td>${done?`✓ ${L('Klar','Done')}`:`<span class="muted">${L('Aktiv','Active')}</span>`}</td>
+        <td><button class="btn gray mini" data-delreq="${r.id}">🗑</button></td></tr>`;
+    }).join("")}
+    </tbody></table>`;
+  box.querySelectorAll("[data-delreq]").forEach(b=>b.onclick=()=>{
+    state.requests=state.requests.filter(x=>x.id!==b.dataset.delreq); save(); render();
+  });
 }
 
 /* ----- Tab 4: Resultat & utskrift ----- */
