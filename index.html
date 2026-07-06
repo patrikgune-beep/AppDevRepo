@@ -1282,7 +1282,8 @@ function renderBracketTab(){
        <button class="btn ghost mini" id="rebuildBr">🔁 Lotta om / bygg stege</button>
        <button class="btn gray mini" id="clearBr">🗑 Rensa flik (denna stege)</button>
        <span style="flex:1"></span>
-       <button class="btn ghost mini" id="imgBr">📷 Spara bild av stege</button>
+       <button class="btn ghost mini" id="imgBr">📷 ${L('Spara bild av stege','Save bracket image')}</button>
+       <button class="btn ghost mini" id="imgAllBr">📷 ${L('Bild av alla stegar','Image of all brackets')}</button>
        <button class="btn mini" id="printBr">🖨 Skriv ut stege</button>
      </div>
      ${cls.participants.length?`
@@ -1303,6 +1304,7 @@ function renderBracketTab(){
   document.getElementById("moveMode").onclick=()=>{ ui.moveMode=!ui.moveMode; if(ui.moveMode){ui.swapMode=false;ui.swapSel=null;} ui.moveSel=null; render(); };
   document.getElementById("printBr").onclick=()=>printOneBracket(cls);
   document.getElementById("imgBr").onclick=()=>exportBracketImage(cls);
+  document.getElementById("imgAllBr").onclick=()=>exportAllBracketImages();
   const replBtnBr=document.getElementById("replBtnBr");
   if(replBtnBr) replBtnBr.onclick=()=>{
     const oldEntry=document.getElementById("replSelBr").value;
@@ -2473,6 +2475,7 @@ function renderPrintTab(){
        <button class="btn" id="printResults">🖨 Skriv ut resultatlista (vald dag)</button>
        <button class="btn ghost" id="printSched2">🖨 Skriv ut matchschema (vald dag)</button>
        <button class="btn ghost" id="printBrackets">🖨 Skriv ut alla stegar</button>
+       <button class="btn ghost" id="imgAllBr2">📷 Spara alla stegar som bild</button>
        <button class="btn ghost" id="printBlank2">🖨 Skriv ut blankt schema</button>
        <button class="btn" id="printChamps">🏆 Skriv ut alla klubbmästare</button>
      </div>
@@ -2482,6 +2485,7 @@ function renderPrintTab(){
   document.getElementById("printResults").onclick=()=>printResults(ui.day);
   document.getElementById("printSched2").onclick=()=>printSchedule(ui.day);
   document.getElementById("printBrackets").onclick=()=>printBrackets();
+  document.getElementById("imgAllBr2").onclick=()=>exportAllBracketImages();
   document.getElementById("printBlank2").onclick=()=>printBlankSchedule();
   document.getElementById("printChamps").onclick=()=>printChampions();
   // förhandsvisning av resultat
@@ -2712,37 +2716,76 @@ function buildBracketSVG(cls){
   }
   return {body, width, height};
 }
-// Skapa en PNG-bild av den valda stegen och spara där användaren väljer.
-function exportBracketImage(cls){
+// Filnamn för en steges bild (arrangörsoberoende, med tidsstämpel).
+function bracketImageFilename(cls){
+  const p=n=>String(n).padStart(2,"0"), d=new Date();
+  const stamp=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`;
+  return `Stege-${cls.name.replace(/[^\wåäöÅÄÖ -]/g,'').trim()}-${stamp}.png`;
+}
+// Skapa PNG-bild (Blob) av en steges träd. Ren SVG -> canvas -> PNG (ingen taint).
+function bracketImageBlob(cls){
+  return new Promise((resolve,reject)=>{
+    const PAD=20, TITLE_H=36, SCALE=2;
+    const {body, width, height}=buildBracketSVG(cls);
+    const W=width+PAD*2, H=height+TITLE_H+PAD;
+    const title=`${arrangerName()} · ${state.tournament.name||"KM"} ${tournamentYear()} · ${cls.name}${cls.champion?' · 🏆 '+dispName(cls.champion):''}`;
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">`+
+      `<rect width="100%" height="100%" fill="#ffffff"/>`+
+      `<text x="${PAD}" y="26" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="bold" fill="${headColor()}">${escXml(title)}</text>`+
+      `<g transform="translate(${PAD},${TITLE_H})">${body}</g></svg>`;
+    const url=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}));
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const canvas=document.createElement("canvas");
+        canvas.width=Math.round(W*SCALE); canvas.height=Math.round(H*SCALE);
+        const ctx=canvas.getContext("2d"); ctx.setTransform(SCALE,0,0,SCALE,0,0); ctx.drawImage(img,0,0);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(b=>{ b?resolve(b):reject(new Error("toBlob")); }, "image/png");
+      }catch(err){ URL.revokeObjectURL(url); reject(err); }
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error("render")); };
+    img.src=url;
+  });
+}
+// Skapa och spara en PNG-bild av den valda stegen där användaren väljer.
+async function exportBracketImage(cls){
   if(!totalRounds(cls)){ alert("Stegen är tom – bygg den först."); return; }
-  const PAD=20, TITLE_H=36, SCALE=2;
-  const {body, width, height}=buildBracketSVG(cls);
-  const W=width+PAD*2, H=height+TITLE_H+PAD;
-  const title=`${arrangerName()} · ${state.tournament.name||"KM"} ${tournamentYear()} · ${cls.name}${cls.champion?' · 🏆 '+dispName(cls.champion):''}`;
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">`+
-    `<rect width="100%" height="100%" fill="#ffffff"/>`+
-    `<text x="${PAD}" y="26" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="bold" fill="${headColor()}">${escXml(title)}</text>`+
-    `<g transform="translate(${PAD},${TITLE_H})">${body}</g></svg>`;
-  const url=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}));
-  const img=new Image();
-  img.onload=()=>{
+  try{ const b=await bracketImageBlob(cls); await saveBlob(b, bracketImageFilename(cls)); }
+  catch(err){ alert("Kunde inte skapa bilden: "+(err.message||err)); }
+}
+// Skapa en bild för VARJE stege med ett klick. Välj en mapp en gång -> alla bilder dit;
+// annars laddas bilderna ned var för sig (hamnar i Hämtade filer).
+async function exportAllBracketImages(){
+  const list=visibleClasses().filter(c=>totalRounds(c));
+  if(!list.length){ alert("Ingen stege att spara – bygg minst en stege först."); return; }
+  if(window.showDirectoryPicker){
+    let dir=null;
+    try{ dir=await window.showDirectoryPicker(); }
+    catch(e){ if(e&&e.name==="AbortError") return; dir=null; }
+    if(dir){
+      let ok=0, fail=0;
+      for(const cls of list){
+        try{
+          const b=await bracketImageBlob(cls);
+          const fh=await dir.getFileHandle(bracketImageFilename(cls),{create:true});
+          const w=await fh.createWritable(); await w.write(b); await w.close(); ok++;
+        }catch(e){ fail++; }
+      }
+      alert(`Sparade ${ok} stege-bild${ok===1?'':'er'}${fail?` (${fail} misslyckades)`:''} i vald mapp.`);
+      return;
+    }
+  }
+  // Reserv: ladda ned varje bild (t.ex. Safari/Firefox utan mappväljare).
+  let ok=0;
+  for(const cls of list){
     try{
-      const canvas=document.createElement("canvas");
-      canvas.width=Math.round(W*SCALE); canvas.height=Math.round(H*SCALE);
-      const ctx=canvas.getContext("2d");
-      ctx.setTransform(SCALE,0,0,SCALE,0,0);
-      ctx.drawImage(img,0,0);
-      URL.revokeObjectURL(url);
-      canvas.toBlob(b=>{
-        if(!b){ alert("Kunde inte skapa bilden."); return; }
-        const p=n=>String(n).padStart(2,"0"), d=new Date();
-        const stamp=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`;
-        saveBlob(b, `Stege-${cls.name.replace(/[^\wåäöÅÄÖ -]/g,'').trim()}-${stamp}.png`);
-      }, "image/png");
-    }catch(err){ URL.revokeObjectURL(url); alert("Kunde inte skapa bilden: "+err.message); }
-  };
-  img.onerror=()=>{ URL.revokeObjectURL(url); alert("Kunde inte rendera stegen till bild."); };
-  img.src=url;
+      const b=await bracketImageBlob(cls);
+      const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=bracketImageFilename(cls); a.click();
+      await new Promise(r=>setTimeout(r,450)); URL.revokeObjectURL(a.href); ok++;
+    }catch(e){}
+  }
+  alert(`Skapade ${ok} stege-bild${ok===1?'':'er'} (hämtade som nedladdningar).`);
 }
 
 /* ----- Export / import (säkerhetskopia) – anropas från Turneringsinformation ----- */
