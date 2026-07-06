@@ -1273,7 +1273,7 @@ function renderBracketTab(){
        Skriv resultatet i rutan och välj <b>vinnare</b> i listan (eller klicka på spelarens namn).
        Vinnaren förs automatiskt vidare och nästa match blir spelklar i <b>Schema → Ej schemalagda</b>.</p>
      ${ui.swapMode?`<div class="hint" style="border-color:#f0a500;background:#fff8e6;margin-top:10px">
-        🔀 <b>${L('Bytesläge på:','Swap mode on:')}</b> ${L('klicka på en spelare i första omgången och sedan på en annan – de byter plats. (Berörda resultat nollställs.)','click a player in the first round and then another – they swap places. (Affected results are cleared.)')}</div>`:''}
+        🔀 <b>${L('Bytesläge på:','Swap mode on:')}</b> ${L('klicka på en spelare och sedan på en annan – de byter plats. Fungerar mellan omgång 1 och omgång 2, även för <b>seedade</b> spelare (en seed som gått vidare på bye byts via sin plats i omgång 2). (Berörda resultat nollställs.)','click a player and then another – they swap places. Works between round 1 and round 2, including <b>seeded</b> players (a seed advanced on a bye is swapped via its slot in round 2). (Affected results are cleared.)')}</div>`:''}
      ${ui.moveMode?`<div class="hint" style="border-color:#2f80c9;background:#eaf4fc;margin-top:10px">
         ↔ <b>${L('Flytta match på:','Move-match mode on:')}</b> ${L('klicka på en match i första omgången och sedan på en annan – de byter plats i trädet (hela paret). Så väljer du t.ex. vilken match som möter en seedad spelare i andra omgången. (Berörda resultat nollställs.)','click a match in the first round and then another – they swap positions in the tree (the whole pair). This is how you choose e.g. which match meets a seeded player in the second round. (Affected results are cleared.)')}</div>`:''}
      <div class="row" style="margin-top:10px">
@@ -1423,11 +1423,13 @@ function layoutBracketEl(br){
 }
 function matchHTML(cls,m,total){
   const sel=ui.swapSel;
+  // Vald spelare (för markering) – hämtas från den kanoniska round-0-platsen.
+  const selPlayer = sel ? (cls.matches.find(x=>x.id===sel.id)||{})[sel.key] : null;
   const slotHTML=(p,key)=>{
     let cl="slot", nm=dispName(p);
     if(p===null){ cl+= (m.round===0?" bye":" tbd"); nm=(m.round===0?"BYE":"– vinnare –"); }
     if(m.winner && p && m.winner===p) cl+=" win";
-    if(sel && sel.id===m.id && sel.key===key) cl+=" swapsel";
+    if(selPlayer && p && p===selPlayer) cl+=" swapsel";   // markera spelaren överallt (även i omgång 2)
     return `<div class="${cl}"><span class="nm" id="nm_${m.id}_${key}">${nm||""}</span>${m.winner===p?' 🏆':''}</div>`;
   };
   const sched = m.day?`<div class="sched-tag">${matchNoTag(m)}📅 ${dayShort(m.day)} · ${m.time!=null?matchLabel(m):'-'} · Bana ${m.court||'-'}</div>`
@@ -1461,15 +1463,29 @@ function handleMoveClick(cls,m){
   ui.moveSel=null;
   resolveByes(cls); recompChampion(cls); save(); render();
 }
-// Byt plats på två spelare i omgång 0 (inom samma klass).
+// Kanonisk round-0-plats för en klickad spelare. En spelare i omgång 0 pekar på sin
+// egen plats; en spelare i senare omgång (t.ex. seedad som gått vidare på bye) pekar
+// på sin round-0 bye-match. Spelare som nått hit via en spelad match går ej att flytta.
+function canonicalRound0Slot(cls, m, slot){
+  const player=m[slot];
+  if(!player) return null;                       // tom plats / BYE / TBD
+  if(m.round===0) return {id:m.id, key:slot};
+  const orig=cls.matches.find(x=>x.round===0 && (x.p1===player||x.p2===player) && (x.p1===null||x.p2===null));
+  if(!orig) return null;                          // beror på en spelad match – ej flyttbar
+  return {id:orig.id, key: orig.p1===player?"p1":"p2"};
+}
+// Byt plats på två spelare i trädet. Fungerar även för en seedad spelare som visas i
+// omgång 2 (byts då via sin round-0 bye-match) – dvs byte mellan omgång 1 och omgång 2.
 function handleSwapClick(cls,m,slot){
-  if(m.round!==0 || !m[slot]) return;            // endast riktiga spelare i första omgången
-  if(!ui.swapSel){ ui.swapSel={id:m.id,key:slot}; render(); return; }
-  if(ui.swapSel.id===m.id && ui.swapSel.key===slot){ ui.swapSel=null; render(); return; }
+  const canon=canonicalRound0Slot(cls,m,slot);
+  if(!canon) return;                              // ej flyttbar plats
+  if(!ui.swapSel){ ui.swapSel=canon; render(); return; }
+  if(ui.swapSel.id===canon.id && ui.swapSel.key===canon.key){ ui.swapSel=null; render(); return; }
   const A=cls.matches.find(x=>x.id===ui.swapSel.id), aKey=ui.swapSel.key;
-  if(!A){ ui.swapSel=null; render(); return; }
-  const tmp=A[aKey]; A[aKey]=m[slot]; m[slot]=tmp;   // byt plats
-  [A,m].forEach(x=>{ if(x.winner){ x.winner=null; x.score=""; } clearDownstream(cls,x); });
+  const B=cls.matches.find(x=>x.id===canon.id), bKey=canon.key;
+  if(!A||!B){ ui.swapSel=null; render(); return; }
+  const tmp=A[aKey]; A[aKey]=B[bKey]; B[bKey]=tmp;   // byt plats på de två round-0-platserna
+  [A,B].forEach(x=>{ if(x.winner){ x.winner=null; x.score=""; } clearDownstream(cls,x); });
   ui.swapSel=null;
   resolveByes(cls); recompChampion(cls); save(); render();
 }
