@@ -1523,6 +1523,11 @@ function renderSchedule(){
      <button class="btn ghost" id="clearDay">Töm dagens schema</button>
      <button class="btn ${dayLocked(ui.day)?'':'ghost'}" id="lockDay" title="Lås dagens resultat så att de inte ändras av misstag">${dayLocked(ui.day)?'🔓 Lås upp dagens resultat':'🔒 Lås dagens resultat'}</button>
      <button class="btn gray" id="clearSched">🗑 Rensa flik (hela schemat)</button>
+     <label class="small">${L('Omfattning','Scope')}: <select id="schedScopeSel">
+       <option value="all" ${(ui.printScope||'all')==='all'?'selected':''}>${L('Hela dagen','Whole day')}</option>
+       <option value="youth" ${ui.printScope==='youth'?'selected':''}>${L('Endast junior','Juniors only')}</option>
+       <option value="adult" ${ui.printScope==='adult'?'selected':''}>${L('Endast senior','Seniors only')}</option>
+     </select></label>
      <button class="btn ghost mini" id="printSched">🖨 Skriv ut dagens schema</button>
      <button class="btn ghost mini" id="imgSched">📷 ${L('Spara dagens schema som bild','Save the day\'s schedule as image')}</button>
      <button class="btn ghost mini" id="printBlank">🖨 Skriv ut blankt schema</button>
@@ -1634,8 +1639,10 @@ function renderSchedule(){
     if(p1===p2){ alert("Välj två olika spelare/par."); return; }
     createManualMatch(c,p1,p2,ui.day);
   };
-  document.getElementById("printSched").onclick=()=>printSchedule(ui.day);
-  document.getElementById("imgSched").onclick=()=>exportScheduleImage(ui.day);
+  const schedScopeSel=document.getElementById("schedScopeSel");
+  if(schedScopeSel) schedScopeSel.onchange=e=>{ ui.printScope=e.target.value; };
+  document.getElementById("printSched").onclick=()=>printSchedule(ui.day, ui.printScope||'all');
+  document.getElementById("imgSched").onclick=()=>exportScheduleImage(ui.day, ui.printScope||'all');
   renderSchedGrid();
   renderUnsched();
 }
@@ -2541,6 +2548,11 @@ function renderPrintTab(){
          <select id="resDay">${getDays().map(d=>`<option value="${d.date}" ${ui.day===d.date?'selected':''}>${d.dow} ${d.short}</option>`).join("")}</select>
        </label>
        <button class="btn" id="printResults">🖨 Skriv ut resultatlista (vald dag)</button>
+       <label class="small">Omfattning: <select id="schedScopeSel2">
+         <option value="all" ${(ui.printScope||'all')==='all'?'selected':''}>Hela dagen</option>
+         <option value="youth" ${ui.printScope==='youth'?'selected':''}>Endast junior</option>
+         <option value="adult" ${ui.printScope==='adult'?'selected':''}>Endast senior</option>
+       </select></label>
        <button class="btn ghost" id="printSched2">🖨 Skriv ut matchschema (vald dag)</button>
        <button class="btn ghost" id="imgSched2">📷 Spara matchschema som bild (vald dag)</button>
        <button class="btn ghost" id="printBrackets">🖨 Skriv ut alla stegar</button>
@@ -2552,8 +2564,10 @@ function renderPrintTab(){
    <div id="resPreview"></div>`;
   document.getElementById("resDay").onchange=e=>{ui.day=e.target.value;renderPrintTab();};
   document.getElementById("printResults").onclick=()=>printResults(ui.day);
-  document.getElementById("printSched2").onclick=()=>printSchedule(ui.day);
-  document.getElementById("imgSched2").onclick=()=>exportScheduleImage(ui.day);
+  const schedScopeSel2=document.getElementById("schedScopeSel2");
+  if(schedScopeSel2) schedScopeSel2.onchange=e=>{ ui.printScope=e.target.value; };
+  document.getElementById("printSched2").onclick=()=>printSchedule(ui.day, ui.printScope||'all');
+  document.getElementById("imgSched2").onclick=()=>exportScheduleImage(ui.day, ui.printScope||'all');
   document.getElementById("printBrackets").onclick=()=>printBrackets();
   document.getElementById("imgAllBr2").onclick=()=>exportAllBracketImages();
   document.getElementById("printBlank2").onclick=()=>printBlankSchedule();
@@ -2622,20 +2636,31 @@ function printBlankSchedule(){
 function printResults(day){
   doPrint(printHeader("Resultatlista – "+dayLong(day))+resultsHTML(day));
 }
-function printSchedule(day){
+// Omfattning: hela dagen / endast junior / endast senior.
+function scopeMatch(m, scope){ return !scope || scope==="all" || getClass(m.classId).type===scope; }
+function scopeLabel(scope){ return scope==="youth"?L("endast junior","juniors only") : scope==="adult"?L("endast senior","seniors only") : L("hela dagen","whole day"); }
+function scheduleTimes(day, scope){
+  let base;
+  if(scope==="youth") base=[...YOUTH_SLOTS];
+  else if(scope==="adult") base=(isWeekend(day)?SENIOR_WEEKEND:SENIOR_SLOTS);
+  else base=daySlots(day);
+  const mt=realMatches().filter(m=>m.day===day&&m.time!=null&&scopeMatch(m,scope)).map(m=>m.time);
+  return [...new Set([...base, ...mt])].sort((a,b)=>a-b);
+}
+function printSchedule(day, scope="all"){
   const courts=courtsForDay(day);
-  let html=printHeader("Matchschema – "+dayLong(day));
+  let html=printHeader("Matchschema – "+dayLong(day)+(scope!=="all"?` (${scopeLabel(scope)})`:""));
   html+=`<table class="schedtable" style="width:100%"><thead><tr><th>Tid</th>${
      Array.from({length:courts},(_,i)=>`<th>Bana ${i+1}</th>`).join("")}</tr></thead><tbody>`;
   let prevEnd=null;
-  for(const t of dayTimes(day)){
+  for(const t of scheduleTimes(day, scope)){
     if(prevEnd!=null && t>prevEnd){
       const isLunch = prevEnd<780 && t>=780;
       html+=`<tr><td class="time">${fmtMin(prevEnd)}–${fmtMin(t)}</td><td colspan="${courts}" style="text-align:center;color:#888;font-style:italic">${isLunch?'Lunchpaus':'Paus'}</td></tr>`;
     }
     html+=`<tr><td class="time">${timeLabel(t, day)}</td>`;
     for(let ct=1;ct<=courts;ct++){
-      const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct&&!getClass(m.classId).hidden);
+      const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct&&!getClass(m.classId).hidden&&scopeMatch(m,scope));
       html+=`<td>${here.map(m=>{const c=getClass(m.classId);const n=matchNumber(m);return `<div style="border-left:5px solid ${classColor(c)};padding-left:5px;margin:2px 0">${n!=null?`<b>#${n}</b> `:''}<b>${c.name}</b><br>${dispName(m.p1)} – ${dispName(m.p2)}${isFinal(c,m)?' <i>(final)</i>':''}</div>`;}).join("")}</td>`;
     }
     html+=`</tr>`;
@@ -2872,11 +2897,11 @@ function rasterizeSVG(svg, W, H, scale=2){
     img.src=url;
   });
 }
-// Bygg dagens schema som REN SVG (tabell med tider × banor).
-function buildScheduleSVG(day){
+// Bygg dagens schema som REN SVG (tabell med tider × banor). scope: all/youth/adult.
+function buildScheduleSVG(day, scope="all"){
   const courts=courtsForDay(day);
   const C0=94, CW=210, HEAD=30;
-  const times=dayTimes(day);
+  const times=scheduleTimes(day, scope);
   const mh=m=>(m.winner?42:30);   // matchrutans höjd (extra rad om resultat)
   const rows=[];
   let prevEnd=null;
@@ -2886,7 +2911,7 @@ function buildScheduleSVG(day){
     }
     const cells=[]; let contentH=24;
     for(let ct=1;ct<=courts;ct++){
-      const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct&&!getClass(m.classId).hidden)
+      const here=realMatches().filter(m=>m.day===day&&m.time===t&&m.court===ct&&!getClass(m.classId).hidden&&scopeMatch(m,scope))
         .sort((a,b)=>(matchNumber(a)||0)-(matchNumber(b)||0));
       cells.push(here);
       const ch=here.reduce((s,m)=>s+mh(m),0)+Math.max(0,here.length-1)*4+8;
@@ -2932,20 +2957,21 @@ function buildScheduleSVG(day){
   for(let ct=0;ct<=courts;ct++){ const x=(ct===0?C0:C0+ct*CW); body+=`<line x1="${x}" y1="0" x2="${x}" y2="${height}" stroke="#e5dfcc"/>`; }
   return {body, width, height};
 }
-async function exportScheduleImage(day){
+async function exportScheduleImage(day, scope="all"){
   const PAD=20, TITLE_H=34, SCALE=2;
-  const {body, width, height}=buildScheduleSVG(day);
+  const {body, width, height}=buildScheduleSVG(day, scope);
   const W=width+PAD*2, H=height+TITLE_H+PAD;
-  const title=`${arrangerName()} · ${state.tournament.name||"KM"} ${tournamentYear()} · ${L('Schema','Schedule')} ${dayLong(day)}`;
+  const title=`${arrangerName()} · ${state.tournament.name||"KM"} ${tournamentYear()} · ${L('Schema','Schedule')} ${dayLong(day)}${scope!=="all"?` (${scopeLabel(scope)})`:""}`;
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">`+
     `<rect width="100%" height="100%" fill="#ffffff"/>`+
     `<text x="${PAD}" y="24" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="bold" fill="${headColor()}">${escXml(title)}</text>`+
     `<g transform="translate(${PAD},${TITLE_H})">${body}</g></svg>`;
   const p=n=>String(n).padStart(2,"0"), d=new Date();
   const stamp=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`;
+  const suffix = scope==="youth"?"-junior" : scope==="adult"?"-senior" : "";
   try{
     const blob=await rasterizeSVG(svg, W, H, SCALE);
-    await saveBlob(blob, `Schema-${dayShort(day).replace(/[^\wåäöÅÄÖ -]/g,'').trim()}-${stamp}.png`);
+    await saveBlob(blob, `Schema-${dayShort(day).replace(/[^\wåäöÅÄÖ -]/g,'').trim()}${suffix}-${stamp}.png`);
   }catch(err){ alert("Kunde inte skapa bilden: "+(err.message||err)); }
 }
 
