@@ -927,9 +927,9 @@ function renderAbout(){
        <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#fde9e9;box-shadow:inset 0 0 0 2px #d11;vertical-align:middle;margin-right:8px"></span>
            <b style="color:#b5362b">${L('Röd match (felkod)','Red match (error code)')}</b> – ${L('schemakrock: samma bana &amp; tid dubbelbokad, samma spelare på två banor samtidigt, eller fler än 3 matcher samma dag för en spelare. Åtgärda genom att flytta bana/tid/dag.','schedule conflict: same court &amp; time double-booked, same player on two courts at once, or more than 3 matches the same day for a player. Fix by moving court/time/day.')}</li>
        <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#efe9db;vertical-align:middle;margin-right:8px"></span>
-           <b style="color:#8a8270">${L('Grå rad','Grey row')}</b> – ${L('paus / ledig lucka (kan schemaläggas manuellt).','break / free slot (can be scheduled manually).')}</li>
+           <b style="color:#8a8270">${L('Grå rad','Grey row')}</b> – ${L('Hydration Break / ledig lucka (kan schemaläggas manuellt).','Hydration Break / free slot (can be scheduled manually).')}</li>
        <li><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#f0eada;vertical-align:middle;margin-right:8px"></span>
-           <b style="color:#8f8775">${L('Ljus rad 🍽','Light row 🍽')}</b> – ${L('lunchpaus 12–13.','lunch break 12–13.')}</li>
+           <b style="color:#8f8775">${L('Ljus rad 🍽','Light row 🍽')}</b> – ${L('Hydration Break 12–13.','Hydration Break 12–13.')}</li>
        <li><span style="color:#c0392b;font-weight:700;margin-right:6px">(n)</span>
            <b style="color:#c0392b">${L('Röd siffra inom parentes','Red number in parentheses')}</b> ${L('(Statistik) – förslag på antal kvarvarande matcher som bör läggas den dagen för att hinna till finalen.','(Statistics) – suggested number of remaining matches to place that day to reach the final in time.')}</li>
        <li><span style="color:var(--green);margin-right:6px">🏆</span>
@@ -1771,7 +1771,7 @@ function renderSchedGrid(){
     if(!ui.fullGrid && prevEnd!=null && t>prevEnd){
       const isLunch = prevEnd<780 && t>=780;               // luckan täcker 12–13
       const cl = isLunch ? 'lunch' : 'pausrow';
-      const txt= isLunch ? '🍽 Lunchpaus' : '⏸ Paus – ledig lucka (kan schemaläggas manuellt)';
+      const txt= isLunch ? '🍽 Hydration Break' : '⏸ Hydration Break – ledig lucka (kan schemaläggas manuellt)';
       html+=`<tr><td class="time">${fmtMin(prevEnd)}–${fmtMin(t)}</td><td class="${cl}" colspan="${courts}">${txt}</td></tr>`;
     }
     const lunchRow = ui.fullGrid && (t===720 || t===750);
@@ -2625,7 +2625,7 @@ function printBlankSchedule(){
      Array.from({length:courts},(_,i)=>`<th>Bana ${i+1}</th>`).join("")}</tr></thead><tbody>`;
   let lunchShown=false;
   for(const t of daySlots(ui.day)){
-    if(!lunchShown && t>=780){ html+=`<tr><td class="time">12:00–13:00</td><td colspan="${courts}" style="text-align:center">Lunchpaus</td></tr>`; lunchShown=true; }
+    if(!lunchShown && t>=780){ html+=`<tr><td class="time">12:00–13:00</td><td colspan="${courts}" style="text-align:center">Hydration Break</td></tr>`; lunchShown=true; }
     html+=`<tr><td class="time">${timeLabel(t, ui.day)}</td>`;
     for(let ct=1;ct<=courts;ct++){
       html+=`<td style="height:44px"></td>`;
@@ -2658,7 +2658,7 @@ function printSchedule(day, scope="all"){
   for(const t of scheduleTimes(day, scope)){
     if(prevEnd!=null && t>prevEnd){
       const isLunch = prevEnd<780 && t>=780;
-      html+=`<tr><td class="time">${fmtMin(prevEnd)}–${fmtMin(t)}</td><td colspan="${courts}" style="text-align:center;color:#888;font-style:italic">${isLunch?'Lunchpaus':'Paus'}</td></tr>`;
+      html+=`<tr><td class="time">${fmtMin(prevEnd)}–${fmtMin(t)}</td><td colspan="${courts}" style="text-align:center;color:#888;font-style:italic">Hydration Break</td></tr>`;
     }
     html+=`<tr><td class="time">${timeLabel(t, day)}</td>`;
     for(let ct=1;ct<=courts;ct++){
@@ -2909,7 +2909,7 @@ function buildScheduleSVG(day, scope="all"){
   let prevEnd=null;
   for(const t of times){
     if(prevEnd!=null && t>prevEnd){
-      rows.push({gap:true, label:`${fmtMin(prevEnd)}–${fmtMin(t)}`, txt:(prevEnd<780&&t>=780)?'Lunchpaus':'Paus', h:20});
+      rows.push({gap:true, label:`${fmtMin(prevEnd)}–${fmtMin(t)}`, txt:'Hydration Break', h:20});
     }
     const cells=[]; let contentH=24;
     for(let ct=1;ct<=courts;ct++){
