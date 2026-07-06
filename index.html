@@ -1523,14 +1523,6 @@ function renderSchedule(){
      <button class="btn ghost" id="clearDay">Töm dagens schema</button>
      <button class="btn ${dayLocked(ui.day)?'':'ghost'}" id="lockDay" title="Lås dagens resultat så att de inte ändras av misstag">${dayLocked(ui.day)?'🔓 Lås upp dagens resultat':'🔒 Lås dagens resultat'}</button>
      <button class="btn gray" id="clearSched">🗑 Rensa flik (hela schemat)</button>
-     <label class="small">${L('Omfattning','Scope')}: <select id="schedScopeSel">
-       <option value="all" ${(ui.printScope||'all')==='all'?'selected':''}>${L('Hela dagen','Whole day')}</option>
-       <option value="youth" ${ui.printScope==='youth'?'selected':''}>${L('Endast junior','Juniors only')}</option>
-       <option value="adult" ${ui.printScope==='adult'?'selected':''}>${L('Endast senior','Seniors only')}</option>
-     </select></label>
-     <button class="btn ghost mini" id="printSched">🖨 Skriv ut dagens schema</button>
-     <button class="btn ghost mini" id="imgSched">📷 ${L('Spara dagens schema som bild','Save the day\'s schedule as image')}</button>
-     <button class="btn ghost mini" id="printBlank">🖨 Skriv ut blankt schema</button>
      <label class="small"><input type="checkbox" id="fullGrid" ${ui.fullGrid?'checked':''}> Visa alla tider (08–21)</label>
      <label class="small" title="Auto-schemaläggning får lägga in matcher i nästa omgång även om föregående omgång i klassen inte är färdigspelad">
        <input type="checkbox" id="earlyRounds" ${state.allowEarlyRounds?'checked':''}> Tillåt senare omgångar</label>
@@ -1539,6 +1531,16 @@ function renderSchedule(){
        <select id="extraCourts">${[0,1,2].map(v=>`<option value="${v}" ${((state.extraCourts[ui.day]||0)===v)?'selected':''}>+${v}</option>`).join("")}</select>
      </label>
      <span class="pill">${courtsForDay(ui.day)} banor totalt</span>
+   </div>
+   <div class="toolbar no-print">
+     <label class="small">${L('Omfattning','Scope')}: <select id="schedScopeSel">
+       <option value="all" ${(ui.printScope||'all')==='all'?'selected':''}>${L('Hela dagen','Whole day')}</option>
+       <option value="youth" ${ui.printScope==='youth'?'selected':''}>${L('Endast junior','Juniors only')}</option>
+       <option value="adult" ${ui.printScope==='adult'?'selected':''}>${L('Endast senior','Seniors only')}</option>
+     </select></label>
+     <button class="btn ghost mini" id="printSched">🖨 Skriv ut dagens schema</button>
+     <button class="btn ghost mini" id="imgSched">📷 ${L('Spara dagens schema som bild','Save the day\'s schedule as image')}</button>
+     <button class="btn ghost mini" id="printBlank">🖨 Skriv ut blankt schema</button>
    </div>
    <div class="card no-print">
      <h2>Lägg till match i schemat (${dayShort(ui.day)})</h2>
