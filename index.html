@@ -90,6 +90,11 @@
   .match.numtarget{cursor:pointer}
   .match.numtarget:hover{outline:2px dashed #8e44ad}
   .match.numsel{outline:3px solid #8e44ad;background:#f6eefc}
+  /* Färdigspelade matcher (vinnare registrerad) tonas ned så ospelade matcher framträder. */
+  .match.played{opacity:.5}
+  .match.played:hover{opacity:1}
+  .mtile.played{opacity:.55}
+  .mtile.played:hover{opacity:1}
   .mno{display:inline-block;font-size:10px;font-weight:700;color:#fff;background:#6b6356;border-radius:4px;padding:0 5px;margin-right:5px;letter-spacing:.5px}
   .match .slot{display:flex;align-items:center;gap:6px;padding:7px 9px;border-bottom:1px dashed var(--line)}
   .match .slot:last-of-type{border-bottom:none}
@@ -389,11 +394,13 @@ function normalize(s){
 function visibleClasses(){ return state.classes.filter(c=>!c.hidden); }
 // Klasshantering: lägg till, döp om, dölj/visa, ta bort.
 function addClass_(){
-  const name=(prompt("Namn på den nya klassen:")||"").trim();
-  if(!name) return;
+  const nameEl=document.getElementById("newClsName");
+  const name=((nameEl?nameEl.value:prompt("Namn på den nya klassen:"))||"").trim();
+  if(!name){ alert(L("Ange klassens namn.","Enter the class name.")); return; }
   if(state.classes.some(c=>c.name===name)){ alert("Det finns redan en klass med det namnet."); return; }
-  const youth=confirm("Är detta en juniorklass (spelas vardagar 9–13, 30 min/match)?\nOK = junior · Avbryt = senior");
-  state.classes.push({ id:"c"+uid(), name, type: youth?"youth":"adult",
+  const typeEl=document.getElementById("newClsType");
+  const type=(typeEl && typeEl.value==="youth") ? "youth" : "adult";
+  state.classes.push({ id:"c"+uid(), name, type,
     ranked:false, seeds:4, catNo: state.classes.length+1,
     participants:[], matches:[], champion:null });
   ui.classId=state.classes[state.classes.length-1].id;
@@ -1133,6 +1140,10 @@ function renderInfo(){
 /* ----- Tab 1: Klasser & deltagare ----- */
 function renderClasses(){
   const cls=getClass(ui.classId)||state.classes[0]; ui.classId=cls.id;
+  // Namn som redan finns registrerade i andra klasser (och inte redan i denna klass).
+  const inThisClass=new Set();
+  cls.participants.forEach(line=>String(line).split("/").forEach(part=>{ const n=stripRank(part); if(n) inThisClass.add(n); }));
+  const existNames=allParticipantNames().filter(n=>!inThisClass.has(n));
   app.innerHTML=`
    <div class="toolbar no-print">
      <button class="btn ghost" id="resetBrSched">♻ Nollställ stegar &amp; schema (behåll deltagare)</button>
@@ -1143,8 +1154,15 @@ function renderClasses(){
      <h2>Klasser</h2>
      <p class="small muted">Klicka på en klass för att klistra in deltagare och bygga stegen. Dolda klasser visas gråade här men syns inte i övriga flikar.</p>
      <div class="grid-classes" id="clsGrid"></div>
-     <div class="row" style="margin-top:12px">
-       <button class="btn mini" id="addClassBtn">➕ Lägg till klass</button>
+     <div class="row" style="margin-top:12px;align-items:flex-end;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:12px">
+       <label class="small">${L('Ny klass – namn','New class – name')}<br>
+         <input type="text" id="newClsName" placeholder="${L('Klassens namn','Class name')}" style="min-width:180px"></label>
+       <label class="small">${L('Typ','Type')}<br>
+         <select id="newClsType">
+           <option value="adult">${L('Senior (13–21)','Senior (13–21)')}</option>
+           <option value="youth">${L('Junior (9–13)','Junior (9–13)')}</option>
+         </select></label>
+       <button class="btn mini" id="addClassBtn">➕ ${L('Skapa klass','Create class')}</button>
      </div>
    </div>
    <div class="card">
@@ -1178,6 +1196,12 @@ function renderClasses(){
        <input type="number" id="catNo" min="1" max="99" value="${classCatNo(cls)}" style="width:60px">
        – matcher numreras <b>${classCatNo(cls)}01, ${classCatNo(cls)}02 …</b>
      </label>
+     <div class="row" style="margin:0 0 10px">
+       <span class="small">${L('Lägg till befintlig deltagare','Add existing player')}:</span>
+       <select id="existPlayer">${existNames.length?existNames.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join(""):`<option value="">(${L('inga andra deltagare','no other players')})</option>`}</select>
+       <button class="btn mini" id="addExistBtn" ${existNames.length?'':'disabled'}>➕ ${L('Lägg till i rutan','Add to the box')}</button>
+       <span class="muted small">${L('– hämtar namn som redan är registrerade i andra klasser','– picks names already registered in other classes')}</span>
+     </div>
      <textarea id="partsInput" placeholder="Anna Andersson&#10;Björn Berg&#10;Carl Carlsson&#10;...">${cls.participants.join("\n")}</textarea>
      <div class="toolbar" style="margin-top:10px">
        <button class="btn" id="saveParts">🔒 Lås deltagare &amp; bygg stege</button>
@@ -1228,6 +1252,14 @@ function renderClasses(){
     buildBracket(cls);
     save(); render();
   };
+  { const ab=document.getElementById("addExistBtn"); if(ab) ab.onclick=()=>{
+      const sel=document.getElementById("existPlayer"); const nm=(sel&&sel.value||"").trim(); if(!nm) return;
+      const ta=document.getElementById("partsInput");
+      const has=ta.value.split("\n").some(l=>stripRank(l.trim())===nm);
+      if(has){ alert(nm+" "+L("finns redan i listan.","is already in the list.")); return; }
+      ta.value=(ta.value.replace(/\s*$/,"")) + (ta.value.trim()?"\n":"") + nm;   // lägg till rad i rutan (lås för att bygga)
+    };
+  }
   document.getElementById("clearParts").onclick=()=>{
     if(!confirm(`Rensa alla deltagare i ${cls.name}? Stegen raderas.`)) return;
     cls.participants=[]; cls.matches=[]; cls.champion=null;
@@ -1483,7 +1515,8 @@ function matchHTML(cls,m,total){
                      :(matchNumber(m)!=null?`<div class="sched-tag">${matchNoTag(m)}</div>`:"");
   const moveCls = (ui.moveMode && m.round===0) ? (ui.moveSel===m.id?" moveable movesel":" moveable") : "";
   const numCls = (ui.numMode && matchNumber(m)!=null) ? (ui.numSel===m.id?" numtarget numsel":" numtarget") : "";
-  return `<div class="match${moveCls}${numCls}" data-r="${m.round}" data-i="${m.index}" style="border-left:5px solid ${classColor(cls)}">
+  const playedCls = m.winner ? " played" : "";
+  return `<div class="match${moveCls}${numCls}${playedCls}" data-r="${m.round}" data-i="${m.index}" style="border-left:5px solid ${classColor(cls)}">
      ${slotHTML(m.p1,"p1")}
      ${slotHTML(m.p2,"p2")}
      ${ (m.p1&&m.p2) ? `<div class="scorerow">
@@ -1866,7 +1899,7 @@ function mtileHTML(m,bad){
          <option value="p2" ${m.winner===m.p2?'selected':''}>${dispName(m.p2)}</option>
        </select>
      </div>`:"";
-  return `<div class="mtile${conf}${locked?' locked':''}" data-id="${m.id}" style="border-left-color:${col}">
+  return `<div class="mtile${conf}${locked?' locked':''}${m.winner?' played':''}" data-id="${m.id}" style="border-left-color:${col}">
      <div class="cls"><span class="cdot" style="background:${col}"></span>${matchNoTag(m)}${c.name}${locked?' <span class="lockmark">🔒</span>':''}${stageTag(c,m)}</div>
      <div class="vs">${dispName(m.p1)||'?'} <span class="muted">vs</span> ${dispName(m.p2)||'?'}${m.winner?` <span style="color:var(--green)">🏆 ${dispName(m.winner)}</span>`:''}</div>
      ${conflictMsg}
