@@ -1424,19 +1424,18 @@ function renderClasses(){
          : 'Lottningen är helt slumpmässig (ingen seedning).'}
        När du låser deltagarna byggs stegen utifrån listan.
      </div>
-     <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
-       <div style="flex:0 0 260px;min-width:230px">
+     <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:stretch">
+       <div style="flex:0 0 260px;min-width:230px;display:flex;flex-direction:column">
          <div class="small" style="margin-bottom:6px"><b>${L('Lägg till befintliga deltagare','Add existing players')}</b></div>
          <input type="text" id="existSearch" placeholder="🔎 ${L('Sök namn…','Search name…')}" style="width:100%" ${existNames.length?'':'disabled'}>
          <button class="btn mini" id="addExistBtn" style="margin-top:6px;width:100%" ${existNames.length?'':'disabled'}>➕ ${L('Lägg till valda i rutan','Add selected to the box')}</button>
-         ${existNames.length?`<div id="existListWrap" style="height:300px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:6px;margin-top:6px">
+         <p class="muted small" style="margin:6px 0 6px">${L('– namn som redan är registrerade i andra klasser','– names already registered in other classes')}</p>
+         ${existNames.length?`<div id="existListWrap" style="height:300px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:6px;margin-top:auto">
            ${existNames.map(n=>`<label class="small" style="display:block;padding:2px 4px" data-existrow="${n.toLowerCase().replace(/"/g,'&quot;')}"><input type="checkbox" class="existchk" value="${n.replace(/"/g,'&quot;')}"> ${n}</label>`).join("")}
-         </div>`:`<p class="small muted" style="margin:6px 0 0">(${L('inga andra deltagare registrerade','no other players registered')})</p>`}
-         <p class="muted small" style="margin:6px 0 0">${L('– namn som redan är registrerade i andra klasser','– names already registered in other classes')}</p>
+         </div>`:`<p class="small muted" style="margin-top:auto">(${L('inga andra deltagare registrerade','no other players registered')})</p>`}
        </div>
-       <div style="flex:1;min-width:300px">
-         <textarea id="partsInput" style="height:300px" placeholder="Anna Andersson&#10;Björn Berg&#10;Carl Carlsson&#10;...">${cls.participants.join("\n")}</textarea>
-         <div class="toolbar" style="margin-top:10px">
+       <div style="flex:1;min-width:300px;display:flex;flex-direction:column">
+         <div class="toolbar" style="margin-bottom:10px">
            <button class="btn" id="saveParts">🔒 Lås deltagare &amp; bygg stege</button>
            <span class="pill">${cls.participants.length} deltagare</span>
            ${cls.matches.length?`<span class="pill">${totalRounds(cls)} omgångar</span>`:""}
@@ -1444,17 +1443,18 @@ function renderClasses(){
            <span style="flex:1"></span>
            <button class="btn gray mini" id="clearParts" ${cls.participants.length?'':'disabled'}>🗑 Rensa deltagare (raderar stegen)</button>
          </div>
+         ${cls.participants.length?`
+         <div class="row" style="margin-bottom:10px;align-items:center;flex-wrap:wrap">
+           <span class="small">Ersätt deltagare:</span>
+           <select id="replSel">${cls.participants.map(p=>`<option value="${String(p).replace(/"/g,'&quot;')}">${dispName(p)}</option>`).join("")}</select>
+           <span class="small">med</span>
+           <input type="text" id="replNew" placeholder="nytt namn / par" style="min-width:150px">
+           <button class="btn mini" id="replBtn">🔁 Ersätt</button>
+           <span class="muted small">– tar den gamlas plats i stege och schema.</span>
+         </div>`:''}
+         <textarea id="partsInput" style="height:300px;margin-top:auto" placeholder="Anna Andersson&#10;Björn Berg&#10;Carl Carlsson&#10;...">${cls.participants.join("\n")}</textarea>
        </div>
      </div>
-     ${cls.participants.length?`
-     <div class="row" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
-       <span class="small">Ersätt deltagare:</span>
-       <select id="replSel">${cls.participants.map(p=>`<option value="${String(p).replace(/"/g,'&quot;')}">${dispName(p)}</option>`).join("")}</select>
-       <span class="small">med</span>
-       <input type="text" id="replNew" placeholder="nytt namn / par" style="min-width:180px">
-       <button class="btn mini" id="replBtn">🔁 Ersätt</button>
-       <span class="muted small">– den nya tar den gamlas plats i stege och schema.</span>
-     </div>`:''}
    </div>`;
   // grid
   document.getElementById("clsGrid").innerHTML=[...state.classes].sort((a,b)=>(a.catNo||0)-(b.catNo||0)).map(c=>{
