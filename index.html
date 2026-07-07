@@ -181,6 +181,7 @@
     <p class="sub" id="appSub">Dalarö Tennisklubb</p>
   </div>
   <div class="spacer"></div>
+  <div class="sync-badge no-print" id="syncBadge" style="font-size:12px;color:#fff;opacity:.9;white-space:nowrap"></div>
   <div class="tabs" id="tabs"></div>
 </header>
 
@@ -382,6 +383,7 @@ function normalize(s){
   if(!s.diplomaSigns || typeof s.diplomaSigns!=="object") s.diplomaSigns={ director:true, chairman:true, trainers:false };
   { const d=defaultSched(); s.sched = Object.assign(d, (s.sched && typeof s.sched==="object") ? s.sched : {}); }
   if(typeof s.venue!=="string") s.venue="";
+  if(typeof s.updatedAt!=="number") s.updatedAt=0;
   if(!s.extraCourts) s.extraCourts={};
   if(!s.lockedDays) s.lockedDays={};
   if(!s.planFinalDays) s.planFinalDays={};
@@ -483,7 +485,118 @@ function ensureDay(){
   if(!ui.day || !days.some(d=>d.date===ui.day)) ui.day=days[0].date;
 }
 function load(){ try{ const r=localStorage.getItem(LS_KEY); return r?JSON.parse(r):null; }catch(e){ return null; } }
-function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+function save(){ state.updatedAt = Date.now(); saveLocal(); cloudSchedulePush(); }
+
+/* ===================== Molnsynk (Supabase) =====================
+   Delar hela tillståndet (state) mellan enheter via en delad rad i
+   tabellen "tournaments". Ingen serverkod – webbläsaren pratar direkt
+   med Supabase. localStorage används fortfarande som offline-backup.   */
+const SUPA_URL  = "https://nciruaqemnzlbfkldgvf.supabase.co/rest/v1";
+const SUPA_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jaXJ1YXFlbW56bGJma2xkZ3ZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0Mzk1NTQsImV4cCI6MjA5OTAxNTU1NH0.YBiWJLch1jz9oZrf4V7CskNqVz5j6285AeaAoPYC2bs";
+const TOURN_KEY = "dalaro-km";   // delad nyckel – alla enheter som använder denna delar samma data
+const cloudEnabled = /^https?:\/\//.test(SUPA_URL) && SUPA_KEY.length>20;
+let cloudStatus = "off";         // off | connecting | ok | saving | offline
+let cloudLastSync = 0;
+let _pushTimer = null, _polling = false;
+
+function cloudHeaders(extra){ return Object.assign({ apikey:SUPA_KEY, Authorization:"Bearer "+SUPA_KEY, "Content-Type":"application/json" }, extra||{}); }
+
+async function cloudGet(){
+  const r = await fetch(`${SUPA_URL}/tournaments?key=eq.${encodeURIComponent(TOURN_KEY)}&select=data`, { headers: cloudHeaders() });
+  if(!r.ok) throw new Error("GET "+r.status);
+  const rows = await r.json();
+  return (Array.isArray(rows) && rows.length) ? rows[0].data : null;
+}
+async function cloudPut(data){
+  const r = await fetch(`${SUPA_URL}/tournaments?on_conflict=key`, {
+    method:"POST",
+    headers: cloudHeaders({ Prefer:"resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify([{ key:TOURN_KEY, data }])
+  });
+  if(!r.ok) throw new Error("PUT "+r.status);
+}
+function cloudSetStatus(s){ cloudStatus=s; updateSyncBadge(); }
+function cloudSchedulePush(){
+  if(!cloudEnabled) return;
+  clearTimeout(_pushTimer);
+  _pushTimer=setTimeout(async ()=>{
+    cloudSetStatus("saving");
+    try{ await cloudPut(state); cloudLastSync=Date.now(); cloudSetStatus("ok"); }
+    catch(e){ cloudSetStatus("offline"); }
+  }, 800);
+}
+// Hämta molnets version och tillämpa den om den är nyare än vår.
+async function cloudPull(rerender){
+  if(!cloudEnabled) return false;
+  const data = await cloudGet();
+  if(data && (data.updatedAt||0) > (state.updatedAt||0)){
+    state = normalize(data);
+    if(!getClass(ui.classId)) ui.classId = state.classes[0] && state.classes[0].id;
+    saveLocal(); ensureDay();
+    if(rerender) render();
+    cloudLastSync=Date.now();
+    return true;
+  }
+  return false;
+}
+async function cloudInit(){
+  if(!cloudEnabled){ cloudSetStatus("off"); return; }
+  cloudSetStatus("connecting");
+  try{
+    const data = await cloudGet();
+    if(data){
+      if((data.updatedAt||0) >= (state.updatedAt||0)){ state=normalize(data); if(!getClass(ui.classId)) ui.classId=state.classes[0]&&state.classes[0].id; saveLocal(); ensureDay(); render(); }
+      else { await cloudPut(state); }   // vår lokala är nyare – skicka upp den
+    } else {
+      await cloudPut(state);            // molnet är tomt – så vår lokala data blir grunddata
+    }
+    cloudLastSync=Date.now(); cloudSetStatus("ok");
+    cloudStartPolling();
+  }catch(e){ cloudSetStatus("offline"); setTimeout(cloudInit, 8000); }   // försök igen senare
+}
+function cloudStartPolling(){
+  if(_polling || !cloudEnabled) return; _polling=true;
+  setInterval(async ()=>{
+    if(cloudStatus==="saving") return;
+    // Stör inte medan man skriver i ett fält.
+    const ae=document.activeElement, tag=ae&&ae.tagName;
+    if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT") return;
+    try{ const changed=await cloudPull(true); if(cloudStatus!=="ok") cloudSetStatus("ok"); if(changed) cloudLastSync=Date.now(); }
+    catch(e){ cloudSetStatus("offline"); }
+  }, 12000);
+}
+async function cloudForcePush(){
+  if(!cloudEnabled) return;
+  cloudSetStatus("saving");
+  try{ state.updatedAt=Date.now(); saveLocal(); await cloudPut(state); cloudLastSync=Date.now(); cloudSetStatus("ok"); }
+  catch(e){ cloudSetStatus("offline"); }
+}
+async function cloudForcePull(){
+  if(!cloudEnabled) return;
+  cloudSetStatus("connecting");
+  try{
+    const data=await cloudGet();
+    if(data){ state=normalize(data); if(!getClass(ui.classId)) ui.classId=state.classes[0]&&state.classes[0].id; saveLocal(); ensureDay(); render(); }
+    cloudLastSync=Date.now(); cloudSetStatus("ok");
+  }catch(e){ cloudSetStatus("offline"); }
+}
+function cloudStatusText(){
+  if(!cloudEnabled) return L("Molnsynk av (endast denna enhet)","Cloud sync off (this device only)");
+  const map={ connecting:L("Ansluter…","Connecting…"), saving:L("Sparar till molnet…","Saving to cloud…"),
+    ok:L("Synkad","Synced"), offline:L("Offline – sparat lokalt","Offline – saved locally"), off:L("Av","Off") };
+  let s=map[cloudStatus]||cloudStatus;
+  if(cloudStatus==="ok" && cloudLastSync){ const d=new Date(cloudLastSync); const p=n=>String(n).padStart(2,"0"); s+=` ${p(d.getHours())}:${p(d.getMinutes())}`; }
+  return s;
+}
+function updateSyncBadge(){
+  const dot={ connecting:"#e0a020", saving:"#e0a020", ok:"#2e9e57", offline:"#c0392b", off:"#999" }[cloudStatus]||"#999";
+  const html=`<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${dot};margin-right:6px;vertical-align:middle"></span><span style="vertical-align:middle">${cloudStatusText()}</span>`;
+  const el=document.getElementById("syncBadge");
+  if(el){ el.innerHTML=html; el.title=cloudEnabled?`Molnsynk: ${TOURN_KEY}`:"Molnsynk av"; }
+  const el2=document.getElementById("syncBadge2");
+  if(el2){ el2.innerHTML=html; }
+}
 function uid(){ return Math.random().toString(36).slice(2,9); }
 function getClass(id){ return state.classes.find(c=>c.id===id); }
 // Distinkt färg per klass (utifrån klassens ordning) för att skilja matcher åt.
@@ -1152,6 +1265,17 @@ function renderInfo(){
      <textarea id="venue" placeholder="T.ex. Dalarö Tennisklubb, Odinsvägen 5, 137 70 Dalarö" style="min-height:64px">${String(state.venue||"")}</textarea>
    </div>
    <div class="card no-print">
+     <h2>${L('Molnsynk','Cloud sync')}</h2>
+     <p class="small muted">${L('När molnsynk är på delas turneringen automatiskt mellan alla enheter som öppnar sidan – ändringar sparas till molnet och hämtas var 12:e sekund. Lokal kopia sparas alltid som backup.','When cloud sync is on, the tournament is shared automatically between all devices that open the page – changes are saved to the cloud and fetched every 12 s. A local copy is always kept as backup.')}</p>
+     <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">
+       <span id="syncBadge2" class="pill"></span>
+       <button class="btn ghost mini" id="cloudPullBtn" ${cloudEnabled?'':'disabled'}>⬇ ${L('Hämta från molnet','Fetch from cloud')}</button>
+       <button class="btn ghost mini" id="cloudPushBtn" ${cloudEnabled?'':'disabled'}>⬆ ${L('Spara till molnet nu','Save to cloud now')}</button>
+       <span class="muted small">${L('Delad nyckel','Shared key')}: <b>${TOURN_KEY}</b></span>
+     </div>
+     ${cloudEnabled?'':`<p class="small" style="color:#c0392b">${L('Molnsynk är inte konfigurerad i denna fil.','Cloud sync is not configured in this file.')}</p>`}
+   </div>
+   <div class="card no-print">
      <h2>Säkerhetskopia</h2>
      <p class="small muted">Spara hela turneringen som en JSON-fil (filnamnet får datum + klockslag), eller läs in en tidigare kopia
        för att återställa eller flytta turneringen till en annan dator.</p>
@@ -1209,6 +1333,10 @@ function renderInfo(){
   document.getElementById("exportBtn").onclick=exportBackup;
   document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
   document.getElementById("newTournament").onclick=resetEverything;
+  // Molnsynk
+  updateSyncBadge();
+  { const b=document.getElementById("cloudPullBtn"); if(b) b.onclick=cloudForcePull; }
+  { const b=document.getElementById("cloudPushBtn"); if(b) b.onclick=cloudForcePush; }
   // Tränare
   document.getElementById("addTrainer").onclick=()=>{ state.trainers.push(""); save(); render(); };
   document.querySelectorAll("#trainerList input[data-tr]").forEach(el=>el.oninput=()=>{ state.trainers[+el.dataset.tr]=el.value; save(); });
@@ -1405,12 +1533,14 @@ function renderClasses(){
   document.getElementById("clearOneBrSched").onclick=()=>clearBracketOf(cls);
 }
 // Rensar HELA appen: deltagare, stegar, scheman, datum. Används av båda nollställ-knapparna.
-function resetEverything(){
+async function resetEverything(){
   if(!confirm("Ny turnering – nollställ ALLT (deltagare, stegar och scheman i alla klasser)? Detta kan inte ångras.")) return;
   // Robust nollställning: rensa lagringen och ladda om sidan -> helt färskt tillstånd.
   try{ localStorage.removeItem(LS_KEY); }catch(e){}
-  state=newState();
-  try{ location.reload(); }catch(e){ save(); ui={tab:"classes",classId:state.classes[0].id,day:null}; ensureDay(); render(); }
+  state=newState(); state.updatedAt=Date.now();
+  // Skriv den tomma turneringen till molnet FÖRST (annars hämtas gamla data tillbaka vid omladdning).
+  if(cloudEnabled){ try{ cloudSetStatus("saving"); await cloudPut(state); }catch(e){} }
+  try{ location.reload(); }catch(e){ saveLocal(); cloudSchedulePush(); ui={tab:"classes",classId:state.classes[0].id,day:null}; ensureDay(); render(); }
 }
 // Nollställer stegar OCH scheman (inkl. resultat) i alla klasser men behåller deltagarna
 // i Klasser & deltagare. Stegarna TÖMS (byggs inte om) – deltagarlistorna är kvar och
@@ -3316,6 +3446,7 @@ const LOGO_SVG = `
 document.getElementById("logoHolder").innerHTML=LOGO_SVG;
 
 render();
+cloudInit();   // anslut till molnet och synka (om aktiverat)
 </script>
 </body>
 </html>
