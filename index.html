@@ -1269,14 +1269,25 @@ function renderClasses(){
        <button class="btn ghost mini" id="hideClsBtn">${cls.hidden?'👁 Visa klass':'🙈 Dölj klass'}</button>
        <button class="btn gray mini" id="deleteClsBtn">🗑 Ta bort klass</button>
      </div>
-     <div class="row" style="margin:0 0 10px;align-items:flex-end;gap:10px;flex-wrap:wrap">
+     <div class="row" style="margin:0 0 10px;align-items:flex-end;gap:14px;flex-wrap:wrap">
        <label class="small">${L('Kategori','Category')}<br>
          <select id="clsCategory">${CLASS_CATEGORIES.map(([v,lbl])=>`<option value="${v}" ${cls.category===v?'selected':''}>${lbl}</option>`).join("")}</select></label>
        <label class="small">${L('Åldersnivå','Age level')}<br>
          <input type="text" id="clsAge" value="${String(cls.ageLevel||'').replace(/"/g,'&quot;')}" placeholder="${L('t.ex. U12, 40+, Öppen','e.g. U12, 40+, Open')}" style="min-width:150px"></label>
        <label class="small">${L('Typ (schema)','Type (schedule)')}<br>
          <select id="clsType"><option value="adult" ${cls.type!=='youth'?'selected':''}>${L('Senior','Senior')}</option><option value="youth" ${cls.type==='youth'?'selected':''}>${L('Junior','Junior')}</option></select></label>
+       <label class="small">${L('Klassindex','Class index')}<br>
+         <input type="number" id="catNo" min="1" max="99" value="${classCatNo(cls)}" style="width:64px"></label>
+       <label class="small" style="align-self:flex-end;padding-bottom:6px">
+         <input type="checkbox" id="rankToggle" ${isRanked(cls)?'checked':''}>
+         <b>${L('Seeda denna klass','Seed this class')}</b> ·
+         <select id="seedCount" ${isRanked(cls)?'':'disabled'}>
+           ${[2,4,8,16,32].map(n=>`<option value="${n}" ${(cls.seeds||4)===n?'selected':''}>${n}</option>`).join("")}
+         </select>
+         (${L('rank','rank')} 1–${seedCountOf(cls)||4})
+       </label>
      </div>
+     <p class="small muted" style="margin:-4px 0 10px">${L('Matcher numreras','Matches numbered')} <b>${classCatNo(cls)}01, ${classCatNo(cls)}02 …</b></p>
      <div class="hint">
        Klistra in deltagare – <b>en rad per deltagare</b>. För dubbelklasser: skriv paret på en rad,
        t.ex. <i>Anna Andersson / Björn Berg</i>.
@@ -1286,21 +1297,17 @@ function renderClasses(){
        När du låser deltagarna byggs stegen utifrån listan.
      </div>
      <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+       <div style="flex:0 0 260px;min-width:230px">
+         <div class="small" style="margin-bottom:6px"><b>${L('Lägg till befintliga deltagare','Add existing players')}</b></div>
+         <input type="text" id="existSearch" placeholder="🔎 ${L('Sök namn…','Search name…')}" style="width:100%" ${existNames.length?'':'disabled'}>
+         <button class="btn mini" id="addExistBtn" style="margin-top:6px;width:100%" ${existNames.length?'':'disabled'}>➕ ${L('Lägg till valda i rutan','Add selected to the box')}</button>
+         ${existNames.length?`<div id="existListWrap" style="height:300px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:6px;margin-top:6px">
+           ${existNames.map(n=>`<label class="small" style="display:block;padding:2px 4px" data-existrow="${n.toLowerCase().replace(/"/g,'&quot;')}"><input type="checkbox" class="existchk" value="${n.replace(/"/g,'&quot;')}"> ${n}</label>`).join("")}
+         </div>`:`<p class="small muted" style="margin:6px 0 0">(${L('inga andra deltagare registrerade','no other players registered')})</p>`}
+         <p class="muted small" style="margin:6px 0 0">${L('– namn som redan är registrerade i andra klasser','– names already registered in other classes')}</p>
+       </div>
        <div style="flex:1;min-width:300px">
-         <label class="small" style="display:block;margin:0 0 10px">
-           <input type="checkbox" id="rankToggle" ${isRanked(cls)?'checked':''}>
-           <b>Seeda denna klass</b> &nbsp;·&nbsp; antal seedade:
-           <select id="seedCount" ${isRanked(cls)?'':'disabled'}>
-             ${[2,4,8,16,32].map(n=>`<option value="${n}" ${(cls.seeds||4)===n?'selected':''}>${n}</option>`).join("")}
-           </select>
-           (rank 1–${seedCountOf(cls)||4})
-         </label>
-         <label class="small" style="display:block;margin:0 0 10px">
-           ${L('Klassindex','Class index')}:
-           <input type="number" id="catNo" min="1" max="99" value="${classCatNo(cls)}" style="width:60px">
-           – ${L('matcher numreras','matches numbered')} <b>${classCatNo(cls)}01, ${classCatNo(cls)}02 …</b>
-         </label>
-         <textarea id="partsInput" placeholder="Anna Andersson&#10;Björn Berg&#10;Carl Carlsson&#10;...">${cls.participants.join("\n")}</textarea>
+         <textarea id="partsInput" style="height:300px" placeholder="Anna Andersson&#10;Björn Berg&#10;Carl Carlsson&#10;...">${cls.participants.join("\n")}</textarea>
          <div class="toolbar" style="margin-top:10px">
            <button class="btn" id="saveParts">🔒 Lås deltagare &amp; bygg stege</button>
            <span class="pill">${cls.participants.length} deltagare</span>
@@ -1309,15 +1316,6 @@ function renderClasses(){
            <span style="flex:1"></span>
            <button class="btn gray mini" id="clearParts" ${cls.participants.length?'':'disabled'}>🗑 Rensa deltagare (raderar stegen)</button>
          </div>
-       </div>
-       <div style="flex:0 0 260px;min-width:230px">
-         <div class="small" style="margin-bottom:6px"><b>${L('Lägg till befintliga deltagare','Add existing players')}</b></div>
-         <input type="text" id="existSearch" placeholder="🔎 ${L('Sök namn…','Search name…')}" style="width:100%" ${existNames.length?'':'disabled'}>
-         <button class="btn mini" id="addExistBtn" style="margin-top:6px;width:100%" ${existNames.length?'':'disabled'}>➕ ${L('Lägg till valda i rutan','Add selected to the box')}</button>
-         ${existNames.length?`<div id="existListWrap" style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:6px;margin-top:6px">
-           ${existNames.map(n=>`<label class="small" style="display:block;padding:2px 4px" data-existrow="${n.toLowerCase().replace(/"/g,'&quot;')}"><input type="checkbox" class="existchk" value="${n.replace(/"/g,'&quot;')}"> ${n}</label>`).join("")}
-         </div>`:`<p class="small muted" style="margin:6px 0 0">(${L('inga andra deltagare registrerade','no other players registered')})</p>`}
-         <p class="muted small" style="margin:6px 0 0">${L('– namn som redan är registrerade i andra klasser','– names already registered in other classes')}</p>
        </div>
      </div>
      ${cls.participants.length?`
