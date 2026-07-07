@@ -181,7 +181,7 @@
     <p class="sub" id="appSub">Dalarö Tennisklubb</p>
   </div>
   <div class="spacer"></div>
-  <div class="sync-badge no-print" id="syncBadge" style="font-size:12px;color:#fff;opacity:.9;white-space:nowrap"></div>
+  <div class="sync-badge no-print" id="syncBadge" style="font-size:12px;opacity:.95;white-space:nowrap"></div>
   <div class="tabs" id="tabs"></div>
 </header>
 
@@ -589,13 +589,27 @@ function cloudStatusText(){
   if(cloudStatus==="ok" && cloudLastSync){ const d=new Date(cloudLastSync); const p=n=>String(n).padStart(2,"0"); s+=` ${p(d.getHours())}:${p(d.getMinutes())}`; }
   return s;
 }
+// Välj svart eller vit text som syns bäst mot en given bakgrundsfärg (hex).
+function contrastText(bg){
+  let h=String(bg||"").trim().replace(/^#/,"");
+  if(h.length===3) h=h.split("").map(c=>c+c).join("");
+  if(!/^[0-9a-fA-F]{6}$/.test(h)) return "#1a1a1a";
+  const r=parseInt(h.slice(0,2),16), g=parseInt(h.slice(2,4),16), b=parseInt(h.slice(4,6),16);
+  // Relativ luminans (perception) – ljus bakgrund → mörk text, mörk bakgrund → ljus text.
+  const lum=(0.299*r+0.587*g+0.114*b)/255;
+  return lum>0.6 ? "#1a1a1a" : "#ffffff";
+}
 function updateSyncBadge(){
   const dot={ connecting:"#e0a020", saving:"#e0a020", ok:"#2e9e57", offline:"#c0392b", off:"#999" }[cloudStatus]||"#999";
   const html=`<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${dot};margin-right:6px;vertical-align:middle"></span><span style="vertical-align:middle">${cloudStatusText()}</span>`;
   const el=document.getElementById("syncBadge");
-  if(el){ el.innerHTML=html; el.title=cloudEnabled?`Molnsynk: ${TOURN_KEY}`:"Molnsynk av"; }
+  if(el){
+    // Huvudets bakgrund = vald bakgrundsfärg, annars standard (--paper, ljus).
+    el.style.color = contrastText(state.bgColor || "#fbf9f1");
+    el.innerHTML=html; el.title=cloudEnabled?`Molnsynk: ${TOURN_KEY}`:"Molnsynk av";
+  }
   const el2=document.getElementById("syncBadge2");
-  if(el2){ el2.innerHTML=html; }
+  if(el2){ el2.style.color = contrastText("#eee5cf"); el2.innerHTML=html; }   // pillens ljusa bakgrund → mörk text
 }
 function uid(){ return Math.random().toString(36).slice(2,9); }
 function getClass(id){ return state.classes.find(c=>c.id===id); }
@@ -932,6 +946,7 @@ function applyTheme(){
   document.documentElement.style.setProperty("--head", state.headColor || "#b5362b");
   const lh=document.getElementById("logoHolder");
   if(lh) lh.innerHTML=logoMarkup();
+  updateSyncBadge();   // säkerställ att statustexten kontrasterar mot vald bakgrund
 }
 
 /* ---------------- Rendering ---------------- */
