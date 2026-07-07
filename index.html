@@ -1451,7 +1451,7 @@ function renderBracketTab(){
      <div class="row">
        <span class="sw" style="background:${classColor(cls)};width:16px;height:16px;border-radius:4px;display:inline-block"></span>
        <label class="small">Klass:
-         <select id="clsSel">${visibleClasses().map(c=>{ const has=c.matches.some(m=>!m.manual); return `<option value="${c.id}" ${c.id===cls.id?'selected':''}${has?' style="font-weight:bold"':''}>${has?'✅ ':''}${c.name}</option>`; }).join("")}</select>
+         <select id="clsSel">${visibleClasses().map(c=>{ const has=c.matches.some(m=>!m.manual); return `<option value="${c.id}" ${c.id===cls.id?'selected':''}${has?' style="font-weight:bold"':''}>${has?'✅ ':''}${c.name} (#${c.catNo})</option>`; }).join("")}</select>
        </label>
        <span class="badge ${cls.type}">${cls.type==='youth'?'Ungdom 9–13':'Senior 13–21'}</span>
        ${isRanked(cls)?`<span class="badge" style="background:#f6efd2;color:#8a6d00">★ Seedas (top ${seedCountOf(cls)})</span>`:''}
