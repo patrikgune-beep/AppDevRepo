@@ -511,17 +511,33 @@ async function cloudGet(){
   const rows = await r.json();
   return (Array.isArray(rows) && rows.length) ? rows[0].data : null;
 }
-async function cloudPut(data){
+// Skriv en rad utan att kräva unik constraint på "key":
+// försök UPPDATERA (PATCH) befintlig rad, och INFOGA (POST) bara om ingen fanns.
+async function cloudUpsertRow(key, data){
+  const fail=(where,r,body)=>{ const e=new Error(`${where} HTTP ${r.status} – ${(body||"").slice(0,180)}`); e.status=r.status; e.body=body||""; cloudLastError=e.message; return e; };
+  // 1) UPPDATERA
   let r;
-  try{ r = await fetch(`${SUPA_URL}/tournaments?on_conflict=key`, {
-    method:"POST",
-    headers: cloudHeaders({ Prefer:"resolution=merge-duplicates,return=minimal" }),
-    body: JSON.stringify([{ key:TOURN_KEY, data }])
+  try{ r = await fetch(`${SUPA_URL}/tournaments?key=eq.${encodeURIComponent(key)}`, {
+    method:"PATCH",
+    headers: cloudHeaders({ Prefer:"return=representation" }),
+    body: JSON.stringify({ data })
   }); }
-  catch(e){ cloudLastError="Nätverksfel (PUT): "+e.message; throw e; }
-  if(!r.ok){ const body=await r.text().catch(()=>"" ); cloudLastError=`PUT HTTP ${r.status} – ${body.slice(0,180)}`; throw new Error(cloudLastError); }
+  catch(e){ cloudLastError="Nätverksfel (PATCH): "+e.message; throw e; }
+  if(!r.ok){ throw fail("PATCH", r, await r.text().catch(()=>"" )); }
+  let rows=[]; try{ rows=await r.json(); }catch(e){}
+  if(Array.isArray(rows) && rows.length){ cloudLastError=""; return; }   // en rad uppdaterades → klart
+  // 2) INFOGA (ingen rad fanns)
+  let r2;
+  try{ r2 = await fetch(`${SUPA_URL}/tournaments`, {
+    method:"POST",
+    headers: cloudHeaders({ Prefer:"return=minimal" }),
+    body: JSON.stringify({ key, data })
+  }); }
+  catch(e){ cloudLastError="Nätverksfel (POST): "+e.message; throw e; }
+  if(!r2.ok){ throw fail("POST", r2, await r2.text().catch(()=>"" )); }
   cloudLastError="";   // lyckad skrivning – nollställ felet
 }
+async function cloudPut(data){ return cloudUpsertRow(TOURN_KEY, data); }
 function cloudSetStatus(s){ cloudStatus=s; updateSyncBadge(); }
 function cloudSchedulePush(){
   if(!cloudEnabled) return;
@@ -607,7 +623,12 @@ async function cloudDiagnose(){
     if(status===404) return "→ 404. Kontrollera att URL:en slutar på /rest/v1 och att tabellen 'tournaments' finns.";
     if(status===0) return "→ Ingen kontakt. Internet nere, fel URL, eller nätverket/brandväggen blockerar supabase.co (CORS).";
     if(b.includes("does not exist")||b.includes("42p01")) return "→ Tabellen 'tournaments' saknas. Skapa den med SQL:en i instruktionen.";
-    if(b.includes("could not find")&&b.includes("column")) return "→ Fel kolumnnamn. Tabellen ska ha kolumnerna 'key' (text) och 'data' (jsonb).";
+    if((b.includes("could not find")&&b.includes("column"))||(b.includes("column")&&b.includes("does not exist"))) return "→ Fel/saknad kolumn. Tabellen ska ha exakt kolumnerna 'key' (text) och 'data' (jsonb).";
+    if(status===400){
+      if(b.includes("no unique or exclusion")||b.includes("42p10")) return "→ 'key' saknar unik constraint. Appen är nu uppdaterad för att inte kräva det – ladda om sidan (Ctrl/Cmd+Shift+R).";
+      if(b.includes("not-null")||b.includes("23502")) return "→ En obligatorisk kolumn saknar värde. Ta bort extra NOT NULL-kolumner, eller använd bara 'key' och 'data'.";
+      return "→ Felaktig begäran (400). Vanligast: tabellen har fel kolumner. Den ska ha 'key' (text) och 'data' (jsonb). Se SQL:en i instruktionen.";
+    }
     return "→ Oväntat svar – se texten ovan.";
   };
   // 1) LÄSNING
@@ -617,22 +638,19 @@ async function cloudDiagnose(){
     if(r.ok){ out.push(`✅ LÄSNING OK (HTTP ${r.status}).`); }
     else { out.push(`❌ LÄSNING misslyckades: HTTP ${r.status}`); out.push("  "+body.slice(0,180)); out.push("  "+interpret(r.status,body)); return out.join("\n"); }
   }catch(e){ out.push("❌ LÄSNING: ingen kontakt med servern – "+e.message); out.push("  "+interpret(0,"")); return out.join("\n"); }
-  // 2) SKRIVNING (testrad med egen nyckel – rör inte turneringsdatan)
+  // 2) SKRIVNING (testrad med egen nyckel – rör inte turneringsdatan). Samma metod som appen (PATCH→INSERT).
   try{
-    const r=await fetch(`${SUPA_URL}/tournaments?on_conflict=key`, {
-      method:"POST", headers: cloudHeaders({ Prefer:"resolution=merge-duplicates,return=minimal" }),
-      body: JSON.stringify([{ key:"__diag_test__", data:{ ts:Date.now() } }])
-    });
-    const body=await r.text();
-    if(r.ok){
-      out.push(`✅ SKRIVNING OK (HTTP ${r.status}).`);
-      out.push("");
-      out.push("🎉 Allt fungerar! Tabellen finns och behörigheten är rätt.");
-      out.push("Om det ändå står Offline: ladda om sidan.");
-      try{ await fetch(`${SUPA_URL}/tournaments?key=eq.__diag_test__`, { method:"DELETE", headers: cloudHeaders() }); }catch(e){}   // städa bort testraden
-    }
-    else { out.push(`❌ SKRIVNING misslyckades: HTTP ${r.status}`); out.push("  "+body.slice(0,180)); out.push("  "+interpret(r.status,body)); }
-  }catch(e){ out.push("❌ SKRIVNING: "+e.message); out.push("  "+interpret(0,"")); }
+    await cloudUpsertRow("__diag_test__", { ts:Date.now() });
+    out.push("✅ SKRIVNING OK.");
+    out.push("");
+    out.push("🎉 Allt fungerar! Tabellen finns och behörigheten är rätt.");
+    out.push("Om det ändå står Offline: ladda om sidan.");
+    try{ await fetch(`${SUPA_URL}/tournaments?key=eq.__diag_test__`, { method:"DELETE", headers: cloudHeaders() }); }catch(e){}   // städa bort testraden
+  }catch(e){
+    out.push("❌ SKRIVNING misslyckades: "+(e.message||e));
+    if(e.body) out.push("  "+String(e.body).slice(0,180));
+    out.push("  "+interpret(e.status||0, e.body||e.message||""));
+  }
   return out.join("\n");
 }
 function cloudStatusText(){
