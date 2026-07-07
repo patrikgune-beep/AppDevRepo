@@ -162,8 +162,8 @@
   @page land{ size:A4 landscape; margin:6mm }
   @media print{
     header.app,.tabs,.toolbar,.daybar,#app,.no-print{display:none !important}
-    body{background:#fff}
-    #printArea{display:block;padding:0}
+    html,body{background:#fff !important}
+    #printArea{display:block;padding:0;background:#fff}
     #printArea h1{color:#000}
     .mtile .ctrls{display:none}
     /* Stege som träd: en liggande A4 per klass */
@@ -255,36 +255,47 @@ const MAX_SEEDS = 4;
    Senior: 60 min/match, alla dagar 13–21, paus 60 min efter 3 matcher.
    Helg: seniorer spelar dessutom förmiddag 8–11 (3 matcher à 60 min, paus efter tre).
    Lunch 12–13. */
-const MATCH_MIN_YOUTH = 30;
-const MATCH_MIN_SENIOR = 60;
-function buildZoneSlots(startMin, endMin, matchMin, perBreak, breakMin){
+// Standardvärden för schemaläggningen (kan ändras i Turneringsinformation).
+function defaultSched(){
+  return {
+    hasYouth:true, hasSenior:true,
+    youthStart:540, youthEnd:780, youthDur:30,        // junior vardag 9–13, 30 min
+    seniorStart:780, seniorEnd:1260, seniorDur:60,    // senior vardag 13–21, 60 min
+    seniorWeekendStart:540, seniorWeekendEnd:1260,    // senior helg 9–21
+    breakEvery:3,                                     // paus efter var N:e match (0 = ingen)
+    lunchStart:720, lunchEnd:780,                     // lunch 12–13 (0/0 = ingen)
+    breakName:"Hydration Break", lunchName:"Hydration Break"
+  };
+}
+// Aktuell schemakonfig (med standard som reserv innan state finns).
+function SC(){ return (typeof state!=="undefined" && state && state.sched) ? state.sched : defaultSched(); }
+// Bygg starttider i en zon: matchlängd, paus efter var N:e match, samt ev. lunchlucka.
+function buildZoneSlots(startMin, endMin, matchMin, perBreak, breakMin, lunchStart, lunchEnd){
   const out=[]; let t=startMin, c=0, guard=0;
-  while(t+matchMin<=endMin && guard++<400){
-    if(t>=720 && t<780){ t=780; c=0; continue; }   // lunchpaus 12:00–13:00
-    out.push(t); t+=matchMin; c++;
-    if(c%perBreak===0) t+=breakMin;                 // paus efter 3 matcher
+  while(t+matchMin<=endMin && guard++<600){
+    if(lunchStart!=null && lunchEnd>lunchStart && t>=lunchStart && t<lunchEnd){ t=lunchEnd; c=0; continue; }
+    out.push(t); t+=matchMin;
+    if(perBreak>0){ c++; if(c%perBreak===0) t+=breakMin; }   // paus efter var N:e match
   }
   return out;
 }
-// AUTOMATISK planering (paus efter var 3:e match kvarstår):
-//  Junior: vardag, första start 09:00, sista start ≤ 12:30 (lunch 12–13, 30 min match)
-//  Senior vardag: första start 13:00, sista start ≤ 20:00 (60 min match)
-//  Senior helg: första start 09:00, sista start ≤ 20:00 (60 min match)
-const YOUTH_SLOTS   = buildZoneSlots(540,780,MATCH_MIN_YOUTH,3,30);    // junior vardag 9–13
-const SENIOR_SLOTS  = buildZoneSlots(780,1260,MATCH_MIN_SENIOR,3,60);  // senior vardag 13–21
-const SENIOR_WEEKEND= buildZoneSlots(540,1260,MATCH_MIN_SENIOR,3,60);  // senior helg 9–21 (start 9)
+function youthSlots(){ const s=SC(); return buildZoneSlots(s.youthStart,s.youthEnd,s.youthDur,s.breakEvery,s.youthDur,s.lunchStart,s.lunchEnd); }
+function seniorWeekdaySlots(){ const s=SC(); return buildZoneSlots(s.seniorStart,s.seniorEnd,s.seniorDur,s.breakEvery,s.seniorDur,s.lunchStart,s.lunchEnd); }
+function seniorWeekendSlots(){ const s=SC(); return buildZoneSlots(s.seniorWeekendStart,s.seniorWeekendEnd,s.seniorDur,s.breakEvery,s.seniorDur,s.lunchStart,s.lunchEnd); }
 // Auto-tider för en klasstyp en given dag.
 function slotsFor(type, day){
-  if(type==="youth") return YOUTH_SLOTS;
-  return (day && isWeekend(day)) ? SENIOR_WEEKEND : SENIOR_SLOTS;
+  const s=SC();
+  if(type==="youth") return s.hasYouth ? youthSlots() : [];
+  if(!s.hasSenior) return [];
+  return (day && isWeekend(day)) ? seniorWeekendSlots() : seniorWeekdaySlots();
 }
-// Alla auto-tider en given dag kan ha (helg = endast senior 9–; vardag = junior 9–13 + senior 13–).
+// Alla auto-tider en given dag kan ha (utifrån konfig: helg = senior; vardag = junior + senior).
 function daySlots(day){
-  return isWeekend(day) ? SENIOR_WEEKEND : [...YOUTH_SLOTS, ...SENIOR_SLOTS];
+  const s=SC();
+  if(isWeekend(day)) return s.hasSenior ? seniorWeekendSlots() : [];
+  return [...(s.hasYouth?youthSlots():[]), ...(s.hasSenior?seniorWeekdaySlots():[])];
 }
-// MANUELL schemaläggning: 08:00–21:00 för både junior (30 min-steg) och senior (60 min-steg).
-// Manuella starttider 08:00–21:00 i halvtimmessteg – seniorer kan startas på halvtimme
-// (matchen är ändå 60 min). Autoplanering använder heltimmar (SENIOR_SLOTS).
+// MANUELL schemaläggning: 08:00–21:00 i halvtimmessteg (seniorer kan startas på halvtimme).
 function manualSlots(type){
   const out=[]; for(let t=480; t<=1260; t+=30) out.push(t); return out;
 }
@@ -292,11 +303,15 @@ function manualSlots(type){
 function timeOverlap(s1,e1,s2,e2){ return s1<e2 && s2<e1; }
 // Matchens längd i minuter (utifrån klasstyp).
 function matchDur(m){ return matchMinFor(getClass(m.classId).type); }
-const ALL_SLOTS = [...new Set([...YOUTH_SLOTS,...SENIOR_WEEKEND,...SENIOR_SLOTS])].sort((a,b)=>a-b);
 function fmtMin(m){ return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); }
-function matchMinFor(type){ return type==="youth"?MATCH_MIN_YOUTH:MATCH_MIN_SENIOR; }
-// Radlängd i rutnätet (dagsberoende): helg = 60 min; vardag före 13:00 = 30, annars 60.
-function slotDur(t, day){ if(day && isWeekend(day)) return MATCH_MIN_SENIOR; return t<780 ? MATCH_MIN_YOUTH : MATCH_MIN_SENIOR; }
+function minToTime(m){ return (m==null||isNaN(m)) ? "" : fmtMin(m); }              // minuter -> "HH:MM"
+function timeToMin(str){ if(!str) return null; const a=String(str).split(":"); const h=+a[0]; if(isNaN(h)) return null; return h*60+(+a[1]||0); }
+function matchMinFor(type){ const s=SC(); return type==="youth"?s.youthDur:s.seniorDur; }
+// Radlängd i rutnätet: helg = seniorlängd; vardag före seniorstart = juniorlängd, annars senior.
+function slotDur(t, day){ const s=SC(); if(day && isWeekend(day)) return s.seniorDur; return t < s.seniorStart ? s.youthDur : s.seniorDur; }
+// Är luckan mellan prevEnd och t en lunchlucka? Namn på paus/lunch (konfigurerbara).
+function isLunchGap(prevEnd,t){ const s=SC(); return s.lunchEnd>s.lunchStart && prevEnd < s.lunchEnd && t > s.lunchStart; }
+function breakName(isLunch){ const s=SC(); return (isLunch ? (s.lunchName||s.breakName) : s.breakName) || "Paus"; }
 function timeLabel(m, day){ return fmtMin(m)+"–"+fmtMin(m+slotDur(m, day)); }
 function hourLabel(m, day){ return timeLabel(m, day); }   // bakåtkompatibelt namn
 // Match-specifik tidsetikett (matchlängd utifrån klasstyp – korrekt även vid manuell placering).
@@ -339,6 +354,9 @@ function newState(){
     arranger: "Dalarö Tennisklubb",
     organizer: { name:"", phone:"", email:"" },
     chairman: "",
+    trainers: [],
+    diplomaSigns: { director:true, chairman:true, trainers:false },
+    sched: defaultSched(),
     venue: "",
     classes: DEFAULT_CLASSES.map((c,i)=>({
       id:"c"+i, name:c.name, type:c.type,
@@ -360,6 +378,9 @@ function normalize(s){
   if(!Array.isArray(s.requests)) s.requests=[];
   if(!s.organizer || typeof s.organizer!=="object") s.organizer={ name:"", phone:"", email:"" };
   if(typeof s.chairman!=="string") s.chairman="";
+  if(!Array.isArray(s.trainers)) s.trainers=[];
+  if(!s.diplomaSigns || typeof s.diplomaSigns!=="object") s.diplomaSigns={ director:true, chairman:true, trainers:false };
+  { const d=defaultSched(); s.sched = Object.assign(d, (s.sched && typeof s.sched==="object") ? s.sched : {}); }
   if(typeof s.venue!=="string") s.venue="";
   if(!s.extraCourts) s.extraCourts={};
   if(!s.lockedDays) s.lockedDays={};
@@ -383,6 +404,8 @@ function normalize(s){
     if(c.ranked===undefined) c.ranked = RANKED_CLASSES.has(c.name);
     if(!(c.seeds>0)) c.seeds = 4;   // antal seedade (standard 4)
     if(!(c.catNo>0)) c.catNo = ci+1; // matchnummer-kategori (första siffran)
+    if(typeof c.category!=="string") c.category="";   // herr/dam/pojke/flicka/mixed
+    if(typeof c.ageLevel!=="string") c.ageLevel="";   // åldersnivå (fritext)
     // Migrera gamla heltimme-tider (9..20) till minuter (540..1200).
     for(const m of (c.matches||[])){
       if(m.time!=null && m.time>0 && m.time<60) m.time=m.time*60;
@@ -392,6 +415,11 @@ function normalize(s){
 }
 // Synliga (ej dolda) klasser – används i väljare, statistik och listor.
 function visibleClasses(){ return state.classes.filter(c=>!c.hidden); }
+// Lägsta lediga indexnummer (matchnummer-kategori). Används vid ny klass / krock.
+function nextFreeCatNo(){ const used=new Set(state.classes.map(c=>c.catNo)); let n=1; while(used.has(n)) n++; return n; }
+const CLASS_CATEGORIES = [["","–"],["herr","Herr"],["dam","Dam"],["pojke","Pojke"],["flicka","Flicka"],["mixed","Mixed"]];
+function classCategoryLabel(v){ const f=CLASS_CATEGORIES.find(x=>x[0]===v); return f?f[1]:v; }
+function catNoInUse(no, exceptId){ return state.classes.some(c=>c.id!==exceptId && c.catNo===no); }
 // Klasshantering: lägg till, döp om, dölj/visa, ta bort.
 function addClass_(){
   const nameEl=document.getElementById("newClsName");
@@ -401,8 +429,8 @@ function addClass_(){
   const typeEl=document.getElementById("newClsType");
   const type=(typeEl && typeEl.value==="youth") ? "youth" : "adult";
   state.classes.push({ id:"c"+uid(), name, type,
-    ranked:false, seeds:4, catNo: state.classes.length+1,
-    participants:[], matches:[], champion:null });
+    ranked:false, seeds:4, catNo: nextFreeCatNo(),
+    participants:[], matches:[], champion:null, category:"", ageLevel:"" });
   ui.classId=state.classes[state.classes.length-1].id;
   save(); render();
 }
@@ -1071,7 +1099,53 @@ function renderInfo(){
      <div class="row" style="margin-top:10px">
        <label class="small" style="flex:1;min-width:180px">${L('Klubbens ordförande','Club chairman')}<br><input type="text" id="oChair" value="${esc(state.chairman)}" placeholder="${L('Namn','Name')}" style="width:100%;max-width:280px"></label>
      </div>
-     <p class="small muted" style="margin:6px 0 0">${L('Tävlingsledare och ordförande visas som underskriftsrader på klubbmästardiplomen.','The tournament director and chairman appear as signature lines on the club-champion diplomas.')}</p>
+     <div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
+       <span class="small"><b>${L('Tränare','Trainers')}</b> <span class="muted">(${(state.trainers||[]).length})</span></span>
+       <div id="trainerList" style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
+         ${(state.trainers||[]).map((t,i)=>`<div class="row" style="gap:6px"><input type="text" data-tr="${i}" value="${esc(t)}" placeholder="${L('Tränarens namn','Trainer name')}" style="min-width:220px"><button class="btn gray mini" data-trdel="${i}">🗑</button></div>`).join("")}
+       </div>
+       <div style="margin-top:6px"><button class="btn ghost mini" id="addTrainer">➕ ${L('Lägg till tränare','Add trainer')}</button></div>
+     </div>
+     <div class="row" style="margin-top:12px;align-items:center">
+       <span class="small"><b>${L('Visa på diplom','Show on diploma')}:</b></span>
+       <label class="small"><input type="checkbox" id="dsDirector" ${state.diplomaSigns.director?'checked':''}> ${L('Tävlingsledare','Tournament director')}</label>
+       <label class="small"><input type="checkbox" id="dsChairman" ${state.diplomaSigns.chairman?'checked':''}> ${L('Ordförande','Chairman')}</label>
+       <label class="small"><input type="checkbox" id="dsTrainers" ${state.diplomaSigns.trainers?'checked':''}> ${L('Tränare','Trainers')}</label>
+     </div>
+     <p class="small muted" style="margin:8px 0 0">${L('De markerade namnen visas som underskriftsrader på klubbmästardiplomen.','The selected names appear as signature lines on the club-champion diplomas.')}</p>
+   </div>
+   <div class="card no-print">
+     <h2>${L('Schemaläggning','Scheduling')}</h2>
+     <p class="small muted">${L('Styr tider, matchlängder och pauser för auto-schemaläggningen. (Manuellt kan matcher alltid läggas 08–21.)','Control times, match durations and breaks for auto scheduling. (Manually, matches can always be placed 08–21.)')}</p>
+     <div class="row" style="align-items:center;gap:16px">
+       <label class="small"><input type="checkbox" id="scHasYouth" ${SC().hasYouth?'checked':''}> ${L('Juniorklasser finns','Junior classes exist')}</label>
+       <label class="small"><input type="checkbox" id="scHasSenior" ${SC().hasSenior?'checked':''}> ${L('Seniorklasser finns','Senior classes exist')}</label>
+     </div>
+     <div class="row" style="margin-top:10px;align-items:flex-end;gap:10px;flex-wrap:wrap">
+       <span class="small" style="min-width:60px"><b>${L('Junior','Junior')}</b></span>
+       <label class="small">${L('Från','From')}<br><input type="time" id="scYouthStart" value="${minToTime(SC().youthStart)}"></label>
+       <label class="small">${L('Till','To')}<br><input type="time" id="scYouthEnd" value="${minToTime(SC().youthEnd)}"></label>
+       <label class="small">${L('Matchlängd (min)','Match length (min)')}<br><input type="number" id="scYouthDur" min="10" max="120" step="5" value="${SC().youthDur}" style="width:64px"></label>
+     </div>
+     <div class="row" style="margin-top:8px;align-items:flex-end;gap:10px;flex-wrap:wrap">
+       <span class="small" style="min-width:60px"><b>${L('Senior','Senior')}</b></span>
+       <label class="small">${L('Vardag från','Weekday from')}<br><input type="time" id="scSeniorStart" value="${minToTime(SC().seniorStart)}"></label>
+       <label class="small">${L('Till','To')}<br><input type="time" id="scSeniorEnd" value="${minToTime(SC().seniorEnd)}"></label>
+       <label class="small">${L('Helg från','Weekend from')}<br><input type="time" id="scSenWStart" value="${minToTime(SC().seniorWeekendStart)}"></label>
+       <label class="small">${L('Till','To')}<br><input type="time" id="scSenWEnd" value="${minToTime(SC().seniorWeekendEnd)}"></label>
+       <label class="small">${L('Matchlängd (min)','Match length (min)')}<br><input type="number" id="scSeniorDur" min="10" max="120" step="5" value="${SC().seniorDur}" style="width:64px"></label>
+     </div>
+     <div class="row" style="margin-top:8px;align-items:flex-end;gap:10px;flex-wrap:wrap">
+       <label class="small">${L('Paus efter var N:e match','Break after every N matches')}<br><input type="number" id="scBreakEvery" min="0" max="20" value="${SC().breakEvery}" style="width:64px"></label>
+       <label class="small">${L('Pausnamn','Break name')}<br><input type="text" id="scBreakName" value="${esc(SC().breakName)}" style="min-width:150px"></label>
+       <label class="small">${L('Lunch från','Lunch from')}<br><input type="time" id="scLunchStart" value="${minToTime(SC().lunchStart)}"></label>
+       <label class="small">${L('Till','To')}<br><input type="time" id="scLunchEnd" value="${minToTime(SC().lunchEnd)}"></label>
+       <label class="small">${L('Lunchnamn','Lunch name')}<br><input type="text" id="scLunchName" value="${esc(SC().lunchName)}" style="min-width:150px"></label>
+     </div>
+     <div class="row" style="margin-top:10px">
+       <button class="btn" id="saveSched">💾 ${L('Spara schemaläggning','Save scheduling')}</button>
+       <button class="btn ghost mini" id="resetSched">↺ ${L('Standard','Default')}</button>
+     </div>
    </div>
    <div class="card no-print">
      <h2>Spelplats / adress</h2>
@@ -1135,6 +1209,26 @@ function renderInfo(){
   document.getElementById("exportBtn").onclick=exportBackup;
   document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
   document.getElementById("newTournament").onclick=resetEverything;
+  // Tränare
+  document.getElementById("addTrainer").onclick=()=>{ state.trainers.push(""); save(); render(); };
+  document.querySelectorAll("#trainerList input[data-tr]").forEach(el=>el.oninput=()=>{ state.trainers[+el.dataset.tr]=el.value; save(); });
+  document.querySelectorAll("[data-trdel]").forEach(b=>b.onclick=()=>{ state.trainers.splice(+b.dataset.trdel,1); save(); render(); });
+  // Diplom – vilka namn som visas
+  const dsBind=(id,key)=>{ const el=document.getElementById(id); if(el) el.onchange=()=>{ state.diplomaSigns[key]=el.checked; save(); }; };
+  dsBind("dsDirector","director"); dsBind("dsChairman","chairman"); dsBind("dsTrainers","trainers");
+  // Schemaläggning
+  document.getElementById("scHasYouth").onchange=e=>{ state.sched.hasYouth=e.target.checked; save(); };
+  document.getElementById("scHasSenior").onchange=e=>{ state.sched.hasSenior=e.target.checked; save(); };
+  document.getElementById("saveSched").onclick=()=>{
+    const s=state.sched, gv=id=>document.getElementById(id), tm=id=>timeToMin(gv(id).value), nv=(id,def)=>{ const v=parseInt(gv(id).value,10); return v>0?v:def; };
+    const set={ youthStart:tm("scYouthStart"), youthEnd:tm("scYouthEnd"), youthDur:nv("scYouthDur",30),
+      seniorStart:tm("scSeniorStart"), seniorEnd:tm("scSeniorEnd"), seniorWeekendStart:tm("scSenWStart"), seniorWeekendEnd:tm("scSenWEnd"),
+      seniorDur:nv("scSeniorDur",60), breakEvery:Math.max(0,parseInt(gv("scBreakEvery").value,10)||0),
+      lunchStart:tm("scLunchStart"), lunchEnd:tm("scLunchEnd"), breakName:gv("scBreakName").value.trim()||"Paus", lunchName:gv("scLunchName").value.trim()||"Paus" };
+    if(set.youthEnd<=set.youthStart || set.seniorEnd<=set.seniorStart || set.seniorWeekendEnd<=set.seniorWeekendStart){ alert(L("Sluttiden måste vara efter starttiden.","End time must be after start time.")); return; }
+    Object.assign(state.sched, set); save(); render();
+  };
+  document.getElementById("resetSched").onclick=()=>{ if(confirm(L("Återställ schemaläggningen till standard?","Reset scheduling to default?"))){ state.sched=defaultSched(); save(); render(); } };
 }
 
 /* ----- Tab 1: Klasser & deltagare ----- */
@@ -1175,6 +1269,14 @@ function renderClasses(){
        <button class="btn ghost mini" id="hideClsBtn">${cls.hidden?'👁 Visa klass':'🙈 Dölj klass'}</button>
        <button class="btn gray mini" id="deleteClsBtn">🗑 Ta bort klass</button>
      </div>
+     <div class="row" style="margin:0 0 10px;align-items:flex-end;gap:10px;flex-wrap:wrap">
+       <label class="small">${L('Kategori','Category')}<br>
+         <select id="clsCategory">${CLASS_CATEGORIES.map(([v,lbl])=>`<option value="${v}" ${cls.category===v?'selected':''}>${lbl}</option>`).join("")}</select></label>
+       <label class="small">${L('Åldersnivå','Age level')}<br>
+         <input type="text" id="clsAge" value="${String(cls.ageLevel||'').replace(/"/g,'&quot;')}" placeholder="${L('t.ex. U12, 40+, Öppen','e.g. U12, 40+, Open')}" style="min-width:150px"></label>
+       <label class="small">${L('Typ (schema)','Type (schedule)')}<br>
+         <select id="clsType"><option value="adult" ${cls.type!=='youth'?'selected':''}>${L('Senior','Senior')}</option><option value="youth" ${cls.type==='youth'?'selected':''}>${L('Junior','Junior')}</option></select></label>
+     </div>
      <div class="hint">
        Klistra in deltagare – <b>en rad per deltagare</b>. För dubbelklasser: skriv paret på en rad,
        t.ex. <i>Anna Andersson / Björn Berg</i>.
@@ -1196,11 +1298,16 @@ function renderClasses(){
        <input type="number" id="catNo" min="1" max="99" value="${classCatNo(cls)}" style="width:60px">
        – matcher numreras <b>${classCatNo(cls)}01, ${classCatNo(cls)}02 …</b>
      </label>
-     <div class="row" style="margin:0 0 10px">
-       <span class="small">${L('Lägg till befintlig deltagare','Add existing player')}:</span>
-       <select id="existPlayer">${existNames.length?existNames.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join(""):`<option value="">(${L('inga andra deltagare','no other players')})</option>`}</select>
-       <button class="btn mini" id="addExistBtn" ${existNames.length?'':'disabled'}>➕ ${L('Lägg till i rutan','Add to the box')}</button>
-       <span class="muted small">${L('– hämtar namn som redan är registrerade i andra klasser','– picks names already registered in other classes')}</span>
+     <div style="margin:0 0 10px">
+       <div class="row" style="align-items:center">
+         <span class="small">${L('Lägg till befintliga deltagare','Add existing players')}:</span>
+         <input type="text" id="existSearch" placeholder="🔎 ${L('Sök namn…','Search name…')}" style="min-width:170px" ${existNames.length?'':'disabled'}>
+         <button class="btn mini" id="addExistBtn" ${existNames.length?'':'disabled'}>➕ ${L('Lägg till valda i rutan','Add selected to the box')}</button>
+         <span class="muted small">${L('– namn som redan är registrerade i andra klasser','– names already registered in other classes')}</span>
+       </div>
+       ${existNames.length?`<div id="existListWrap" style="max-height:150px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:6px;margin-top:6px">
+         ${existNames.map(n=>`<label class="small" style="display:block;padding:2px 4px" data-existrow="${n.toLowerCase().replace(/"/g,'&quot;')}"><input type="checkbox" class="existchk" value="${n.replace(/"/g,'&quot;')}"> ${n}</label>`).join("")}
+       </div>`:`<p class="small muted" style="margin:6px 0 0">(${L('inga andra deltagare registrerade','no other players registered')})</p>`}
      </div>
      <textarea id="partsInput" placeholder="Anna Andersson&#10;Björn Berg&#10;Carl Carlsson&#10;...">${cls.participants.join("\n")}</textarea>
      <div class="toolbar" style="margin-top:10px">
@@ -1225,9 +1332,11 @@ function renderClasses(){
   document.getElementById("clsGrid").innerHTML=state.classes.map(c=>{
     const done=c.champion?`<span class="badge done">✓ ${dispName(c.champion)}</span>`:"";
     return `<div class="classcard ${c.id===cls.id?'active':''}" data-id="${c.id}" style="${c.hidden?'opacity:.45':''}">
-      <div class="ttl"><span class="sw" style="background:${classColor(c)}"></span>${c.name} ${isRanked(c)?`<span title="Seedas – top ${seedCountOf(c)}" style="color:#c9a227">★</span>`:''} ${c.hidden?'🙈':''}</div>
+      <div class="ttl"><span class="sw" style="background:${classColor(c)}"></span><span class="mno" style="margin-right:5px">#${c.catNo}</span>${c.name} ${isRanked(c)?`<span title="Seedas – top ${seedCountOf(c)}" style="color:#c9a227">★</span>`:''} ${c.hidden?'🙈':''}</div>
       <div class="meta">
         <span class="badge ${c.type}">${c.type==='youth'?'Ungdom':'Senior'}</span>
+        ${c.category?`<span class="badge" style="background:#eef;color:#3a3a7a">${classCategoryLabel(c.category)}</span>`:''}
+        ${c.ageLevel?`<span class="badge" style="background:#efe;color:#3a7a3a">${c.ageLevel}</span>`:''}
         &nbsp;${c.participants.length} delt. ${done}
       </div></div>`;
   }).join("");
@@ -1237,6 +1346,9 @@ function renderClasses(){
   document.getElementById("renameClsBtn").onclick=()=>renameClass(cls);
   document.getElementById("hideClsBtn").onclick=()=>toggleHideClass(cls);
   document.getElementById("deleteClsBtn").onclick=()=>deleteClass(cls);
+  document.getElementById("clsCategory").onchange=e=>{ cls.category=e.target.value; save(); render(); };
+  document.getElementById("clsAge").oninput=e=>{ cls.ageLevel=e.target.value; save(); };
+  document.getElementById("clsType").onchange=e=>{ cls.type=e.target.value==="youth"?"youth":"adult"; save(); render(); };
   function applySeedChange(){
     // Om stegen redan är byggd: erbjud att lotta om så att ändringen slår igenom direkt.
     if(cls.matches.some(m=>!m.manual) && confirm("Lotta om stegen nu så att seedningsändringen tillämpas? (Registrerade resultat och schemaläggning för klassen försvinner.)"))
@@ -1245,19 +1357,35 @@ function renderClasses(){
   }
   document.getElementById("rankToggle").onchange=e=>{ cls.ranked=e.target.checked; applySeedChange(); };
   document.getElementById("seedCount").onchange=e=>{ cls.seeds=parseInt(e.target.value,10)||4; applySeedChange(); };
-  document.getElementById("catNo").onchange=e=>{ cls.catNo=Math.max(1,parseInt(e.target.value,10)||1); save(); render(); };
+  document.getElementById("catNo").onchange=e=>{
+    let v=Math.max(1,parseInt(e.target.value,10)||1);
+    if(catNoInUse(v, cls.id)){
+      const free=nextFreeCatNo();
+      alert(L(`Indexnummer #${v} används redan av en annan klass. Föreslår lediga #${free}.`,`Index number #${v} is already used by another class. Suggesting free #${free}.`));
+      v=free;
+    }
+    cls.catNo=v; save(); render();
+  };
   document.getElementById("saveParts").onclick=()=>{
     const lines=document.getElementById("partsInput").value.split("\n").map(s=>s.trim()).filter(Boolean);
     cls.participants=lines;
     buildBracket(cls);
     save(); render();
   };
+  { const es=document.getElementById("existSearch");
+    if(es) es.oninput=()=>{ const q=es.value.trim().toLowerCase();
+      document.querySelectorAll("#existListWrap [data-existrow]").forEach(row=>{ row.style.display = row.dataset.existrow.includes(q)?"block":"none"; });
+    };
+  }
   { const ab=document.getElementById("addExistBtn"); if(ab) ab.onclick=()=>{
-      const sel=document.getElementById("existPlayer"); const nm=(sel&&sel.value||"").trim(); if(!nm) return;
+      const chosen=[...document.querySelectorAll(".existchk:checked")].map(c=>c.value);
+      if(!chosen.length){ alert(L("Markera minst ett namn i listan.","Select at least one name in the list.")); return; }
       const ta=document.getElementById("partsInput");
-      const has=ta.value.split("\n").some(l=>stripRank(l.trim())===nm);
-      if(has){ alert(nm+" "+L("finns redan i listan.","is already in the list.")); return; }
-      ta.value=(ta.value.replace(/\s*$/,"")) + (ta.value.trim()?"\n":"") + nm;   // lägg till rad i rutan (lås för att bygga)
+      const existing=new Set(ta.value.split("\n").map(l=>stripRank(l.trim())));
+      let added=0;
+      chosen.forEach(nm=>{ if(!existing.has(nm)){ ta.value=(ta.value.replace(/\s*$/,"")) + (ta.value.trim()?"\n":"") + nm; existing.add(nm); added++; } });
+      document.querySelectorAll(".existchk:checked").forEach(c=>c.checked=false);
+      if(!added) alert(L("De valda namnen finns redan i listan.","The selected names are already in the list."));
     };
   }
   document.getElementById("clearParts").onclick=()=>{
@@ -1856,9 +1984,9 @@ function renderSchedGrid(){
   for(const t of times){
     // Visa paus-/lunchluckor i normalläge (i "visa alla tider" är alla rader redan med).
     if(!ui.fullGrid && prevEnd!=null && t>prevEnd){
-      const isLunch = prevEnd<780 && t>=780;               // luckan täcker 12–13
+      const isLunch = isLunchGap(prevEnd,t);
       const cl = isLunch ? 'lunch' : 'pausrow';
-      const txt= isLunch ? '🍽 Hydration Break' : '⏸ Hydration Break – ledig lucka (kan schemaläggas manuellt)';
+      const txt= isLunch ? ('🍽 '+breakName(true)) : ('⏸ '+breakName(false)+' – '+L('ledig lucka (kan schemaläggas manuellt)','free slot (can be scheduled manually)'));
       html+=`<tr><td class="time">${fmtMin(prevEnd)}–${fmtMin(t)}</td><td class="${cl}" colspan="${courts}">${txt}</td></tr>`;
     }
     const lunchRow = ui.fullGrid && (t===720 || t===750);
@@ -2139,13 +2267,15 @@ function classFinalDay(cls){
 function isPlanFinalDay(date){ return visibleClasses().some(c=>c.matches.some(m=>!m.manual)&&classFinalDay(c)===date); }
 // Kandidat-starttider (minuter) i prioritetsordning för en typ/dag. seniorEarly = juniorer klara.
 function planCandidateTimes(type, date, seniorEarly){
-  const push=(a,s,e,step)=>{ for(let t=s;t<=e;t+=step) a.push(t); return a; };
+  const s=SC(), push=(a,st,e,step)=>{ for(let t=st;t<=e;t+=step) a.push(t); return a; };
   if(type==="youth"){
-    return [...push([],540,750,30), 510, 480, ...push([],780,1230,30)]; // 9–12:30, sen 8:30/8, sist eftermiddag
+    const yd=s.youthDur, lastY=s.youthEnd-yd;
+    return [...push([],s.youthStart,lastY,yd), s.youthStart-yd, 480, ...push([],s.seniorStart,s.seniorEnd-yd,yd)];
   }
-  if(isWeekend(date)) return [...push([],540,1200,60), 480];            // 9–20, sen 8 (reserv)
-  const early = seniorEarly ? push([],540,720,60) : [];                // 9–12 om juniorer klara
-  return [...push([],780,1200,60), ...early, 480];                     // 13–20, ev. 9–12, sist 8
+  const sd=s.seniorDur;
+  if(isWeekend(date)) return [...push([],s.seniorWeekendStart,s.seniorWeekendEnd-sd,sd), 480];
+  const early = seniorEarly ? push([],s.youthStart,s.seniorStart-sd,sd) : [];   // förmiddag om juniorer klara
+  return [...push([],s.seniorStart,s.seniorEnd-sd,sd), ...early, 480];
 }
 function planOverlap(a1,a2,b1,b2){ return a1<b2 && b1<a2; }
 // Placera en dags matcher på ett givet antal banor. Returnerar {placed,leftover}.
@@ -2158,7 +2288,7 @@ function packPlanDay(date, dayMatches, courts){
   // Juniorer först (morgon), sedan seniorer; inom typ efter omgång.
   const order=[...dayMatches].sort((a,b)=>(a.type===b.type?0:(a.type==="youth"?-1:1)) || (a.round-b.round));
   for(const x of order){
-    const dur=x.type==="youth"?MATCH_MIN_YOUTH:MATCH_MIN_SENIOR;
+    const dur=matchMinFor(x.type);
     const mm=findMatch(x.id), m=mm?mm.m:null;
     const names=m?[...new Set(playersOf(m))]:[];
     // Hårt önskemål (Tvingar): max matcher/dag – lägg som ej placerad om det överskrids.
@@ -2741,7 +2871,7 @@ function printBlankSchedule(){
      Array.from({length:courts},(_,i)=>`<th>Bana ${i+1}</th>`).join("")}</tr></thead><tbody>`;
   let lunchShown=false;
   for(const t of daySlots(ui.day)){
-    if(!lunchShown && t>=780){ html+=`<tr><td class="time">12:00–13:00</td><td colspan="${courts}" style="text-align:center">Hydration Break</td></tr>`; lunchShown=true; }
+    if(!lunchShown && SC().lunchEnd>SC().lunchStart && t>=SC().lunchEnd){ html+=`<tr><td class="time">${fmtMin(SC().lunchStart)}–${fmtMin(SC().lunchEnd)}</td><td colspan="${courts}" style="text-align:center">${breakName(true)}</td></tr>`; lunchShown=true; }
     html+=`<tr><td class="time">${timeLabel(t, ui.day)}</td>`;
     for(let ct=1;ct<=courts;ct++){
       html+=`<td style="height:44px"></td>`;
@@ -2759,8 +2889,8 @@ function scopeMatch(m, scope){ return !scope || scope==="all" || getClass(m.clas
 function scopeLabel(scope){ return scope==="youth"?L("endast junior","juniors only") : scope==="adult"?L("endast senior","seniors only") : L("hela dagen","whole day"); }
 function scheduleTimes(day, scope){
   let base;
-  if(scope==="youth") base=[...YOUTH_SLOTS];
-  else if(scope==="adult") base=(isWeekend(day)?SENIOR_WEEKEND:SENIOR_SLOTS);
+  if(scope==="youth") base=youthSlots();
+  else if(scope==="adult") base=(isWeekend(day)?seniorWeekendSlots():seniorWeekdaySlots());
   else base=daySlots(day);
   const mt=realMatches().filter(m=>m.day===day&&m.time!=null&&scopeMatch(m,scope)).map(m=>m.time);
   return [...new Set([...base, ...mt])].sort((a,b)=>a-b);
@@ -2773,8 +2903,7 @@ function printSchedule(day, scope="all"){
   let prevEnd=null;
   for(const t of scheduleTimes(day, scope)){
     if(prevEnd!=null && t>prevEnd){
-      const isLunch = prevEnd<780 && t>=780;
-      html+=`<tr><td class="time">${fmtMin(prevEnd)}–${fmtMin(t)}</td><td colspan="${courts}" style="text-align:center;color:#888;font-style:italic">Hydration Break</td></tr>`;
+      html+=`<tr><td class="time">${fmtMin(prevEnd)}–${fmtMin(t)}</td><td colspan="${courts}" style="text-align:center;color:#888;font-style:italic">${breakName(isLunchGap(prevEnd,t))}</td></tr>`;
     }
     html+=`<tr><td class="time">${timeLabel(t, day)}</td>`;
     for(let ct=1;ct<=courts;ct++){
@@ -2867,6 +2996,12 @@ function printChampionDiplomas(only){
   const list = only ? [only] : visibleClasses().filter(c=>c.champion);
   if(!list.length){ alert(L("Inga klubbmästare att skriva ut diplom för ännu.","No club champions to print diplomas for yet.")); return; }
   const year=tournamentYear(), hc=headColor(), arr=arrangerName(), tname=state.tournament.name||"Klubbmästerskap";
+  const ds=state.diplomaSigns||{director:true,chairman:true,trainers:false};
+  const sigs=[];
+  if(ds.director && (state.organizer&&state.organizer.name)) sigs.push(diplomaSig(L('Tävlingsledare','Tournament director'), escXml(state.organizer.name)));
+  if(ds.chairman && state.chairman) sigs.push(diplomaSig(L('Ordförande','Chairman'), escXml(state.chairman)));
+  if(ds.trainers) (state.trainers||[]).filter(t=>t&&t.trim()).forEach(t=>sigs.push(diplomaSig(L('Tränare','Trainer'), escXml(t))));
+  const sigRow = sigs.length ? `<div style="display:flex;justify-content:space-around;width:100%;max-width:${Math.min(900,220*sigs.length+120)}px;margin-top:44px;gap:30px;flex-wrap:wrap">${sigs.join("")}</div>` : "";
   const pages=list.map((c,i)=>{
     const last=i===list.length-1;
     return `<div style="page-break-after:${last?'auto':'always'};box-sizing:border-box;padding:6mm">
@@ -2880,10 +3015,7 @@ function printChampionDiplomas(only){
         <div style="font-size:40px;font-weight:bold;margin:14px 0 10px;color:#111">${escXml(dispName(c.champion)||'–')}</div>
         <div style="font-size:15px;color:#666;max-width:540px">${L(`i ${tname} ${year} arrangerat av ${arr}.`,`in ${tname} ${year} organised by ${arr}.`)}</div>
         <div style="flex:1"></div>
-        <div style="display:flex;justify-content:space-around;width:100%;max-width:640px;margin-top:44px;gap:44px">
-          ${diplomaSig(L('Tävlingsledare','Tournament director'), escXml(state.organizer&&state.organizer.name||''))}
-          ${diplomaSig(L('Ordförande','Chairman'), escXml(state.chairman||''))}
-        </div>
+        ${sigRow}
       </div>
     </div>`;
   }).join("");
@@ -3060,7 +3192,7 @@ function buildScheduleSVG(day, scope="all"){
   let prevEnd=null;
   for(const t of times){
     if(prevEnd!=null && t>prevEnd){
-      rows.push({gap:true, label:`${fmtMin(prevEnd)}–${fmtMin(t)}`, txt:'Hydration Break', h:20});
+      rows.push({gap:true, label:`${fmtMin(prevEnd)}–${fmtMin(t)}`, txt:breakName(isLunchGap(prevEnd,t)), h:20});
     }
     const cells=[]; let contentH=24;
     for(let ct=1;ct<=courts;ct++){
