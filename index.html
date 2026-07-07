@@ -87,6 +87,9 @@
   .match.moveable{cursor:pointer}
   .match.moveable:hover{outline:2px dashed #2f80c9}
   .match.movesel{outline:3px solid #2f80c9;background:#eaf4fc}
+  .match.numtarget{cursor:pointer}
+  .match.numtarget:hover{outline:2px dashed #8e44ad}
+  .match.numsel{outline:3px solid #8e44ad;background:#f6eefc}
   .mno{display:inline-block;font-size:10px;font-weight:700;color:#fff;background:#6b6356;border-radius:4px;padding:0 5px;margin-right:5px;letter-spacing:.5px}
   .match .slot{display:flex;align-items:center;gap:6px;padding:7px 9px;border-bottom:1px dashed var(--line)}
   .match .slot:last-of-type{border-bottom:none}
@@ -467,7 +470,17 @@ function orderedRealMatches(cls){
 function matchNumber(m){
   const cls=getClass(m.classId); if(!cls) return null;
   const pos=orderedRealMatches(cls).indexOf(m);
-  return pos<0 ? null : classCatNo(cls)*100 + (pos+1);
+  if(pos<0) return null;
+  const seq = (m.seq>0) ? m.seq : (pos+1);   // explicit sekvens (ändrad/bytt) annars spelordning
+  return classCatNo(cls)*100 + seq;
+}
+// Tilldela explicit sekvensnummer (m.seq) till alla numrerade matcher i klassen (om ej satt).
+// Används innan man byter matchnummer så att alla har ett fast nummer att byta med.
+function assignSeqs(cls){ orderedRealMatches(cls).forEach((m,i)=>{ if(!(m.seq>0)) m.seq=i+1; }); }
+// Hitta en (synlig) match utifrån matchnummer.
+function findMatchByNumber(no){
+  for(const c of visibleClasses()) for(const m of c.matches){ if(!isByeMatch(m) && matchNumber(m)===no) return {m,c}; }
+  return null;
 }
 function matchNoTag(m){ const n=matchNumber(m); return n==null?"":`<span class="mno">#${n}</span>`; }
 // Antal riktiga matcher som ska spelas i en klass (deltagare-1 + manuella).
@@ -1293,9 +1306,12 @@ function renderBracketTab(){
         🔀 <b>${L('Bytesläge på:','Swap mode on:')}</b> ${L('klicka på en spelare och sedan på en annan – de byter plats. Fungerar mellan omgång 1 och omgång 2, även för <b>seedade</b> spelare (en seed som gått vidare på bye byts via sin plats i omgång 2). (Berörda resultat nollställs.)','click a player and then another – they swap places. Works between round 1 and round 2, including <b>seeded</b> players (a seed advanced on a bye is swapped via its slot in round 2). (Affected results are cleared.)')}</div>`:''}
      ${ui.moveMode?`<div class="hint" style="border-color:#2f80c9;background:#eaf4fc;margin-top:10px">
         ↔ <b>${L('Flytta match på:','Move-match mode on:')}</b> ${L('klicka på en match i första omgången och sedan på en annan – de byter plats i trädet (hela paret). Så väljer du t.ex. vilken match som möter en seedad spelare i andra omgången. (Berörda resultat nollställs.)','click a match in the first round and then another – they swap positions in the tree (the whole pair). This is how you choose e.g. which match meets a seeded player in the second round. (Affected results are cleared.)')}</div>`:''}
+     ${ui.numMode?`<div class="hint" style="border-color:#8e44ad;background:#f6eefc;margin-top:10px">
+        🔢 <b>${L('Byt matchnummer på:','Swap match number mode on:')}</b> ${L('klicka på en match och sedan på en annan – deras matchnummer byter plats (precis som byte av spelare). Spelare och resultat påverkas inte.','click a match and then another – their match numbers swap (just like swapping players). Players and results are not affected.')}</div>`:''}
      <div class="row" style="margin-top:10px">
        <button class="btn ${ui.swapMode?'':'ghost'} mini" id="swapMode">🔀 ${L('Byt spelare','Swap players')} ${ui.swapMode?'('+L('på','on')+')':''}</button>
        <button class="btn ${ui.moveMode?'':'ghost'} mini" id="moveMode">↔ ${L('Flytta match','Move match')} ${ui.moveMode?'('+L('på','on')+')':''}</button>
+       <button class="btn ${ui.numMode?'':'ghost'} mini" id="numMode">🔢 ${L('Byt matchnummer','Swap match number')} ${ui.numMode?'('+L('på','on')+')':''}</button>
        <button class="btn ghost mini" id="rebuildBr">🔁 Lotta om / bygg stege</button>
        <button class="btn gray mini" id="clearBr">🗑 Rensa flik (denna stege)</button>
        <span style="flex:1"></span>
@@ -1318,8 +1334,9 @@ function renderBracketTab(){
   document.getElementById("clsSel").onchange=e=>{ui.classId=e.target.value; ui.swapSel=null; ui.moveSel=null; render();};
   document.getElementById("rebuildBr").onclick=()=>rebuildBracketOf(cls);
   document.getElementById("clearBr").onclick=()=>clearBracketOf(cls);
-  document.getElementById("swapMode").onclick=()=>{ ui.swapMode=!ui.swapMode; if(ui.swapMode){ui.moveMode=false;ui.moveSel=null;} ui.swapSel=null; render(); };
-  document.getElementById("moveMode").onclick=()=>{ ui.moveMode=!ui.moveMode; if(ui.moveMode){ui.swapMode=false;ui.swapSel=null;} ui.moveSel=null; render(); };
+  document.getElementById("swapMode").onclick=()=>{ ui.swapMode=!ui.swapMode; if(ui.swapMode){ui.moveMode=false;ui.moveSel=null;ui.numMode=false;ui.numSel=null;} ui.swapSel=null; render(); };
+  document.getElementById("moveMode").onclick=()=>{ ui.moveMode=!ui.moveMode; if(ui.moveMode){ui.swapMode=false;ui.swapSel=null;ui.numMode=false;ui.numSel=null;} ui.moveSel=null; render(); };
+  document.getElementById("numMode").onclick=()=>{ ui.numMode=!ui.numMode; if(ui.numMode){ui.swapMode=false;ui.swapSel=null;ui.moveMode=false;ui.moveSel=null;} ui.numSel=null; render(); };
   document.getElementById("printBr").onclick=()=>printOneBracket(cls);
   document.getElementById("imgBr").onclick=()=>exportBracketImage(cls);
   document.getElementById("imgAllBr").onclick=()=>exportAllBracketImages();
@@ -1364,10 +1381,19 @@ function renderBracketTab(){
       if(m) el.onclick=()=>handleMoveClick(cls,m);
     });
   }
+  // Byt-matchnummer-läge: klick på valfri numrerad matchruta väljer/byter nummer.
+  if(ui.numMode){
+    document.querySelectorAll('.bracket .match').forEach(el=>{
+      if(el.classList.contains('champbox')) return;
+      const r=+el.dataset.r, i=+el.dataset.i, m=cls.matches.find(x=>x.round===r&&x.index===i);
+      if(m && matchNumber(m)!=null) el.onclick=()=>handleNumSwapClick(cls,m);
+    });
+  }
   cls.matches.forEach(m=>{
     ["p1","p2"].forEach(slot=>{
       const el=document.getElementById(`nm_${m.id}_${slot}`);
       if(el) el.onclick=(ev)=>{
+        if(ui.numMode){ ev.stopPropagation(); handleNumSwapClick(cls,m); return; }
         if(ui.moveMode){ ev.stopPropagation(); handleMoveClick(cls,m); return; }
         if(ui.swapMode) handleSwapClick(cls,m,slot);
         else if(m[slot]) setWinner(cls,m,m[slot]);
@@ -1456,7 +1482,8 @@ function matchHTML(cls,m,total){
   const sched = m.day?`<div class="sched-tag">${matchNoTag(m)}📅 ${dayShort(m.day)} · ${m.time!=null?matchLabel(m):'-'} · Bana ${m.court||'-'}</div>`
                      :(matchNumber(m)!=null?`<div class="sched-tag">${matchNoTag(m)}</div>`:"");
   const moveCls = (ui.moveMode && m.round===0) ? (ui.moveSel===m.id?" moveable movesel":" moveable") : "";
-  return `<div class="match${moveCls}" data-r="${m.round}" data-i="${m.index}" style="border-left:5px solid ${classColor(cls)}">
+  const numCls = (ui.numMode && matchNumber(m)!=null) ? (ui.numSel===m.id?" numtarget numsel":" numtarget") : "";
+  return `<div class="match${moveCls}${numCls}" data-r="${m.round}" data-i="${m.index}" style="border-left:5px solid ${classColor(cls)}">
      ${slotHTML(m.p1,"p1")}
      ${slotHTML(m.p2,"p2")}
      ${ (m.p1&&m.p2) ? `<div class="scorerow">
@@ -1483,6 +1510,16 @@ function handleMoveClick(cls,m){
   [A,m].forEach(x=>{ if(x.winner){ x.winner=null; x.score=""; } clearDownstream(cls,x); });
   ui.moveSel=null;
   resolveByes(cls); recompChampion(cls); save(); render();
+}
+// Byt matchnummer mellan två matcher (fungerar som byte av spelare). Påverkar bara numret.
+function handleNumSwapClick(cls,m){
+  if(matchNumber(m)==null) return;        // endast numrerade matcher (ej byes)
+  assignSeqs(cls);                         // säkerställ att alla har ett fast nummer
+  if(!ui.numSel){ ui.numSel=m.id; render(); return; }
+  if(ui.numSel===m.id){ ui.numSel=null; render(); return; }   // avmarkera
+  const A=cls.matches.find(x=>x.id===ui.numSel);
+  if(A){ const tmp=A.seq; A.seq=m.seq; m.seq=tmp; }            // byt nummer
+  ui.numSel=null; save(); render();
 }
 // Kanonisk round-0-plats för en klickad spelare. En spelare i omgång 0 pekar på sin
 // egen plats; en spelare i senare omgång (t.ex. seedad som gått vidare på bye) pekar
@@ -1591,6 +1628,12 @@ function renderSchedule(){
    <div class="card no-print">
      <h2>Ej schemalagda, spelklara matcher</h2>
      <div class="unsched" id="unsched"></div>
+   </div>
+   <div class="card no-print">
+     <h2>${L('Framtida matcher (planera via matchnummer)','Future matches (plan by match number)')}
+       <label class="small" style="font-weight:normal;margin-left:10px"><input type="checkbox" id="showFuture" ${ui.showFuture?'checked':''}> ${L('Visa','Show')}</label></h2>
+     <p class="small muted">${L('Matcher vars spelare ännu inte är avgjorda (senare omgångar). Du kan förhandsplanera dem på ett datum via deras matchnummer – spelarna fylls i automatiskt när tidigare omgångar avgjorts.','Matches whose players are not yet decided (later rounds). You can pre-plan them on a date by their match number – the players fill in automatically once earlier rounds are decided.')}</p>
+     <div class="unsched" id="futureList"></div>
    </div>`;
   // daybar
   document.getElementById("daybar").innerHTML=getDays().map(d=>{
@@ -1615,6 +1658,7 @@ function renderSchedule(){
   document.getElementById("printBlank").onclick=()=>printBlankSchedule();
   document.getElementById("fullGrid").onchange=e=>{ ui.fullGrid=e.target.checked; render(); };
   document.getElementById("earlyRounds").onchange=e=>{ state.allowEarlyRounds=e.target.checked; save(); render(); };
+  document.getElementById("showFuture").onchange=e=>{ ui.showFuture=e.target.checked; renderFuture(); };
   // Sök i schemat (klass/deltagare, vald dag eller hela schemat)
   const ss=document.getElementById("schedSearch");
   ss.oninput=e=>{ ui.schedSearch=e.target.value; renderSchedSearch(); };
@@ -1656,6 +1700,7 @@ function renderSchedule(){
   document.getElementById("imgSched").onclick=()=>exportScheduleImage(ui.day, ui.printScope||'all');
   renderSchedGrid();
   renderUnsched();
+  renderFuture();
 }
 function allMatches(){ return state.classes.flatMap(c=>c.matches.map(m=>({...m,_cls:c}))); }
 function realMatches(){ // riktiga matchobjekt (inte kopior)
@@ -1884,6 +1929,33 @@ function renderUnsched(){
   });
   box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
     if(confirm("Ta bort den manuella matchen?")) deleteMatch(b.dataset.del);
+  });
+}
+// Framtida (ännu ej spelklara) matcher – kan förhandsplaneras på ett datum via matchnummer.
+function renderFuture(){
+  const box=document.getElementById("futureList"); if(!box) return;
+  if(!ui.showFuture){ box.innerHTML=`<span class="muted small">${L('Bocka i "Visa" ovan för att förhandsplanera framtida matcher.','Tick "Show" above to pre-plan future matches.')}</span>`; return; }
+  const groups=visibleClasses().map(c=>({
+    c, ms: c.matches.filter(m=>!m.manual && !isByeMatch(m) && !m.day && !m.winner && !(m.p1&&m.p2) && matchNumber(m)!=null)
+       .sort((a,b)=>(matchNumber(a)||0)-(matchNumber(b)||0))
+  })).filter(g=>g.ms.length);
+  if(!groups.length){ box.innerHTML=`<span class="muted">${L('Inga framtida matcher att planera.','No future matches to plan.')}</span>`; return; }
+  box.innerHTML=groups.map(({c,ms})=>{
+    const col=classColor(c);
+    const tiles=ms.map(m=>`<div class="mtile" style="width:240px;border-left-color:${col}">
+      <div class="cls"><span class="cdot" style="background:${col}"></span>${matchNoTag(m)}${c.name}${stageTag(c,m)}</div>
+      <div class="vs"><span class="muted">${L('spelare avgörs senare','players decided later')}</span></div>
+      <div class="ctrls"><button class="btn mini" data-fplace="${m.id}">➕ ${L('Lägg in','Add')} ${dayShort(ui.day)}</button></div>
+    </div>`).join("");
+    return `<div class="unschedgroup">
+      <div class="ghead"><span class="sw" style="background:${col}"></span>${c.name} <span class="muted small">(${ms.length})</span></div>
+      <div class="items">${tiles}</div></div>`;
+  }).join("");
+  box.querySelectorAll("[data-fplace]").forEach(b=>b.onclick=()=>{
+    const r=findMatch(b.dataset.fplace); if(!r) return;
+    const res=manualPlace(r.m, ui.day);
+    if(!res.ok) alert(res.msg); else if(res.warn) alert(res.warn);
+    save(); render();
   });
 }
 
