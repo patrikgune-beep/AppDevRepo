@@ -498,23 +498,29 @@ const TOURN_KEY = "dalaro-km";   // delad nyckel – alla enheter som använder 
 const cloudEnabled = /^https?:\/\//.test(SUPA_URL) && SUPA_KEY.length>20;
 let cloudStatus = "off";         // off | connecting | ok | saving | offline
 let cloudLastSync = 0;
+let cloudLastError = "";          // senaste felet (för felsökning)
 let _pushTimer = null, _polling = false;
 
 function cloudHeaders(extra){ return Object.assign({ apikey:SUPA_KEY, Authorization:"Bearer "+SUPA_KEY, "Content-Type":"application/json" }, extra||{}); }
 
 async function cloudGet(){
-  const r = await fetch(`${SUPA_URL}/tournaments?key=eq.${encodeURIComponent(TOURN_KEY)}&select=data`, { headers: cloudHeaders() });
-  if(!r.ok) throw new Error("GET "+r.status);
+  let r;
+  try{ r = await fetch(`${SUPA_URL}/tournaments?key=eq.${encodeURIComponent(TOURN_KEY)}&select=data`, { headers: cloudHeaders() }); }
+  catch(e){ cloudLastError="Nätverksfel (GET): "+e.message; throw e; }
+  if(!r.ok){ const body=await r.text().catch(()=>"" ); cloudLastError=`GET HTTP ${r.status} – ${body.slice(0,180)}`; throw new Error(cloudLastError); }
   const rows = await r.json();
   return (Array.isArray(rows) && rows.length) ? rows[0].data : null;
 }
 async function cloudPut(data){
-  const r = await fetch(`${SUPA_URL}/tournaments?on_conflict=key`, {
+  let r;
+  try{ r = await fetch(`${SUPA_URL}/tournaments?on_conflict=key`, {
     method:"POST",
     headers: cloudHeaders({ Prefer:"resolution=merge-duplicates,return=minimal" }),
     body: JSON.stringify([{ key:TOURN_KEY, data }])
-  });
-  if(!r.ok) throw new Error("PUT "+r.status);
+  }); }
+  catch(e){ cloudLastError="Nätverksfel (PUT): "+e.message; throw e; }
+  if(!r.ok){ const body=await r.text().catch(()=>"" ); cloudLastError=`PUT HTTP ${r.status} – ${body.slice(0,180)}`; throw new Error(cloudLastError); }
+  cloudLastError="";   // lyckad skrivning – nollställ felet
 }
 function cloudSetStatus(s){ cloudStatus=s; updateSyncBadge(); }
 function cloudSchedulePush(){
@@ -581,12 +587,61 @@ async function cloudForcePull(){
     cloudLastSync=Date.now(); cloudSetStatus("ok");
   }catch(e){ cloudSetStatus("offline"); }
 }
+// Felsökning: testar läsning + skrivning mot Supabase och förklarar vad som är fel.
+async function cloudDiagnose(){
+  const out=[];
+  out.push("URL: "+SUPA_URL);
+  out.push(`anon-nyckel: …${SUPA_KEY.slice(-6)} (längd ${SUPA_KEY.length} tecken)`);
+  out.push("Delad nyckel (rad): "+TOURN_KEY);
+  out.push("Sidans adress: "+location.origin);
+  out.push("");
+  if(!cloudEnabled){ out.push("❌ Molnsynk är inte aktiverad – URL eller nyckel saknas i filen."); return out.join("\n"); }
+  const interpret=(status,body)=>{
+    const b=(body||"").toLowerCase();
+    if(status===401||status===403){
+      if(b.includes("row-level security")||b.includes("42501")) return "→ RLS-policy saknas/blockerar. Kör SQL:en som ger 'anon' läs- OCH skrivrätt (se instruktionen).";
+      if(b.includes("api key")||b.includes("apikey")) return "→ API-nyckeln saknas eller är fel. Kopiera 'anon public' på nytt från Supabase → Project Settings → API.";
+      if(b.includes("jwt")||b.includes("expired")||b.includes("invalid")) return "→ Nyckeln är ogiltig eller utgången. Hämta en ny 'anon public'-nyckel.";
+      return "→ Behörighet nekad (oftast RLS-policy som saknas, eller fel nyckel).";
+    }
+    if(status===404) return "→ 404. Kontrollera att URL:en slutar på /rest/v1 och att tabellen 'tournaments' finns.";
+    if(status===0) return "→ Ingen kontakt. Internet nere, fel URL, eller nätverket/brandväggen blockerar supabase.co (CORS).";
+    if(b.includes("does not exist")||b.includes("42p01")) return "→ Tabellen 'tournaments' saknas. Skapa den med SQL:en i instruktionen.";
+    if(b.includes("could not find")&&b.includes("column")) return "→ Fel kolumnnamn. Tabellen ska ha kolumnerna 'key' (text) och 'data' (jsonb).";
+    return "→ Oväntat svar – se texten ovan.";
+  };
+  // 1) LÄSNING
+  try{
+    const r=await fetch(`${SUPA_URL}/tournaments?key=eq.${encodeURIComponent(TOURN_KEY)}&select=key`, { headers: cloudHeaders() });
+    const body=await r.text();
+    if(r.ok){ out.push(`✅ LÄSNING OK (HTTP ${r.status}).`); }
+    else { out.push(`❌ LÄSNING misslyckades: HTTP ${r.status}`); out.push("  "+body.slice(0,180)); out.push("  "+interpret(r.status,body)); return out.join("\n"); }
+  }catch(e){ out.push("❌ LÄSNING: ingen kontakt med servern – "+e.message); out.push("  "+interpret(0,"")); return out.join("\n"); }
+  // 2) SKRIVNING (testrad med egen nyckel – rör inte turneringsdatan)
+  try{
+    const r=await fetch(`${SUPA_URL}/tournaments?on_conflict=key`, {
+      method:"POST", headers: cloudHeaders({ Prefer:"resolution=merge-duplicates,return=minimal" }),
+      body: JSON.stringify([{ key:"__diag_test__", data:{ ts:Date.now() } }])
+    });
+    const body=await r.text();
+    if(r.ok){
+      out.push(`✅ SKRIVNING OK (HTTP ${r.status}).`);
+      out.push("");
+      out.push("🎉 Allt fungerar! Tabellen finns och behörigheten är rätt.");
+      out.push("Om det ändå står Offline: ladda om sidan.");
+      try{ await fetch(`${SUPA_URL}/tournaments?key=eq.__diag_test__`, { method:"DELETE", headers: cloudHeaders() }); }catch(e){}   // städa bort testraden
+    }
+    else { out.push(`❌ SKRIVNING misslyckades: HTTP ${r.status}`); out.push("  "+body.slice(0,180)); out.push("  "+interpret(r.status,body)); }
+  }catch(e){ out.push("❌ SKRIVNING: "+e.message); out.push("  "+interpret(0,"")); }
+  return out.join("\n");
+}
 function cloudStatusText(){
   if(!cloudEnabled) return L("Molnsynk av (endast denna enhet)","Cloud sync off (this device only)");
   const map={ connecting:L("Ansluter…","Connecting…"), saving:L("Sparar till molnet…","Saving to cloud…"),
     ok:L("Synkad","Synced"), offline:L("Offline – sparat lokalt","Offline – saved locally"), off:L("Av","Off") };
   let s=map[cloudStatus]||cloudStatus;
   if(cloudStatus==="ok" && cloudLastSync){ const d=new Date(cloudLastSync); const p=n=>String(n).padStart(2,"0"); s+=` ${p(d.getHours())}:${p(d.getMinutes())}`; }
+  if(cloudStatus==="offline" && cloudLastError){ s+=` (${cloudLastError.split(" – ")[0]})`; }   // t.ex. "HTTP 401"
   return s;
 }
 // Välj svart eller vit text som syns bäst mot en given bakgrundsfärg (hex).
@@ -1128,7 +1183,9 @@ function renderAbout(){
        <span id="syncBadge3" class="pill js-sync"></span>
        <button class="btn ghost mini" id="aboutPullBtn" ${cloudEnabled?'':'disabled'}>⬇ ${L('Hämta från molnet','Fetch from cloud')}</button>
        <button class="btn ghost mini" id="aboutPushBtn" ${cloudEnabled?'':'disabled'}>⬆ ${L('Spara till molnet nu','Save to cloud now')}</button>
+       <button class="btn mini" id="aboutDiagBtn" ${cloudEnabled?'':'disabled'}>🔍 ${L('Testa anslutning','Test connection')}</button>
      </div>
+     <pre id="cloudDiagOut" style="display:none;white-space:pre-wrap;background:#f6f3ea;border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:10px;font-size:12px;color:#26211c;max-height:320px;overflow:auto"></pre>
      <p class="small muted" style="margin:6px 0 0">${cloudEnabled
         ? L(`Turneringen delas mellan alla enheter via molnet (delad nyckel <b>${TOURN_KEY}</b>). Grön prick = synkad, gul = ansluter/sparar, röd = offline (då sparas allt lokalt tills anslutningen är tillbaka).`,`The tournament is shared between all devices via the cloud (shared key <b>${TOURN_KEY}</b>). Green dot = synced, amber = connecting/saving, red = offline (everything is saved locally until the connection returns).`)
         : L('Molnsynk är inte konfigurerad i denna fil – appen sparar endast lokalt i denna webbläsare.','Cloud sync is not configured in this file – the app saves only locally in this browser.')}</p>
@@ -1141,6 +1198,12 @@ function renderAbout(){
   updateSyncBadge();
   { const b=document.getElementById("aboutPullBtn"); if(b) b.onclick=cloudForcePull; }
   { const b=document.getElementById("aboutPushBtn"); if(b) b.onclick=cloudForcePush; }
+  { const b=document.getElementById("aboutDiagBtn"); if(b) b.onclick=async ()=>{
+      const out=document.getElementById("cloudDiagOut");
+      out.style.display="block"; out.textContent=L("Testar…","Testing…");
+      try{ out.textContent=await cloudDiagnose(); }catch(e){ out.textContent="Fel: "+e.message; }
+      updateSyncBadge();
+    }; }
 }
 
 // Läs in en uppladdad logga; rasterbilder skalas ned (max 512 px), SVG behålls som vektor.
