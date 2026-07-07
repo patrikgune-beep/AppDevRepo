@@ -181,7 +181,7 @@
     <p class="sub" id="appSub">Dalarö Tennisklubb</p>
   </div>
   <div class="spacer"></div>
-  <div class="sync-badge no-print" id="syncBadge" style="font-size:12px;opacity:.95;white-space:nowrap"></div>
+  <div class="sync-badge no-print js-sync" id="syncBadge" style="font-size:12px;opacity:.95;white-space:nowrap"></div>
   <div class="tabs" id="tabs"></div>
 </header>
 
@@ -602,14 +602,16 @@ function contrastText(bg){
 function updateSyncBadge(){
   const dot={ connecting:"#e0a020", saving:"#e0a020", ok:"#2e9e57", offline:"#c0392b", off:"#999" }[cloudStatus]||"#999";
   const html=`<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${dot};margin-right:6px;vertical-align:middle"></span><span style="vertical-align:middle">${cloudStatusText()}</span>`;
-  const el=document.getElementById("syncBadge");
-  if(el){
-    // Huvudets bakgrund = vald bakgrundsfärg, annars standard (--paper, ljus).
-    el.style.color = contrastText(state.bgColor || "#fbf9f1");
-    el.innerHTML=html; el.title=cloudEnabled?`Molnsynk: ${TOURN_KEY}`:"Molnsynk av";
-  }
-  const el2=document.getElementById("syncBadge2");
-  if(el2){ el2.style.color = contrastText("#eee5cf"); el2.innerHTML=html; }   // pillens ljusa bakgrund → mörk text
+  document.querySelectorAll(".js-sync").forEach(el=>{
+    el.innerHTML=html;
+    if(el.id==="syncBadge"){
+      // Huvudets bakgrund = vald bakgrundsfärg, annars standard (--paper, ljus).
+      el.style.color = contrastText(state.bgColor || "#fbf9f1");
+      el.title = cloudEnabled?`Molnsynk: ${TOURN_KEY}`:"Molnsynk av";
+    } else {
+      el.style.color = contrastText("#eee5cf");   // pillens ljusa bakgrund → mörk text
+    }
+  });
 }
 function uid(){ return Math.random().toString(36).slice(2,9); }
 function getClass(id){ return state.classes.find(c=>c.id===id); }
@@ -1121,12 +1123,24 @@ function renderAbout(){
      </ul>
      <h3 style="color:var(--head)">${L('Säkerhetskopiering','Backup')}</h3>
      <p class="small">${L('Under <b>Turneringsinformation</b> använder du <b>Exportera säkerhetskopia</b> för att spara en JSON-fil (filnamnet får datum + klockslag), och <b>Importera säkerhetskopia</b> för att återställa eller flytta turneringen till en annan dator.','Under <b>Tournament info</b> you use <b>Export backup</b> to save a JSON file (the filename gets date + time), and <b>Import backup</b> to restore or move the tournament to another computer.')}</p>
+     <h3 style="color:var(--head)">${L('Anslutningsstatus (molnsynk)','Connection status (cloud sync)')}</h3>
+     <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">
+       <span id="syncBadge3" class="pill js-sync"></span>
+       <button class="btn ghost mini" id="aboutPullBtn" ${cloudEnabled?'':'disabled'}>⬇ ${L('Hämta från molnet','Fetch from cloud')}</button>
+       <button class="btn ghost mini" id="aboutPushBtn" ${cloudEnabled?'':'disabled'}>⬆ ${L('Spara till molnet nu','Save to cloud now')}</button>
+     </div>
+     <p class="small muted" style="margin:6px 0 0">${cloudEnabled
+        ? L(`Turneringen delas mellan alla enheter via molnet (delad nyckel <b>${TOURN_KEY}</b>). Grön prick = synkad, gul = ansluter/sparar, röd = offline (då sparas allt lokalt tills anslutningen är tillbaka).`,`The tournament is shared between all devices via the cloud (shared key <b>${TOURN_KEY}</b>). Green dot = synced, amber = connecting/saving, red = offline (everything is saved locally until the connection returns).`)
+        : L('Molnsynk är inte konfigurerad i denna fil – appen sparar endast lokalt i denna webbläsare.','Cloud sync is not configured in this file – the app saves only locally in this browser.')}</p>
      <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
      <p class="small muted">
        <b>${L('Version (denna sidas senaste ändring):','Version (this page\'s last change):')}</b> ${appVersionText()}<br>
        ${arrangerName()} · ${L('fristående webbapp (index.html).','standalone web app (index.html).')}
      </p>
    </div>`;
+  updateSyncBadge();
+  { const b=document.getElementById("aboutPullBtn"); if(b) b.onclick=cloudForcePull; }
+  { const b=document.getElementById("aboutPushBtn"); if(b) b.onclick=cloudForcePush; }
 }
 
 // Läs in en uppladdad logga; rasterbilder skalas ned (max 512 px), SVG behålls som vektor.
@@ -1283,7 +1297,7 @@ function renderInfo(){
      <h2>${L('Molnsynk','Cloud sync')}</h2>
      <p class="small muted">${L('När molnsynk är på delas turneringen automatiskt mellan alla enheter som öppnar sidan – ändringar sparas till molnet och hämtas var 12:e sekund. Lokal kopia sparas alltid som backup.','When cloud sync is on, the tournament is shared automatically between all devices that open the page – changes are saved to the cloud and fetched every 12 s. A local copy is always kept as backup.')}</p>
      <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">
-       <span id="syncBadge2" class="pill"></span>
+       <span id="syncBadge2" class="pill js-sync"></span>
        <button class="btn ghost mini" id="cloudPullBtn" ${cloudEnabled?'':'disabled'}>⬇ ${L('Hämta från molnet','Fetch from cloud')}</button>
        <button class="btn ghost mini" id="cloudPushBtn" ${cloudEnabled?'':'disabled'}>⬆ ${L('Spara till molnet nu','Save to cloud now')}</button>
        <span class="muted small">${L('Delad nyckel','Shared key')}: <b>${TOURN_KEY}</b></span>
