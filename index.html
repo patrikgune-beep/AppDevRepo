@@ -1329,7 +1329,7 @@ function renderClasses(){
      </div>`:''}
    </div>`;
   // grid
-  document.getElementById("clsGrid").innerHTML=state.classes.map(c=>{
+  document.getElementById("clsGrid").innerHTML=[...state.classes].sort((a,b)=>(a.catNo||0)-(b.catNo||0)).map(c=>{
     const done=c.champion?`<span class="badge done">✓ ${dispName(c.champion)}</span>`:"";
     return `<div class="classcard ${c.id===cls.id?'active':''}" data-id="${c.id}" style="${c.hidden?'opacity:.45':''}">
       <div class="ttl"><span class="sw" style="background:${classColor(c)}"></span><span class="mno" style="margin-right:5px">#${c.catNo}</span>${c.name} ${isRanked(c)?`<span title="Seedas – top ${seedCountOf(c)}" style="color:#c9a227">★</span>`:''} ${c.hidden?'🙈':''}</div>
