@@ -1497,6 +1497,14 @@ function renderInfo(){
     state.courts=c;
     ensureDay(); save(); render();
   };
+  // Uppdatera webbläsarfliken (och sidhuvudet) LÖPANDE medan man skriver namn/arrangör.
+  const liveTitle=()=>{
+    document.title = `${state.tournament.name||"Klubbmästerskap"} – ${arrangerName()}`;
+    const at=document.getElementById("appTitle"); if(at) at.textContent = state.tournament.name || "Klubbmästerskap";
+    const as=document.getElementById("appSub"); if(as) as.textContent = `${arrangerName()} · ${tournamentRangeText()}`;
+  };
+  { const el=document.getElementById("tName");     if(el) el.oninput=()=>{ state.tournament.name=el.value; liveTitle(); save(); }; }
+  { const el=document.getElementById("tArranger"); if(el) el.oninput=()=>{ state.arranger=el.value;      liveTitle(); save(); }; }
   // Tävlingsledare + spelplats sparas löpande
   const bindSave=(id,fn)=>{ const el=document.getElementById(id); if(el) el.oninput=()=>{ fn(el.value); save(); }; };
   bindSave("oName", v=>{ state.organizer.name=v; });
