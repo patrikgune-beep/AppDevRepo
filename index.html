@@ -1065,8 +1065,8 @@ function render(){
   applyTheme();
   updateAdminBtn();
   document.body.classList.toggle("public", !isAdmin());
-  // Publik läsvy får bara vara på Turneringsinformation, Stege eller Schema.
-  if(!isAdmin() && !["info","bracket","schedule"].includes(ui.tab)) ui.tab="bracket";
+  // Publik läsvy får bara vara på Turneringsinformation, Stege, Schema eller Sök deltagare.
+  if(!isAdmin() && !["info","bracket","schedule","psearch"].includes(ui.tab)) ui.tab="bracket";
   document.title = `${state.tournament.name||"Klubbmästerskap"} – ${arrangerName()}`;
   document.getElementById("appTitle").textContent = state.tournament.name || "Klubbmästerskap";
   document.getElementById("appSub").textContent = `${arrangerName()} · ${tournamentRangeText()}`;
@@ -1075,6 +1075,7 @@ function render(){
   else if(ui.tab==="classes") renderClasses();
   else if(ui.tab==="bracket") renderBracketTab();
   else if(ui.tab==="schedule") renderSchedule();
+  else if(ui.tab==="psearch") renderPlayerSearch();
   else if(ui.tab==="requests") renderRequests();
   else if(ui.tab==="planner") renderPlanner();
   else if(ui.tab==="participants") renderParticipants();
@@ -1085,8 +1086,9 @@ function render(){
 }
 function renderTabs(){
   const all=[["info","Turneringsinformation"],["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["requests","Önskemål"],["planner","Auto-planering"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["stats","Statistik"],["about","Om appen"]];
-  // Publik läsvy: Turneringsinformation + Stege + Schema (skrivskyddat).
-  const tabs = isAdmin() ? all : all.filter(([k])=>k==="info"||k==="bracket"||k==="schedule");
+  // Publik läsvy: Turneringsinformation + Stege + Schema + Sök deltagare (skrivskyddat).
+  const publicTabs=[["info","Turneringsinformation"],["bracket","Stege"],["schedule","Schema"],["psearch","Sök deltagare"]];
+  const tabs = isAdmin() ? all : publicTabs;
   document.getElementById("tabs").innerHTML=tabs.map(([k,l])=>
     `<button class="${ui.tab===k?'active':''}" data-tab="${k}">${l}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{ui.tab=b.dataset.tab;render();});
@@ -1563,6 +1565,79 @@ function renderInfoPublic(){
      </div>
    </div>`;
   updateSyncBadge();
+}
+// Publik "Sök deltagare": klasser, schemalagda matcher och resultat för en person.
+function renderPlayerSearch(){
+  const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const nameOnSide=(side,name)=> side!=null && String(side).split("/").some(pp=>stripRank(pp)===name);
+  const q=(ui.psearch||"").trim().toLowerCase();
+  const idx=participantIndex("");                        // alla synliga klasser
+  const matched = q ? idx.filter(r=>r.name.toLowerCase().includes(q)) : [];
+  let html=`
+   <div class="hint no-print">
+     👁 <b>${L('Sök deltagare','Player search')}</b> – ${L('skriv ett namn för att se klasser, schemalagda matcher och resultat.','type a name to see classes, scheduled matches and results.')}
+   </div>
+   <div class="card">
+     <h2>${L('Sök deltagare','Player search')}</h2>
+     <div class="row">
+       <input type="text" id="pSearchInput" placeholder="🔎 ${L('Skriv ett namn…','Type a name…')}" value="${esc(ui.psearch||'')}" style="min-width:240px">
+       ${q?`<button class="btn ghost mini" id="pClr">✕ ${L('Rensa','Clear')}</button>`:''}
+       <span class="pill">${idx.length} ${L('deltagare totalt','players total')}</span>
+     </div>
+   </div>`;
+  if(!q){
+    html+=`<div class="card"><p class="muted">${L('Skriv ett namn i sökrutan ovan för att söka.','Type a name in the search box above.')}</p></div>`;
+  } else if(!matched.length){
+    html+=`<div class="card"><p class="muted">${L('Ingen deltagare matchar','No player matches')} "${esc(ui.psearch)}".</p></div>`;
+  } else {
+    for(const r of matched){
+      const pm=playerMatches(r.name,"");
+      const played=pm.filter(x=>x.m.winner);
+      const wins=played.filter(x=>nameOnSide(x.m.winner,r.name)).length;
+      const losses=played.length-wins;
+      html+=`<div class="card">
+        <h2 style="margin:0 0 6px">${esc(r.name)}</h2>
+        <div class="row" style="gap:6px;margin:0 0 4px">
+          <span class="small muted">${L('Anmäld i','Registered in')}:</span>
+          ${r.classes.map(cn=>`<span class="pill">${esc(cn)}</span>`).join("")}
+        </div>
+        ${played.length?`<p class="small" style="margin:6px 0 10px">${L('Spelade matcher','Played matches')}: <b>${played.length}</b> · <span style="color:var(--green)">${wins} ${L('vinster','wins')}</span> · ${losses} ${L('förluster','losses')}</p>`:''}`;
+      if(!pm.length){
+        html+=`<p class="small muted">${L('Inga matcher ännu.','No matches yet.')}</p></div>`;
+        continue;
+      }
+      html+=`<div style="overflow-x:auto"><table class="results"><thead><tr>
+          <th>${L('Nr','No')}</th><th>${L('Klass','Class')}</th><th>${L('Omgång','Round')}</th>
+          <th>${L('Dag','Day')}</th><th>${L('Tid','Time')}</th><th>${L('Bana','Court')}</th>
+          <th>${L('Motståndare','Opponent')}</th><th>${L('Resultat','Result')}</th></tr></thead><tbody>`;
+      for(const {m,c} of pm){
+        const oppSide = nameOnSide(m.p1,r.name) ? m.p2 : m.p1;
+        const opp = oppSide!=null ? esc(dispName(oppSide)) : `<i style="color:#b3aa98">${L('väntar på motståndare','awaiting opponent')}</i>`;
+        let result;
+        if(m.winner){
+          const won=nameOnSide(m.winner,r.name);
+          result=`${esc(m.score||'WO')} · ${won?`<b style="color:var(--green)">✅ ${L('vinst','win')}</b>`:`<span class="muted">${L('förlust','loss')}</span>`}`;
+        } else {
+          result=`<span class="muted">${m.day?L('kommande','upcoming'):'–'}</span>`;
+        }
+        html+=`<tr>
+          <td>${matchNumber(m)??'-'}</td>
+          <td><span class="cdot" style="background:${classColor(c)}"></span>${esc(c.name)}</td>
+          <td class="small">${m.manual?L('match','match'):esc(roundName(m.round,totalRounds(c)))}</td>
+          <td>${m.day?esc(dayShort(m.day)):`<i>${L('ej schemalagd','not scheduled')}</i>`}</td>
+          <td>${m.time!=null?matchLabel(m):'-'}</td>
+          <td>${m.court||'-'}</td>
+          <td>${opp}</td>
+          <td>${result}</td></tr>`;
+      }
+      html+=`</tbody></table></div></div>`;
+    }
+  }
+  app.innerHTML=html;
+  const si=document.getElementById("pSearchInput");
+  si.oninput=e=>{ ui.psearch=e.target.value; ui._psf=true; render(); };
+  if(ui._psf){ const el=document.getElementById("pSearchInput"); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length); } ui._psf=false; }
+  const clr=document.getElementById("pClr"); if(clr) clr.onclick=()=>{ ui.psearch=""; ui._psf=true; render(); };
 }
 
 /* ----- Tab 1: Klasser & deltagare ----- */
