@@ -389,6 +389,7 @@ function normalize(s){
   if(!s.diplomaSigns || typeof s.diplomaSigns!=="object") s.diplomaSigns={ director:true, chairman:true, trainers:false };
   { const d=defaultSched(); s.sched = Object.assign(d, (s.sched && typeof s.sched==="object") ? s.sched : {}); }
   if(typeof s.venue!=="string") s.venue="";
+  if(typeof s.adminPin!=="string") s.adminPin="";
   if(typeof s.updatedAt!=="number") s.updatedAt=0;
   if(!s.extraCourts) s.extraCourts={};
   if(!s.lockedDays) s.lockedDays={};
@@ -498,13 +499,14 @@ function save(){ if(!isAdmin()) return; state.updatedAt = Date.now(); saveLocal(
 /* ===================== Admin / publik läsvy =====================
    Publik vy (standard) = endast Stege + Schema, ingen redigering.
    Admin låses upp med en PIN och kommer ihåg per enhet (localStorage).   */
-const ADMIN_PIN = "2323";   // ← ÄNDRA denna kod till din egen. Den som kan den kan redigera.
+const ADMIN_PIN = "2323";   // Standard-PIN (används tills en egen PIN satts under Turneringsinformation).
+function adminPin(){ return (state && typeof state.adminPin==="string" && state.adminPin.trim()) ? state.adminPin.trim() : ADMIN_PIN; }
 function isAdmin(){ try{ return localStorage.getItem("km_admin")==="1"; }catch(e){ return false; } }
 function setAdminFlag(on){ try{ if(on) localStorage.setItem("km_admin","1"); else localStorage.removeItem("km_admin"); }catch(e){} }
 function promptAdmin(){
   const pin=prompt(L("Ange admin-PIN för att låsa upp redigering:","Enter admin PIN to unlock editing:"));
   if(pin==null) return;
-  if(pin===ADMIN_PIN){ setAdminFlag(true); cloudInit(); render(); }
+  if(pin===adminPin()){ setAdminFlag(true); cloudInit(); render(); }
   else alert(L("Fel PIN.","Wrong PIN."));
 }
 function lockAdmin(){
@@ -620,7 +622,7 @@ function cloudStartPolling(){
   }, 12000);
 }
 async function cloudForcePush(){
-  if(!cloudEnabled) return;
+  if(!cloudEnabled || !isAdmin()) return;   // publik vy skriver aldrig
   cloudSetStatus("saving");
   try{ state.updatedAt=Date.now(); saveLocal(); await cloudPut(state); cloudLastSync=Date.now(); cloudSetStatus("ok"); }
   catch(e){ cloudSetStatus("offline"); }
@@ -1063,8 +1065,8 @@ function render(){
   applyTheme();
   updateAdminBtn();
   document.body.classList.toggle("public", !isAdmin());
-  // Publik läsvy får bara vara på Stege eller Schema.
-  if(!isAdmin() && ui.tab!=="bracket" && ui.tab!=="schedule") ui.tab="bracket";
+  // Publik läsvy får bara vara på Turneringsinformation, Stege eller Schema.
+  if(!isAdmin() && !["info","bracket","schedule"].includes(ui.tab)) ui.tab="bracket";
   document.title = `${state.tournament.name||"Klubbmästerskap"} – ${arrangerName()}`;
   document.getElementById("appTitle").textContent = state.tournament.name || "Klubbmästerskap";
   document.getElementById("appSub").textContent = `${arrangerName()} · ${tournamentRangeText()}`;
@@ -1083,8 +1085,8 @@ function render(){
 }
 function renderTabs(){
   const all=[["info","Turneringsinformation"],["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["requests","Önskemål"],["planner","Auto-planering"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["stats","Statistik"],["about","Om appen"]];
-  // Publik läsvy: bara Stege + Schema.
-  const tabs = isAdmin() ? all : all.filter(([k])=>k==="bracket"||k==="schedule");
+  // Publik läsvy: Turneringsinformation + Stege + Schema (skrivskyddat).
+  const tabs = isAdmin() ? all : all.filter(([k])=>k==="info"||k==="bracket"||k==="schedule");
   document.getElementById("tabs").innerHTML=tabs.map(([k,l])=>
     `<button class="${ui.tab===k?'active':''}" data-tab="${k}">${l}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{ui.tab=b.dataset.tab;render();});
@@ -1285,6 +1287,7 @@ function loadLogoFile(file){
 
 /* ----- Tab: Turneringsinformation (första fliken) ----- */
 function renderInfo(){
+  if(!isAdmin()){ renderInfoPublic(); return; }   // publik: skrivskyddad översikt
   const t=state.tournament, o=state.organizer||{};
   const esc=s=>String(s==null?"":s).replace(/"/g,"&quot;");
   app.innerHTML=`
@@ -1412,6 +1415,16 @@ function renderInfo(){
      <textarea id="venue" placeholder="T.ex. Dalarö Tennisklubb, Odinsvägen 5, 137 70 Dalarö" style="min-height:64px">${String(state.venue||"")}</textarea>
    </div>
    <div class="card no-print">
+     <h2>${L('Admin-PIN (publik/dold vy)','Admin PIN (public/hidden view)')}</h2>
+     <p class="small muted">${L('Publika delen visar bara Turneringsinformation, Stege och Schema – utan möjlighet att ändra. Admin låses upp med denna PIN (knappen 🔒 Admin uppe till höger). Byt gärna till en egen kod.','The public part shows only Tournament info, Bracket and Schedule – with no editing. Admin is unlocked with this PIN (the 🔒 Admin button top right). Change it to your own code.')}</p>
+     <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
+       <label class="small">${L('Admin-PIN','Admin PIN')}<br>
+         <input type="text" id="adminPinInput" value="${String(adminPin()).replace(/"/g,'&quot;')}" style="width:140px" autocomplete="off"></label>
+       <button class="btn mini" id="savePinBtn">💾 ${L('Spara PIN','Save PIN')}</button>
+       <span class="muted small">${L('Synkas till alla enheter. Obs: enkel spärr – koden går att hitta för tekniskt kunniga.','Synced to all devices. Note: simple protection – the code can be found by technical users.')}</span>
+     </div>
+   </div>
+   <div class="card no-print">
      <h2>${L('Molnsynk','Cloud sync')}</h2>
      <p class="small muted">${L('När molnsynk är på delas turneringen automatiskt mellan alla enheter som öppnar sidan – ändringar sparas till molnet och hämtas var 12:e sekund. Lokal kopia sparas alltid som backup.','When cloud sync is on, the tournament is shared automatically between all devices that open the page – changes are saved to the cloud and fetched every 12 s. A local copy is always kept as backup.')}</p>
      <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">
@@ -1480,6 +1493,13 @@ function renderInfo(){
   document.getElementById("exportBtn").onclick=exportBackup;
   document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
   document.getElementById("newTournament").onclick=resetEverything;
+  // Admin-PIN
+  { const b=document.getElementById("savePinBtn"); if(b) b.onclick=()=>{
+      const v=document.getElementById("adminPinInput").value.trim();
+      if(!v){ alert(L("PIN får inte vara tom.","PIN cannot be empty.")); return; }
+      state.adminPin=v; save();
+      alert(L("Admin-PIN sparad och synkad.","Admin PIN saved and synced."));
+    }; }
   // Molnsynk
   updateSyncBadge();
   { const b=document.getElementById("cloudPullBtn"); if(b) b.onclick=cloudForcePull; }
@@ -1504,6 +1524,43 @@ function renderInfo(){
     Object.assign(state.sched, set); save(); render();
   };
   document.getElementById("resetSched").onclick=()=>{ if(confirm(L("Återställ schemaläggningen till standard?","Reset scheduling to default?"))){ state.sched=defaultSched(); save(); render(); } };
+}
+// Publik (skrivskyddad) version av Turneringsinformation – bara visning, inga kontroller.
+function renderInfoPublic(){
+  const t=state.tournament||{}, o=state.organizer||{};
+  const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const rows=[];
+  const add=(label,val)=>{ if(val && String(val).trim()) rows.push(`<tr><th style="text-align:left;padding:4px 14px 4px 0;vertical-align:top;white-space:nowrap;color:#6b6356;font-weight:600">${label}</th><td style="padding:4px 0">${esc(val)}</td></tr>`); };
+  add(L('Turnering','Tournament'), t.name);
+  add(L('Arrangör','Organizer'), state.arranger);
+  add(L('Datum','Dates'), tournamentRangeText());
+  add(L('Antal banor','Courts'), state.courts);
+  add(L('Spelplats','Venue'), state.venue);
+  add(L('Kontaktperson','Contact'), o.name);
+  add(L('Telefon','Phone'), o.phone);
+  add(L('E-post','Email'), o.email);
+  add(L('Ordförande','Chairman'), state.chairman);
+  const trainers=(state.trainers||[]).filter(x=>x&&x.trim());
+  if(trainers.length) add(trainers.length>1?L('Tränare','Trainers'):L('Tränare','Trainer'), trainers.join(", "));
+  app.innerHTML=`
+   <div class="hint no-print">
+     👁 <b>${L('Publik läsvy','Public view')}</b> – ${L('turneringsinformationen visas skrivskyddat.','tournament information shown read-only.')}
+   </div>
+   <div class="card">
+     <div class="row" style="align-items:center;gap:14px">
+       <div style="width:56px;height:56px;flex:0 0 auto">${logoMarkup()}</div>
+       <div>
+         <h2 style="margin:0">${esc(t.name||'Klubbmästerskap')}</h2>
+         <p class="small muted" style="margin:2px 0 0">${esc(state.arranger||'')} · ${tournamentRangeText()}</p>
+       </div>
+     </div>
+     <table style="margin-top:14px;border-collapse:collapse">${rows.join("")}</table>
+     <div class="row" style="margin-top:14px;align-items:center;gap:10px;flex-wrap:wrap">
+       <span id="syncBadge2" class="pill js-sync"></span>
+       <span class="muted small">${L('Öppna admin (🔒 uppe till höger) för att ändra.','Open admin (🔒 top right) to make changes.')}</span>
+     </div>
+   </div>`;
+  updateSyncBadge();
 }
 
 /* ----- Tab 1: Klasser & deltagare ----- */
