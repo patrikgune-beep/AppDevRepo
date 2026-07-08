@@ -753,6 +753,16 @@ function findMatchByNumber(no){
   return null;
 }
 function matchNoTag(m){ const n=matchNumber(m); return n==null?"":`<span class="mno">#${n}</span>`; }
+// Etikett för en matchsida: känd deltagare visas med namn, annars matchnumret på
+// matchen vars vinnare fyller platsen (t.ex. "#12" = vinnaren av match 12).
+function slotFeedLabel(cls,m,slot){
+  const p = slot===0 ? m.p1 : m.p2;
+  if(p) return dispName(p);
+  const feeder = (cls && m.round>0 && !m.manual) ? matchOf(cls, m.round-1, m.index*2 + slot) : null;
+  const n = feeder ? matchNumber(feeder) : null;
+  if(n!=null) return `<span class="mno" title="${L('Vinnare av match','Winner of match')} #${n}">#${n}</span>`;
+  return `<span class="muted">?</span>`;
+}
 // Antal riktiga matcher som ska spelas i en klass (deltagare-1 + manuella).
 function realMatchCount(cls){
   return Math.max(0, cls.participants.length-1) + cls.matches.filter(m=>m.manual).length;
@@ -2448,7 +2458,7 @@ function mtileHTML(m,bad){
      </div>`:"";
   return `<div class="mtile${conf}${locked?' locked':''}${m.winner?' played':''}" data-id="${m.id}" style="border-left-color:${col}">
      <div class="cls"><span class="cdot" style="background:${col}"></span>${matchNoTag(m)}${c.name}${locked?' <span class="lockmark">🔒</span>':''}${stageTag(c,m)}</div>
-     <div class="vs">${dispName(m.p1)||'?'} <span class="muted">vs</span> ${dispName(m.p2)||'?'}${m.winner?` <span style="color:var(--green)">🏆 ${dispName(m.winner)}</span>`:''}</div>
+     <div class="vs">${slotFeedLabel(c,m,0)} <span class="muted">vs</span> ${slotFeedLabel(c,m,1)}${m.winner?` <span style="color:var(--green)">🏆 ${dispName(m.winner)}</span>`:''}</div>
      ${conflictMsg}
      ${softMsg}
      ${winsel}
@@ -2524,7 +2534,7 @@ function renderFuture(){
     const col=classColor(c);
     const tiles=ms.map(m=>`<div class="mtile" style="width:240px;border-left-color:${col}">
       <div class="cls"><span class="cdot" style="background:${col}"></span>${matchNoTag(m)}${c.name}${stageTag(c,m)}</div>
-      <div class="vs"><span class="muted">${L('spelare avgörs senare','players decided later')}</span></div>
+      <div class="vs">${slotFeedLabel(c,m,0)} <span class="muted">vs</span> ${slotFeedLabel(c,m,1)}</div>
       <div class="ctrls"><button class="btn mini" data-fplace="${m.id}">➕ ${L('Lägg in','Add')} ${dayShort(ui.day)}</button></div>
     </div>`).join("");
     return `<div class="unschedgroup">
