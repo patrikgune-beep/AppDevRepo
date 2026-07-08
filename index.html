@@ -1257,8 +1257,8 @@ function renderAbout(){
        <button class="btn mini" id="aboutDiagBtn" ${cloudEnabled?'':'disabled'}>🔍 ${L('Testa anslutning','Test connection')}</button>
      </div>
      <pre id="cloudDiagOut" style="display:none;white-space:pre-wrap;background:#f6f3ea;border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:10px;font-size:12px;color:#26211c;max-height:320px;overflow:auto"></pre>
-     ${cloudEnabled?`<p class="small" style="margin:8px 0 0">${L('Synkar mot Supabase-projekt','Syncing with Supabase project')}:
-        <b>${supaProjectRef()}</b> <span class="muted">(${supaProjectRef()}.supabase.co · ${L('delad nyckel','shared key')} <b>${TOURN_KEY}</b>)</span>
+     ${cloudEnabled?`<p class="small" style="margin:8px 0 0">${L('Supabaseprojekt','Supabase project')}:
+        <b>${TOURN_KEY}</b> <span class="muted">(${supaProjectRef()}.supabase.co)</span>
         &nbsp;<a href="https://supabase.com/dashboard/project/${supaProjectRef()}" target="_blank" rel="noopener">${L('öppna i Supabase','open in Supabase')} ↗</a></p>`:''}
      <p class="small muted" style="margin:6px 0 0">${cloudEnabled
         ? L(`Turneringen delas mellan alla enheter via molnet (delad nyckel <b>${TOURN_KEY}</b>). Grön prick = synkad, gul = ansluter/sparar, röd = offline (då sparas allt lokalt tills anslutningen är tillbaka).`,`The tournament is shared between all devices via the cloud (shared key <b>${TOURN_KEY}</b>). Green dot = synced, amber = connecting/saving, red = offline (everything is saved locally until the connection returns).`)
