@@ -159,6 +159,11 @@
   /* print */
   #printArea{display:none}
   .brpage{position:relative;overflow:hidden;background:#fff}
+  /* Publik läsvy: dölj all redigering (admin-delen) */
+  body.public .adminonly{ display:none !important; }
+  body.public .mtile .ctrls{ display:none !important; }
+  body.public .mtile .conflictmsg, body.public .mtile .softreq{ display:none !important; }
+  body:not(.public) .publiconly{ display:none !important; }
   @page land{ size:A4 landscape; margin:6mm }
   @media print{
     header.app,.tabs,.toolbar,.daybar,#app,.no-print{display:none !important}
@@ -181,6 +186,7 @@
     <p class="sub" id="appSub">Dalarö Tennisklubb</p>
   </div>
   <div class="spacer"></div>
+  <button id="adminBtn" class="btn ghost mini no-print" style="white-space:nowrap"></button>
   <div class="sync-badge no-print js-sync" id="syncBadge" style="font-size:12px;opacity:.95;white-space:nowrap"></div>
   <div class="tabs" id="tabs"></div>
 </header>
@@ -486,7 +492,31 @@ function ensureDay(){
 }
 function load(){ try{ const r=localStorage.getItem(LS_KEY); return r?JSON.parse(r):null; }catch(e){ return null; } }
 function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
-function save(){ state.updatedAt = Date.now(); saveLocal(); cloudSchedulePush(); }
+// Publik läsvy kan ALDRIG skriva (varken lokalt eller till molnet) – bara admin sparar.
+function save(){ if(!isAdmin()) return; state.updatedAt = Date.now(); saveLocal(); cloudSchedulePush(); }
+
+/* ===================== Admin / publik läsvy =====================
+   Publik vy (standard) = endast Stege + Schema, ingen redigering.
+   Admin låses upp med en PIN och kommer ihåg per enhet (localStorage).   */
+const ADMIN_PIN = "2323";   // ← ÄNDRA denna kod till din egen. Den som kan den kan redigera.
+function isAdmin(){ try{ return localStorage.getItem("km_admin")==="1"; }catch(e){ return false; } }
+function setAdminFlag(on){ try{ if(on) localStorage.setItem("km_admin","1"); else localStorage.removeItem("km_admin"); }catch(e){} }
+function promptAdmin(){
+  const pin=prompt(L("Ange admin-PIN för att låsa upp redigering:","Enter admin PIN to unlock editing:"));
+  if(pin==null) return;
+  if(pin===ADMIN_PIN){ setAdminFlag(true); cloudInit(); render(); }
+  else alert(L("Fel PIN.","Wrong PIN."));
+}
+function lockAdmin(){
+  setAdminFlag(false);
+  ui.tab="bracket"; ui.swapMode=ui.moveMode=ui.numMode=false;
+  render();
+}
+function updateAdminBtn(){
+  const b=document.getElementById("adminBtn"); if(!b) return;
+  if(isAdmin()){ b.textContent="🔓 "+L("Publik vy","Public view"); b.title=L("Lås till publik läsvy (dölj redigering)","Lock to public read-only view"); b.onclick=lockAdmin; }
+  else { b.textContent="🔒 Admin"; b.title=L("Lås upp redigering (kräver PIN)","Unlock editing (requires PIN)"); b.onclick=promptAdmin; }
+}
 
 /* ===================== Molnsynk (Supabase) =====================
    Delar hela tillståndet (state) mellan enheter via en delad rad i
@@ -568,10 +598,11 @@ async function cloudInit(){
   try{
     const data = await cloudGet();
     if(data){
-      if((data.updatedAt||0) >= (state.updatedAt||0)){ state=normalize(data); if(!getClass(ui.classId)) ui.classId=state.classes[0]&&state.classes[0].id; saveLocal(); ensureDay(); render(); }
-      else { await cloudPut(state); }   // vår lokala är nyare – skicka upp den
-    } else {
-      await cloudPut(state);            // molnet är tomt – så vår lokala data blir grunddata
+      // Publik vy tar alltid molnets version. Admin behåller sin om den är nyare.
+      if(!isAdmin() || (data.updatedAt||0) >= (state.updatedAt||0)){ state=normalize(data); if(!getClass(ui.classId)) ui.classId=state.classes[0]&&state.classes[0].id; saveLocal(); ensureDay(); render(); }
+      else { await cloudPut(state); }   // admin och vår lokala är nyare – skicka upp den
+    } else if(isAdmin()){
+      await cloudPut(state);            // molnet är tomt – admins data blir grunddata (publik skriver aldrig)
     }
     cloudLastSync=Date.now(); cloudSetStatus("ok");
     cloudStartPolling();
@@ -1030,6 +1061,10 @@ const app=document.getElementById("app");
 function render(){
   ensureDay();
   applyTheme();
+  updateAdminBtn();
+  document.body.classList.toggle("public", !isAdmin());
+  // Publik läsvy får bara vara på Stege eller Schema.
+  if(!isAdmin() && ui.tab!=="bracket" && ui.tab!=="schedule") ui.tab="bracket";
   document.title = `${state.tournament.name||"Klubbmästerskap"} – ${arrangerName()}`;
   document.getElementById("appTitle").textContent = state.tournament.name || "Klubbmästerskap";
   document.getElementById("appSub").textContent = `${arrangerName()} · ${tournamentRangeText()}`;
@@ -1047,7 +1082,9 @@ function render(){
   applyLang();   // översätt gränssnittet till engelska om valt
 }
 function renderTabs(){
-  const tabs=[["info","Turneringsinformation"],["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["requests","Önskemål"],["planner","Auto-planering"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["stats","Statistik"],["about","Om appen"]];
+  const all=[["info","Turneringsinformation"],["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["requests","Önskemål"],["planner","Auto-planering"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["stats","Statistik"],["about","Om appen"]];
+  // Publik läsvy: bara Stege + Schema.
+  const tabs = isAdmin() ? all : all.filter(([k])=>k==="bracket"||k==="schedule");
   document.getElementById("tabs").innerHTML=tabs.map(([k,l])=>
     `<button class="${ui.tab===k?'active':''}" data-tab="${k}">${l}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{ui.tab=b.dataset.tab;render();});
@@ -1699,9 +1736,9 @@ function renderBracketTab(){
        ? `<div class="hint" style="border-color:#c9a227;background:#fbf6e3;margin-top:10px">
             ⚠ Denna stege byggdes <b>utan seedning</b>. Klicka <b>🔁 Lotta om / bygg stege</b> för att seeda de ${seedCountOf(cls)} översta (1–${seedCountOf(cls)}).
           </div>` : ''}
-     <p class="small muted" style="margin:8px 0 0">
+     ${isAdmin()?`<p class="small muted" style="margin:8px 0 0">
        Skriv resultatet i rutan och välj <b>vinnare</b> i listan (eller klicka på spelarens namn).
-       Vinnaren förs automatiskt vidare och nästa match blir spelklar i <b>Schema → Ej schemalagda</b>.</p>
+       Vinnaren förs automatiskt vidare och nästa match blir spelklar i <b>Schema → Ej schemalagda</b>.</p>`:''}
      ${ui.swapMode?`<div class="hint" style="border-color:#f0a500;background:#fff8e6;margin-top:10px">
         🔀 <b>${L('Bytesläge på:','Swap mode on:')}</b> ${L('klicka på en spelare och sedan på en annan – de byter plats. Fungerar mellan omgång 1 och omgång 2, även för <b>seedade</b> spelare (en seed som gått vidare på bye byts via sin plats i omgång 2). (Berörda resultat nollställs.)','click a player and then another – they swap places. Works between round 1 and round 2, including <b>seeded</b> players (a seed advanced on a bye is swapped via its slot in round 2). (Affected results are cleared.)')}</div>`:''}
      ${ui.moveMode?`<div class="hint" style="border-color:#2f80c9;background:#eaf4fc;margin-top:10px">
@@ -1709,18 +1746,19 @@ function renderBracketTab(){
      ${ui.numMode?`<div class="hint" style="border-color:#8e44ad;background:#f6eefc;margin-top:10px">
         🔢 <b>${L('Byt matchnummer på:','Swap match number mode on:')}</b> ${L('klicka på en match och sedan på en annan – deras matchnummer byter plats (precis som byte av spelare). Spelare och resultat påverkas inte.','click a match and then another – their match numbers swap (just like swapping players). Players and results are not affected.')}</div>`:''}
      <div class="row" style="margin-top:10px">
+       ${isAdmin()?`
        <button class="btn ${ui.swapMode?'':'ghost'} mini" id="swapMode">🔀 ${L('Byt spelare','Swap players')} ${ui.swapMode?'('+L('på','on')+')':''}</button>
        <button class="btn ${ui.moveMode?'':'ghost'} mini" id="moveMode">↔ ${L('Flytta match','Move match')} ${ui.moveMode?'('+L('på','on')+')':''}</button>
        <button class="btn ${ui.numMode?'':'ghost'} mini" id="numMode">🔢 ${L('Byt matchnummer','Swap match number')} ${ui.numMode?'('+L('på','on')+')':''}</button>
        <button class="btn ghost mini" id="rebuildBr">🔁 Lotta om / bygg stege</button>
-       <button class="btn gray mini" id="clearBr">🗑 Rensa flik (denna stege)</button>
+       <button class="btn gray mini" id="clearBr">🗑 Rensa flik (denna stege)</button>`:''}
        <span style="flex:1"></span>
        <button class="btn ghost mini" id="imgBr">📷 ${L('Spara bild av stege','Save bracket image')}</button>
        <button class="btn ghost mini" id="imgAllBr">📷 ${L('Bild av alla stegar','Image of all brackets')}</button>
        ${cls.champion?`<button class="btn ghost mini" id="diplomaBr">🏅 ${L('Diplom','Diploma')}</button>`:''}
        <button class="btn mini" id="printBr">🖨 Skriv ut stege</button>
      </div>
-     ${cls.participants.length?`
+     ${(isAdmin() && cls.participants.length)?`
      <div class="row" style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
        <span class="small">Ersätt deltagare:</span>
        <select id="replSelBr">${cls.participants.map(p=>`<option value="${String(p).replace(/"/g,'&quot;')}">${dispName(p)}</option>`).join("")}</select>
@@ -1732,22 +1770,24 @@ function renderBracketTab(){
    </div>
    <div id="bracketWrap"></div>`;
   document.getElementById("clsSel").onchange=e=>{ui.classId=e.target.value; ui.swapSel=null; ui.moveSel=null; render();};
-  document.getElementById("rebuildBr").onclick=()=>rebuildBracketOf(cls);
-  document.getElementById("clearBr").onclick=()=>clearBracketOf(cls);
-  document.getElementById("swapMode").onclick=()=>{ ui.swapMode=!ui.swapMode; if(ui.swapMode){ui.moveMode=false;ui.moveSel=null;ui.numMode=false;ui.numSel=null;} ui.swapSel=null; render(); };
-  document.getElementById("moveMode").onclick=()=>{ ui.moveMode=!ui.moveMode; if(ui.moveMode){ui.swapMode=false;ui.swapSel=null;ui.numMode=false;ui.numSel=null;} ui.moveSel=null; render(); };
-  document.getElementById("numMode").onclick=()=>{ ui.numMode=!ui.numMode; if(ui.numMode){ui.swapMode=false;ui.swapSel=null;ui.moveMode=false;ui.moveSel=null;} ui.numSel=null; render(); };
+  if(isAdmin()){
+    document.getElementById("rebuildBr").onclick=()=>rebuildBracketOf(cls);
+    document.getElementById("clearBr").onclick=()=>clearBracketOf(cls);
+    document.getElementById("swapMode").onclick=()=>{ ui.swapMode=!ui.swapMode; if(ui.swapMode){ui.moveMode=false;ui.moveSel=null;ui.numMode=false;ui.numSel=null;} ui.swapSel=null; render(); };
+    document.getElementById("moveMode").onclick=()=>{ ui.moveMode=!ui.moveMode; if(ui.moveMode){ui.swapMode=false;ui.swapSel=null;ui.numMode=false;ui.numSel=null;} ui.moveSel=null; render(); };
+    document.getElementById("numMode").onclick=()=>{ ui.numMode=!ui.numMode; if(ui.numMode){ui.swapMode=false;ui.swapSel=null;ui.moveMode=false;ui.moveSel=null;} ui.numSel=null; render(); };
+    const replBtnBr=document.getElementById("replBtnBr");
+    if(replBtnBr) replBtnBr.onclick=()=>{
+      const oldEntry=document.getElementById("replSelBr").value;
+      const nn=document.getElementById("replNewBr").value.trim();
+      if(!nn){ alert("Skriv namnet på den nya deltagaren."); return; }
+      replaceParticipant(cls, oldEntry, nn);
+    };
+  }
   document.getElementById("printBr").onclick=()=>printOneBracket(cls);
   document.getElementById("imgBr").onclick=()=>exportBracketImage(cls);
   document.getElementById("imgAllBr").onclick=()=>exportAllBracketImages();
   { const db=document.getElementById("diplomaBr"); if(db) db.onclick=()=>printChampionDiplomas(cls); }
-  const replBtnBr=document.getElementById("replBtnBr");
-  if(replBtnBr) replBtnBr.onclick=()=>{
-    const oldEntry=document.getElementById("replSelBr").value;
-    const nn=document.getElementById("replNewBr").value.trim();
-    if(!nn){ alert("Skriv namnet på den nya deltagaren."); return; }
-    replaceParticipant(cls, oldEntry, nn);
-  };
   const wrap=document.getElementById("bracketWrap");
   if(!cls.matches.length){
     if(cls.participants.length>=2){
@@ -1773,7 +1813,8 @@ function renderBracketTab(){
         <div class="who">${dispName(cls.champion)||"–"}</div></div></div>`;
   html+=`</div></div>`;
   wrap.innerHTML=html;
-  // events
+  // events (endast admin – publik läsvy har inga redigeringshändelser)
+  if(isAdmin()){
   // Flytta-match-läge: klick på hela matchrutan (första omgången) väljer/byter match.
   if(ui.moveMode){
     document.querySelectorAll('.match[data-r="0"]').forEach(el=>{
@@ -1804,6 +1845,7 @@ function renderBracketTab(){
     const ws=document.getElementById(`win_${m.id}`);
     if(ws) ws.onchange=()=>{ registerWinner(cls,m,ws.value); };
   });
+  }
   requestAnimationFrame(()=>layoutBracketEl(document.querySelector('.bracket')));
 }
 // Balanserad trädlayout: final centrerad, jämna avstånd, tydliga vinkellinjer.
@@ -1887,14 +1929,14 @@ function matchHTML(cls,m,total){
   return `<div class="match${moveCls}${numCls}${playedCls}" data-r="${m.round}" data-i="${m.index}" style="border-left:5px solid ${classColor(cls)}">
      ${slotHTML(m.p1,"p1")}
      ${slotHTML(m.p2,"p2")}
-     ${ (m.p1&&m.p2) ? `<div class="scorerow">
+     ${ (m.p1&&m.p2) ? (isAdmin() ? `<div class="scorerow">
          <input type="text" id="sc_${m.id}" value="${m.score||''}" placeholder="ex. 6-3 6-4">
          <select id="win_${m.id}" class="winsel" title="Välj vinnare">
            <option value="">Vinnare?</option>
            <option value="p1" ${m.winner===m.p1?'selected':''}>${dispName(m.p1)}</option>
            <option value="p2" ${m.winner===m.p2?'selected':''}>${dispName(m.p2)}</option>
          </select>
-       </div>`:""}
+       </div>` : (m.score?`<div class="scorerow"><span class="small" style="padding:2px 2px">${m.score}</span></div>`:"") ):""}
      ${sched}
    </div>`;
 }
@@ -1956,7 +1998,10 @@ function dayLong(date){ const d=getDays().find(x=>x.date===date); return d?`${d.
 /* ----- Tab 3: Schema ----- */
 function renderSchedule(){
   app.innerHTML=`
-   <div class="hint no-print">
+   <div class="hint no-print publiconly">
+     👁 <b>${L('Publik läsvy','Public view')}</b> – ${L('schemat visas skrivskyddat. Välj dag nedan. (Redigering kräver admin.)','the schedule is shown read-only. Pick a day below. (Editing requires admin.)')}
+   </div>
+   <div class="hint no-print adminonly">
      ${L('Auto-planering (paus efter var 3:e match, lunch 12–13):','Auto planning (break after every 3rd match, lunch 12–13):')}
      <b>${L('Junior','Junior')}</b> ${L('30 min – vardag, första start 09:00 (sista ≤ 12:30).','30 min – weekdays, first start 09:00 (last ≤ 12:30).')}
      <b>${L('Senior','Senior')}</b> ${L('60 min – vardag från 13:00, <b>helg från 09:00</b> (sista start ≤ 20:00). Lör/sön: endast seniorer.','60 min – weekdays from 13:00, <b>weekend from 09:00</b> (last start ≤ 20:00). Sat/Sun: seniors only.')}
@@ -1965,7 +2010,7 @@ function renderSchedule(){
      ${L('övriga finaler','other finals')} ${adultFinalDay()?dayLong(adultFinalDay()):L('sista dagen','the last day')}.
    </div>
    <div class="daybar no-print" id="daybar"></div>
-   <div class="toolbar no-print">
+   <div class="toolbar no-print adminonly">
      <button class="btn" id="genDay">⚙ Generera schema för dagen</button>
      <button class="btn ghost" id="clearDay">Töm dagens schema</button>
      <button class="btn ${dayLocked(ui.day)?'':'ghost'}" id="lockDay" title="Lås dagens resultat så att de inte ändras av misstag">${dayLocked(ui.day)?'🔓 Lås upp dagens resultat':'🔒 Lås dagens resultat'}</button>
@@ -1987,9 +2032,9 @@ function renderSchedule(){
      </select></label>
      <button class="btn ghost mini" id="printSched">🖨 Skriv ut dagens schema</button>
      <button class="btn ghost mini" id="imgSched">📷 ${L('Spara dagens schema som bild','Save the day\'s schedule as image')}</button>
-     <button class="btn ghost mini" id="printBlank">🖨 Skriv ut blankt schema</button>
+     <button class="btn ghost mini adminonly" id="printBlank">🖨 Skriv ut blankt schema</button>
    </div>
-   <div class="card no-print">
+   <div class="card no-print adminonly">
      <h2>Lägg till match i schemat (${dayShort(ui.day)})</h2>
      <div class="row">
        <label class="small">Klass:
@@ -2006,7 +2051,7 @@ function renderSchedule(){
        <button class="btn" id="addMatch">➕ Lägg in match</button>
      </div>
    </div>
-   <div class="card no-print">
+   <div class="card no-print adminonly">
      <h2>Sök i schemat</h2>
      <div class="row">
        <input type="text" id="schedSearch" placeholder="🔎 Klass eller deltagare…" value="${(ui.schedSearch||'').replace(/"/g,'&quot;')}" style="min-width:220px">
@@ -2016,7 +2061,7 @@ function renderSchedule(){
      </div>
      <div id="schedSearchRes"></div>
    </div>
-   <div class="hint no-print" style="border-color:#e0a3a3;background:#fdf1f1">
+   <div class="hint no-print adminonly" style="border-color:#e0a3a3;background:#fdf1f1">
      <b style="color:#b5362b">${L('🔴 Röd match (felkod) = schemakrock.','🔴 Red match (error code) = schedule conflict.')}</b> ${L('En match markeras röd när den krockar med schemat. Den exakta orsaken visas i rött inuti matchrutan. Det finns tre orsaker:','A match is marked red when it conflicts with the schedule. The exact reason is shown in red inside the match box. There are three causes:')}
      <ul style="margin:6px 0 0;padding-left:18px">
        <li><b>${L('Dubbelbokad bana','Double-booked court')}</b> – ${L('två matcher ligger på <b>samma bana och tid</b>. Flytta någon av dem till en annan bana eller tid.','two matches are on the <b>same court and time</b>. Move one of them to another court or time.')}</li>
@@ -2026,11 +2071,11 @@ function renderSchedule(){
      <span class="muted">${L('Rätta genom att ändra <b>dag</b>, <b>tid</b> eller <b>bana</b> på matchen – markeringen försvinner när krocken är löst.','Fix it by changing the <b>day</b>, <b>time</b> or <b>court</b> of the match – the marker disappears once the conflict is resolved.')}</span>
    </div>
    <div id="schedWrap"></div>
-   <div class="card no-print">
+   <div class="card no-print adminonly">
      <h2>Ej schemalagda, spelklara matcher</h2>
      <div class="unsched" id="unsched"></div>
    </div>
-   <div class="card no-print">
+   <div class="card no-print adminonly">
      <h2>${L('Framtida matcher (planera via matchnummer)','Future matches (plan by match number)')}
        <label class="small" style="font-weight:normal;margin-left:10px"><input type="checkbox" id="showFuture" ${ui.showFuture?'checked':''}> ${L('Visa','Show')}</label></h2>
      <p class="small muted">${L('Matcher vars spelare ännu inte är avgjorda (senare omgångar). Du kan förhandsplanera dem på ett datum via deras matchnummer – spelarna fylls i automatiskt när tidigare omgångar avgjorts.','Matches whose players are not yet decided (later rounds). You can pre-plan them on a date by their match number – the players fill in automatically once earlier rounds are decided.')}</p>
