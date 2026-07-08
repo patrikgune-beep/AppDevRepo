@@ -1292,15 +1292,6 @@ function renderInfo(){
   const esc=s=>String(s==null?"":s).replace(/"/g,"&quot;");
   app.innerHTML=`
    <div class="card no-print">
-     <h2>Språk / Language</h2>
-     <label class="small">Språk / Language:
-       <select id="langSel">
-         <option value="sv" ${state.lang!=="en"?"selected":""}>Svenska</option>
-         <option value="en" ${state.lang==="en"?"selected":""}>English</option>
-       </select>
-     </label>
-   </div>
-   <div class="card no-print">
      <h2>Turnering</h2>
      <p class="small muted">Namn, datum och antal banor för turneringen. Dagar och veckodagar i schemat skapas utifrån datumintervallet.</p>
      <div class="row">
@@ -1320,6 +1311,28 @@ function renderInfo(){
        <span class="pill">${tournamentRangeText()}</span>
        <span class="muted">&nbsp;Finaler för ungdomsklasser näst sista dagen, övriga sista dagen. Banantalet kan justeras per dag i Schema/Auto-planering.</span>
      </p>
+   </div>
+   <div style="display:flex;gap:16px;align-items:stretch;flex-wrap:wrap">
+     <div class="card no-print" style="flex:1 1 320px;min-width:280px">
+       <h2>${L('Molnsynk','Cloud sync')}</h2>
+       <p class="small muted">${L('När molnsynk är på delas turneringen automatiskt mellan alla enheter som öppnar sidan – ändringar sparas till molnet och hämtas var 12:e sekund. Lokal kopia sparas alltid som backup.','When cloud sync is on, the tournament is shared automatically between all devices that open the page – changes are saved to the cloud and fetched every 12 s. A local copy is always kept as backup.')}</p>
+       <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">
+         <span id="syncBadge2" class="pill js-sync"></span>
+         <button class="btn ghost mini" id="cloudPullBtn" ${cloudEnabled?'':'disabled'}>⬇ ${L('Hämta från molnet','Fetch from cloud')}</button>
+         <button class="btn ghost mini" id="cloudPushBtn" ${cloudEnabled?'':'disabled'}>⬆ ${L('Spara till molnet nu','Save to cloud now')}</button>
+         <span class="muted small">${L('Delad nyckel','Shared key')}: <b>${TOURN_KEY}</b></span>
+       </div>
+       ${cloudEnabled?'':`<p class="small" style="color:#c0392b">${L('Molnsynk är inte konfigurerad i denna fil.','Cloud sync is not configured in this file.')}</p>`}
+     </div>
+     <div class="card no-print" style="flex:1 1 320px;min-width:280px">
+       <h2>Säkerhetskopia</h2>
+       <p class="small muted">Spara hela turneringen som en JSON-fil (filnamnet får datum + klockslag), eller läs in en tidigare kopia
+         för att återställa eller flytta turneringen till en annan dator.</p>
+       <div class="row">
+         <button class="btn ghost" id="exportBtn">⬇ Exportera säkerhetskopia</button>
+         <button class="btn ghost" id="importBtn">⬆ Importera säkerhetskopia</button>
+       </div>
+     </div>
    </div>
    <div class="card no-print">
      <h2>Logga &amp; bakgrund</h2>
@@ -1425,24 +1438,13 @@ function renderInfo(){
      </div>
    </div>
    <div class="card no-print">
-     <h2>${L('Molnsynk','Cloud sync')}</h2>
-     <p class="small muted">${L('När molnsynk är på delas turneringen automatiskt mellan alla enheter som öppnar sidan – ändringar sparas till molnet och hämtas var 12:e sekund. Lokal kopia sparas alltid som backup.','When cloud sync is on, the tournament is shared automatically between all devices that open the page – changes are saved to the cloud and fetched every 12 s. A local copy is always kept as backup.')}</p>
-     <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">
-       <span id="syncBadge2" class="pill js-sync"></span>
-       <button class="btn ghost mini" id="cloudPullBtn" ${cloudEnabled?'':'disabled'}>⬇ ${L('Hämta från molnet','Fetch from cloud')}</button>
-       <button class="btn ghost mini" id="cloudPushBtn" ${cloudEnabled?'':'disabled'}>⬆ ${L('Spara till molnet nu','Save to cloud now')}</button>
-       <span class="muted small">${L('Delad nyckel','Shared key')}: <b>${TOURN_KEY}</b></span>
-     </div>
-     ${cloudEnabled?'':`<p class="small" style="color:#c0392b">${L('Molnsynk är inte konfigurerad i denna fil.','Cloud sync is not configured in this file.')}</p>`}
-   </div>
-   <div class="card no-print">
-     <h2>Säkerhetskopia</h2>
-     <p class="small muted">Spara hela turneringen som en JSON-fil (filnamnet får datum + klockslag), eller läs in en tidigare kopia
-       för att återställa eller flytta turneringen till en annan dator.</p>
-     <div class="row">
-       <button class="btn ghost" id="exportBtn">⬇ Exportera säkerhetskopia</button>
-       <button class="btn ghost" id="importBtn">⬆ Importera säkerhetskopia</button>
-     </div>
+     <h2>Språk / Language</h2>
+     <label class="small">Språk / Language:
+       <select id="langSel">
+         <option value="sv" ${state.lang!=="en"?"selected":""}>Svenska</option>
+         <option value="en" ${state.lang==="en"?"selected":""}>English</option>
+       </select>
+     </label>
    </div>
    <div class="card no-print">
      <h2>Nollställ</h2>
