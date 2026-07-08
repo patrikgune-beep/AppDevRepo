@@ -2962,7 +2962,15 @@ function playerMatches(name, filterId){
   for(const c of classes) for(const m of c.matches){
     if((m.p1 || m.p2) && !isByeMatch(m) && playersOf(m).includes(name)) res.push({m,c});
   }
+  // Sortera per deltagare efter klass (klassindex), sedan matchordning inom klassen
+  // (matchnummer om det finns, annars omgång/plats), och sist på dag/tid.
   return res.sort((a,b)=>{
+    const cc=classCatNo(a.c)-classCatNo(b.c); if(cc) return cc;
+    const na=matchNumber(a.m), nb=matchNumber(b.m);
+    if(na!=null && nb!=null && na!==nb) return na-nb;
+    if((na==null)!==(nb==null)) return na==null?1:-1;   // numrerade matcher först
+    if(a.m.round!==b.m.round) return a.m.round-b.m.round;
+    if((a.m.index||0)!==(b.m.index||0)) return (a.m.index||0)-(b.m.index||0);
     const da=(a.m.day||"9"), db=(b.m.day||"9");
     return da<db?-1:da>db?1:((a.m.time||0)-(b.m.time||0));
   });
