@@ -3447,11 +3447,18 @@ function printChampionDiplomas(only){
   if(!list.length){ alert(L("Inga klubbmästare att skriva ut diplom för ännu.","No club champions to print diplomas for yet.")); return; }
   const year=tournamentYear(), hc=headColor(), arr=arrangerName(), tname=state.tournament.name||"Klubbmästerskap";
   const ds=state.diplomaSigns||{director:true,chairman:true,trainers:false};
-  const sigs=[];
-  if(ds.director && (state.organizer&&state.organizer.name)) sigs.push(diplomaSig(L('Tävlingsledare','Tournament director'), escXml(state.organizer.name)));
-  if(ds.chairman && state.chairman) sigs.push(diplomaSig(L('Ordförande','Chairman'), escXml(state.chairman)));
-  if(ds.trainers) (state.trainers||[]).filter(t=>t&&t.trim()).forEach(t=>sigs.push(diplomaSig(L('Tränare','Trainer'), escXml(t))));
-  const sigRow = sigs.length ? `<div style="display:flex;justify-content:space-around;width:100%;max-width:${Math.min(900,220*sigs.length+120)}px;margin-top:44px;gap:30px;flex-wrap:wrap">${sigs.join("")}</div>` : "";
+  // Tränarna alltid överst; tävlingsledare + ordförande i en egen rad under.
+  // Finns båda grupperna blir det två rader (tränare över, ledare/ordförande under).
+  const trainerSigs=[];
+  if(ds.trainers) (state.trainers||[]).filter(t=>t&&t.trim()).forEach(t=>trainerSigs.push(diplomaSig(L('Tränare','Trainer'), escXml(t))));
+  const staffSigs=[];
+  if(ds.director && (state.organizer&&state.organizer.name)) staffSigs.push(diplomaSig(L('Tävlingsledare','Tournament director'), escXml(state.organizer.name)));
+  if(ds.chairman && state.chairman) staffSigs.push(diplomaSig(L('Ordförande','Chairman'), escXml(state.chairman)));
+  const sigRowOf = arr => `<div style="display:flex;justify-content:space-around;width:100%;max-width:${Math.min(900,220*arr.length+120)}px;gap:30px;flex-wrap:wrap">${arr.join("")}</div>`;
+  const sigGroups=[];
+  if(trainerSigs.length) sigGroups.push(sigRowOf(trainerSigs));   // rad 1: tränare
+  if(staffSigs.length)   sigGroups.push(sigRowOf(staffSigs));     // rad 2: tävlingsledare + ordförande
+  const sigRow = sigGroups.length ? `<div style="display:flex;flex-direction:column;align-items:center;width:100%;gap:26px;margin-top:44px">${sigGroups.join("")}</div>` : "";
   const pages=list.map((c,i)=>{
     const last=i===list.length-1;
     return `<div style="page-break-after:${last?'auto':'always'};box-sizing:border-box;padding:6mm">
