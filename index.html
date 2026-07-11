@@ -779,10 +779,15 @@ async function deleteTournament(key){
   if(!isAdmin() || !cloudEnabled) return;
   let list=[]; try{ list=await cloudListTournaments(); }catch(e){ alert("Kunde inte läsa turneringslistan: "+(e.message||e)); return; }
   if(list.length<=1){ alert("Det går inte att ta bort den enda turneringen. Skapa en ny först."); return; }
-  const cur=list.find(x=>x.key===key); const nm=(cur&&cur.name)||key;
+  const cur=list.find(x=>x.key===key);
+  // Använd det namn som VISAS i appen för den aktiva turneringen (det användaren skriver),
+  // annars molnets namn, annars nyckeln. (Molnets namn kan släpa efter live-redigering.)
+  const nm=(key===TOURN_KEY && state.tournament && state.tournament.name)
+             ? state.tournament.name : ((cur&&cur.name)||key);
   const typed=prompt(`Ta bort turneringen "${nm}" permanent ur molnet? Skriv turneringens namn för att bekräfta:`);
   if(typed==null) return;
-  if(typed.trim()!==String(nm).trim()){ alert("Namnet stämmer inte – avbryter."); return; }
+  const norm=s=>String(s||"").trim().toLowerCase();
+  if(norm(typed)!==norm(nm)){ alert(`Namnet stämmer inte – avbryter.\n(Förväntat: "${nm}")`); return; }
   try{
     const r=await fetch(`${SUPA_URL}/tournaments?key=eq.${encodeURIComponent(key)}`, { method:"DELETE", headers: cloudHeaders() });
     if(!r.ok) throw new Error("HTTP "+r.status);
