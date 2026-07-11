@@ -3297,16 +3297,36 @@ function renderParticipants(){
     html+=`</div>`;
   }
   // Full lista med byt-namn
+  // Sorterbar full lista. Klick på "Antal klasser"/"Spelade matcher" (eller "Namn") sorterar.
+  const rows = idx.map(r=>({ name:r.name, classes:r.classes, played:playedMatchCount(r.name, fid) }));
+  const sKey = ui.partSort||"name", sDir = ui.partSortDir==="desc"?-1:1;
+  rows.sort((a,b)=>{
+    let d=0;
+    if(sKey==="classes") d=a.classes.length-b.classes.length;
+    else if(sKey==="played") d=a.played-b.played;
+    else d=a.name.localeCompare(b.name,"sv");
+    return d ? d*sDir : a.name.localeCompare(b.name,"sv");   // stabil tiebreak på namn
+  });
+  const sortH=(key,label)=>{
+    const active=sKey===key, arrow=active?(sDir<0?' ▼':' ▲'):' ⇅';
+    return `<th data-sort="${key}" style="cursor:pointer;user-select:none" title="${L('Klicka för att sortera','Click to sort')}">${label}<span class="muted" style="font-size:11px">${arrow}</span></th>`;
+  };
   html+=`<div class="card"><table class="results"><thead>
-     <tr><th>Namn</th><th>${fcls?'Klass':'Antal klasser'}</th><th>${fcls?'':'Klasser'}</th><th title="Antal matcher med registrerat resultat">Spelade matcher</th><th class="no-print"></th></tr></thead><tbody>`;
-  for(const r of idx)
+     <tr>${sortH("name","Namn")}${sortH("classes", fcls?'Klass':'Antal klasser')}<th>${fcls?'':'Klasser'}</th>${sortH("played","Spelade matcher")}<th class="no-print"></th></tr></thead><tbody>`;
+  for(const r of rows)
     html+=`<tr><td>${r.name}</td><td>${fcls?r.classes.join(", "):r.classes.length}</td><td>${fcls?'':r.classes.join(", ")}</td>
-      <td>${playedMatchCount(r.name, fid)}</td>
+      <td>${r.played}</td>
       <td class="no-print"><button class="btn ghost mini" data-rename="${r.name.replace(/"/g,'&quot;')}">✏️ Byt namn</button>
       <button class="btn ghost mini" data-find="${r.name.replace(/"/g,'&quot;')}">🔎 Matcher</button></td></tr>`;
   html+=`</tbody></table></div>`;
   app.innerHTML=html;
   bindTop();
+  document.querySelectorAll("#app th[data-sort]").forEach(th=>th.onclick=()=>{
+    const k=th.dataset.sort;
+    if((ui.partSort||"name")===k) ui.partSortDir = (ui.partSortDir==="desc")?"asc":"desc";
+    else { ui.partSort=k; ui.partSortDir = (k==="name")?"asc":"desc"; }   // siffror: högst först vid första klick
+    render();
+  });
   document.querySelectorAll("[data-rename]").forEach(b=>b.onclick=()=>{
     const old=b.dataset.rename;
     const nn=prompt(`Byt namn på "${old}" – nytt namn (uppdateras i alla klasser, stegar, schema och resultat):`, old);
