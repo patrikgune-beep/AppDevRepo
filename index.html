@@ -3243,6 +3243,8 @@ function playerMatches(name, filterId){
     return da<db?-1:da>db?1:((a.m.time||0)-(b.m.time||0));
   });
 }
+// Antal spelade matcher (matcher med registrerat resultat/vinnare) för en person.
+function playedMatchCount(name, filterId){ return playerMatches(name, filterId).filter(x=>x.m.winner).length; }
 function renderParticipants(){
   const fid=ui.partClass||"";
   const fcls=fid?getClass(fid):null;
@@ -3296,9 +3298,10 @@ function renderParticipants(){
   }
   // Full lista med byt-namn
   html+=`<div class="card"><table class="results"><thead>
-     <tr><th>Namn</th><th>${fcls?'Klass':'Antal klasser'}</th><th>${fcls?'':'Klasser'}</th><th class="no-print"></th></tr></thead><tbody>`;
+     <tr><th>Namn</th><th>${fcls?'Klass':'Antal klasser'}</th><th>${fcls?'':'Klasser'}</th><th title="Antal matcher med registrerat resultat">Spelade matcher</th><th class="no-print"></th></tr></thead><tbody>`;
   for(const r of idx)
     html+=`<tr><td>${r.name}</td><td>${fcls?r.classes.join(", "):r.classes.length}</td><td>${fcls?'':r.classes.join(", ")}</td>
+      <td>${playedMatchCount(r.name, fid)}</td>
       <td class="no-print"><button class="btn ghost mini" data-rename="${r.name.replace(/"/g,'&quot;')}">✏️ Byt namn</button>
       <button class="btn ghost mini" data-find="${r.name.replace(/"/g,'&quot;')}">🔎 Matcher</button></td></tr>`;
   html+=`</tbody></table></div>`;
@@ -3315,8 +3318,8 @@ function printParticipants(fid){
   const idx=participantIndex(fid);
   const fcls=fid?getClass(fid):null;
   let html=printHeader("Deltagarlista"+(fcls?` – ${fcls.name}`:""));
-  html+=`<table class="results"><thead><tr><th>Namn</th><th>Klasser</th></tr></thead><tbody>`;
-  for(const r of idx) html+=`<tr><td>${r.name}</td><td>${r.classes.join(", ")}</td></tr>`;
+  html+=`<table class="results"><thead><tr><th>Namn</th><th>Klasser</th><th>Spelade matcher</th></tr></thead><tbody>`;
+  for(const r of idx) html+=`<tr><td>${r.name}</td><td>${r.classes.join(", ")}</td><td>${playedMatchCount(r.name, fid)}</td></tr>`;
   html+=`</tbody></table>`;
   doPrint(html);
 }
