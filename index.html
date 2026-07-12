@@ -760,9 +760,9 @@ async function createTournamentCopy(newName){
   render();
 }
 // Byt till en befintlig turnering (hämtar dess data ur molnet).
-async function switchTournament(key){
+async function switchTournament(key, skipPush){
   if(!key || key===TOURN_KEY) return;
-  if(isAdmin()) await cloudForcePush();                       // spara pågående turnering först
+  if(isAdmin() && !skipPush) await cloudForcePush();          // spara pågående turnering först (ej vid borttagning)
   localStorage.setItem("km_current_tourn", key); TOURN_KEY=key; updateTournURL();
   cloudSetStatus("connecting");
   try{
@@ -774,27 +774,34 @@ async function switchTournament(key){
   saveLocal();
   ui={ tab:"info", classId:state.classes[0].id, day:null }; ensureDay(); render();
 }
-// Ta bort en turnering permanent ur molnet (kräver att man skriver namnet).
+// Ta bort en turnering permanent ur molnet (bekräftas med admin-koden/PIN).
 async function deleteTournament(key){
   if(!isAdmin() || !cloudEnabled) return;
   let list=[]; try{ list=await cloudListTournaments(); }catch(e){ alert("Kunde inte läsa turneringslistan: "+(e.message||e)); return; }
   if(list.length<=1){ alert("Det går inte att ta bort den enda turneringen. Skapa en ny först."); return; }
   const cur=list.find(x=>x.key===key);
-  // Använd det namn som VISAS i appen för den aktiva turneringen (det användaren skriver),
-  // annars molnets namn, annars nyckeln. (Molnets namn kan släpa efter live-redigering.)
+  // Namn som VISAS i appen för den aktiva turneringen (molnets namn kan släpa efter).
   const nm=(key===TOURN_KEY && state.tournament && state.tournament.name)
              ? state.tournament.name : ((cur&&cur.name)||key);
-  const typed=prompt(`Ta bort turneringen "${nm}" permanent ur molnet? Skriv turneringens namn för att bekräfta:`);
-  if(typed==null) return;
-  const norm=s=>String(s||"").trim().toLowerCase();
-  if(norm(typed)!==norm(nm)){ alert(`Namnet stämmer inte – avbryter.\n(Förväntat: "${nm}")`); return; }
+  // Bekräfta med admin-koden (PIN) i stället för att skriva namnet.
+  const pin=prompt(`Ta bort turneringen "${nm}" permanent ur molnet?\nDetta kan INTE ångras. Ange admin-koden (PIN) för att bekräfta:`);
+  if(pin==null) return;
+  if(String(pin).trim()!==adminPin()){ alert("Fel admin-kod – avbryter."); return; }
+  let deleted=[];
   try{
-    const r=await fetch(`${SUPA_URL}/tournaments?key=eq.${encodeURIComponent(key)}`, { method:"DELETE", headers: cloudHeaders() });
-    if(!r.ok) throw new Error("HTTP "+r.status);
+    // return=representation → vi får tillbaka de rader som faktiskt togs bort.
+    const r=await fetch(`${SUPA_URL}/tournaments?key=eq.${encodeURIComponent(key)}`, { method:"DELETE", headers: cloudHeaders({ Prefer:"return=representation" }) });
+    if(!r.ok){ const b=await r.text().catch(()=>""); throw new Error("HTTP "+r.status+" "+b.slice(0,140)); }
+    try{ deleted=await r.json(); }catch(e){ deleted=[]; }
   }catch(e){ alert("Kunde inte ta bort i molnet: "+(e.message||e)); return; }
+  if(Array.isArray(deleted) && deleted.length===0){
+    alert("Turneringen kunde inte tas bort – servern nekade borttagningen (0 rader togs bort).\nOftast saknas DELETE-behörighet i Supabase. Kör RLS-policyn som ger 'anon' full åtkomst (for all).");
+    return;
+  }
   try{ localStorage.removeItem("km_"+key); }catch(e){}        // städa lokal cache för den borttagna
   const other=list.find(x=>x.key!==key);                      // byt till en kvarvarande turnering
-  await switchTournament(other.key);
+  await switchTournament(other.key, true);                    // skipPush=true → återskapa INTE den borttagna
+  alert(`Turneringen "${nm}" är borttagen.`);
 }
 // Felsökning: testar läsning + skrivning mot Supabase och förklarar vad som är fel.
 async function cloudDiagnose(){
