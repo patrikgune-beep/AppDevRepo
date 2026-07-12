@@ -187,6 +187,7 @@
   </div>
   <div class="spacer"></div>
   <button id="linkBtn" class="btn ghost mini no-print publiconly" style="white-space:nowrap"></button>
+  <button id="homeBtn" class="btn ghost mini no-print" style="white-space:nowrap;display:none">🏠 Startsida</button>
   <button id="adminBtn" class="btn ghost mini no-print" style="white-space:nowrap"></button>
   <div class="sync-badge no-print js-sync" id="syncBadge" style="font-size:12px;opacity:.95;white-space:nowrap"></div>
   <div class="tabs" id="tabs"></div>
@@ -573,6 +574,14 @@ function updateAdminBtn(){
   const b=document.getElementById("adminBtn"); if(!b) return;
   if(isAdmin()){ b.textContent="🔓 "+L("Publik vy","Public view"); b.title=L("Lås till publik läsvy (dölj redigering)","Lock to public read-only view"); b.onclick=lockAdmin; }
   else { b.textContent="🔒 Admin"; b.title=L("Lås upp redigering (kräver PIN)","Unlock editing (requires PIN)"); b.onclick=promptAdmin; }
+  // Startsida (alla turneringar) – bara för admin och när molnsynk är på.
+  const hb=document.getElementById("homeBtn");
+  if(hb){
+    const showHome = isAdmin() && cloudEnabled && ui.tab!=="home";
+    hb.style.display = showHome ? "" : "none";
+    hb.textContent = "🏠 "+L("Startsida","Home");
+    hb.onclick=()=>{ ui.tab="home"; render(); };
+  }
   // Publik länk-knapp (visas endast i publik vy via .publiconly).
   const lb=document.getElementById("linkBtn");
   if(lb){
@@ -713,11 +722,13 @@ async function cloudForcePull(){
 // Hämta alla turneringar ur molnet: [{key, name}] (diag-/systemrader döljs).
 async function cloudListTournaments(){
   if(!cloudEnabled) return [];
-  const url=`${SUPA_URL}/tournaments?select=key,name:data->tournament->>name`;
+  const url=`${SUPA_URL}/tournaments?select=key,name:data->tournament->>name,archived:data->>archived`;
   const r=await fetch(url, { headers: cloudHeaders() });
   if(!r.ok){ const b=await r.text().catch(()=>""); cloudLastError=`LISTA HTTP ${r.status} – ${b.slice(0,180)}`; throw new Error(cloudLastError); }
   const rows=await r.json();
-  return (Array.isArray(rows)?rows:[]).filter(x=>x.key && !x.key.startsWith("__"));
+  return (Array.isArray(rows)?rows:[])
+    .filter(x=>x.key && !x.key.startsWith("__"))
+    .map(x=>({ key:x.key, name:x.name, archived:(x.archived===true||x.archived==="true") }));
 }
 // Skapa en ny, tom turnering och gör den aktiv.
 async function createTournament(name){
@@ -1243,6 +1254,16 @@ function render(){
   updateAdminBtn();
   document.body.classList.toggle("public", !isAdmin());
   document.body.classList.toggle("archived", isArchived());
+  // Startsida (generell för alla turneringar) – endast admin.
+  if(ui.tab==="home" && isAdmin()){
+    document.title = L("Turneringar","Tournaments")+" – "+arrangerName();
+    document.getElementById("appTitle").textContent = L("Turneringar","Tournaments");
+    document.getElementById("appSub").textContent = L("Välj, skapa eller ta bort turnering","Choose, create or delete a tournament");
+    document.getElementById("tabs").innerHTML="";
+    renderHome();
+    applyLang();
+    return;
+  }
   // Publik läsvy får bara besöka tillåtna flikar (beror på om turneringen är arkiverad).
   if(!isAdmin()){
     const allowed=publicTabDefs().map(t=>t[0]);
@@ -1288,6 +1309,100 @@ function renderTabs(){
   document.getElementById("tabs").innerHTML=tabs.map(([k,l])=>
     `<button class="${ui.tab===k?'active':''}" data-tab="${k}">${l}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{ui.tab=b.dataset.tab;render();});
+}
+
+/* ===================== Startsida (alla turneringar) ===================== */
+function renderHome(){
+  if(!isAdmin()){ ui.tab="info"; render(); return; }
+  const showArch=!!ui.homeShowArchived;
+  app.innerHTML=`
+   <div class="card">
+     <h2>🏆 ${L('Turneringar','Tournaments')}</h2>
+     <p class="small muted">${L('Öppna en befintlig turnering, skapa en ny eller ta bort en. Arkiverade turneringar visas bara när rutan är ibockad och kan inte tas bort härifrån – öppna dem, lås upp och ta bort inifrån turneringen.','Open an existing tournament, create a new one or delete one. Archived tournaments show only when the box is ticked and cannot be deleted here – open them, unlock, and delete from inside.')}</p>
+     <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">
+       <button class="btn" id="homeNewBtn">➕ ${L('Skapa ny turnering','Create new tournament')}</button>
+       <label class="small"><input type="checkbox" id="homeShowArch" ${showArch?'checked':''}> ${L('Visa arkiverade','Show archived')}</label>
+       <button class="btn ghost mini" id="homeReload">↻ ${L('Uppdatera','Refresh')}</button>
+       <span style="flex:1"></span>
+       <span id="homeSyncBadge" class="pill js-sync"></span>
+     </div>
+   </div>
+   <div class="card">
+     <div id="homeList"><p class="muted">${L('Laddar…','Loading…')}</p></div>
+     <div class="small muted" id="homeMsg" style="margin-top:8px"></div>
+   </div>`;
+  updateSyncBadge();
+  document.getElementById("homeNewBtn").onclick=()=>{
+    const nm=prompt(L("Namn på den nya turneringen:","Name of the new tournament:"));
+    if(nm!=null && nm.trim()) createTournament(nm.trim());   // skapar OCH öppnar den nya
+  };
+  document.getElementById("homeShowArch").onchange=e=>{ ui.homeShowArchived=e.target.checked; renderHome(); };
+  document.getElementById("homeReload").onclick=()=>renderHome();
+  loadHomeList();
+}
+async function loadHomeList(){
+  const box=document.getElementById("homeList"); if(!box) return;
+  let list=[];
+  try{ list=await cloudListTournaments(); }
+  catch(e){ if(document.getElementById("homeList")) box.innerHTML=`<p class="small" style="color:#c0392b">${L('Kunde inte läsa turneringslistan','Could not read tournament list')}: ${escXml(e.message||e)}</p>`; return; }
+  if(ui.tab!=="home") return;   // användaren lämnade startsidan under tiden
+  if(!list.some(x=>x.key===TOURN_KEY)) list.push({key:TOURN_KEY, name:state.tournament.name, archived:isArchived()});
+  const showArch=!!ui.homeShowArchived;
+  const shown=list.filter(x=>showArch || !x.archived).sort((a,b)=>String(a.name||a.key).localeCompare(String(b.name||b.key),"sv"));
+  const nArch=list.filter(x=>x.archived).length;
+  const msg=document.getElementById("homeMsg");
+  if(msg) msg.textContent=`${list.length} ${L('turnering(ar) totalt','tournament(s) total')}${nArch?` · ${nArch} ${L('arkiverade','archived')}`:''}.`;
+  if(!shown.length){ box.innerHTML=`<p class="muted">${L('Inga turneringar att visa.','No tournaments to show.')}</p>`; return; }
+  box.innerHTML=shown.map(x=>{
+    const nm=escXml(x.name||x.key), active=x.key===TOURN_KEY;
+    const badges=`${active?`<span class="pill" style="background:#e8eef7;color:#33507a">${L('Aktiv','Active')}</span>`:''}${x.archived?`<span class="pill" style="background:#e3f1de;color:var(--green)">📦 ${L('Arkiverad','Archived')}</span>`:''}`;
+    const delCell = x.archived
+      ? `<span class="muted small">${L('Arkiverad – lås upp inifrån för att ta bort','Archived – unlock inside to delete')}</span>`
+      : `<button class="btn gray mini" data-del="${escXml(x.key)}" data-name="${nm}">🗑 ${L('Ta bort','Delete')}</button>`;
+    return `<div class="row" style="align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:8px 0;flex-wrap:wrap">
+       <b style="min-width:180px">${nm}</b> ${badges}
+       <span style="flex:1"></span>
+       <button class="btn mini" data-open="${escXml(x.key)}">${L('Öppna','Open')} →</button>
+       ${delCell}
+     </div>`;
+  }).join("");
+  box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openTournamentFromHome(b.dataset.open));
+  box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteTournamentFromHome(b.dataset.del, b.dataset.name));
+}
+async function openTournamentFromHome(key){
+  ui.tab="info";
+  if(key===TOURN_KEY){ render(); }
+  else { await switchTournament(key); }   // laddar den valda och renderar (ui.tab=info)
+}
+async function deleteTournamentFromHome(key, name){
+  if(!isAdmin() || !cloudEnabled) return;
+  let list=[]; try{ list=await cloudListTournaments(); }catch(e){ alert(L("Kunde inte läsa turneringslistan","Could not read tournament list")+": "+(e.message||e)); return; }
+  const row=list.find(x=>x.key===key);
+  if(row && row.archived){ alert(L("Arkiverade turneringar kan inte tas bort härifrån. Öppna turneringen, lås upp den och ta bort den därifrån.","Archived tournaments can't be deleted here. Open it, unlock it, and delete from there.")); return; }
+  if(list.length<=1){ alert(L("Det går inte att ta bort den enda turneringen. Skapa en ny först.","Can't delete the only tournament. Create a new one first.")); return; }
+  const nm=name||(row&&row.name)||key;
+  const pin=prompt(`${L('Ta bort turneringen','Delete the tournament')} "${nm}" ${L('permanent ur molnet? Detta kan INTE ångras. Ange admin-koden (PIN) för att bekräfta:','permanently from the cloud? This canNOT be undone. Enter the admin code (PIN) to confirm:')}`);
+  if(pin==null) return;
+  if(String(pin).trim()!==adminPin()){ alert(L("Fel admin-kod – avbryter.","Wrong admin code – aborting.")); return; }
+  let deleted=[];
+  try{
+    const r=await fetch(`${SUPA_URL}/tournaments?key=eq.${encodeURIComponent(key)}`, { method:"DELETE", headers: cloudHeaders({ Prefer:"return=representation" }) });
+    if(!r.ok){ const b=await r.text().catch(()=>""); throw new Error("HTTP "+r.status+" "+b.slice(0,140)); }
+    try{ deleted=await r.json(); }catch(e){ deleted=[]; }
+  }catch(e){ alert(L("Kunde inte ta bort i molnet","Could not delete in the cloud")+": "+(e.message||e)); return; }
+  if(Array.isArray(deleted) && deleted.length===0){
+    alert(L("Turneringen kunde inte tas bort – servern nekade (0 rader togs bort). Kontrollera DELETE-behörighet (RLS).","Could not delete – server refused (0 rows). Check DELETE permission (RLS).")); return;
+  }
+  try{ localStorage.removeItem("km_"+key); }catch(e){}
+  // Tog vi bort den AKTIVA turneringen? Peka om till en kvarvarande så appen inte pekar på en raderad rad.
+  if(key===TOURN_KEY){
+    const other=list.find(x=>x.key!==key);
+    const nk=(other&&other.key)||DEFAULT_TOURN_KEY;
+    localStorage.setItem("km_current_tourn", nk); TOURN_KEY=nk; updateTournURL();
+    try{ const d=await cloudGet(); state=d?normalize(d):newState(); }catch(e){ state=newState(); }
+    saveLocal(); ensureDay();
+  }
+  renderHome();   // stanna kvar på startsidan och uppdatera listan
 }
 
 /* ----- Flik: Klubbmästare ----- */
