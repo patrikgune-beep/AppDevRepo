@@ -817,26 +817,11 @@ input:disabled, select:disabled {
       </div>
       <div class="field-group">
         <label class="field-label">Antal spelare</label>
-        <select id="s-nplayers" onchange="onPlayerCountChange()">
-          <option value="4">4 spelare</option>
-          <option value="6">6 spelare</option>
-          <option value="8">8 spelare</option>
-          <option value="10">10 spelare</option>
-          <option value="12">12 spelare</option>
-          <option value="14">14 spelare</option>
-          <option value="16" selected>16 spelare</option>
-          <option value="18">18 spelare</option>
-          <option value="20">20 spelare</option>
-        </select>
+        <select id="s-nplayers" onchange="onPlayerCountChange()"></select>
       </div>
       <div class="field-group">
         <label class="field-label">Antal banor</label>
-        <select id="s-ncourts">
-          <option value="1">1 bana</option>
-          <option value="2" selected>2 banor</option>
-          <option value="3">3 banor</option>
-          <option value="4">4 banor</option>
-        </select>
+        <select id="s-ncourts"></select>
       </div>
     </div>
     <div class="text-xs">Ange tidsfönster, antal spelare och banor. Appen föreslår sedan upplägg i steg 3.</div>
@@ -2259,8 +2244,33 @@ function escHtml(s) {
 // ============================================================
 // INIT
 // ============================================================
+// Fill the player-count (4–40, even) and court-count (1–10) dropdowns.
+function populateDropdowns() {
+  const ps = document.getElementById('s-nplayers');
+  if (ps && !ps.options.length) {
+    for (let n = 4; n <= 40; n += 2) {
+      const o = document.createElement('option');
+      o.value = String(n);
+      o.textContent = `${n} spelare`;
+      if (n === 16) o.selected = true;
+      ps.appendChild(o);
+    }
+  }
+  const cs = document.getElementById('s-ncourts');
+  if (cs && !cs.options.length) {
+    for (let c = 1; c <= 10; c++) {
+      const o = document.createElement('option');
+      o.value = String(c);
+      o.textContent = c === 1 ? '1 bana' : `${c} banor`;
+      if (c === 2) o.selected = true;
+      cs.appendChild(o);
+    }
+  }
+}
+
 function init() {
   loadState();
+  populateDropdowns();
 
   // Backward-compat: older saved state may lack newer fields
   if (!Array.isArray(S.breaks)) S.breaks = [{afterRound: 4, minutes: 18}];
