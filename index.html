@@ -375,6 +375,30 @@ function playersOf(m){
   return out;
 }
 
+/* ---------------- Turneringsformat ---------------- */
+// Katalog över tävlingsformat. desc = kort beskrivning. est(N,C) = {totalMin, perPlayerMin}.
+const MATCH_FORMATS = [
+  { id:"classic", name:"Klassisk KM",
+    desc:"Utslagsturnering (cupspel). Förlorar man är man ute. Seedning, stegar och klubbmästare – som idag.",
+    est:(N,C)=>{ const mm=40; let players=Math.max(2,N), slots=0; while(players>1){ const m=Math.floor(players/2); slots+=Math.ceil(m/Math.max(1,C)); players=Math.ceil(players/2);} return { totalMin: slots*mm, perPlayerMin: Math.round(2*(N-1)/Math.max(1,N))*mm }; } },
+  { id:"americano", name:"Americano",
+    desc:"Socialt dubbelspel. Man byter partner varje rond och spelar korta matcher (t.ex. till 21–24 poäng). Alla poäng räknas individuellt – flest poäng vinner.",
+    est:(N,C)=>{ const gm=14, R=Math.max(1,N-1), mpr=Math.max(1,Math.floor(N/4)), active=4*mpr; return { totalMin: R*Math.ceil(mpr/Math.max(1,C))*gm, perPlayerMin: Math.round(R*gm*active/Math.max(1,N)) }; } },
+  { id:"mexicano", name:"Mexicano",
+    desc:"Som Americano, men paren lottas efter aktuell ställning inför varje rond – jämna matcher hela vägen. Individuell poängsummering.",
+    est:(N,C)=>{ const gm=14, R=Math.max(1,N-1), mpr=Math.max(1,Math.floor(N/4)), active=4*mpr; return { totalMin: R*Math.ceil(mpr/Math.max(1,C))*gm, perPlayerMin: Math.round(R*gm*active/Math.max(1,N)) }; } },
+  { id:"compass", name:"Kompasslottning",
+    desc:"Utslagsspel där förlorare flyttas till sidostegar (öst/väst/nord/syd) och fortsätter spela. Alla får flera matcher, inte bara en.",
+    est:(N,C)=>{ const mm=40, R=Math.max(1,Math.ceil(Math.log2(Math.max(2,N)))), mpr=Math.floor(N/2); return { totalMin: R*Math.ceil(mpr/Math.max(1,C))*mm, perPlayerMin: R*mm }; } },
+  { id:"kingcourt", name:"King of the Court",
+    desc:"Vinnande par avancerar mot kungsbanan, förlorare flyttas ned. Löpande rotation och poäng – den som håller toppen längst vinner.",
+    est:(N,C)=>{ const gm=10, perGames=8, totalGames=Math.ceil(N*perGames/4), rounds=Math.ceil(totalGames/Math.max(1,C)); return { totalMin: rounds*gm, perPlayerMin: Math.round(totalGames*4/Math.max(1,N))*gm }; } },
+];
+function matchFormat(id){ return MATCH_FORMATS.find(f=>f.id===id) || MATCH_FORMATS[0]; }
+function formatName(id){ return matchFormat(id).name; }
+// Formatera minuter → "1 tim 20 min" / "45 min".
+function fmtDurationMin(min){ min=Math.max(0,Math.round(min/5)*5); const h=Math.floor(min/60), m=min%60; if(h&&m) return `${h} tim ${m} min`; if(h) return `${h} tim`; return `${m} min`; }
+
 /* ---------------- State ---------------- */
 let state = normalize(load() || newState());
 let ui = { tab:"classes", classId: state.classes[0].id, day: null };
@@ -384,6 +408,7 @@ ensureDay();
 function newState(){
   return {
     app: APP_ID,
+    format: "classic",
     courts: 2,
     lang: "sv",
     logo: null,
@@ -428,6 +453,7 @@ function normalize(s){
   if(!s.diplomaSigns || typeof s.diplomaSigns!=="object") s.diplomaSigns={ director:true, chairman:true, trainers:false };
   { const d=defaultSched(); s.sched = Object.assign(d, (s.sched && typeof s.sched==="object") ? s.sched : {}); }
   if(typeof s.venue!=="string") s.venue="";
+  if(typeof s.format!=="string" || !MATCH_FORMATS.some(f=>f.id===s.format)) s.format="classic";
   if(typeof s.adminPin!=="string") s.adminPin="";
   if(typeof s.updatedAt!=="number") s.updatedAt=0;
   if(typeof s.archived!=="boolean") s.archived=false;
@@ -1297,6 +1323,13 @@ function render(){
   document.title = `${state.tournament.name||"Klubbmästerskap"} – ${arrangerName()}`;
   document.getElementById("appTitle").textContent = state.tournament.name || "Klubbmästerskap";
   document.getElementById("appSub").textContent = `${arrangerName()} · ${tournamentRangeText()}`;
+  // Nya format (allt utom Klassisk KM): spelmotorn byggs steg för steg – visa en tydlig platshållare.
+  if(state.format && state.format!=="classic"){
+    document.getElementById("tabs").innerHTML="";
+    renderFormatPlaceholder();
+    applyLang();
+    return;
+  }
   renderTabs();
   if(ui.tab==="info") renderInfo();
   else if(ui.tab==="classes") renderClasses();
@@ -1360,8 +1393,14 @@ function renderHome(){
        <label class="small">${L('Turneringsnamn','Tournament name')}<br><input type="text" id="homeNewName" placeholder="${L('t.ex. Vår-KM 2026','e.g. Spring Cup 2026')}" style="min-width:200px"></label>
        <label class="small">${L('Arrangör','Organizer')}<br><input type="text" id="homeNewArr" placeholder="${L('t.ex. Dalarö Tennisklubb','e.g. the club')}" style="min-width:200px"></label>
        <label class="small">${L('PIN-kod','PIN code')}<br><input type="text" id="homeNewPin" value="0000" style="width:90px" autocomplete="off"></label>
-       <button class="btn" id="homeCreateBtn">${L('Skapa','Create')}</button>
      </div>
+     <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap;margin-top:10px">
+       <label class="small">${L('Antal deltagare','Number of players')}<br><input type="number" id="homeEstPlayers" min="2" max="128" value="16" style="width:90px"></label>
+       <label class="small">${L('Antal banor','Number of courts')}<br><input type="number" id="homeEstCourts" min="1" max="16" value="2" style="width:90px"></label>
+       <span class="small muted" style="padding-bottom:6px">${L('— används för tidsuppskattningen nedan','— used for the time estimate below')}</span>
+     </div>
+     <div class="small" style="margin:12px 0 4px"><b>${L('Välj tävlingsformat','Choose tournament format')}</b></div>
+     <div id="formatTableWrap" style="overflow-x:auto"></div>
      <label class="small" style="display:block;margin:12px 0 0"><input type="checkbox" id="homeAsCopy"> <b>${L('Skapa som kopia av en gammal turnering','Create as a copy of an old tournament')}</b></label>
      <div id="homeCopyBox" style="display:none;margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
        <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
@@ -1375,6 +1414,7 @@ function renderHome(){
        </div>
        <p class="small muted" style="margin:8px 0 0">${L('Listan innehåller även arkiverade turneringar. Kopiering kräver källturneringens PIN-kod. Resultat, stegar och scheman kopieras aldrig.','The list also includes archived tournaments. Copying requires the source PIN. Results, brackets and schedules are never copied.')}</p>
      </div>
+     <div class="row" style="margin-top:14px"><button class="btn" id="homeCreateBtn" style="font-size:15px;padding:8px 18px">➕ ${L('Skapa turnering','Create tournament')}</button></div>
    </div>
    <div class="card">
      <div id="homeList"><p class="muted">${L('Laddar…','Loading…')}</p></div>
@@ -1385,6 +1425,26 @@ function renderHome(){
   document.getElementById("homeReload").onclick=()=>renderHome();
   { const ub=document.getElementById("homeUnlockBtn"); if(ub) ub.onclick=promptAdmin; }
   {   // "Skapa ny turnering" är tillgänglig för alla (publik + admin)
+    if(!ui.homeFormat) ui.homeFormat="classic";
+    const estP=document.getElementById("homeEstPlayers"), estC=document.getElementById("homeEstCourts");
+    function updateFormatTable(){
+      const N=Math.max(0,parseInt(estP.value,10)||0), C=Math.max(1,parseInt(estC.value,10)||1), sel=ui.homeFormat;
+      const rows=MATCH_FORMATS.map(f=>{ const e=(N>=2)?f.est(N,C):null;
+        return `<tr style="cursor:pointer" data-fmtrow="${f.id}">
+          <td style="text-align:center"><input type="radio" name="fmtPick" value="${f.id}" ${sel===f.id?'checked':''}></td>
+          <td style="white-space:nowrap"><b>${f.name}</b></td>
+          <td style="white-space:nowrap">${e?fmtDurationMin(e.totalMin):'–'}</td>
+          <td style="white-space:nowrap">${e?fmtDurationMin(e.perPlayerMin):'–'}</td>
+          <td class="small">${f.desc}</td></tr>`; }).join("");
+      document.getElementById("formatTableWrap").innerHTML=`<table class="results" style="min-width:660px"><thead><tr>
+          <th>${L('Välj','Pick')}</th><th>${L('Format','Format')}</th><th>${L('Total tid','Total time')}</th><th>${L('Speltid/deltagare','Play time/player')}</th><th>${L('Beskrivning','Description')}</th></tr></thead><tbody>${rows}</tbody></table>
+        <p class="small muted" style="margin:6px 0 0">${L('Ungefärlig uppskattning','Rough estimate')} (${N||'—'} ${L('deltagare','players')}, ${C} ${C==1?L('bana','court'):L('banor','courts')}). ${L('Faktisk tid beror på matchlängd och pauser.','Actual time depends on match length and breaks.')}</p>`;
+      document.querySelectorAll('input[name="fmtPick"]').forEach(r=>r.onchange=()=>{ ui.homeFormat=r.value; });
+      document.querySelectorAll('[data-fmtrow]').forEach(tr=>tr.onclick=e=>{ if(e.target.tagName!=="INPUT"){ ui.homeFormat=tr.dataset.fmtrow; updateFormatTable(); } });
+    }
+    if(estP) estP.oninput=updateFormatTable;
+    if(estC) estC.oninput=updateFormatTable;
+    updateFormatTable();
     const asCopy=document.getElementById("homeAsCopy"), copyBox=document.getElementById("homeCopyBox");
     asCopy.onchange=()=>{ copyBox.style.display = asCopy.checked ? "" : "none"; };
     // Deltagare kräver att Klasser också kopieras.
@@ -1396,16 +1456,18 @@ function renderHome(){
       if(!name){ alert(L("Ange ett turneringsnamn.","Enter a tournament name.")); return; }
       const arranger=document.getElementById("homeNewArr").value.trim();
       let pin=document.getElementById("homeNewPin").value.trim(); if(!pin) pin="0000";
+      const format=ui.homeFormat||"classic";
+      const courts=Math.max(1,parseInt(estC.value,10)||2);
       if(asCopy.checked){
         const srcKey=document.getElementById("homeCopyFrom").value;
         if(!srcKey){ alert(L("Välj en turnering att kopiera från.","Choose a tournament to copy from.")); return; }
-        createTournamentAdvanced(name, srcKey, { arranger, pin,
+        createTournamentAdvanced(name, srcKey, { arranger, pin, format, courts,
           copyLayout: document.getElementById("cpLayout").checked,
           copyInfo:   document.getElementById("cpInfo").checked,
           copyClasses: cpClasses.checked,
           copyParticipants: cpParts.checked && cpClasses.checked });
       } else {
-        createTournamentAdvanced(name, "", { arranger, pin });   // tom layout
+        createTournamentAdvanced(name, "", { arranger, pin, format, courts });   // tom layout
       }
     };
   }
@@ -1504,9 +1566,10 @@ function buildTournamentState(name, src, opts){
   opts=opts||{};
   const s=newState();
   s.tournament.name=name;
-  // Namn, arrangör och PIN sätts alltid av formuläret (inte kopierade).
+  // Namn, arrangör, PIN, format och banantal sätts av formuläret (inte kopierade).
   if(typeof opts.arranger==="string" && opts.arranger.trim()) s.arranger=opts.arranger.trim();
   s.adminPin = (typeof opts.pin==="string" && opts.pin.trim()) ? opts.pin.trim() : "0000";
+  if(typeof opts.format==="string" && MATCH_FORMATS.some(f=>f.id===opts.format)) s.format=opts.format;
   // LAYOUT: kopiera eller "tom layout" (vit bakgrund, svart rubriktext, ingen logga).
   if(src && opts.copyLayout){
     if(typeof src.logo==="string"||src.logo===null) s.logo=src.logo;
@@ -1537,6 +1600,7 @@ function buildTournamentState(name, src, opts){
       matches:[], champion:null                       // resultat/stegar kopieras aldrig
     }));
   }
+  if(opts.courts>0) s.courts=opts.courts;   // angivet banantal vinner (även över kopierad info)
   return normalize(s);
 }
 // Skapa ny turnering (ev. som kopia av vald källa) och öppna den i ADMINLÄGE.
@@ -1568,6 +1632,21 @@ async function createTournamentAdvanced(name, srcKey, opts){
   ui={ tab:"info", classId: state.classes[0].id, day:null }; ensureDay();
   if(cloudEnabled){ try{ cloudSetStatus("saving"); await cloudPut(state); cloudLastSync=Date.now(); cloudSetStatus("ok"); }catch(e){ cloudSetStatus("offline"); } }
   render();
+}
+
+// Platshållare för de nya formaten (Americano/Mexicano/Kompass/King of the Court) tills spelmotorn byggts.
+function renderFormatPlaceholder(){
+  const f=matchFormat(state.format);
+  app.innerHTML=`<div class="card">
+     <h2>${escXml(state.tournament.name||"")} <span class="badge" style="background:#eef;color:#33507a">${f.name}</span></h2>
+     <p class="small muted">${escXml(arrangerName())} · ${tournamentRangeText()}</p>
+     <p style="margin-top:10px">${f.desc}</p>
+     <div class="hint" style="border-color:var(--gold);background:#fbf4df;margin-top:12px">
+       <b>🚧 ${L('Spelmotorn för detta format byggs härnäst.','The play engine for this format is being built next.')}</b><br>
+       ${L('Turneringen är skapad och sparad. <b>Klassisk KM</b> fungerar fullt ut idag; <b>Americano</b>, <b>Mexicano</b>, <b>Kompasslottning</b> och <b>King of the Court</b> läggs till steg för steg.','The tournament is created and saved. <b>Classic KM</b> works fully today; <b>Americano</b>, <b>Mexicano</b>, <b>Compass draw</b> and <b>King of the Court</b> are being added step by step.')}
+     </div>
+     <p class="small muted" style="margin-top:12px">${L('Använd 🏠 Startsida uppe till höger för att gå tillbaka.','Use 🏠 Home at the top right to go back.')}</p>
+   </div>`;
 }
 
 /* ----- Flik: Klubbmästare ----- */
