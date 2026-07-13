@@ -460,6 +460,8 @@ function normalize(s){
   if(typeof s.amStart!=="string" || !s.amStart) s.amStart="09:00";   // simulering: starttid
   if(!(s.amRoundMin>0)) s.amRoundMin=15;               // simulering: minuter per rond
   if(s.amScoreMode!=="pairs") s.amScoreMode="individual";   // poängräkning: individuellt/par
+  if(!(s.amWarmup>=0)) s.amWarmup=0;                    // simulering: uppvärmning före rond 1 (min)
+  if(!Array.isArray(s.amBreaks)) s.amBreaks=[];         // simulering: pauser [{after, min}]
   if(typeof s.adminPin!=="string") s.adminPin="";
   if(typeof s.updatedAt!=="number") s.updatedAt=0;
   if(typeof s.archived!=="boolean") s.archived=false;
@@ -1853,6 +1855,11 @@ function amGenerate(numRounds, courts){
 }
 // Har alla matcher i ronden fått resultat?
 function amRoundScored(rd){ return !!rd && Array.isArray(rd.matches) && rd.matches.length>0 && rd.matches.every(m=>m.s1!=null && m.s2!=null); }
+// Tidssimulering med uppvärmning och pauser.
+function amBreaksList(){ return (Array.isArray(state.amBreaks)?state.amBreaks:[]).filter(b=>b&&b.after>0&&b.min>0).sort((a,b)=>a.after-b.after); }
+function amBreakMinBefore(round1){ return amBreaksList().filter(b=>b.after<round1).reduce((s,b)=>s+(+b.min||0),0); }   // pauser som ligger före rond nr (1-indexerad)
+function amRoundStartMin(ri){ const t0=timeToMin(state.amStart); if(t0==null) return null; const w=Math.max(0,+state.amWarmup||0), rm=Math.max(1,state.amRoundMin); return t0 + w + ri*rm + amBreakMinBefore(ri+1); }
+function amRoundEndMin(ri){ const s=amRoundStartMin(ri); return s==null?null:s+Math.max(1,state.amRoundMin); }
 // Mexicano: lägg till NÄSTA rond utifrån aktuell ställning (rond 1 = seedningsordning = spellistan).
 function mexNextRound(courts){
   amEnsure();
@@ -1986,8 +1993,8 @@ function renderRotationFormat(){
   const st=pairsMode?amPairStandings():amStandings();
   const esc=escXml;
   const t0=timeToMin(state.amStart), rmin=Math.max(1,state.amRoundMin), nR=state.amRounds.length;
-  const endMin=(t0!=null)?t0+nR*rmin:null;
-  const timeSummary=(t0!=null && nR)?` · ${L('start','start')} ${state.amStart} – ${L('slut','end')} ${minToTime(endMin)} (${fmtDurationMin(nR*rmin)})`:'';
+  const endMin=(t0!=null && nR)?amRoundEndMin(nR-1):null;
+  const timeSummary=(t0!=null && nR)?` · ${L('start','start')} ${state.amStart} – ${L('slut','end')} ${minToTime(endMin)} (${fmtDurationMin(endMin-t0)})`:'';
   let html=`<div class="card">
      <h2>${esc(state.tournament.name||"")} <span class="badge" style="background:#eef;color:#33507a">${esc(fmtName)}</span></h2>
      <p class="small muted">${esc(arrangerName())} · ${N} ${L('deltagare','players')} · ${nR} ${L('ronder','rounds')} · ${L('till','to')} ${state.amPointsTo} ${L('poäng/match','pts/match')} · ${pairsMode?L('poäng per par','points per pair'):L('individuell poäng','individual points')}${timeSummary}</p>
@@ -2035,11 +2042,27 @@ function renderRotationFormat(){
        <h2>⏱ ${L('Tidssimulering','Time simulation')}</h2>
        <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
          <label class="small">${L('Starttid','Start time')}<br><input type="time" id="amStart" value="${esc(state.amStart)}" style="width:110px"></label>
+         <label class="small">${L('Uppvärmning (min)','Warm-up (min)')}<br><input type="number" id="amWarmup" min="0" max="60" value="${Math.max(0,+state.amWarmup||0)}" style="width:80px"></label>
          <label class="small">${L('Minuter per rond','Minutes per round')}<br><input type="number" id="amRoundMin" min="1" max="120" value="${state.amRoundMin}" style="width:80px"></label>
          <button class="btn ghost mini" id="amSimSave">💾 ${L('Uppdatera tider','Update times')}</button>
-         <span class="pill">${nR?`${L('Slut','End')} ${minToTime(endMin)} · ${fmtDurationMin(nR*rmin)}`:L('Generera schema först','Generate schedule first')}</span>
+         <span class="pill">${nR?`${L('Slut','End')} ${minToTime(endMin)} · ${fmtDurationMin(endMin-t0)}`:L('Generera schema först','Generate schedule first')}</span>
        </div>
-       <p class="small muted" style="margin:8px 0 0">${L('Varje rond får en start- och sluttid utifrån starttid och minuter per rond.','Each round gets a start and end time based on the start time and minutes per round.')}</p>
+       <div style="margin-top:12px">
+         <div class="small" style="margin-bottom:6px"><b>☕ ${L('Pauser','Breaks')}</b> <span class="muted">${L('— läggs efter en viss rond och räknas in i tiderna','— placed after a given round and counted into the times')}</span></div>
+         <div id="amBreaksList">${amBreaksList().length?amBreaksList().map((b,bi)=>`<div class="row" style="align-items:center;gap:8px;margin-bottom:4px"><span class="pill" style="background:#fbe9c9;color:#8a5a00">${L('Efter rond','After round')} ${b.after} · ${b.min} ${L('min','min')}</span><button class="btn gray mini" data-brdel="${bi}">✕</button></div>`).join(""):`<span class="small muted">${L('Inga pauser.','No breaks.')}</span>`}</div>
+         <div class="row" style="align-items:flex-end;gap:8px;flex-wrap:wrap;margin-top:8px">
+           <label class="small">${L('Efter rond','After round')}<br><input type="number" id="amBrAfter" min="1" max="${Math.max(1,nR||60)}" value="${nR?Math.min(nR,Math.ceil(nR/2)):1}" style="width:90px"></label>
+           <label class="small">${L('Längd (min)','Length (min)')}<br><input type="number" id="amBrMin" min="1" max="120" value="15" style="width:90px"></label>
+           <button class="btn ghost mini" id="amBrAdd">➕ ${L('Lägg till paus','Add break')}</button>
+         </div>
+       </div>
+       <p class="small muted" style="margin:10px 0 0">${L('Varje rond får en start- och sluttid utifrån starttid, uppvärmning, minuter per rond och pauser.','Each round gets a start and end time based on start time, warm-up, minutes per round and breaks.')}</p>
+     </div>
+     <div class="card">
+       <h2>✂️ ${L('Matchlappar','Match slips')}</h2>
+       <p class="small muted">${L('Skriv ut en lapp per match att fylla i för hand och lämna till sekretariatet.','Print one slip per match to fill in by hand and hand to the desk.')}</p>
+       <button class="btn ghost mini no-print" id="amPrintSlips"${nR?'':' disabled'}>🖨 ${L('Skriv ut matchlappar','Print match slips')}</button>
+       ${nR?'':`<span class="small muted"> ${L('Generera schema först.','Generate a schedule first.')}</span>`}
      </div>
      <div class="card no-print" style="border-color:#e6b7b2">
        <h2>${L('Ta bort turnering','Delete tournament')}</h2>
@@ -2053,7 +2076,8 @@ function renderRotationFormat(){
   if(!state.amRounds.length) html+=`<p class="muted">${admin?(roundByRound?L('Lägg in deltagare och klicka Generera rond 1.','Add players and click Generate round 1.'):L('Lägg in deltagare och klicka Generera spelschema.','Add players and click Generate schedule.')):L('Spelschemat är inte skapat ännu.','The schedule is not created yet.')}</p>`;
   else state.amRounds.forEach((rd,ri)=>{
     const restTxt=(rd.rest&&rd.rest.length)?` <span class="small muted">(${L('vilar','resting')}: ${rd.rest.map(i=>esc(state.players[i]||'')).join(", ")})</span>`:'';
-    const timeTxt=(t0!=null)?` <span class="small muted">kl ${minToTime(t0+ri*rmin)}–${minToTime(t0+(ri+1)*rmin)}</span>`:'';
+    const rs=amRoundStartMin(ri), re=amRoundEndMin(ri);
+    const timeTxt=(rs!=null)?` <span class="small muted">kl ${minToTime(rs)}–${minToTime(re)}</span>`:'';
     html+=`<h3 style="color:var(--head);margin:14px 0 6px">${L('Rond','Round')} ${ri+1}${timeTxt}${restTxt}</h3><div style="overflow-x:auto"><table class="results"><thead><tr><th>${L('Bana','Court')}</th><th>${L('Lag 1','Team 1')}</th><th style="text-align:center">${L('Resultat','Score')}</th><th>${L('Lag 2','Team 2')}</th></tr></thead><tbody>`;
     rd.matches.forEach((mt,mi)=>{
       const t1=mt.a.map(i=>esc(state.players[i]||'?')).join(" & "), t2=mt.b.map(i=>esc(state.players[i]||'?')).join(" & ");
@@ -2064,6 +2088,8 @@ function renderRotationFormat(){
       html+=`<tr><td>${mt.court}</td><td style="${won1?'font-weight:bold':''}">${t1}</td><td style="text-align:center;white-space:nowrap">${score}</td><td style="${won2?'font-weight:bold':''}">${t2}</td></tr>`;
     });
     html+=`</tbody></table></div>`;
+    const brk=amBreaksList().find(b=>b.after===ri+1);
+    if(brk){ const bs=re, be=(bs!=null)?bs+(+brk.min||0):null; html+=`<div class="pill" style="background:#fbe9c9;color:#8a5a00;margin:10px 0 2px">☕ ${L('Paus','Break')} ${brk.min} ${L('min','min')}${bs!=null?` · kl ${minToTime(bs)}–${minToTime(be)}`:''}</div>`; }
   });
   html+=`</div>`;
   app.innerHTML=html;
@@ -2102,8 +2128,21 @@ function renderRotationFormat(){
     { const b=document.getElementById("amSimSave"); if(b) b.onclick=()=>{
         const t=document.getElementById("amStart").value; if(timeToMin(t)!=null) state.amStart=t;
         state.amRoundMin=Math.max(1,parseInt(document.getElementById("amRoundMin").value,10)||15);
+        state.amWarmup=Math.max(0,parseInt(document.getElementById("amWarmup").value,10)||0);
         save(); render();
       }; }
+    { const b=document.getElementById("amBrAdd"); if(b) b.onclick=()=>{
+        const after=parseInt(document.getElementById("amBrAfter").value,10)||0, min=parseInt(document.getElementById("amBrMin").value,10)||0;
+        if(after<1||min<1){ alert(L("Ange rond och pauslängd.","Enter round and break length.")); return; }
+        if(!Array.isArray(state.amBreaks)) state.amBreaks=[];
+        const ex=state.amBreaks.find(x=>x.after===after); if(ex) ex.min=min; else state.amBreaks.push({after,min});
+        save(); render();
+      }; }
+    document.querySelectorAll("[data-brdel]").forEach(btn=>btn.onclick=()=>{
+      const bi=+btn.dataset.brdel, list=amBreaksList(); const rm=list[bi];
+      if(rm){ state.amBreaks=(state.amBreaks||[]).filter(b=>!(b.after===rm.after&&b.min===rm.min)); save(); render(); }
+    });
+    { const b=document.getElementById("amPrintSlips"); if(b) b.onclick=printMatchSlips; }
     { const b=document.getElementById("amDelTourn"); if(b) b.onclick=()=>deleteTournament(TOURN_KEY); }
     bindFormatInfoCard();
     document.querySelectorAll("[data-am]").forEach(inp=>inp.onchange=()=>{
@@ -4561,6 +4600,35 @@ function printChampions(){
   });
   html+=`</tbody></table>
     <p class="small muted" style="margin-top:18px">${arrangerName()} · ${state.tournament.name||"Klubbmästerskap"} ${tournamentYear()} · ${tournamentRangeText()}</p>`;
+  doPrint(html);
+}
+// Matchlappar för rond-baserade format (Americano/Mexicano/King of the Court/Kompass).
+function printMatchSlips(){
+  if(!state.amRounds || !state.amRounds.length){ alert(L("Generera ett spelschema först.","Generate a schedule first.")); return; }
+  const ev=state.tournament.name||matchFormat(state.format).name, esc=escXml;
+  let cells="", count=0;
+  state.amRounds.forEach((rd,ri)=>{
+    const rs=amRoundStartMin(ri), tt=(rs!=null)?minToTime(rs):"";
+    rd.matches.forEach(mt=>{
+      count++;
+      const t1=mt.a.map(i=>esc(state.players[i]||'?')).join(" & "), t2=mt.b.map(i=>esc(state.players[i]||'?')).join(" & ");
+      cells+=`<div style="border:1.5px dashed #999;border-radius:8px;padding:10px 12px;break-inside:avoid">
+         <div style="display:flex;justify-content:space-between;font-size:12px;color:#555;border-bottom:1px solid #ddd;padding-bottom:4px;margin-bottom:6px">
+           <b>${L('Rond','Round')} ${ri+1}${tt?` · ${tt}`:''}</b><span>${L('Bana','Court')} ${esc(String(mt.court))}</span></div>
+         <div style="font-size:11px;letter-spacing:1px;color:#888;text-transform:uppercase;margin-bottom:6px">${esc(ev)}</div>
+         <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0">
+           <div><div style="font-size:10px;color:#999">${L('Lag 1','Team 1')}</div><div style="font-weight:700">${t1}</div></div>
+           <div style="width:38px;height:34px;border:1.5px solid #333;border-radius:5px"></div></div>
+         <div style="text-align:center;font-size:11px;color:#999;margin:2px 0">${L('MOT','VS')}</div>
+         <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0">
+           <div><div style="font-size:10px;color:#999">${L('Lag 2','Team 2')}</div><div style="font-weight:700">${t2}</div></div>
+           <div style="width:38px;height:34px;border:1.5px solid #333;border-radius:5px"></div></div>
+         <div style="font-size:10px;color:#888;border-top:1px solid #ddd;margin-top:6px;padding-top:4px">${L('Skriv poängen och lämna till sekretariatet.','Write the score and hand it to the desk.')}</div>
+       </div>`;
+    });
+  });
+  let html=printHeader(`${L('Matchlappar','Match slips')} · ${count} ${L('matcher','matches')}`);
+  html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">${cells}</div>`;
   doPrint(html);
 }
 // Underskriftsruta för diplom (linje + namn + roll).
