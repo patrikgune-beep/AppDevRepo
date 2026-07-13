@@ -1332,7 +1332,7 @@ function render(){
   // Nya format (allt utom Klassisk KM): spelmotorn byggs steg för steg – visa en tydlig platshållare.
   if(state.format && state.format!=="classic"){
     document.getElementById("tabs").innerHTML="";
-    if(state.format==="americano"||state.format==="mexicano") renderRotationFormat();
+    if(state.format==="americano"||state.format==="mexicano"||state.format==="kingcourt") renderRotationFormat();
     else renderFormatPlaceholder();
     applyLang();
     return;
@@ -1812,13 +1812,49 @@ function mexNextRound(courts){
   state.amRounds.push({ matches, rest:resting });
   return true;
 }
+// King of the Court: bana 1 = kungsbanan. Lägg till NÄSTA rond – vinnare flyttas upp, förlorare ned.
+function kotcNextRound(courts){
+  amEnsure();
+  const N=state.players.length, pairsMode=state.amScoreMode==="pairs";
+  const K=Math.min(Math.max(1,courts||1), Math.floor(N/4));
+  if(K<1) return false;
+  const mk=(court,a,b)=>({court, a, b, s1:null, s2:null});
+  let matches=[];
+  if(state.amRounds.length===0){
+    for(let c=1;c<=K;c++){
+      if(pairsMode){ const p0=2*(c-1), p1=2*(c-1)+1; matches.push(mk(c,[2*p0,2*p0+1],[2*p1,2*p1+1])); }
+      else { const base=4*(c-1); matches.push(mk(c,[base,base+1],[base+2,base+3])); }
+    }
+    const active=new Set(); matches.forEach(m=>m.a.concat(m.b).forEach(i=>active.add(i)));
+    state.amRounds.push({ matches, rest:[...Array(N).keys()].filter(i=>!active.has(i)) });
+    return true;
+  }
+  const prev=state.amRounds[state.amRounds.length-1];
+  if(!amRoundScored(prev)) return false;
+  const winners={}, losers={};
+  for(const mt of prev.matches){
+    const aWon=(+mt.s1||0)>=(+mt.s2||0);
+    winners[mt.court]=(aWon?mt.a:mt.b).slice();
+    losers[mt.court]=(aWon?mt.b:mt.a).slice();
+  }
+  for(let c=1;c<=K;c++){
+    const top=(c===1)?winners[1]:losers[c-1];      // stannar/kommer ned uppifrån
+    const bot=(c===K)?losers[K]:winners[c+1];      // stannar/kommer upp nedifrån
+    if(!top||!bot) continue;
+    if(pairsMode) matches.push(mk(c, top.slice(), bot.slice()));   // fasta par flyttas hela
+    else { const g=[top[0],top[1],bot[0],bot[1]]; matches.push(mk(c,[g[0],g[2]],[g[1],g[3]])); }  // ny partner varje rond
+  }
+  if(!matches.length) return false;
+  state.amRounds.push({ matches, rest:(prev.rest||[]).slice() });
+  return true;
+}
 function renderAmericano(){ renderRotationFormat(); }
 function renderMexicano(){ renderRotationFormat(); }
 function renderRotationFormat(){
   amEnsure();
   const admin=isAdmin(), N=state.players.length, pairsMode=state.amScoreMode==="pairs";
-  const fmtName=matchFormat(state.format).name, isMex=(state.format==="mexicano");
-  const roundByRound=isMex && !pairsMode;                    // Mexicano lottar rond för rond utifrån ställning
+  const fmtName=matchFormat(state.format).name, isMex=(state.format==="mexicano"), isKotC=(state.format==="kingcourt");
+  const roundByRound=(isMex && !pairsMode) || isKotC;        // lottas rond för rond (Mexicano: ställning, KotC: banflytt)
   const latestScored=state.amRounds.length===0 || amRoundScored(state.amRounds[state.amRounds.length-1]);
   const st=pairsMode?amPairStandings():amStandings();
   const esc=escXml;
@@ -1858,7 +1894,7 @@ function renderRotationFormat(){
               <button class="btn gray" id="amResetSched">↺ ${L('Nollställ schema','Reset schedule')}</button>`
            : `<button class="btn" id="amGenerate">🎲 ${L('Generera spelschema','Generate schedule')}</button>`}
        </div>
-       <p class="small muted" style="margin:8px 0 0">${pairsMode?L('Par bildas i ordning: deltagare 1&2 = Par 1, 3&4 = Par 2 osv. Paren spelar mot varandra och poängen räknas per par.','Pairs are formed in order: players 1&2 = Pair 1, 3&4 = Pair 2, etc. Pairs play against each other and points are counted per pair.'):roundByRound?L('Mexicano lottar paren rond för rond efter aktuell ställning (rond 1 = spellistans ordning). Fyll i resultaten och generera nästa rond – bäst mot sämst på varje bana för jämna matcher.','Mexicano draws pairs round by round based on the current standings (round 1 = player list order). Enter the results and generate the next round – best vs worst on each court for even matches.'):L('Varje deltagare byter partner varje rond och samlar egna poäng.','Each player changes partner every round and collects individual points.')}</p>
+       <p class="small muted" style="margin:8px 0 0">${isKotC?L('King of the Court: bana 1 är kungsbanan. Vinnande lag flyttas upp mot kungsbanan, förlorande lag flyttas ned. Fyll i resultaten och generera nästa rond. I parläge flyttas hela paret; i individuellt läge lottas nya partner varje rond.','King of the Court: court 1 is the king court. Winning teams move up toward the king court, losing teams move down. Enter the results and generate the next round. In pairs mode the whole pair moves; in individual mode new partners are drawn each round.'):pairsMode?L('Par bildas i ordning: deltagare 1&2 = Par 1, 3&4 = Par 2 osv. Paren spelar mot varandra och poängen räknas per par.','Pairs are formed in order: players 1&2 = Pair 1, 3&4 = Pair 2, etc. Pairs play against each other and points are counted per pair.'):roundByRound?L('Mexicano lottar paren rond för rond efter aktuell ställning (rond 1 = spellistans ordning). Fyll i resultaten och generera nästa rond – bäst mot sämst på varje bana för jämna matcher.','Mexicano draws pairs round by round based on the current standings (round 1 = player list order). Enter the results and generate the next round – best vs worst on each court for even matches.'):L('Varje deltagare byter partner varje rond och samlar egna poäng.','Each player changes partner every round and collects individual points.')}</p>
      </div>
      ${formatInfoCardHTML()}
      <div class="card no-print">
@@ -1913,7 +1949,8 @@ function renderRotationFormat(){
     { const b=document.getElementById("amNextRound"); if(b) b.onclick=()=>{
         readSettings();
         if(state.players.length<4){ alert(L("Minst 4 deltagare krävs.","At least 4 players required.")); return; }
-        if(!mexNextRound(state.courts)){ alert(L("Kunde inte skapa ronden.","Could not create the round.")); return; }
+        const ok = isKotC ? kotcNextRound(state.courts) : mexNextRound(state.courts);
+        if(!ok){ alert(L("Kunde inte skapa ronden.","Could not create the round.")); return; }
         save(); render();
       }; }
     { const b=document.getElementById("amResetSched"); if(b) b.onclick=()=>{
