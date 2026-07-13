@@ -1983,6 +1983,37 @@ function compassNextRound(){
 }
 function renderAmericano(){ renderRotationFormat(); }
 function renderMexicano(){ renderRotationFormat(); }
+// Poäng per rond per deltagare/par (läsvy). Returnerar {inMatch, pts} eller null (vila).
+function amRoundPointsFor(ri, isPlayer, id){
+  const rd=state.amRounds[ri]; if(!rd) return null;
+  for(const mt of rd.matches){
+    if(isPlayer){ if(mt.a.includes(id)) return {inMatch:true, pts:mt.s1}; if(mt.b.includes(id)) return {inMatch:true, pts:mt.s2}; }
+    else { if(Math.floor(mt.a[0]/2)===id) return {inMatch:true, pts:mt.s1}; if(Math.floor(mt.b[0]/2)===id) return {inMatch:true, pts:mt.s2}; }
+  }
+  return null;
+}
+function amPlayerGridHTML(){
+  const pairsMode=state.amScoreMode==='pairs', nR=state.amRounds.length, esc=escXml;
+  const rows=pairsMode?amPairStandings():amStandings();   // sorterad ordning + total
+  if(!rows.length || !nR) return '';
+  let head=`<th style="text-align:left">${pairsMode?L('Par','Pair'):L('Spelare','Player')}</th>`;
+  for(let r=0;r<nR;r++) head+=`<th>${r+1}</th>`;
+  head+=`<th style="background:var(--head);color:#fff">${L('Tot','Tot')}</th>`;
+  let body="";
+  rows.forEach(row=>{
+    const id=pairsMode?row.k:row.i;
+    let tds="";
+    for(let ri=0;ri<nR;ri++){
+      const c=amRoundPointsFor(ri, !pairsMode, id);
+      if(!c) tds+=`<td style="background:#eee;color:#aaa;font-size:11px">${L('vila','rest')}</td>`;
+      else tds+=`<td>${c.pts==null?'·':`<b>${c.pts}</b>`}</td>`;
+    }
+    body+=`<tr><td style="text-align:left;white-space:nowrap">${esc(row.name)}</td>${tds}<td style="background:var(--head);color:#fff;font-weight:800">${row.pts}</td></tr>`;
+  });
+  return `<div class="card"><h2>📊 ${L('Poäng per rond','Points per round')}</h2>
+     <div style="overflow-x:auto"><table class="results" style="text-align:center"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+     <p class="small muted" style="margin:8px 0 0">${L('En kolumn per rond. "vila" = deltagaren spelade inte den ronden.','One column per round. "rest" = the player did not play that round.')}</p></div>`;
+}
 function renderRotationFormat(){
   amEnsure();
   const admin=isAdmin(), N=state.players.length, pairsMode=state.amScoreMode==="pairs";
@@ -2092,6 +2123,7 @@ function renderRotationFormat(){
     if(brk){ const bs=re, be=(bs!=null)?bs+(+brk.min||0):null; html+=`<div class="pill" style="background:#fbe9c9;color:#8a5a00;margin:10px 0 2px">☕ ${L('Paus','Break')} ${brk.min} ${L('min','min')}${bs!=null?` · kl ${minToTime(bs)}–${minToTime(be)}`:''}</div>`; }
   });
   html+=`</div>`;
+  if(!isCompass && state.amRounds.length) html+=amPlayerGridHTML();
   app.innerHTML=html;
   if(admin){
     const readSettings=()=>{ const lines=document.getElementById("amPlayers").value.split("\n").map(s=>s.trim()).filter(Boolean);
