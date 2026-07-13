@@ -1268,7 +1268,7 @@ function render(){
   // Startsida (generell för alla turneringar) – publik hub; admindelar kräver PIN.
   document.body.classList.toggle("home", ui.tab==="home");
   if(ui.tab==="home"){
-    document.title = L("Turneringar","Tournaments")+" – "+arrangerName();
+    document.title = L("Turneringar","Tournaments");   // ingen arrangör på startsidan
     document.getElementById("appTitle").textContent = L("Turneringar","Tournaments");
     document.getElementById("appSub").textContent = isAdmin()
       ? L("Välj, skapa eller ta bort turnering","Choose, create or delete a tournament")
