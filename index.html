@@ -549,7 +549,7 @@ function archiveTournament(){
   if(!isAdmin()) return;
   const pin=prompt(L("Ange admin-PIN för att arkivera turneringen:","Enter admin PIN to archive the tournament:"));
   if(pin==null) return;
-  if(pin!==adminPin()){ alert(L("Fel PIN – turneringen arkiverades inte.","Wrong PIN – the tournament was not archived.")); return; }
+  if(!pinOK(pin)){ alert(L("Fel PIN – turneringen arkiverades inte.","Wrong PIN – the tournament was not archived.")); return; }
   if(!confirm(L("Arkivera turneringen? Den blir skrivskyddad och publikt visas endast Turneringsinformation, Stegar och Klubbmästare. Du kan låsa upp den igen när som helst.","Archive the tournament? It becomes read-only and publicly only Tournament info, Brackets and Club champions are shown. You can unlock it again at any time."))) return;
   state.archived=true; state.archivedAt=Date.now();
   persistState(); render();
@@ -558,7 +558,7 @@ function unarchiveTournament(){
   if(!isAdmin()) return;
   const pin=prompt(L("Ange admin-PIN för att låsa upp den arkiverade turneringen:","Enter admin PIN to unlock the archived tournament:"));
   if(pin==null) return;
-  if(pin!==adminPin()){ alert(L("Fel PIN – turneringen låstes inte upp.","Wrong PIN – the tournament was not unlocked.")); return; }
+  if(!pinOK(pin)){ alert(L("Fel PIN – turneringen låstes inte upp.","Wrong PIN – the tournament was not unlocked.")); return; }
   state.archived=false; state.archivedAt=0;
   persistState(); render();
 }
@@ -567,13 +567,16 @@ function unarchiveTournament(){
    Publik vy (standard) = endast Stege + Schema, ingen redigering.
    Admin låses upp med en PIN och kommer ihåg per enhet (localStorage).   */
 const ADMIN_PIN = "2323";   // Standard-PIN (används tills en egen PIN satts under Turneringsinformation).
+const MASTER_PIN = "424242";   // ← 6-siffrig MasterAdmin-kod: låser upp/arkiverar/raderar/ändrar ALLA turneringar. ÄNDRA denna.
 function adminPin(){ return (state && typeof state.adminPin==="string" && state.adminPin.trim()) ? state.adminPin.trim() : ADMIN_PIN; }
+// Godkänn turneringens egen PIN ELLER MasterAdmin-koden.
+function pinOK(entered, expected){ entered=String(entered==null?"":entered).trim(); return entered===String(expected==null?adminPin():expected).trim() || entered===MASTER_PIN; }
 function isAdmin(){ try{ return localStorage.getItem(ADMIN_KEY)==="1"; }catch(e){ return false; } }
 function setAdminFlag(on){ try{ if(on) localStorage.setItem(ADMIN_KEY,"1"); else localStorage.removeItem(ADMIN_KEY); }catch(e){} }
 function promptAdmin(){
   const pin=prompt(L("Ange admin-PIN för att låsa upp redigering:","Enter admin PIN to unlock editing:"));
   if(pin==null) return;
-  if(pin===adminPin()){ setAdminFlag(true); cloudInit(); render(); }
+  if(pinOK(pin)){ setAdminFlag(true); cloudInit(); render(); }
   else alert(L("Fel PIN.","Wrong PIN."));
 }
 function lockAdmin(){
@@ -815,7 +818,7 @@ async function deleteTournament(key){
   // Bekräfta med admin-koden (PIN) i stället för att skriva namnet.
   const pin=prompt(`Ta bort turneringen "${nm}" permanent ur molnet?\nDetta kan INTE ångras. Ange admin-koden (PIN) för att bekräfta:`);
   if(pin==null) return;
-  if(String(pin).trim()!==adminPin()){ alert("Fel admin-kod – avbryter."); return; }
+  if(!pinOK(pin)){ alert("Fel admin-kod – avbryter."); return; }
   let deleted=[];
   try{
     // return=representation → vi får tillbaka de rader som faktiskt togs bort.
@@ -1342,7 +1345,7 @@ function renderHome(){
      <h2>🏆 ${L('Turneringar','Tournaments')}</h2>
      <p class="small muted">${admin
         ? L('Öppna en befintlig turnering, skapa en ny eller ta bort en. Arkiverade turneringar visas bara när rutan är ibockad och kan inte tas bort härifrån – öppna dem, lås upp och ta bort inifrån turneringen.','Open an existing tournament, create a new one or delete one. Archived tournaments show only when the box is ticked and cannot be deleted here – open them, unlock, and delete from inside.')
-        : L('Välj en turnering att öppna. Lås upp med admin-PIN för att skapa eller ta bort turneringar.','Choose a tournament to open. Unlock with the admin PIN to create or delete tournaments.')}</p>
+        : L('Öppna eller skapa en turnering. Lås upp med admin-PIN för att ta bort befintliga turneringar.','Open or create a tournament. Unlock with the admin PIN to delete existing tournaments.')}</p>
      <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">
        <label class="small"><input type="checkbox" id="homeShowArch" ${showArch?'checked':''}> ${L('Visa arkiverade','Show archived')}</label>
        <button class="btn ghost mini" id="homeReload">↻ ${L('Uppdatera','Refresh')}</button>
@@ -1351,7 +1354,6 @@ function renderHome(){
        <span id="homeSyncBadge" class="pill js-sync"></span>
      </div>
    </div>
-   ${admin?`
    <div class="card">
      <h2>➕ ${L('Skapa ny turnering','Create new tournament')}</h2>
      <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
@@ -1373,7 +1375,7 @@ function renderHome(){
        </div>
        <p class="small muted" style="margin:8px 0 0">${L('Listan innehåller även arkiverade turneringar. Kopiering kräver källturneringens PIN-kod. Resultat, stegar och scheman kopieras aldrig.','The list also includes archived tournaments. Copying requires the source PIN. Results, brackets and schedules are never copied.')}</p>
      </div>
-   </div>`:''}
+   </div>
    <div class="card">
      <div id="homeList"><p class="muted">${L('Laddar…','Loading…')}</p></div>
      <div class="small muted" id="homeMsg" style="margin-top:8px"></div>
@@ -1382,7 +1384,7 @@ function renderHome(){
   document.getElementById("homeShowArch").onchange=e=>{ ui.homeShowArchived=e.target.checked; renderHome(); };
   document.getElementById("homeReload").onclick=()=>renderHome();
   { const ub=document.getElementById("homeUnlockBtn"); if(ub) ub.onclick=promptAdmin; }
-  if(admin){
+  {   // "Skapa ny turnering" är tillgänglig för alla (publik + admin)
     const asCopy=document.getElementById("homeAsCopy"), copyBox=document.getElementById("homeCopyBox");
     asCopy.onchange=()=>{ copyBox.style.display = asCopy.checked ? "" : "none"; };
     // Deltagare kräver att Klasser också kopieras.
@@ -1464,9 +1466,12 @@ async function deleteTournamentFromHome(key, name){
   if(row && row.archived){ alert(L("Arkiverade turneringar kan inte tas bort härifrån. Öppna turneringen, lås upp den och ta bort den därifrån.","Archived tournaments can't be deleted here. Open it, unlock it, and delete from there.")); return; }
   if(list.length<=1){ alert(L("Det går inte att ta bort den enda turneringen. Skapa en ny först.","Can't delete the only tournament. Create a new one first.")); return; }
   const nm=name||(row&&row.name)||key;
+  // Kräver DEN AKTUELLA turneringens PIN (eller MasterAdmin-koden).
+  let targetPin=adminPin();
+  if(key!==TOURN_KEY){ try{ const d=await cloudGetKey(key); if(d && typeof d.adminPin==="string" && d.adminPin.trim()) targetPin=d.adminPin.trim(); else targetPin=ADMIN_PIN; }catch(e){ targetPin=ADMIN_PIN; } }
   const pin=prompt(`${L('Ta bort turneringen','Delete the tournament')} "${nm}" ${L('permanent ur molnet? Detta kan INTE ångras. Ange admin-koden (PIN) för att bekräfta:','permanently from the cloud? This canNOT be undone. Enter the admin code (PIN) to confirm:')}`);
   if(pin==null) return;
-  if(String(pin).trim()!==adminPin()){ alert(L("Fel admin-kod – avbryter.","Wrong admin code – aborting.")); return; }
+  if(!pinOK(pin, targetPin)){ alert(L("Fel admin-kod – avbryter.","Wrong admin code – aborting.")); return; }
   let deleted=[];
   try{
     const r=await fetch(`${SUPA_URL}/tournaments?key=eq.${encodeURIComponent(key)}`, { method:"DELETE", headers: cloudHeaders({ Prefer:"return=representation" }) });
@@ -1534,13 +1539,13 @@ function buildTournamentState(name, src, opts){
   }
   return normalize(s);
 }
-// Skapa ny turnering (ev. som kopia av vald källa) och öppna den.
+// Skapa ny turnering (ev. som kopia av vald källa) och öppna den i ADMINLÄGE.
+// Får användas även från publik startsida (kopia kräver källans PIN).
 async function createTournamentAdvanced(name, srcKey, opts){
-  if(!isAdmin()) return;
   name=(name||"").trim();
   if(!name){ alert(L("Ange ett namn på turneringen.","Enter a tournament name.")); return; }
   opts=opts||{};
-  await cloudForcePush();                              // spara pågående turnering först
+  if(isAdmin()) await cloudForcePush();                // spara pågående turnering först (om admin)
   let src=null;
   const wantsCopy = srcKey && (opts.copyLayout||opts.copyInfo||opts.copyClasses||opts.copyParticipants);
   if(wantsCopy && cloudEnabled){
@@ -1552,10 +1557,11 @@ async function createTournamentAdvanced(name, srcKey, opts){
     const srcName = (src.tournament && src.tournament.name) || srcKey;
     const entered = prompt(L(`Kopiera från "${srcName}" kräver den turneringens admin-PIN. Ange PIN:`,`Copying from "${srcName}" requires that tournament's admin PIN. Enter PIN:`));
     if(entered==null) return;
-    if(String(entered).trim()!==srcPin){ alert(L("Fel PIN för källturneringen – kopiering avbruten.","Wrong PIN for the source tournament – copy aborted.")); return; }
+    if(!pinOK(entered, srcPin)){ alert(L("Fel PIN för källturneringen – kopiering avbruten.","Wrong PIN for the source tournament – copy aborted.")); return; }
   }
   const st=buildTournamentState(name, src, opts);
   const key=(fileSafe(name).toLowerCase()||"turnering")+"-"+Date.now().toString(36);
+  setAdminFlag(true);                                  // den nya turneringen öppnas i adminläge
   localStorage.setItem("km_current_tourn", key); TOURN_KEY=key; updateTournURL();
   state=st; state.updatedAt=Date.now();
   saveLocal();
