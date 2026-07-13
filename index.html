@@ -168,6 +168,7 @@
   body.home, body.home header.app{ background:#fff !important; }
   body.home header.app .logo{ display:none !important; }
   body.home #appTitle, body.home #app .card h2, body.home #app .card h3{ color:#000 !important; }
+  body.home #linkBtn{ display:none !important; }   /* Kopiera länk visas ej på startsidan */
   @page land{ size:A4 landscape; margin:6mm }
   @media print{
     header.app,.tabs,.toolbar,.daybar,#app,.no-print{display:none !important}
@@ -377,6 +378,7 @@ function playersOf(m){
 /* ---------------- State ---------------- */
 let state = normalize(load() || newState());
 let ui = { tab:"classes", classId: state.classes[0].id, day: null };
+let _bootLandingDone = false;   // arkiverad direktlänk ska landa på Klubbmästare bara vid första laddningen
 ensureDay();
 
 function newState(){
@@ -689,8 +691,12 @@ async function cloudInit(){
     const data = await cloudGet();
     if(data){
       // Publik vy tar alltid molnets version. Admin behåller sin om den är nyare.
-      if(!isAdmin() || (data.updatedAt||0) >= (state.updatedAt||0)){ state=normalize(data); if(!getClass(ui.classId)) ui.classId=state.classes[0]&&state.classes[0].id; saveLocal(); ensureDay(); render(); }
-      else { await cloudPut(state); }   // admin och vår lokala är nyare – skicka upp den
+      if(!isAdmin() || (data.updatedAt||0) >= (state.updatedAt||0)){ state=normalize(data); if(!getClass(ui.classId)) ui.classId=state.classes[0]&&state.classes[0].id; saveLocal(); ensureDay();
+        // Direktlänk (?t=) till en arkiverad turnering landar på Klubbmästare (publik och admin) – bara vid första laddningen.
+        if(!_bootLandingDone && ui.tab!=="home" && isArchived()) ui.tab="champions";
+        _bootLandingDone=true;
+        render(); }
+      else { _bootLandingDone=true; await cloudPut(state); }   // admin och vår lokala är nyare – skicka upp den
     } else if(isAdmin()){
       await cloudPut(state);            // molnet är tomt – admins data blir grunddata (publik skriver aldrig)
     }
@@ -794,7 +800,8 @@ async function switchTournament(key, skipPush){
     cloudLastSync=Date.now(); cloudSetStatus("ok");
   }catch(e){ state=load()||newState(); cloudSetStatus("offline"); }
   saveLocal();
-  ui={ tab:"info", classId:state.classes[0].id, day:null }; ensureDay(); render();
+  // Arkiverad turnering öppnas på Klubbmästare (gäller både publik och admin), annars Turneringsinformation.
+  ui={ tab: isArchived()?"champions":"info", classId:state.classes[0].id, day:null }; ensureDay(); render();
 }
 // Ta bort en turnering permanent ur molnet (bekräftas med admin-koden/PIN).
 async function deleteTournament(key){
@@ -1281,7 +1288,8 @@ function render(){
   // Publik läsvy får bara besöka tillåtna flikar (beror på om turneringen är arkiverad).
   if(!isAdmin()){
     const allowed=publicTabDefs().map(t=>t[0]);
-    if(!allowed.includes(ui.tab)) ui.tab="bracket";
+    // Arkiverad turnering landar publikt på Klubbmästare, annars Stege.
+    if(!allowed.includes(ui.tab)) ui.tab = isArchived() ? "champions" : "bracket";
   }
   document.title = `${state.tournament.name||"Klubbmästerskap"} – ${arrangerName()}`;
   document.getElementById("appTitle").textContent = state.tournament.name || "Klubbmästerskap";
@@ -1446,9 +1454,8 @@ async function loadHomeList(){
   box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteTournamentFromHome(b.dataset.del, b.dataset.name));
 }
 async function openTournamentFromHome(key){
-  ui.tab="info";
-  if(key===TOURN_KEY){ render(); }
-  else { await switchTournament(key); }   // laddar den valda och renderar (ui.tab=info)
+  if(key===TOURN_KEY){ ui.tab = isArchived()?"champions":"info"; render(); }
+  else { await switchTournament(key); }   // laddar den valda och renderar (arkiverad → Klubbmästare)
 }
 async function deleteTournamentFromHome(key, name){
   if(!isAdmin() || !cloudEnabled) return;
