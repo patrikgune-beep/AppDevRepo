@@ -1332,7 +1332,7 @@ function render(){
   // Nya format (allt utom Klassisk KM): spelmotorn byggs steg för steg – visa en tydlig platshållare.
   if(state.format && state.format!=="classic"){
     document.getElementById("tabs").innerHTML="";
-    if(state.format==="americano"||state.format==="mexicano"||state.format==="kingcourt") renderRotationFormat();
+    if(state.format==="americano"||state.format==="mexicano"||state.format==="kingcourt"||state.format==="compass") renderRotationFormat();
     else renderFormatPlaceholder();
     applyLang();
     return;
@@ -1848,13 +1848,69 @@ function kotcNextRound(courts){
   state.amRounds.push({ matches, rest:(prev.rest||[]).slice() });
   return true;
 }
+/* ---- Kompasslottning (compass draw): Öst = huvudlottning, förlorare matas till Väst/Nord/Syd ---- */
+function cmpDrawLabel(d){ return {east:L('Öst','East'),west:L('Väst','West'),north:L('Nord','North'),south:L('Syd','South')}[d]||d; }
+function cmpSideOf(ci){ return state.amScoreMode==='pairs' ? [2*ci,2*ci+1] : [ci]; }
+function cmpCompOf(side){ return state.amScoreMode==='pairs' ? Math.floor(side[0]/2) : side[0]; }
+function cmpCompName(ci){ return state.amScoreMode==='pairs' ? (state.players[2*ci]||'?')+' & '+(state.players[2*ci+1]||'?') : (state.players[ci]||'?'); }
+function compassNumComps(){ const N=state.players.length; return state.amScoreMode==='pairs'?Math.floor(N/2):N; }
+function compassFeed(draw, round){
+  if(draw==='east'&&round===1) return 'west';   // förlorare i Öst rond 1 → Väst
+  if(draw==='east'&&round===2) return 'north';  // förlorare i Öst rond 2 → Nord
+  if(draw==='west'&&round===1) return 'south';  // förlorare i Väst rond 1 → Syd
+  return null;                                   // övriga slås ut
+}
+function compassEnsure(){
+  if(!state.cmp){
+    const n=compassNumComps();
+    state.cmp={ draws:{ east:{waiting:[...Array(n).keys()],round:0}, west:{waiting:[],round:0}, north:{waiting:[],round:0}, south:{waiting:[],round:0} }, processed:0, done:false };
+  }
+}
+function compassProcessRound(rd){
+  for(const mt of rd.matches){
+    if(mt.s1==null||mt.s2==null) continue;
+    const aWon=(+mt.s1||0)>=(+mt.s2||0);
+    const wComp=cmpCompOf(aWon?mt.a:mt.b), lComp=cmpCompOf(aWon?mt.b:mt.a);
+    state.cmp.draws[mt.draw].waiting.push(wComp);
+    const dest=compassFeed(mt.draw, mt.round);
+    if(dest) state.cmp.draws[dest].waiting.push(lComp);
+  }
+}
+function compassBuildRound(){
+  const matches=[];
+  for(const d of ['east','west','north','south']){
+    const dr=state.cmp.draws[d];
+    if(dr.waiting.length<2) continue;
+    const round=dr.round+1; dr.round=round;
+    let list=dr.waiting.slice(), bye=null;
+    if(list.length%2===1) bye=list.shift();            // toppseed får frilott
+    for(let i=0;i+1<list.length;i+=2)
+      matches.push({ court:cmpDrawLabel(d)+' R'+round, draw:d, round, a:cmpSideOf(list[i]), b:cmpSideOf(list[i+1]), s1:null, s2:null });
+    dr.waiting = bye!=null?[bye]:[];                    // frilottad går vidare, spelande ligger nu i matcher
+  }
+  return matches;
+}
+function compassNextRound(){
+  amEnsure(); compassEnsure();
+  if(state.cmp.processed<state.amRounds.length){
+    const rd=state.amRounds[state.amRounds.length-1];
+    if(!amRoundScored(rd)) return false;
+    compassProcessRound(rd);
+    state.cmp.processed=state.amRounds.length;
+  }
+  const matches=compassBuildRound();
+  if(!matches.length){ if(state.amRounds.length) state.cmp.done=true; return false; }
+  state.amRounds.push({ matches, rest:[] });
+  return true;
+}
 function renderAmericano(){ renderRotationFormat(); }
 function renderMexicano(){ renderRotationFormat(); }
 function renderRotationFormat(){
   amEnsure();
   const admin=isAdmin(), N=state.players.length, pairsMode=state.amScoreMode==="pairs";
-  const fmtName=matchFormat(state.format).name, isMex=(state.format==="mexicano"), isKotC=(state.format==="kingcourt");
-  const roundByRound=(isMex && !pairsMode) || isKotC;        // lottas rond för rond (Mexicano: ställning, KotC: banflytt)
+  const fmtName=matchFormat(state.format).name, isMex=(state.format==="mexicano"), isKotC=(state.format==="kingcourt"), isCompass=(state.format==="compass");
+  const roundByRound=(isMex && !pairsMode) || isKotC || isCompass;   // lottas rond för rond
+  const compassDone=isCompass && state.cmp && state.cmp.done;
   const latestScored=state.amRounds.length===0 || amRoundScored(state.amRounds[state.amRounds.length-1]);
   const st=pairsMode?amPairStandings():amStandings();
   const esc=escXml;
@@ -1873,6 +1929,11 @@ function renderRotationFormat(){
     html+=`</tbody></table></div>`;
   }
   html+=`</div>`;
+  if(compassDone){
+    html+=`<div class="card"><h2>🧭 ${L('Kompasslottning – vinnare','Compass draw – winners')}</h2><div style="overflow-x:auto"><table class="results"><thead><tr><th>${L('Lottning','Draw')}</th><th>${L('Vinnare','Winner')}</th></tr></thead><tbody>`;
+    for(const d of ['east','west','north','south']){ const w=state.cmp.draws[d].waiting; if(!w.length) continue; html+=`<tr><td>${cmpDrawLabel(d)}</td><td><b>${esc(cmpCompName(w[0]))}</b></td></tr>`; }
+    html+=`</tbody></table></div><p class="small muted" style="margin-top:8px">${L('Öst är huvudlottningens vinnare.','East is the winner of the main draw.')}</p></div>`;
+  }
   if(admin){
     html+=`<div class="card no-print">
        <h2>${L('Deltagare & inställningar','Players & settings')}</h2>
@@ -1886,15 +1947,17 @@ function renderRotationFormat(){
          <label class="small">${L('Antal banor','Courts')}<br><input type="number" id="amCourts" min="1" max="16" value="${state.courts}" style="width:80px"></label>
          <button class="btn" id="amSavePlayers">💾 ${L('Spara','Save')}</button>
          ${roundByRound
-           ? `${state.amRounds.length===0
-                ? `<button class="btn" id="amNextRound">🎲 ${L('Generera rond 1','Generate round 1')}</button>`
-                : latestScored
-                  ? `<button class="btn" id="amNextRound">🎲 ${L('Generera nästa rond','Generate next round')} (${L('rond','round')} ${state.amRounds.length+1})</button>`
-                  : `<button class="btn" id="amNextRound" disabled title="${L('Fyll i alla resultat i senaste ronden först.','Enter all results in the latest round first.')}">🎲 ${L('Generera nästa rond','Generate next round')}</button>`}
+           ? `${compassDone
+                ? `<span class="pill" style="background:#e3f1de;color:var(--green)">🏁 ${L('Färdigspelat','All rounds played')}</span>`
+                : state.amRounds.length===0
+                  ? `<button class="btn" id="amNextRound">🎲 ${L('Generera rond 1','Generate round 1')}</button>`
+                  : latestScored
+                    ? `<button class="btn" id="amNextRound">🎲 ${L('Generera nästa rond','Generate next round')} (${L('rond','round')} ${state.amRounds.length+1})</button>`
+                    : `<button class="btn" id="amNextRound" disabled title="${L('Fyll i alla resultat i senaste ronden först.','Enter all results in the latest round first.')}">🎲 ${L('Generera nästa rond','Generate next round')}</button>`}
               <button class="btn gray" id="amResetSched">↺ ${L('Nollställ schema','Reset schedule')}</button>`
            : `<button class="btn" id="amGenerate">🎲 ${L('Generera spelschema','Generate schedule')}</button>`}
        </div>
-       <p class="small muted" style="margin:8px 0 0">${isKotC?L('King of the Court: bana 1 är kungsbanan. Vinnande lag flyttas upp mot kungsbanan, förlorande lag flyttas ned. Fyll i resultaten och generera nästa rond. I parläge flyttas hela paret; i individuellt läge lottas nya partner varje rond.','King of the Court: court 1 is the king court. Winning teams move up toward the king court, losing teams move down. Enter the results and generate the next round. In pairs mode the whole pair moves; in individual mode new partners are drawn each round.'):pairsMode?L('Par bildas i ordning: deltagare 1&2 = Par 1, 3&4 = Par 2 osv. Paren spelar mot varandra och poängen räknas per par.','Pairs are formed in order: players 1&2 = Pair 1, 3&4 = Pair 2, etc. Pairs play against each other and points are counted per pair.'):roundByRound?L('Mexicano lottar paren rond för rond efter aktuell ställning (rond 1 = spellistans ordning). Fyll i resultaten och generera nästa rond – bäst mot sämst på varje bana för jämna matcher.','Mexicano draws pairs round by round based on the current standings (round 1 = player list order). Enter the results and generate the next round – best vs worst on each court for even matches.'):L('Varje deltagare byter partner varje rond och samlar egna poäng.','Each player changes partner every round and collects individual points.')}</p>
+       <p class="small muted" style="margin:8px 0 0">${isCompass?L('Kompasslottning: Öst är huvudlottningen. Förlorare i Öst rond 1 flyttas till Väst, i rond 2 till Nord, och Väst rond 1-förlorare till Syd – så alla får flera matcher. Fyll i resultaten och generera nästa rond.','Compass draw: East is the main draw. Round 1 losers in East move to West, round 2 losers to North, and West round 1 losers to South – so everyone gets several matches. Enter the results and generate the next round.'):isKotC?L('King of the Court: bana 1 är kungsbanan. Vinnande lag flyttas upp mot kungsbanan, förlorande lag flyttas ned. Fyll i resultaten och generera nästa rond. I parläge flyttas hela paret; i individuellt läge lottas nya partner varje rond.','King of the Court: court 1 is the king court. Winning teams move up toward the king court, losing teams move down. Enter the results and generate the next round. In pairs mode the whole pair moves; in individual mode new partners are drawn each round.'):pairsMode?L('Par bildas i ordning: deltagare 1&2 = Par 1, 3&4 = Par 2 osv. Paren spelar mot varandra och poängen räknas per par.','Pairs are formed in order: players 1&2 = Pair 1, 3&4 = Pair 2, etc. Pairs play against each other and points are counted per pair.'):roundByRound?L('Mexicano lottar paren rond för rond efter aktuell ställning (rond 1 = spellistans ordning). Fyll i resultaten och generera nästa rond – bäst mot sämst på varje bana för jämna matcher.','Mexicano draws pairs round by round based on the current standings (round 1 = player list order). Enter the results and generate the next round – best vs worst on each court for even matches.'):L('Varje deltagare byter partner varje rond och samlar egna poäng.','Each player changes partner every round and collects individual points.')}</p>
      </div>
      ${formatInfoCardHTML()}
      <div class="card no-print">
@@ -1937,7 +2000,7 @@ function renderRotationFormat(){
     const readSettings=()=>{ const lines=document.getElementById("amPlayers").value.split("\n").map(s=>s.trim()).filter(Boolean);
       state.players=lines; state.amPointsTo=Math.max(1,parseInt(document.getElementById("amPoints").value,10)||24);
       state.courts=Math.max(1,parseInt(document.getElementById("amCourts").value,10)||state.courts); };
-    { const s=document.getElementById("amMode"); if(s) s.onchange=()=>{ const nm=s.value==="pairs"?"pairs":"individual"; if(nm!==state.amScoreMode){ state.amScoreMode=nm; state.amRounds=[]; save(); render(); } }; }
+    { const s=document.getElementById("amMode"); if(s) s.onchange=()=>{ const nm=s.value==="pairs"?"pairs":"individual"; if(nm!==state.amScoreMode){ state.amScoreMode=nm; state.amRounds=[]; state.cmp=null; save(); render(); } }; }
     { const b=document.getElementById("amSavePlayers"); if(b) b.onclick=()=>{ readSettings(); save(); render(); }; }
     { const b=document.getElementById("amGenerate"); if(b) b.onclick=()=>{
         readSettings();
@@ -1948,14 +2011,22 @@ function renderRotationFormat(){
       }; }
     { const b=document.getElementById("amNextRound"); if(b) b.onclick=()=>{
         readSettings();
-        if(state.players.length<4){ alert(L("Minst 4 deltagare krävs.","At least 4 players required.")); return; }
-        const ok = isKotC ? kotcNextRound(state.courts) : mexNextRound(state.courts);
-        if(!ok){ alert(L("Kunde inte skapa ronden.","Could not create the round.")); return; }
+        const comps = pairsMode?Math.floor(state.players.length/2):state.players.length;
+        const minComps = isCompass?2:(pairsMode?2:4);   // compass klarar en enkel final; övriga behöver en full bana
+        if(comps < minComps){ alert(L("För få deltagare för detta format.","Too few players for this format.")); return; }
+        let ok;
+        if(isCompass) ok=compassNextRound();
+        else if(isKotC) ok=kotcNextRound(state.courts);
+        else ok=mexNextRound(state.courts);
+        if(!ok){
+          if(isCompass && state.cmp && state.cmp.done){ save(); render(); return; }
+          alert(L("Kunde inte skapa ronden.","Could not create the round.")); return;
+        }
         save(); render();
       }; }
     { const b=document.getElementById("amResetSched"); if(b) b.onclick=()=>{
         if(state.amRounds.length && !confirm(L("Nollställ hela schemat och alla resultat?","Reset the whole schedule and all results?"))) return;
-        state.amRounds=[]; save(); render();
+        state.amRounds=[]; state.cmp=null; save(); render();
       }; }
     { const b=document.getElementById("amSimSave"); if(b) b.onclick=()=>{
         const t=document.getElementById("amStart").value; if(timeToMin(t)!=null) state.amStart=t;
