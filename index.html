@@ -454,6 +454,9 @@ function normalize(s){
   { const d=defaultSched(); s.sched = Object.assign(d, (s.sched && typeof s.sched==="object") ? s.sched : {}); }
   if(typeof s.venue!=="string") s.venue="";
   if(typeof s.format!=="string" || !MATCH_FORMATS.some(f=>f.id===s.format)) s.format="classic";
+  if(!Array.isArray(s.players)) s.players=[];          // deltagarlista för rond-baserade format
+  if(!(s.amPointsTo>0)) s.amPointsTo=24;               // poäng per match (Americano/Mexicano)
+  if(!Array.isArray(s.amRounds)) s.amRounds=[];        // genererade ronder
   if(typeof s.adminPin!=="string") s.adminPin="";
   if(typeof s.updatedAt!=="number") s.updatedAt=0;
   if(typeof s.archived!=="boolean") s.archived=false;
@@ -1326,7 +1329,8 @@ function render(){
   // Nya format (allt utom Klassisk KM): spelmotorn byggs steg för steg – visa en tydlig platshållare.
   if(state.format && state.format!=="classic"){
     document.getElementById("tabs").innerHTML="";
-    renderFormatPlaceholder();
+    if(state.format==="americano") renderAmericano();
+    else renderFormatPlaceholder();
     applyLang();
     return;
   }
@@ -1634,7 +1638,124 @@ async function createTournamentAdvanced(name, srcKey, opts){
   render();
 }
 
-// Platshållare för de nya formaten (Americano/Mexicano/Kompass/King of the Court) tills spelmotorn byggts.
+/* ===================== Americano ===================== */
+function amEnsure(){ if(!Array.isArray(state.players)) state.players=[]; if(!(state.amPointsTo>0)) state.amPointsTo=24; if(!Array.isArray(state.amRounds)) state.amRounds=[]; }
+// Ställning: summera poäng per spelare över alla spelade matcher.
+function amStandings(){
+  amEnsure();
+  const st=state.players.map((name,i)=>({i,name,pts:0,pf:0,pa:0,games:0,wins:0}));
+  for(const rd of state.amRounds) for(const mt of (rd.matches||[])){
+    if(mt.s1==null||mt.s2==null) continue;
+    const s1=+mt.s1||0, s2=+mt.s2||0;
+    for(const pi of mt.a){ const o=st[pi]; if(o){ o.pts+=s1; o.pf+=s1; o.pa+=s2; o.games++; if(s1>s2)o.wins++; } }
+    for(const pi of mt.b){ const o=st[pi]; if(o){ o.pts+=s2; o.pf+=s2; o.pa+=s1; o.games++; if(s2>s1)o.wins++; } }
+  }
+  st.sort((a,b)=> b.pts-a.pts || (b.pf-b.pa)-(a.pf-a.pa) || b.wins-a.wins || a.name.localeCompare(b.name,"sv"));
+  return st;
+}
+// Generera Americano-schema: roterande partners, rättvis vila, minimerar upprepade par.
+function amGenerate(numRounds, courts){
+  amEnsure();
+  const N=state.players.length; if(N<4) return false;
+  const idx=[...Array(N).keys()];
+  const key=(a,b)=>a<b?a+"_"+b:b+"_"+a;
+  const partnerCount={}, restCount=idx.map(()=>0);
+  const C=Math.max(1,courts||1);
+  const matchesPerRound=Math.min(C, Math.floor(N/4));
+  const playPer=4*matchesPerRound, restN=N-playPer;
+  const rounds=[];
+  const shuffle=a=>{ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+  for(let r=0;r<numRounds;r++){
+    const order=shuffle([...idx]).sort((a,b)=>restCount[a]-restCount[b]);   // lägst vila vilar (rättvist)
+    const resting=order.slice(0,restN); resting.forEach(i=>restCount[i]++);
+    const playing=shuffle(order.slice(restN));
+    const matches=[];
+    for(let g=0; g+4<=playing.length; g+=4){
+      const q=playing.slice(g,g+4);
+      const splits=[[[0,1],[2,3]],[[0,2],[1,3]],[[0,3],[1,2]]];
+      let best=null,bc=Infinity;
+      for(const sp of splits){
+        const a=[q[sp[0][0]],q[sp[0][1]]], b=[q[sp[1][0]],q[sp[1][1]]];
+        const c=(partnerCount[key(a[0],a[1])]||0)+(partnerCount[key(b[0],b[1])]||0);
+        if(c<bc){ bc=c; best={a,b}; }
+      }
+      partnerCount[key(best.a[0],best.a[1])]=(partnerCount[key(best.a[0],best.a[1])]||0)+1;
+      partnerCount[key(best.b[0],best.b[1])]=(partnerCount[key(best.b[0],best.b[1])]||0)+1;
+      matches.push({ court:matches.length+1, a:best.a, b:best.b, s1:null, s2:null });
+    }
+    rounds.push({ matches, rest:resting });
+  }
+  state.amRounds=rounds; return true;
+}
+function renderAmericano(){
+  amEnsure();
+  const admin=isAdmin(), st=amStandings(), N=state.players.length;
+  const esc=escXml;
+  let html=`<div class="card">
+     <h2>${esc(state.tournament.name||"")} <span class="badge" style="background:#eef;color:#33507a">Americano</span></h2>
+     <p class="small muted">${esc(arrangerName())} · ${N} ${L('deltagare','players')} · ${state.amRounds.length} ${L('ronder','rounds')} · ${L('till','to')} ${state.amPointsTo} ${L('poäng/match','pts/match')}</p>
+   </div>
+   <div class="card"><h2>🏆 ${L('Ställning','Standings')}</h2>`;
+  if(!st.length) html+=`<p class="muted">${L('Inga deltagare ännu.','No players yet.')}</p>`;
+  else{
+    html+=`<div style="overflow-x:auto"><table class="results"><thead><tr><th>#</th><th>${L('Spelare','Player')}</th><th>${L('Poäng','Points')}</th><th>${L('Matcher','Games')}</th><th>${L('Vinster','Wins')}</th><th>+/-</th></tr></thead><tbody>`;
+    st.forEach((p,r)=>{ const d=p.pf-p.pa; html+=`<tr><td>${r+1}</td><td>${esc(p.name)}</td><td><b>${p.pts}</b></td><td>${p.games}</td><td>${p.wins}</td><td>${d>=0?'+':''}${d}</td></tr>`; });
+    html+=`</tbody></table></div>`;
+  }
+  html+=`</div>`;
+  if(admin){
+    html+=`<div class="card no-print">
+       <h2>${L('Deltagare & inställningar','Players & settings')}</h2>
+       <p class="small muted">${L('En deltagare per rad.','One player per line.')}</p>
+       <textarea id="amPlayers" style="height:150px">${state.players.map(esc).join("\n")}</textarea>
+       <div class="row" style="margin-top:10px;align-items:flex-end;gap:10px;flex-wrap:wrap">
+         <label class="small">${L('Poäng per match','Points per match')}<br><input type="number" id="amPoints" min="1" max="99" value="${state.amPointsTo}" style="width:80px"></label>
+         <label class="small">${L('Antal ronder','Number of rounds')}<br><input type="number" id="amNumRounds" min="1" max="60" value="${state.amRounds.length||Math.max(1,N-1)}" style="width:80px"></label>
+         <label class="small">${L('Antal banor','Courts')}<br><input type="number" id="amCourts" min="1" max="16" value="${state.courts}" style="width:80px"></label>
+         <button class="btn" id="amSavePlayers">💾 ${L('Spara','Save')}</button>
+         <button class="btn" id="amGenerate">🎲 ${L('Generera spelschema','Generate schedule')}</button>
+       </div>
+     </div>`;
+  }
+  html+=`<div class="card"><h2>${L('Spelschema & resultat','Schedule & results')}</h2>`;
+  if(!state.amRounds.length) html+=`<p class="muted">${admin?L('Lägg in deltagare och klicka Generera spelschema.','Add players and click Generate schedule.'):L('Spelschemat är inte skapat ännu.','The schedule is not created yet.')}</p>`;
+  else state.amRounds.forEach((rd,ri)=>{
+    const restTxt=(rd.rest&&rd.rest.length)?` <span class="small muted">(${L('vilar','resting')}: ${rd.rest.map(i=>esc(state.players[i]||'')).join(", ")})</span>`:'';
+    html+=`<h3 style="color:var(--head);margin:14px 0 6px">${L('Rond','Round')} ${ri+1}${restTxt}</h3><div style="overflow-x:auto"><table class="results"><thead><tr><th>${L('Bana','Court')}</th><th>${L('Lag 1','Team 1')}</th><th style="text-align:center">${L('Resultat','Score')}</th><th>${L('Lag 2','Team 2')}</th></tr></thead><tbody>`;
+    rd.matches.forEach((mt,mi)=>{
+      const t1=mt.a.map(i=>esc(state.players[i]||'?')).join(" & "), t2=mt.b.map(i=>esc(state.players[i]||'?')).join(" & ");
+      const score=admin
+        ? `<input type="number" min="0" max="99" value="${mt.s1==null?'':mt.s1}" data-am="${ri}_${mi}_1" style="width:52px"> – <input type="number" min="0" max="99" value="${mt.s2==null?'':mt.s2}" data-am="${ri}_${mi}_2" style="width:52px">`
+        : `<b>${mt.s1==null?'–':mt.s1} – ${mt.s2==null?'–':mt.s2}</b>`;
+      const won1=mt.s1!=null&&mt.s2!=null&&mt.s1>mt.s2, won2=mt.s1!=null&&mt.s2!=null&&mt.s2>mt.s1;
+      html+=`<tr><td>${mt.court}</td><td style="${won1?'font-weight:bold':''}">${t1}</td><td style="text-align:center;white-space:nowrap">${score}</td><td style="${won2?'font-weight:bold':''}">${t2}</td></tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  });
+  html+=`</div>`;
+  app.innerHTML=html;
+  if(admin){
+    const readSettings=()=>{ const lines=document.getElementById("amPlayers").value.split("\n").map(s=>s.trim()).filter(Boolean);
+      state.players=lines; state.amPointsTo=Math.max(1,parseInt(document.getElementById("amPoints").value,10)||24);
+      state.courts=Math.max(1,parseInt(document.getElementById("amCourts").value,10)||state.courts); };
+    { const b=document.getElementById("amSavePlayers"); if(b) b.onclick=()=>{ readSettings(); save(); render(); }; }
+    { const b=document.getElementById("amGenerate"); if(b) b.onclick=()=>{
+        readSettings();
+        if(state.players.length<4){ alert(L("Minst 4 deltagare krävs.","At least 4 players required.")); return; }
+        if(state.amRounds.length && !confirm(L("Generera om? Nuvarande schema och resultat ersätts.","Regenerate? The current schedule and results are replaced."))) return;
+        const nr=Math.max(1,parseInt(document.getElementById("amNumRounds").value,10)||1);
+        amGenerate(nr, state.courts); save(); render();
+      }; }
+    document.querySelectorAll("[data-am]").forEach(inp=>inp.onchange=()=>{
+      const [ri,mi,which]=inp.dataset.am.split("_").map(Number);
+      const v=inp.value===""?null:Math.max(0,parseInt(inp.value,10)||0);
+      const mt=state.amRounds[ri]&&state.amRounds[ri].matches[mi]; if(!mt) return;
+      if(which===1) mt.s1=v; else mt.s2=v; save(); render();
+    });
+  }
+}
+
+// Platshållare för de nya formaten (Mexicano/Kompass/King of the Court) tills spelmotorn byggts.
 function renderFormatPlaceholder(){
   const f=matchFormat(state.format);
   app.innerHTML=`<div class="card">
