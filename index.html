@@ -1347,14 +1347,24 @@ function renderHome(){
    <div class="card">
      <h2>➕ ${L('Skapa ny turnering','Create new tournament')}</h2>
      <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
-       <label class="small">${L('Namn','Name')}<br><input type="text" id="homeNewName" placeholder="${L('Turneringens namn','Tournament name')}" style="min-width:200px"></label>
-       <label class="small">${L('Kopiera från','Copy from')}<br>
-         <select id="homeCopyFrom" style="min-width:200px"><option value="">${L('— Tom turnering —','— Blank tournament —')}</option></select></label>
-       <label class="small" title="${L('Datum, arrangör, kontakt, spelplats, schemaläggning, färger, tränare m.m.','Dates, organizer, contact, venue, scheduling, colours, trainers, etc.')}"><input type="checkbox" id="homeCopyInfo" disabled> ${L('Turneringsinformation','Tournament info')}</label>
-       <label class="small" title="${L('Klasser och deras deltagare (utan resultat och scheman)','Classes and their players (without results and schedules)')}"><input type="checkbox" id="homeCopyClasses" disabled> ${L('Klasser & deltagare','Classes & players')}</label>
+       <label class="small">${L('Turneringsnamn','Tournament name')}<br><input type="text" id="homeNewName" placeholder="${L('t.ex. Vår-KM 2026','e.g. Spring Cup 2026')}" style="min-width:200px"></label>
+       <label class="small">${L('Arrangör','Organizer')}<br><input type="text" id="homeNewArr" placeholder="${L('t.ex. Dalarö Tennisklubb','e.g. the club')}" style="min-width:200px"></label>
+       <label class="small">${L('PIN-kod','PIN code')}<br><input type="text" id="homeNewPin" value="0000" style="width:90px" autocomplete="off"></label>
        <button class="btn" id="homeCreateBtn">${L('Skapa','Create')}</button>
      </div>
-     <p class="small muted" style="margin:8px 0 0">${L('Välj en källturnering för att kopiera valda delar. Då krävs källturneringens PIN-kod. Resultat, stegar och scheman kopieras aldrig.','Choose a source tournament to copy the selected parts. The source PIN is then required. Results, brackets and schedules are never copied.')}</p>
+     <label class="small" style="display:block;margin:12px 0 0"><input type="checkbox" id="homeAsCopy"> <b>${L('Skapa som kopia av en gammal turnering','Create as a copy of an old tournament')}</b></label>
+     <div id="homeCopyBox" style="display:none;margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+       <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
+         <label class="small">${L('Kopiera från','Copy from')}<br>
+           <select id="homeCopyFrom" style="min-width:220px"><option value="">${L('— välj turnering —','— choose tournament —')}</option></select></label>
+         <span class="small" style="padding-bottom:6px">${L('Kopiera med:','Copy:')}</span>
+         <label class="small"><input type="checkbox" id="cpLayout" checked> ${L('Layout','Layout')}</label>
+         <label class="small"><input type="checkbox" id="cpInfo" checked> ${L('Turneringsinformation','Tournament info')}</label>
+         <label class="small"><input type="checkbox" id="cpClasses" checked> ${L('Klasser','Classes')}</label>
+         <label class="small"><input type="checkbox" id="cpParts" checked> ${L('Deltagare','Players')}</label>
+       </div>
+       <p class="small muted" style="margin:8px 0 0">${L('Listan innehåller även arkiverade turneringar. Kopiering kräver källturneringens PIN-kod. Resultat, stegar och scheman kopieras aldrig.','The list also includes archived tournaments. Copying requires the source PIN. Results, brackets and schedules are never copied.')}</p>
+     </div>
    </div>`:''}
    <div class="card">
      <div id="homeList"><p class="muted">${L('Laddar…','Loading…')}</p></div>
@@ -1365,13 +1375,28 @@ function renderHome(){
   document.getElementById("homeReload").onclick=()=>renderHome();
   { const ub=document.getElementById("homeUnlockBtn"); if(ub) ub.onclick=promptAdmin; }
   if(admin){
-    const cf=document.getElementById("homeCopyFrom"), ci=document.getElementById("homeCopyInfo"), cc=document.getElementById("homeCopyClasses");
-    cf.onchange=()=>{ const has=!!cf.value; ci.disabled=cc.disabled=!has; ci.checked=cc.checked=has; };   // källa vald → bocka i båda som standard
+    const asCopy=document.getElementById("homeAsCopy"), copyBox=document.getElementById("homeCopyBox");
+    asCopy.onchange=()=>{ copyBox.style.display = asCopy.checked ? "" : "none"; };
+    // Deltagare kräver att Klasser också kopieras.
+    const cpClasses=document.getElementById("cpClasses"), cpParts=document.getElementById("cpParts");
+    cpParts.onchange=()=>{ if(cpParts.checked) cpClasses.checked=true; };
+    cpClasses.onchange=()=>{ if(!cpClasses.checked) cpParts.checked=false; };
     document.getElementById("homeCreateBtn").onclick=()=>{
       const name=document.getElementById("homeNewName").value.trim();
-      if(!name){ alert(L("Ange ett namn på turneringen.","Enter a tournament name.")); return; }
-      const srcKey=cf.value;
-      createTournamentAdvanced(name, srcKey, { copyInfo: !!srcKey && ci.checked, copyClasses: !!srcKey && cc.checked });
+      if(!name){ alert(L("Ange ett turneringsnamn.","Enter a tournament name.")); return; }
+      const arranger=document.getElementById("homeNewArr").value.trim();
+      let pin=document.getElementById("homeNewPin").value.trim(); if(!pin) pin="0000";
+      if(asCopy.checked){
+        const srcKey=document.getElementById("homeCopyFrom").value;
+        if(!srcKey){ alert(L("Välj en turnering att kopiera från.","Choose a tournament to copy from.")); return; }
+        createTournamentAdvanced(name, srcKey, { arranger, pin,
+          copyLayout: document.getElementById("cpLayout").checked,
+          copyInfo:   document.getElementById("cpInfo").checked,
+          copyClasses: cpClasses.checked,
+          copyParticipants: cpParts.checked && cpClasses.checked });
+      } else {
+        createTournamentAdvanced(name, "", { arranger, pin });   // tom layout
+      }
     };
   }
   loadHomeList();
@@ -1388,9 +1413,9 @@ async function loadHomeList(){
   const cf=document.getElementById("homeCopyFrom");
   if(cf){
     const keep=cf.value;
-    cf.innerHTML=`<option value="">${L('— Tom turnering —','— Blank tournament —')}</option>`+
+    cf.innerHTML=`<option value="">${L('— välj turnering —','— choose tournament —')}</option>`+
       list.slice().sort((a,b)=>String(a.name||a.key).localeCompare(String(b.name||b.key),"sv"))
-        .map(x=>`<option value="${escXml(x.key)}">${escXml(x.name||x.key)}${x.archived?' 📦':''}</option>`).join("");
+        .map(x=>`<option value="${escXml(x.key)}">${escXml(x.name||x.key)}${x.arranger?' – '+escXml(x.arranger):''}${x.archived?' 📦':''}</option>`).join("");
     if([...cf.options].some(o=>o.value===keep)) cf.value=keep;
   }
   const showArch=!!ui.homeShowArchived;
@@ -1462,13 +1487,25 @@ async function cloudGetKey(key){
   const rows=await r.json();
   return (Array.isArray(rows)&&rows.length)?rows[0].data:null;
 }
-// Bygg ett nytt turneringstillstånd; kopiera valfria delar från en källa.
+// Bygg ett nytt turneringstillstånd; kopiera valfria delar (layout/info/klasser/deltagare) från en källa.
 function buildTournamentState(name, src, opts){
+  opts=opts||{};
   const s=newState();
   s.tournament.name=name;
+  // Namn, arrangör och PIN sätts alltid av formuläret (inte kopierade).
+  if(typeof opts.arranger==="string" && opts.arranger.trim()) s.arranger=opts.arranger.trim();
+  s.adminPin = (typeof opts.pin==="string" && opts.pin.trim()) ? opts.pin.trim() : "0000";
+  // LAYOUT: kopiera eller "tom layout" (vit bakgrund, svart rubriktext, ingen logga).
+  if(src && opts.copyLayout){
+    if(typeof src.logo==="string"||src.logo===null) s.logo=src.logo;
+    if(typeof src.bgColor==="string"||src.bgColor===null) s.bgColor=src.bgColor;
+    if(typeof src.headColor==="string"||src.headColor===null) s.headColor=src.headColor;
+  } else {
+    s.logo=null; s.bgColor="#ffffff"; s.headColor="#000000";
+  }
+  // TURNERINGSINFORMATION (ej namn/arrangör/PIN/layout).
   if(src && opts.copyInfo){
     if(src.tournament){ s.tournament.start=src.tournament.start||s.tournament.start; s.tournament.end=src.tournament.end||s.tournament.end; }
-    if(typeof src.arranger==="string") s.arranger=src.arranger;
     if(src.organizer && typeof src.organizer==="object") s.organizer={...src.organizer};
     if(typeof src.chairman==="string") s.chairman=src.chairman;
     if(Array.isArray(src.trainers)) s.trainers=src.trainers.slice();
@@ -1476,21 +1513,15 @@ function buildTournamentState(name, src, opts){
     if(typeof src.venue==="string") s.venue=src.venue;
     if(src.sched && typeof src.sched==="object") s.sched={...src.sched};
     if(src.courts>0) s.courts=src.courts;
-    if(typeof src.logo==="string"||src.logo===null) s.logo=src.logo;
-    if(typeof src.bgColor==="string"||src.bgColor===null) s.bgColor=src.bgColor;
-    if(typeof src.headColor==="string"||src.headColor===null) s.headColor=src.headColor;
     if(src.lang) s.lang=src.lang;
-    if(typeof src.adminPin==="string") s.adminPin=src.adminPin;
-  } else {
-    // Ny turnering utan kopierad information: vit bakgrund, svart text, ingen logga, PIN 0000.
-    s.bgColor="#ffffff"; s.headColor="#000000"; s.logo=null; s.adminPin="0000";
   }
+  // KLASSER (+ ev. DELTAGARE). Deltagare kopieras bara om även klasser kopieras.
   if(src && opts.copyClasses && Array.isArray(src.classes) && src.classes.length){
     s.classes=src.classes.map(c=>({
       id:"c"+uid(), name:c.name, type:c.type,
       ranked:!!c.ranked, seeds:(c.seeds>0?c.seeds:4), catNo:(c.catNo>0?c.catNo:1),
       category:c.category||"", ageLevel:c.ageLevel||"", hidden:!!c.hidden,
-      participants:Array.isArray(c.participants)?c.participants.slice():[],
+      participants:(opts.copyParticipants && Array.isArray(c.participants))?c.participants.slice():[],
       matches:[], champion:null                       // resultat/stegar kopieras aldrig
     }));
   }
@@ -1504,7 +1535,8 @@ async function createTournamentAdvanced(name, srcKey, opts){
   opts=opts||{};
   await cloudForcePush();                              // spara pågående turnering först
   let src=null;
-  if(srcKey && (opts.copyInfo||opts.copyClasses) && cloudEnabled){
+  const wantsCopy = srcKey && (opts.copyLayout||opts.copyInfo||opts.copyClasses||opts.copyParticipants);
+  if(wantsCopy && cloudEnabled){
     try{ src=await cloudGetKey(srcKey); }catch(e){ alert(L("Kunde inte läsa källturneringen","Could not read the source tournament")+": "+(e.message||e)); return; }
     // OBS: normalisera INTE källan – det skulle trigga engångsmigreringen som lägger till standardklasser.
     if(!src){ alert(L("Källturneringen hittades inte i molnet.","The source tournament was not found in the cloud.")); return; }
