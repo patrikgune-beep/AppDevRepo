@@ -486,6 +486,23 @@ input:disabled, select:disabled {
 }
 .pgrid td.rest-cell { background: #e8e8e8; color: #aaa; font-size: 0.7rem; }
 .pgrid td.score-cell { font-weight: 700; color: var(--navy); }
+.pgrid td.write-cell { padding: 0; }
+.pgrid input.pg-in {
+  width: 100%;
+  min-width: 42px;
+  border: none;
+  background: transparent;
+  text-align: center;
+  font: inherit;
+  font-weight: 700;
+  color: var(--navy);
+  padding: 6px 2px;
+  -moz-appearance: textfield;
+}
+.pgrid input.pg-in::-webkit-inner-spin-button,
+.pgrid input.pg-in::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.pgrid input.pg-in.filled { background: #eef4ff; }
+.pgrid input.pg-in:focus { outline: 2px solid var(--gold); background: #fffdf5; }
 .pgrid td.total-cell { background: var(--navy); color: white; font-weight: 800; font-size: 0.9rem; }
 .pgrid tr:nth-child(even) td { background-color: #f9f9f9; }
 .pgrid tr:nth-child(even) td.rest-cell { background: #ddd; }
@@ -766,6 +783,11 @@ input:disabled, select:disabled {
   .card { box-shadow: none; border: 1px solid #ccc; }
   .slips-grid { gap: 10px; }
   .slip { border-color: #1B2A4A; }
+  /* Player grid: show typed scores as plain values, keep borders visible */
+  .pgrid { width: 100%; }
+  .pgrid input.pg-in { color: #000; background: transparent !important; }
+  .pgrid td, .pgrid th { border: 1px solid #999; }
+  .pgrid tr { page-break-inside: avoid; }
 }
 </style>
 </head>
@@ -1423,28 +1445,66 @@ function getMatchResult(roundNum, courtIdx) {
   return S.results[rkey(roundNum, courtIdx)] || null;
 }
 
-function setMatchResult(roundNum, courtIdx, s1, s2) {
-  S.results[rkey(roundNum, courtIdx)] = { s1: Number(s1), s2: Number(s2) };
+// Whether both teams' scores are recorded for a match.
+function matchComplete(res) {
+  return !!res && res.s1 !== null && res.s1 !== undefined
+                && res.s2 !== null && res.s2 !== undefined;
+}
+
+// Set one team's score (side = 1 or 2); '' clears it. Scores are stored
+// per side so a single player-grid cell can be saved on its own.
+function setTeamScore(roundNum, courtIdx, side, value) {
+  const key = rkey(roundNum, courtIdx);
+  const obj = S.results[key] || { s1: null, s2: null };
+  const v = (value === '' || value === null || value === undefined) ? null : Number(value);
+  obj['s' + side] = (v === null || isNaN(v)) ? null : v;
+  if (obj.s1 === null && obj.s2 === null) delete S.results[key];
+  else S.results[key] = obj;
   saveState();
   refreshLeaderboard();
   refreshPlayerGrid();
 }
 
-function getPlayerScore(playerId, roundNum) {
-  if (!S.schedule) return null;
-  const round = S.schedule.find(r => r.roundNum === roundNum);
-  if (!round) return null;
-  if (round.rest.includes(playerId)) return null; // resting
+// Set both teams' scores at once (match-entry tab).
+function setMatchResult(roundNum, courtIdx, s1, s2) {
+  const key = rkey(roundNum, courtIdx);
+  const norm = x => (x === '' || x === null || x === undefined || isNaN(Number(x))) ? null : Number(x);
+  const obj = { s1: norm(s1), s2: norm(s2) };
+  if (obj.s1 === null && obj.s2 === null) delete S.results[key];
+  else S.results[key] = obj;
+  saveState();
+  refreshLeaderboard();
+  refreshPlayerGrid();
+}
 
+// Which side (1 or 2) a player is on in a round, or 0 if not playing.
+function playerSide(round, courtIdx, playerId) {
+  const court = round.courts[courtIdx];
+  if (court.t1.includes(playerId)) return 1;
+  if (court.t2.includes(playerId)) return 2;
+  return 0;
+}
+
+// Locate a player's court index and side in a round (or null).
+function findPlayerCourt(roundNum, playerId) {
+  const round = S.schedule && S.schedule.find(r => r.roundNum === roundNum);
+  if (!round || round.rest.includes(playerId)) return null;
   for (let ci = 0; ci < round.courts.length; ci++) {
-    const court = round.courts[ci];
-    const res = getMatchResult(roundNum, ci);
-    if (!res) return undefined; // not entered yet
-
-    if (court.t1.includes(playerId)) return res.s1;
-    if (court.t2.includes(playerId)) return res.s2;
+    const side = playerSide(round, ci, playerId);
+    if (side) return { courtIdx: ci, side };
   }
-  return undefined;
+  return null;
+}
+
+function getPlayerScore(playerId, roundNum) {
+  const loc = findPlayerCourt(roundNum, playerId);
+  if (!loc) {
+    const round = S.schedule && S.schedule.find(r => r.roundNum === roundNum);
+    return (round && round.rest.includes(playerId)) ? null : undefined;
+  }
+  const res = getMatchResult(roundNum, loc.courtIdx);
+  const v = res ? res['s' + loc.side] : null;
+  return (v === null || v === undefined) ? undefined : v;
 }
 
 function getPlayerTotal(playerId) {
@@ -1461,11 +1521,10 @@ function getPlayerWins(playerId) {
   if (!S.schedule) return 0;
   let wins = 0;
   for (const r of S.schedule) {
-    const round = r;
-    for (let ci = 0; ci < round.courts.length; ci++) {
-      const court = round.courts[ci];
+    for (let ci = 0; ci < r.courts.length; ci++) {
+      const court = r.courts[ci];
       const res = getMatchResult(r.roundNum, ci);
-      if (!res) continue;
+      if (!matchComplete(res)) continue;
       if (court.t1.includes(playerId) && res.s1 > res.s2) wins++;
       if (court.t2.includes(playerId) && res.s2 > res.s1) wins++;
     }
@@ -1477,17 +1536,19 @@ function getPlayerGamesPlayed(playerId) {
   if (!S.schedule) return 0;
   let games = 0;
   for (const r of S.schedule) {
-    if (!r.rest.includes(playerId)) {
-      // Check if result entered for any court this player is in
-      for (let ci = 0; ci < r.courts.length; ci++) {
-        const court = r.courts[ci];
-        if ((court.t1.includes(playerId) || court.t2.includes(playerId)) && getMatchResult(r.roundNum, ci)) {
-          games++;
-        }
-      }
-    }
+    const loc = findPlayerCourt(r.roundNum, playerId);
+    if (!loc) continue;
+    const res = getMatchResult(r.roundNum, loc.courtIdx);
+    if (res && res['s' + loc.side] !== null && res['s' + loc.side] !== undefined) games++;
   }
   return games;
+}
+
+// Set a player's score directly from the player grid (maps to their team).
+function setPlayerCellScore(playerId, roundNum, value) {
+  const loc = findPlayerCourt(roundNum, playerId);
+  if (!loc) return;
+  setTeamScore(roundNum, loc.courtIdx, loc.side, value);
 }
 
 function getLeaderboard() {
@@ -2022,9 +2083,8 @@ function renderMatchEntry(tabsHtml) {
   for (let ci = 0; ci < round.courts.length; ci++) {
     const court = round.courts[ci];
     const res = getMatchResult(round.roundNum, ci);
-    const s1 = res !== null ? res.s1 : '';
-    const s2 = res !== null ? res.s2 : '';
-    const hasVal = res !== null;
+    const s1 = res && res.s1 != null ? res.s1 : '';
+    const s2 = res && res.s2 != null ? res.s2 : '';
 
     cardsHtml += `
       <div class="match-card">
@@ -2034,7 +2094,7 @@ function renderMatchEntry(tabsHtml) {
             ${pnames(court.t1)}
             <small>${court.t1.map(id => `#${id}`).join(' &amp; ')}</small>
           </div>
-          <input type="number" class="score-input ${hasVal?'has-value':''}"
+          <input type="number" class="score-input ${s1 !== '' ? 'has-value' : ''}"
             min="0" max="99" value="${s1}" placeholder="–"
             id="si_r${round.roundNum}_c${ci}_t1"
             onchange="onScoreChange(${round.roundNum},${ci})">
@@ -2045,7 +2105,7 @@ function renderMatchEntry(tabsHtml) {
             ${pnames(court.t2)}
             <small>${court.t2.map(id => `#${id}`).join(' &amp; ')}</small>
           </div>
-          <input type="number" class="score-input ${hasVal?'has-value':''}"
+          <input type="number" class="score-input ${s2 !== '' ? 'has-value' : ''}"
             min="0" max="99" value="${s2}" placeholder="–"
             id="si_r${round.roundNum}_c${ci}_t2"
             onchange="onScoreChange(${round.roundNum},${ci})">
@@ -2070,8 +2130,6 @@ function renderMatchEntry(tabsHtml) {
 }
 
 function renderPlayerGridView() {
-  const numRounds = S.schedule.length;
-
   let headerCols = `<th>#</th><th>Spelare</th>`;
   for (const r of S.schedule) {
     headerCols += `<th>R${r.roundNum}</th>`;
@@ -2083,29 +2141,28 @@ function renderPlayerGridView() {
     let cells = `<td>${p.id}</td><td class="player-name-cell">${escHtml(p.name)}</td>`;
 
     for (const r of S.schedule) {
-      const isResting = r.rest.includes(p.id);
-      if (isResting) {
+      if (r.rest.includes(p.id)) {
         cells += `<td class="rest-cell">·</td>`;
       } else {
         const sc = getPlayerScore(p.id, r.roundNum);
-        if (sc === undefined) {
-          cells += `<td class="score-cell" style="color:#ccc;">—</td>`;
-        } else {
-          cells += `<td class="score-cell">${sc}</td>`;
-        }
+        const v = (sc === undefined || sc === null) ? '' : sc;
+        cells += `<td class="write-cell"><input type="number" class="pg-in ${v !== '' ? 'filled' : ''}"
+          min="0" max="99" inputmode="numeric" value="${v}"
+          onchange="setPlayerCellScore(${p.id}, ${r.roundNum}, this.value)"
+          aria-label="${escHtml(p.name)} rond ${r.roundNum}"></td>`;
       }
     }
 
-    const tot = getPlayerTotal(p.id);
-    cells += `<td class="total-cell">${tot || 0}</td>`;
-
+    cells += `<td class="total-cell">${getPlayerTotal(p.id) || 0}</td>`;
     rows += `<tr>${cells}</tr>`;
   }
 
   return `
-    <div class="alert alert-info" style="margin-bottom:12px;">
-      <span class="alert-icon">&#8505;</span>
-      <div>Skuggade rutor = vilar den ronden. Skriv in matchresultat via <strong>Matchinmatning</strong>.</div>
+    <div class="flex justify-between align-center mb-3 wrap gap-2">
+      <div class="text-xs" style="max-width:60ch;">
+        &#9998; Skriv in <strong>varje spelares poäng</strong> direkt i rutorna — poängen sätts för spelarens lag (båda i laget får samma poäng). Skuggade rutor = vilar den ronden.
+      </div>
+      <button class="btn btn-navy btn-sm" onclick="printPlayerGrid()">&#128438; Skriv ut spelargrid</button>
     </div>
     <div class="pgrid-wrap">
       <table class="pgrid">
@@ -2114,6 +2171,14 @@ function renderPlayerGridView() {
       </table>
     </div>
   `;
+}
+
+// Ensure the grid is shown, then open the browser's print dialog.
+function printPlayerGrid() {
+  if (S.resultsView !== 'grid') { S.resultsView = 'grid'; renderResults(); }
+  document.body.classList.add('print-grid');
+  window.print();
+  setTimeout(() => document.body.classList.remove('print-grid'), 500);
 }
 
 function refreshPlayerGrid() {
@@ -2144,7 +2209,7 @@ function renderLeaderboard() {
   if (hasAnyScore) {
     const leader = lb[0];
     const allDone = S.schedule.every(r =>
-      r.courts.every((_, ci) => getMatchResult(r.roundNum, ci) !== null)
+      r.courts.every((_, ci) => matchComplete(getMatchResult(r.roundNum, ci)))
     );
     if (allDone) {
       bannerHtml = `
@@ -2208,12 +2273,9 @@ function setResultsView(view) {
 function onScoreChange(roundNum, courtIdx) {
   const v1 = document.getElementById(`si_r${roundNum}_c${courtIdx}_t1`)?.value;
   const v2 = document.getElementById(`si_r${roundNum}_c${courtIdx}_t2`)?.value;
-
-  if (v1 !== '' && v2 !== '') {
-    setMatchResult(roundNum, courtIdx, v1, v2);
-    // Re-render to update styling
-    renderResults();
-  }
+  // Save each side as entered (partial is allowed).
+  setMatchResult(roundNum, courtIdx, v1, v2);
+  renderResults();
 }
 
 function switchTab(tab) {
