@@ -567,7 +567,7 @@ function unarchiveTournament(){
    Publik vy (standard) = endast Stege + Schema, ingen redigering.
    Admin låses upp med en PIN och kommer ihåg per enhet (localStorage).   */
 const ADMIN_PIN = "2323";   // Standard-PIN (används tills en egen PIN satts under Turneringsinformation).
-const MASTER_PIN = "424242";   // ← 6-siffrig MasterAdmin-kod: låser upp/arkiverar/raderar/ändrar ALLA turneringar. ÄNDRA denna.
+const MASTER_PIN = "723700";   // ← 6-siffrig MasterAdmin-kod: låser upp/arkiverar/raderar/ändrar ALLA turneringar.
 function adminPin(){ return (state && typeof state.adminPin==="string" && state.adminPin.trim()) ? state.adminPin.trim() : ADMIN_PIN; }
 // Godkänn turneringens egen PIN ELLER MasterAdmin-koden.
 function pinOK(entered, expected){ entered=String(entered==null?"":entered).trim(); return entered===String(expected==null?adminPin():expected).trim() || entered===MASTER_PIN; }
