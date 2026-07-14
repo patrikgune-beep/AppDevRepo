@@ -468,7 +468,7 @@ function normalize(s){
   if(typeof s.amLocked!=="boolean") s.amLocked=false;   // låst inställningsflik (skydd mot oavsiktlig ändring)
   if(!(s.amPlanHours>0)) s.amPlanHours=3;               // speltid (timmar) för generering från simulering
   if(!(s.amTransMin>=0)) s.amTransMin=2;                // kort paus mellan ronder (byte + uppvärmning), min
-  if(!Array.isArray(s.kotcRest)) s.kotcRest=[];        // King of the Court: vilokö av lag
+  if(!Array.isArray(s.kotcLadder)) s.kotcLadder=[];    // King of the Court: stege (ordnad lista av lag)
   if(typeof s.adminPin!=="string") s.adminPin="";
   if(typeof s.updatedAt!=="number") s.updatedAt=0;
   if(typeof s.archived!=="boolean") s.archived=false;
@@ -1682,6 +1682,9 @@ function buildTournamentState(name, src, opts){
   } else {
     s.logo=DEFAULT_LOGO; s.bgColor="#ffffff"; s.headColor="#000000";   // standardlogga: tennispokal
   }
+  // Datum: nya turneringar startar med dagens datum (start = slut = idag). Admin kan ändra sedan.
+  { const t=new Date(), p=n=>String(n).padStart(2,"0"), today=`${t.getFullYear()}-${p(t.getMonth()+1)}-${p(t.getDate())}`;
+    s.tournament.start=today; s.tournament.end=today; }
   // TURNERINGSINFORMATION (ej namn/arrangör/PIN/layout).
   if(src && opts.copyInfo){
     if(src.tournament){ s.tournament.start=src.tournament.start||s.tournament.start; s.tournament.end=src.tournament.end||s.tournament.end; }
@@ -1894,8 +1897,13 @@ function formatDesc(id){
     default: return matchFormat("classic").desc;
   }
 }
+// Slumphjälpare för "Slumpa nytt schema".
+let _amShuffleFirst=false;   // signalerar att nästa rond 1 (dynamiska format) ska lottas slumpmässigt
+function amShuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function amShuffledOrder(n){ return amShuffle([...Array(n).keys()]); }
 // Generera Americano-schema enligt americano.html: lika antal matcher, rättvis vila, greedy-parning.
-function amGenerate(numRounds, courts){
+// randomize=true → hoppa över kanoniskt schema och slumpa (nytt schema varje gång).
+function amGenerate(numRounds, courts, randomize){
   amEnsure();
   if(state.amScoreMode==="pairs") return amGeneratePairs(numRounds, courts);
   const N=state.players.length; if(N<4) return false;
@@ -1903,8 +1911,8 @@ function amGenerate(numRounds, courts){
   const ppr=amActivePerRound(N,C), actualCourts=ppr/4, restPer=N-ppr, block=amEqualBlock(N,C);
   let rounds = numRounds>0 ? numRounds : (restPer<=0 ? Math.max(block, Math.min(N-1,8)) : Math.ceil(4*N/ppr));
   rounds = Math.max(block, Math.round(rounds/block)*block);   // snäpp till block → lika antal matcher för alla
-  // Kanoniskt schema för standardfallet 16p/2 banor/8 ronder.
-  if(N===16 && C===2 && rounds===8){
+  // Kanoniskt schema för standardfallet 16p/2 banor/8 ronder (ej vid slumpning).
+  if(!randomize && N===16 && C===2 && rounds===8){
     state.amRounds=AM_SCHED16.map(r=>({
       matches:r.courts.map((c,ci)=>({court:ci+1, a:c.t1.map(id=>id-1), b:c.t2.map(id=>id-1), s1:null, s2:null})),
       rest:r.rest.map(id=>id-1)
@@ -1917,10 +1925,12 @@ function amGenerate(numRounds, courts){
   const out=[];
   for(let r=0;r<rounds;r++){
     let active, rest;
-    const all=[...Array(N).keys()];
+    let all=[...Array(N).keys()];
+    if(randomize) amShuffle(all);
     if(restPer<=0){ active=all; rest=[]; }
-    else { all.sort((a,b)=>playCount[a]-playCount[b]||a-b); active=all.slice(0,ppr); rest=all.slice(ppr).sort((a,b)=>a-b); }  // cirkulär vila (minst spelade vilar sist)
-    const rem=[...active], pairs=[];
+    else { all.sort((a,b)=>playCount[a]-playCount[b] || (randomize?0:a-b)); active=all.slice(0,ppr); rest=all.slice(ppr).sort((a,b)=>a-b); }  // cirkulär vila (minst spelade vilar sist)
+    const rem=[...active]; if(randomize) amShuffle(rem);
+    const pairs=[];
     while(rem.length>=2){                                        // greedy-parning: minimera upprepade par
       const a=rem.shift(); let bi=0, mc=Infinity;
       for(let i=0;i<rem.length;i++){ const c=getPC(a,rem[i]); if(c<mc || (c===mc && rem[i]<rem[bi])){ mc=c; bi=i; } }
@@ -1958,7 +1968,7 @@ function mexNextRound(courts){
   for(const rd of state.amRounds) for(const i of (rd.rest||[])) restCount[i]++;
   const roundNo=state.amRounds.length;
   let order;
-  if(roundNo===0) order=[...Array(N).keys()];                 // seedning = spellistans ordning
+  if(roundNo===0) order = _amShuffleFirst ? amShuffledOrder(N) : [...Array(N).keys()];   // rond 1: seedning (eller slumpad)
   else order=amStandings().map(s=>s.i);                        // rankad efter aktuell ställning
   const rank=new Map(order.map((i,pos)=>[i,pos]));
   let resting=[];
@@ -1979,45 +1989,45 @@ function mexNextRound(courts){
 }
 // King of the Court: bana 1 = kungsbanan. Lägg till NÄSTA rond – vinnare flyttas upp, förlorare ned.
 function kotcTeamPlayers(k){ return [2*k, 2*k+1]; }   // lag/par k = spelare 2k och 2k+1
+// King of the Court med robust "stege" (ladder) av lag – tål att antal banor ändras mellan ronder.
 function kotcNextRound(courts){
   amEnsure();
   const N=state.players.length, pairsMode=state.amScoreMode==="pairs";
   const P=Math.floor(N/2);                              // antal lag (par)
   const K=Math.min(Math.max(1,courts||1), Math.floor(N/4));
-  if(K<1) return false;
+  if(K<1 || P<2) return false;
   const mk=(court,a,b)=>({court, a, b, s1:null, s2:null});
   const compose=(court, top, bot)=> pairsMode
      ? mk(court, top.slice(), bot.slice())                                  // fasta par flyttas hela
      : (function(){ const g=[top[0],top[1],bot[0],bot[1]]; return mk(court,[g[0],g[2]],[g[1],g[3]]); })();  // ny partner varje rond
-  let matches=[];
-  if(state.amRounds.length===0){
-    for(let c=1;c<=K;c++) matches.push(compose(c, kotcTeamPlayers(2*(c-1)), kotcTeamPlayers(2*(c-1)+1)));
-    state.kotcRest=[]; for(let k=2*K;k<P;k++) state.kotcRest.push(kotcTeamPlayers(k));   // vilokö: lag som inte får plats
-    state.amRounds.push({ matches, rest: state.kotcRest.flat() });
-    return true;
+  // 1) Initiera eller uppdatera stegen (ordnad lista av alla lag, topp → botten).
+  if(state.amRounds.length===0 || !Array.isArray(state.kotcLadder) || state.kotcLadder.length!==P){
+    let ladder;
+    if(pairsMode){ const ord=_amShuffleFirst?amShuffledOrder(P):[...Array(P).keys()]; ladder=ord.map(k=>kotcTeamPlayers(k)); }
+    else { const pl=_amShuffleFirst?amShuffledOrder(N):[...Array(N).keys()]; ladder=[]; for(let k=0;k<P;k++) ladder.push([pl[2*k],pl[2*k+1]]); }
+    state.kotcLadder=ladder;
+    if(state.amRounds.length>0 && state.kotcLadder.length===P){ /* spelarantal ändrat → stegen byggd om */ }
+  } else {
+    const prev=state.amRounds[state.amRounds.length-1];
+    if(!amRoundScored(prev)) return false;
+    const wl=[];                                        // {w,l} per bana i banordning
+    prev.matches.slice().sort((a,b)=>a.court-b.court).forEach(mt=>{
+      const aWon=(+mt.s1||0)>=(+mt.s2||0);
+      wl.push({ w:(aWon?mt.a:mt.b).slice(), l:(aWon?mt.b:mt.a).slice() });
+    });
+    const Kp=wl.length, rest=state.kotcLadder.slice(2*Kp);   // lag som vilade
+    const nl=[];
+    nl.push(wl[0].w);                                   // kungsbanans vinnare stannar överst
+    for(let c=1;c<Kp;c++){ nl.push(wl[c].w); nl.push(wl[c-1].l); }   // vinnare upp, förlorare ned
+    rest.forEach(t=>nl.push(t));                        // vilande lag rycker upp (ett kommer in på understa banan)
+    nl.push(wl[Kp-1].l);                                // understa banans förlorare hamnar sist (vilar)
+    state.kotcLadder=nl;
   }
-  const prev=state.amRounds[state.amRounds.length-1];
-  if(!amRoundScored(prev)) return false;
-  const winners={}, losers={};
-  for(const mt of prev.matches){
-    const aWon=(+mt.s1||0)>=(+mt.s2||0);
-    winners[mt.court]=(aWon?mt.a:mt.b).slice();
-    losers[mt.court]=(aWon?mt.b:mt.a).slice();
-  }
-  const restQ = Array.isArray(state.kotcRest)? state.kotcRest.map(t=>t.slice()) : [];
-  for(let c=1;c<=K;c++){
-    const top=(c===1)?winners[1]:losers[c-1];          // kungsbanan: vinnaren stannar; annars kommer förlorare ned uppifrån
-    let bot;
-    if(c===K){                                          // understa banan: förloraren går till vilokön, ett vilande lag kommer in
-      if(restQ.length){ bot=restQ.shift(); if(losers[K]) restQ.push(losers[K].slice()); }
-      else bot=losers[K];                               // ingen vilokö → förloraren stannar (klassisk KotC)
-    } else bot=winners[c+1];                            // vinnare kommer upp nedifrån
-    if(!top||!bot) continue;
-    matches.push(compose(c, top, bot));
-  }
+  // 2) Skapa ronden: topp 2K lag i stegen fördelas på K banor (2 lag/bana), resten vilar.
+  const lad=state.kotcLadder, matches=[];
+  for(let c=1;c<=K;c++){ const ti=2*(c-1); if(ti+1>=lad.length) break; matches.push(compose(c, lad[ti], lad[ti+1])); }
   if(!matches.length) return false;
-  state.kotcRest = restQ;
-  state.amRounds.push({ matches, rest: restQ.flat() });
+  state.amRounds.push({ matches, rest: lad.slice(2*matches.length).flat() });
   return true;
 }
 /* ---- Kompasslottning (compass draw): Öst = huvudlottning, förlorare matas till Väst/Nord/Syd ---- */
@@ -2035,7 +2045,8 @@ function compassFeed(draw, round){
 function compassEnsure(){
   if(!state.cmp){
     const n=compassNumComps();
-    state.cmp={ draws:{ east:{waiting:[...Array(n).keys()],round:0}, west:{waiting:[],round:0}, north:{waiting:[],round:0}, south:{waiting:[],round:0} }, processed:0, done:false };
+    const seed=_amShuffleFirst?amShuffledOrder(n):[...Array(n).keys()];   // Öst-lottningens startordning (ev. slumpad)
+    state.cmp={ draws:{ east:{waiting:seed,round:0}, west:{waiting:[],round:0}, north:{waiting:[],round:0}, south:{waiting:[],round:0} }, processed:0, done:false };
   }
 }
 function compassProcessRound(rd){
@@ -2219,6 +2230,7 @@ function amTabSettingsHTML(cx){
               <button class="btn gray" id="amResetSched">↺ ${L('Nollställ schema','Reset schedule')}</button>`
            : `<button class="btn" id="amGenerate">🎲 ${L('Generera (antal ronder)','Generate (rounds)')}</button>`}
          <button class="btn" id="amGenSim">🧮 ${L('Generera från simulering','Generate from simulation')}</button>
+         ${state.amRounds.length?`<button class="btn gray" id="amReshuffle">🎲 ${roundByRound?L('Slumpa ny rond 1','New random round 1'):L('Slumpa nytt schema','New random schedule')}</button>`:''}
        </div>
        <p class="small muted" style="margin:8px 0 0">${L('“Generera från simulering” räknar ut hur många ronder som ryms på speltiden (utifrån banor, rondlängd och pauser) och skapar schemat därefter. Varje rond får start- och sluttid utifrån starttid, uppvärmning, rondlängd och pauser.','“Generate from simulation” computes how many rounds fit the play time (from courts, round length and breaks) and builds the schedule accordingly. Each round gets a start and end time from start time, warm-up, round length and breaks.')}</p>
      </div>
@@ -2242,16 +2254,42 @@ function amGenerateNextRound(){
   if(!ok){ if(isCompass && state.cmp && state.cmp.done){ save(); render(); return; } alert(L("Kunde inte skapa ronden.","Could not create the round.")); return; }
   save(); render();
 }
-// Knapprad "Generera nästa rond" för Spelschema/Resultat (endast rond-baserade format).
+// Slumpa fram ett nytt schema: hela schemat (fullschema-format) eller ny rond 1 (dynamiska format).
+function amReshuffle(){
+  const N=state.players.length, pairsMode=state.amScoreMode==="pairs";
+  const isCompass=state.format==="compass", isKotC=state.format==="kingcourt", isMex=state.format==="mexicano";
+  const roundByRound=(isMex && !pairsMode) || isKotC || isCompass;
+  const comps=pairsMode?Math.floor(N/2):N, minComps=isCompass?2:(pairsMode?2:4);
+  if(comps<minComps){ alert(L("För få deltagare för detta format.","Too few players for this format.")); return; }
+  if(state.amRounds.length && !confirm(roundByRound
+      ? L("Slumpa en ny rond 1? Nuvarande schema och alla resultat ersätts.","Draw a new round 1? The current schedule and all results are replaced.")
+      : L("Slumpa ett nytt schema? Nuvarande schema och alla resultat ersätts.","Draw a new schedule? The current schedule and all results are replaced."))) return;
+  if(roundByRound){
+    state.amRounds=[]; state.cmp=null; state.kotcLadder=[];
+    _amShuffleFirst=true;
+    let ok; try{ ok = isCompass?compassNextRound() : isKotC?kotcNextRound(state.courts) : mexNextRound(state.courts); } finally { _amShuffleFirst=false; }
+    if(!ok){ alert(L("Kunde inte skapa ronden.","Could not create the round.")); return; }
+  } else {
+    const nr = state.amRounds.length || state.amPlanRounds || Math.max(1, N-1);
+    if(pairsMode) amGeneratePairs(nr, state.courts); else amGenerate(nr, state.courts, true);
+  }
+  save(); render();
+}
+// Knapprad "Generera nästa rond" + "Slumpa nytt schema" för Spelschema/Resultat.
 function amNextRoundBarHTML(cx){
-  if(!cx.admin || !cx.roundByRound || state.amLocked) return '';
-  if(cx.compassDone) return `<div class="row no-print" style="margin-bottom:10px"><span class="pill" style="background:#e3f1de;color:var(--green)">🏁 ${L('Färdigspelat','All rounds played')}</span></div>`;
-  const isFirst=state.amRounds.length===0, canGen=isFirst||cx.latestScored;
-  const label=isFirst?L('Generera rond 1','Generate round 1'):`${L('Generera nästa rond','Generate next round')} (${L('rond','round')} ${state.amRounds.length+1})`;
-  return `<div class="row no-print" style="align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-     ${canGen?`<button class="btn" id="amNextRound2">🎲 ${label}</button>`
-             :`<button class="btn" id="amNextRound2" disabled>🎲 ${L('Generera nästa rond','Generate next round')}</button> <span class="small muted">${L('Fyll i alla resultat i senaste ronden först.','Enter all results in the latest round first.')}</span>`}
-   </div>`;
+  if(!cx.admin || state.amLocked) return '';
+  const parts=[];
+  if(cx.roundByRound){
+    if(cx.compassDone) parts.push(`<span class="pill" style="background:#e3f1de;color:var(--green)">🏁 ${L('Färdigspelat','All rounds played')}</span>`);
+    else { const isFirst=state.amRounds.length===0, canGen=isFirst||cx.latestScored;
+      const label=isFirst?L('Generera rond 1','Generate round 1'):`${L('Generera nästa rond','Generate next round')} (${L('rond','round')} ${state.amRounds.length+1})`;
+      parts.push(canGen?`<button class="btn" id="amNextRound2">🎲 ${label}</button>`
+             :`<button class="btn" id="amNextRound2" disabled>🎲 ${L('Generera nästa rond','Generate next round')}</button> <span class="small muted">${L('Fyll i alla resultat i senaste ronden först.','Enter all results in the latest round first.')}</span>`);
+    }
+  }
+  if(cx.nR) parts.push(`<button class="btn gray" id="amReshuffle">🎲 ${cx.roundByRound?L('Slumpa ny rond 1','New random round 1'):L('Slumpa nytt schema','New random schedule')}</button>`);
+  if(!parts.length) return '';
+  return `<div class="row no-print" style="align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">${parts.join(" ")}</div>`;
 }
 // Sökfält för att filtrera matcher på deltagarnamn (Spelschema/Resultat).
 function amSearchBarHTML(cx){
@@ -2417,10 +2455,13 @@ function amSymbolsHTML(){
 function amTabAboutHTML(cx){
   const esc=cx.esc, admin=cx.admin, fmtName=cx.fmtName;
   const govTxt = state.amRoundBy==="points" ? `${L('till','to')} ${state.amPointsTo} ${L('poäng/rond','pts/round')}` : `${amRoundDurationMin()} ${L('min/rond','min/round')}`;
+  // Datum + tider som turneringen pågår (starttid → sluttid från schemat).
+  const t0=cx.t0, endMin=cx.endMin;
+  const timeTxt = (t0!=null && cx.nR && endMin!=null) ? ` · ${L('kl','')} ${state.amStart}–${minToTime(endMin)}` : (t0!=null?` · ${L('start','start')} ${state.amStart}`:'');
   const info=`<div style="overflow-x:auto"><table class="results"><tbody>
      <tr><td style="text-align:left"><b>${L('Turnering','Tournament')}</b></td><td style="text-align:left">${esc(state.tournament.name||"")}</td></tr>
      <tr><td style="text-align:left"><b>${L('Arrangör','Organizer')}</b></td><td style="text-align:left">${esc(arrangerName())}</td></tr>
-     <tr><td style="text-align:left"><b>${L('Datum','Dates')}</b></td><td style="text-align:left">${tournamentRangeText()}</td></tr>
+     <tr><td style="text-align:left"><b>${L('Datum & tid','Date & time')}</b></td><td style="text-align:left">${tournamentRangeText()}${timeTxt}</td></tr>
      <tr><td style="text-align:left"><b>${L('Format','Format')}</b></td><td style="text-align:left">${esc(fmtName)} · ${cx.pairsMode?L('par','pairs'):L('individuellt','individual')} · ${govTxt}</td></tr>
      <tr><td style="text-align:left"><b>${L('Deltagare','Players')}</b></td><td style="text-align:left">${cx.N}</td></tr>
      <tr><td style="text-align:left"><b>${L('Ronder','Rounds')}</b></td><td style="text-align:left">${cx.nR}</td></tr>
@@ -2488,8 +2529,9 @@ function bindAmSettings(cx){
   { const b=document.getElementById("amNextRound"); if(b) b.onclick=()=>{ readSettings(); amGenerateNextRound(); }; }
   { const b=document.getElementById("amResetSched"); if(b) b.onclick=()=>{
       if(state.amRounds.length && !confirm(L("Nollställ hela schemat och alla resultat?","Reset the whole schedule and all results?"))) return;
-      state.amRounds=[]; state.cmp=null; save(); render();
+      state.amRounds=[]; state.cmp=null; state.kotcLadder=[]; save(); render();
     }; }
+  { const b=document.getElementById("amReshuffle"); if(b) b.onclick=()=>{ readSettings(); amReshuffle(); }; }
   { const b=document.getElementById("amSimSave"); if(b) b.onclick=()=>{ readSim(); save(); render(); }; }
   { const b=document.getElementById("amGenSim"); if(b) b.onclick=()=>{
       readSettings(); readSim();
@@ -2554,7 +2596,7 @@ function renderRotationFormat(){
     bindAmSettings(cx);
     if(state.amLocked) app.querySelectorAll("input,textarea,select,button").forEach(el=>{ if(el.id!=="amLockToggle") el.disabled=true; });
   }
-  if(active==="schedule"||active==="results"){ const b=document.getElementById("amNextRound2"); if(b) b.onclick=amGenerateNextRound; }
+  if(active==="schedule"||active==="results"){ const b=document.getElementById("amNextRound2"); if(b) b.onclick=amGenerateNextRound; const r=document.getElementById("amReshuffle"); if(r) r.onclick=amReshuffle; }
   if(active==="schedule"){ if(admin) bindAmScoreInputs(); bindAmSearch(); }
   if(active==="results"){
     document.querySelectorAll("[data-amview]").forEach(b=>b.onclick=()=>{ ui.amResultsView=b.dataset.amview; render(); });
