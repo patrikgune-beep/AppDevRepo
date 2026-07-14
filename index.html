@@ -2220,6 +2220,29 @@ function amTabSettingsHTML(cx){
        </div>
      </div>`;
 }
+// Generera nästa rond (rond-baserade format) – delad av Inställningar/Spelschema/Resultat.
+function amGenerateNextRound(){
+  const isCompass=state.format==="compass", isKotC=state.format==="kingcourt", pairsMode=state.amScoreMode==="pairs";
+  const comps=pairsMode?Math.floor(state.players.length/2):state.players.length, minComps=isCompass?2:(pairsMode?2:4);
+  if(comps<minComps){ alert(L("För få deltagare för detta format.","Too few players for this format.")); return; }
+  let ok;
+  if(isCompass) ok=compassNextRound();
+  else if(isKotC) ok=kotcNextRound(state.courts);
+  else ok=mexNextRound(state.courts);
+  if(!ok){ if(isCompass && state.cmp && state.cmp.done){ save(); render(); return; } alert(L("Kunde inte skapa ronden.","Could not create the round.")); return; }
+  save(); render();
+}
+// Knapprad "Generera nästa rond" för Spelschema/Resultat (endast rond-baserade format).
+function amNextRoundBarHTML(cx){
+  if(!cx.admin || !cx.roundByRound || state.amLocked) return '';
+  if(cx.compassDone) return `<div class="row no-print" style="margin-bottom:10px"><span class="pill" style="background:#e3f1de;color:var(--green)">🏁 ${L('Färdigspelat','All rounds played')}</span></div>`;
+  const isFirst=state.amRounds.length===0, canGen=isFirst||cx.latestScored;
+  const label=isFirst?L('Generera rond 1','Generate round 1'):`${L('Generera nästa rond','Generate next round')} (${L('rond','round')} ${state.amRounds.length+1})`;
+  return `<div class="row no-print" style="align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+     ${canGen?`<button class="btn" id="amNextRound2">🎲 ${label}</button>`
+             :`<button class="btn" id="amNextRound2" disabled>🎲 ${L('Generera nästa rond','Generate next round')}</button> <span class="small muted">${L('Fyll i alla resultat i senaste ronden först.','Enter all results in the latest round first.')}</span>`}
+   </div>`;
+}
 // Sökfält för att filtrera matcher på deltagarnamn (Spelschema/Resultat).
 function amSearchBarHTML(cx){
   if(!cx.nR) return '';
@@ -2232,7 +2255,7 @@ function amSearchBarHTML(cx){
 }
 // Flik: Spelschema (läsvy)
 function amTabScheduleHTML(cx){
-  return `<div class="card"><h2>📅 ${L('Spelschema','Schedule')}</h2>${amSearchBarHTML(cx)}${amRoundsHTML(cx, false)}</div>`;
+  return `<div class="card"><h2>📅 ${L('Spelschema','Schedule')}</h2>${amNextRoundBarHTML(cx)}${amSearchBarHTML(cx)}${amRoundsHTML(cx, false)}</div>`;
 }
 // Flik: Resultat (inmatning + rutnät)
 function amTabResultsHTML(cx){
@@ -2246,7 +2269,7 @@ function amTabResultsHTML(cx){
   if(!cx.nR) body=amRoundsHTML(cx, false);
   else if(view==="grid") body=(cx.isCompass?`<p class="muted">${L('Rutnätet gäller poängformaten.','The grid applies to points formats.')}</p>`:amPlayerGridBody(cx));
   else { body=amRoundsHTML(cx, cx.admin); showSearch=true; }
-  return `<div class="card"><h2>📝 ${L('Resultat','Results')}</h2>${toggle}${showSearch?amSearchBarHTML(cx):''}${body}</div>`;
+  return `<div class="card"><h2>📝 ${L('Resultat','Results')}</h2>${toggle}${amNextRoundBarHTML(cx)}${showSearch?amSearchBarHTML(cx):''}${body}</div>`;
 }
 // Filtrera matchrader direkt i DOM (behåller fokus i sökfältet).
 function amApplySearch(){
@@ -2368,18 +2391,7 @@ function bindAmSettings(cx){
       const nr=Math.max(1,parseInt(document.getElementById("amNumRounds").value,10)||1);
       amGenerate(nr, state.courts); save(); render();
     }; }
-  { const b=document.getElementById("amNextRound"); if(b) b.onclick=()=>{
-      readSettings();
-      const comps = cx.pairsMode?Math.floor(state.players.length/2):state.players.length;
-      const minComps = cx.isCompass?2:(cx.pairsMode?2:4);
-      if(comps < minComps){ alert(L("För få deltagare för detta format.","Too few players for this format.")); return; }
-      let ok;
-      if(cx.isCompass) ok=compassNextRound();
-      else if(cx.isKotC) ok=kotcNextRound(state.courts);
-      else ok=mexNextRound(state.courts);
-      if(!ok){ if(cx.isCompass && state.cmp && state.cmp.done){ save(); render(); return; } alert(L("Kunde inte skapa ronden.","Could not create the round.")); return; }
-      save(); render();
-    }; }
+  { const b=document.getElementById("amNextRound"); if(b) b.onclick=()=>{ readSettings(); amGenerateNextRound(); }; }
   { const b=document.getElementById("amResetSched"); if(b) b.onclick=()=>{
       if(state.amRounds.length && !confirm(L("Nollställ hela schemat och alla resultat?","Reset the whole schedule and all results?"))) return;
       state.amRounds=[]; state.cmp=null; save(); render();
@@ -2446,6 +2458,7 @@ function renderRotationFormat(){
     bindAmSettings(cx);
     if(state.amLocked) app.querySelectorAll("input,textarea,select,button").forEach(el=>{ if(el.id!=="amLockToggle") el.disabled=true; });
   }
+  if(active==="schedule"||active==="results"){ const b=document.getElementById("amNextRound2"); if(b) b.onclick=amGenerateNextRound; }
   if(active==="schedule") bindAmSearch();
   if(active==="results"){
     document.querySelectorAll("[data-amview]").forEach(b=>b.onclick=()=>{ ui.amResultsView=b.dataset.amview; render(); });
