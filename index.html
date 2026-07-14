@@ -465,6 +465,7 @@ function normalize(s){
   if(!(s.amPlanRounds>0)) s.amPlanRounds=0;             // föreslaget antal ronder från startsidan
   if(s.amRoundBy!=="points") s.amRoundBy="time";        // styr ronden: "time" (min/rond) eller "points" (till X poäng)
   if(!(s.amMinPerPoint>0)) s.amMinPerPoint=0.6;         // uppskattad tid per poäng i poäng-läge
+  if(typeof s.amLocked!=="boolean") s.amLocked=false;   // låst inställningsflik (skydd mot oavsiktlig ändring)
   if(typeof s.adminPin!=="string") s.adminPin="";
   if(typeof s.updatedAt!=="number") s.updatedAt=0;
   if(typeof s.archived!=="boolean") s.archived=false;
@@ -1373,11 +1374,13 @@ function publicTabDefs(){
     ? [["info","Turneringsinformation"],["bracket","Stege"],["champions","Klubbmästare"]]
     : [["info","Turneringsinformation"],["bracket","Stege"],["schedule","Schema"],["psearch","Sök deltagare"]];
 }
+// Ikoner per flik (används i både Klassisk KM och de publika flikarna).
+const TAB_ICONS = { info:"ℹ️", classes:"👥", bracket:"🪜", schedule:"📅", psearch:"🔍", requests:"🙋", planner:"🤖", participants:"📇", print:"🖨️", stats:"📊", champions:"🏆", about:"❓" };
 function renderTabs(){
   const all=[["info","Turneringsinformation"],["classes","Klasser & deltagare"],["bracket","Stege"],["schedule","Schema"],["requests","Önskemål"],["planner","Auto-planering"],["participants","Deltagarlista"],["print","Resultat & utskrift"],["stats","Statistik"],["champions","Klubbmästare"],["about","Om appen"]];
   const tabs = isAdmin() ? all : publicTabDefs();
   document.getElementById("tabs").innerHTML=tabs.map(([k,l])=>
-    `<button class="${ui.tab===k?'active':''}" data-tab="${k}">${l}</button>`).join("");
+    `<button class="${ui.tab===k?'active':''}" data-tab="${k}">${TAB_ICONS[k]?TAB_ICONS[k]+" ":""}${l}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{ui.tab=b.dataset.tab;render();});
 }
 
@@ -2104,7 +2107,14 @@ function amRoundsHTML(cx, editable){
 function amTabSettingsHTML(cx){
   const esc=cx.esc, N=cx.N, pairsMode=cx.pairsMode, nR=cx.nR, roundByRound=cx.roundByRound, compassDone=cx.compassDone, latestScored=cx.latestScored, endMin=cx.endMin, t0=cx.t0;
   const noteTxt = cx.isCompass?L('Kompasslottning: Öst är huvudlottningen. Förlorare i Öst rond 1 flyttas till Väst, i rond 2 till Nord, och Väst rond 1-förlorare till Syd – så alla får flera matcher. Fyll i resultaten och generera nästa rond.','Compass draw: East is the main draw. Round 1 losers in East move to West, round 2 losers to North, and West round 1 losers to South – so everyone gets several matches. Enter the results and generate the next round.'):cx.isKotC?L('King of the Court: bana 1 är kungsbanan. Vinnande lag flyttas upp mot kungsbanan, förlorande lag flyttas ned. Fyll i resultaten och generera nästa rond. I parläge flyttas hela paret; i individuellt läge lottas nya partner varje rond.','King of the Court: court 1 is the king court. Winning teams move up toward the king court, losing teams move down. Enter the results and generate the next round. In pairs mode the whole pair moves; in individual mode new partners are drawn each round.'):pairsMode?L('Par bildas i ordning: deltagare 1&2 = Par 1, 3&4 = Par 2 osv. Paren spelar mot varandra och poängen räknas per par.','Pairs are formed in order: players 1&2 = Pair 1, 3&4 = Pair 2, etc. Pairs play against each other and points are counted per pair.'):roundByRound?L('Mexicano lottar paren rond för rond efter aktuell ställning (rond 1 = spellistans ordning). Fyll i resultaten och generera nästa rond – bäst mot sämst på varje bana för jämna matcher.','Mexicano draws pairs round by round based on the current standings (round 1 = player list order). Enter the results and generate the next round – best vs worst on each court for even matches.'):L('Varje deltagare byter partner varje rond och samlar egna poäng.','Each player changes partner every round and collects individual points.');
-  return `<div class="card no-print">
+  const locked=!!state.amLocked;
+  const lockBar=`<div class="card no-print" style="border-color:${locked?'#e6b7b2':'var(--line)'}">
+       <div class="row" style="align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+         <div>${locked?`<span class="pill" style="background:#fbe4e0;color:#c0392b">🔒 ${L('Inställningar låsta','Settings locked')}</span> <span class="small muted">${L('Skyddade mot oavsiktlig ändring.','Protected from accidental changes.')}</span>`:`<span class="pill" style="background:#e3f1de;color:var(--green)">🔓 ${L('Inställningar öppna för redigering','Settings open for editing')}</span>`}</div>
+         <button class="btn ${locked?'':'gray'} mini" id="amLockToggle">${locked?'🔓 '+L('Lås upp redigering','Unlock editing'):'🔒 '+L('Lås redigering','Lock editing')}</button>
+       </div>
+     </div>`;
+  return lockBar+`<div class="card no-print">
        <h2>${L('Deltagare & inställningar','Players & settings')}</h2>
        <p class="small muted">${L('En deltagare per rad.','One player per line.')}</p>
        <textarea id="amPlayers" style="height:150px">${state.players.map(esc).join("\n")}</textarea>
@@ -2258,6 +2268,8 @@ function amPlayerGridBody(cx){
 }
 // Bind admin-handlers på Inställningar-fliken.
 function bindAmSettings(cx){
+  { const b=document.getElementById("amLockToggle"); if(b) b.onclick=()=>{ state.amLocked=!state.amLocked; save(); render(); }; }
+  if(state.amLocked) return;   // låst: inga redigeringshandlers binds (fälten är inaktiverade)
   const readSettings=()=>{ const lines=document.getElementById("amPlayers").value.split("\n").map(s=>s.trim()).filter(Boolean);
     state.players=lines; state.amPointsTo=Math.max(1,parseInt(document.getElementById("amPoints").value,10)||24);
     state.courts=Math.max(1,parseInt(document.getElementById("amCourts").value,10)||state.courts); };
@@ -2269,7 +2281,7 @@ function bindAmSettings(cx){
       if(state.players.length<4){ alert(L("Minst 4 deltagare krävs.","At least 4 players required.")); return; }
       if(state.amRounds.length && !confirm(L("Generera om? Nuvarande schema och resultat ersätts.","Regenerate? The current schedule and results are replaced."))) return;
       const nr=Math.max(1,parseInt(document.getElementById("amNumRounds").value,10)||1);
-      amGenerate(nr, state.courts); ui.amTab="schedule"; save(); render();
+      amGenerate(nr, state.courts); save(); render();
     }; }
   { const b=document.getElementById("amNextRound"); if(b) b.onclick=()=>{
       readSettings();
@@ -2281,7 +2293,7 @@ function bindAmSettings(cx){
       else if(cx.isKotC) ok=kotcNextRound(state.courts);
       else ok=mexNextRound(state.courts);
       if(!ok){ if(cx.isCompass && state.cmp && state.cmp.done){ save(); render(); return; } alert(L("Kunde inte skapa ronden.","Could not create the round.")); return; }
-      ui.amTab="results"; save(); render();
+      save(); render();
     }; }
   { const b=document.getElementById("amResetSched"); if(b) b.onclick=()=>{
       if(state.amRounds.length && !confirm(L("Nollställ hela schemat och alla resultat?","Reset the whole schedule and all results?"))) return;
@@ -2324,7 +2336,7 @@ function renderRotationFormat(){
      `<button class="${t[0]===active?'active':''}" data-amtab="${t[0]}">${t[1]}</button>`).join("");
   const header=`<div class="card">
      <h2>${esc(state.tournament.name||"")} <span class="badge" style="background:#eef;color:#33507a">${esc(cx.fmtName)}</span></h2>
-     <p class="small muted">${esc(arrangerName())} · ${cx.N} ${L('deltagare','players')} · ${cx.nR} ${L('ronder','rounds')} · ${L('till','to')} ${state.amPointsTo} ${L('poäng/match','pts/match')} · ${cx.pairsMode?L('poäng per par','points per pair'):L('individuell poäng','individual points')}${(cx.t0!=null&&cx.nR)?` · ${L('start','start')} ${state.amStart} – ${L('slut','end')} ${minToTime(cx.endMin)} (${fmtDurationMin(cx.endMin-cx.t0)})`:''}</p>
+     <p class="small muted">${esc(arrangerName())} · ${cx.N} ${L('deltagare','players')} · ${cx.nR} ${L('ronder','rounds')} · ${state.amRoundBy==="points"?`${L('till','to')} ${state.amPointsTo} ${L('poäng/rond','pts/round')}`:`${amRoundDurationMin()} ${L('min/rond','min/round')}`} · ${cx.pairsMode?L('poäng per par','points per pair'):L('individuell poäng','individual points')}${(cx.t0!=null&&cx.nR)?` · ${L('start','start')} ${state.amStart} – ${L('slut','end')} ${minToTime(cx.endMin)} (${fmtDurationMin(cx.endMin-cx.t0)})`:''}</p>
    </div>`;
   let body="";
   if(active==="settings"&&admin) body=amTabSettingsHTML(cx);
@@ -2334,7 +2346,10 @@ function renderRotationFormat(){
   else if(active==="slips") body=amTabSlipsHTML(cx);
   app.innerHTML=header+body;
   document.querySelectorAll("#tabs [data-amtab]").forEach(b=>b.onclick=()=>{ ui.amTab=b.dataset.amtab; render(); });
-  if(active==="settings"&&admin) bindAmSettings(cx);
+  if(active==="settings"&&admin){
+    bindAmSettings(cx);
+    if(state.amLocked) app.querySelectorAll("input,textarea,select,button").forEach(el=>{ if(el.id!=="amLockToggle") el.disabled=true; });
+  }
   if(active==="results"){
     document.querySelectorAll("[data-amview]").forEach(b=>b.onclick=()=>{ ui.amResultsView=b.dataset.amview; render(); });
     if(admin) document.querySelectorAll("[data-am]").forEach(inp=>inp.onchange=()=>{
