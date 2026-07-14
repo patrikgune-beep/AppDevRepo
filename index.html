@@ -466,6 +466,7 @@ function normalize(s){
   if(s.amRoundBy!=="points") s.amRoundBy="time";        // styr ronden: "time" (min/rond) eller "points" (till X poäng)
   if(!(s.amMinPerPoint>0)) s.amMinPerPoint=0.6;         // uppskattad tid per poäng i poäng-läge
   if(typeof s.amLocked!=="boolean") s.amLocked=false;   // låst inställningsflik (skydd mot oavsiktlig ändring)
+  if(!(s.amPlanHours>0)) s.amPlanHours=3;               // speltid (timmar) för generering från simulering
   if(typeof s.adminPin!=="string") s.adminPin="";
   if(typeof s.updatedAt!=="number") s.updatedAt=0;
   if(typeof s.archived!=="boolean") s.archived=false;
@@ -2114,7 +2115,10 @@ function amTabSettingsHTML(cx){
          <button class="btn ${locked?'':'gray'} mini" id="amLockToggle">${locked?'🔓 '+L('Lås upp redigering','Unlock editing'):'🔒 '+L('Lås redigering','Lock editing')}</button>
        </div>
      </div>`;
-  return lockBar+`<div class="card no-print">
+  const sep=`<div style="border-top:1px solid var(--line);margin:16px 0 12px"></div>`;
+  return lockBar
+     +formatInfoCardHTML()      // Turneringsinformation överst (innehåller Turneringsnamn)
+     +`<div class="card no-print">
        <h2>${L('Deltagare & inställningar','Players & settings')}</h2>
        <p class="small muted">${L('En deltagare per rad.','One player per line.')}</p>
        <textarea id="amPlayers" style="height:150px">${state.players.map(esc).join("\n")}</textarea>
@@ -2124,25 +2128,12 @@ function amTabSettingsHTML(cx){
          <label class="small">${L('Ronden styrs av','Round governed by')}<br>
            <select id="amRoundByMode"><option value="time" ${state.amRoundBy!=="points"?'selected':''}>${L('Tid','Time')}</option><option value="points" ${state.amRoundBy==="points"?'selected':''}>${L('Poäng','Points')}</option></select></label>
          <label class="small">${state.amRoundBy==="points"?L('Poäng per rond (spelas till)','Points per round (play to)'):L('Poäng per match','Points per match')}<br><input type="number" id="amPoints" min="1" max="99" value="${state.amPointsTo}" style="width:80px"></label>
-         <label class="small">${roundByRound?L('Planerat antal ronder','Planned rounds'):L('Antal ronder','Number of rounds')}<br><input type="number" id="amNumRounds" min="1" max="60" value="${roundByRound?Math.max(state.amRounds.length,state.amPlanRounds||0,N-1):(state.amRounds.length||state.amPlanRounds||Math.max(1,N-1))}" style="width:80px"></label>
          <label class="small">${L('Antal banor','Courts')}<br><input type="number" id="amCourts" min="1" max="16" value="${state.courts}" style="width:80px"></label>
-         <button class="btn" id="amSavePlayers">💾 ${L('Spara','Save')}</button>
-         ${roundByRound
-           ? `${compassDone
-                ? `<span class="pill" style="background:#e3f1de;color:var(--green)">🏁 ${L('Färdigspelat','All rounds played')}</span>`
-                : state.amRounds.length===0
-                  ? `<button class="btn" id="amNextRound">🎲 ${L('Generera rond 1','Generate round 1')}</button>`
-                  : latestScored
-                    ? `<button class="btn" id="amNextRound">🎲 ${L('Generera nästa rond','Generate next round')} (${L('rond','round')} ${state.amRounds.length+1})</button>`
-                    : `<button class="btn" id="amNextRound" disabled title="${L('Fyll i alla resultat i senaste ronden först.','Enter all results in the latest round first.')}">🎲 ${L('Generera nästa rond','Generate next round')}</button>`}
-              <button class="btn gray" id="amResetSched">↺ ${L('Nollställ schema','Reset schedule')}</button>`
-           : `<button class="btn" id="amGenerate">🎲 ${L('Generera spelschema','Generate schedule')}</button>`}
+         <button class="btn ghost mini" id="amSavePlayers">💾 ${L('Spara','Save')}</button>
        </div>
        <p class="small muted" style="margin:8px 0 0">${noteTxt}</p>
-     </div>
-     ${formatInfoCardHTML()}
-     <div class="card no-print">
-       <h2>⏱ ${L('Tidssimulering','Time simulation')}</h2>
+       ${sep}
+       <h3 style="color:var(--head);margin:0 0 8px">⏱ ${L('Tidssimulering','Time simulation')}</h3>
        <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
          <label class="small">${L('Starttid','Start time')}<br><input type="time" id="amStart" value="${esc(state.amStart)}" style="width:110px"></label>
          <label class="small">${L('Uppvärmning (min)','Warm-up (min)')}<br><input type="number" id="amWarmup" min="0" max="60" value="${Math.max(0,+state.amWarmup||0)}" style="width:80px"></label>
@@ -2150,10 +2141,10 @@ function amTabSettingsHTML(cx){
            ? `<label class="small">${L('Min per poäng','Min per point')}<br><input type="number" id="amMPP" min="0.1" max="5" step="0.1" value="${state.amMinPerPoint||0.6}" style="width:90px"></label>
               <span class="pill" style="background:#eef;color:#33507a">${L('Rondlängd','Round length')} ≈ ${amRoundDurationMin()} ${L('min','min')}</span>`
            : `<label class="small">${L('Minuter per rond','Minutes per round')}<br><input type="number" id="amRoundMin" min="1" max="120" value="${state.amRoundMin}" style="width:80px"></label>`}
+         <label class="small">${L('Speltid (timmar)','Play time (hours)')}<br><input type="number" id="amSimHours" min="0.5" max="12" step="0.5" value="${state.amPlanHours||3}" style="width:100px"></label>
          <button class="btn ghost mini" id="amSimSave">💾 ${L('Uppdatera tider','Update times')}</button>
-         <span class="pill">${nR?`${L('Slut','End')} ${minToTime(endMin)} · ${fmtDurationMin(endMin-t0)}`:L('Generera schema först','Generate schedule first')}</span>
+         <span class="pill">${nR?`${L('Slut','End')} ${minToTime(endMin)} · ${fmtDurationMin(endMin-t0)}`:L('Ej genererat','Not generated')}</span>
        </div>
-       <p class="small muted" style="margin:8px 0 0">${state.amRoundBy==="points"?L('Ronden styrs av poäng: varje match spelas till angivet antal poäng. Rondlängden (och hur många ronder som hinns med) uppskattas via minuter per poäng.','Rounds are governed by points: each match is played to the set number of points. The round length (and how many rounds fit) is estimated via minutes per point.'):L('Ronden styrs av tid: varje rond varar angivet antal minuter.','Rounds are governed by time: each round lasts the set number of minutes.')}</p>
        <div style="margin-top:12px">
          <div class="small" style="margin-bottom:6px"><b>☕ ${L('Pauser','Breaks')}</b> <span class="muted">${L('— läggs efter en viss rond och räknas in i tiderna','— placed after a given round and counted into the times')}</span></div>
          <div id="amBreaksList">${amBreaksList().length?amBreaksList().map((b,bi)=>`<div class="row" style="align-items:center;gap:8px;margin-bottom:4px"><span class="pill" style="background:#fbe9c9;color:#8a5a00">${L('Efter rond','After round')} ${b.after} · ${b.min} ${L('min','min')}</span><button class="btn gray mini" data-brdel="${bi}">✕</button></div>`).join(""):`<span class="small muted">${L('Inga pauser.','No breaks.')}</span>`}</div>
@@ -2163,7 +2154,23 @@ function amTabSettingsHTML(cx){
            <button class="btn ghost mini" id="amBrAdd">➕ ${L('Lägg till paus','Add break')}</button>
          </div>
        </div>
-       <p class="small muted" style="margin:10px 0 0">${L('Varje rond får en start- och sluttid utifrån starttid, uppvärmning, minuter per rond och pauser.','Each round gets a start and end time based on start time, warm-up, minutes per round and breaks.')}</p>
+       ${sep}
+       <h3 style="color:var(--head);margin:0 0 8px">🎲 ${L('Generera spelschema','Generate schedule')}</h3>
+       <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
+         <label class="small">${roundByRound?L('Planerat antal ronder','Planned rounds'):L('Antal ronder','Number of rounds')}<br><input type="number" id="amNumRounds" min="1" max="60" value="${roundByRound?Math.max(state.amRounds.length,state.amPlanRounds||0,N-1):(state.amRounds.length||state.amPlanRounds||Math.max(1,N-1))}" style="width:110px"></label>
+         ${roundByRound
+           ? `${compassDone
+                ? `<span class="pill" style="background:#e3f1de;color:var(--green)">🏁 ${L('Färdigspelat','All rounds played')}</span>`
+                : state.amRounds.length===0
+                  ? `<button class="btn" id="amNextRound">🎲 ${L('Generera rond 1','Generate round 1')}</button>`
+                  : latestScored
+                    ? `<button class="btn" id="amNextRound">🎲 ${L('Generera nästa rond','Generate next round')} (${L('rond','round')} ${state.amRounds.length+1})</button>`
+                    : `<button class="btn" id="amNextRound" disabled title="${L('Fyll i alla resultat i senaste ronden först.','Enter all results in the latest round first.')}">🎲 ${L('Generera nästa rond','Generate next round')}</button>`}
+              <button class="btn gray" id="amResetSched">↺ ${L('Nollställ schema','Reset schedule')}</button>`
+           : `<button class="btn" id="amGenerate">🎲 ${L('Generera (antal ronder)','Generate (rounds)')}</button>`}
+         <button class="btn" id="amGenSim">🧮 ${L('Generera från simulering','Generate from simulation')}</button>
+       </div>
+       <p class="small muted" style="margin:8px 0 0">${L('“Generera från simulering” räknar ut hur många ronder som ryms på speltiden (utifrån banor, rondlängd och pauser) och skapar schemat därefter. Varje rond får start- och sluttid utifrån starttid, uppvärmning, rondlängd och pauser.','“Generate from simulation” computes how many rounds fit the play time (from courts, round length and breaks) and builds the schedule accordingly. Each round gets a start and end time from start time, warm-up, round length and breaks.')}</p>
      </div>
      <div class="card no-print" style="border-color:#e6b7b2">
        <h2>${L('Ta bort turnering','Delete tournament')}</h2>
@@ -2273,6 +2280,11 @@ function bindAmSettings(cx){
   const readSettings=()=>{ const lines=document.getElementById("amPlayers").value.split("\n").map(s=>s.trim()).filter(Boolean);
     state.players=lines; state.amPointsTo=Math.max(1,parseInt(document.getElementById("amPoints").value,10)||24);
     state.courts=Math.max(1,parseInt(document.getElementById("amCourts").value,10)||state.courts); };
+  const readSim=()=>{ const t=document.getElementById("amStart").value; if(timeToMin(t)!=null) state.amStart=t;
+    state.amWarmup=Math.max(0,parseInt(document.getElementById("amWarmup").value,10)||0);
+    const rm=document.getElementById("amRoundMin"); if(rm) state.amRoundMin=Math.max(1,parseInt(rm.value,10)||15);
+    const mpp=document.getElementById("amMPP"); if(mpp) state.amMinPerPoint=Math.max(0.1,parseFloat(mpp.value)||0.6);
+    const h=document.getElementById("amSimHours"); if(h){ const v=parseFloat(h.value); if(v>0) state.amPlanHours=v; } };
   { const s=document.getElementById("amMode"); if(s) s.onchange=()=>{ const nm=s.value==="pairs"?"pairs":"individual"; if(nm!==state.amScoreMode){ state.amScoreMode=nm; state.amRounds=[]; state.cmp=null; save(); render(); } }; }
   { const s=document.getElementById("amRoundByMode"); if(s) s.onchange=()=>{ readSettings(); state.amRoundBy=s.value==="points"?"points":"time"; save(); render(); }; }
   { const b=document.getElementById("amSavePlayers"); if(b) b.onclick=()=>{ readSettings(); save(); render(); }; }
@@ -2299,11 +2311,22 @@ function bindAmSettings(cx){
       if(state.amRounds.length && !confirm(L("Nollställ hela schemat och alla resultat?","Reset the whole schedule and all results?"))) return;
       state.amRounds=[]; state.cmp=null; save(); render();
     }; }
-  { const b=document.getElementById("amSimSave"); if(b) b.onclick=()=>{
-      const t=document.getElementById("amStart").value; if(timeToMin(t)!=null) state.amStart=t;
-      state.amWarmup=Math.max(0,parseInt(document.getElementById("amWarmup").value,10)||0);
-      const rm=document.getElementById("amRoundMin"); if(rm) state.amRoundMin=Math.max(1,parseInt(rm.value,10)||15);
-      const mpp=document.getElementById("amMPP"); if(mpp) state.amMinPerPoint=Math.max(0.1,parseFloat(mpp.value)||0.6);
+  { const b=document.getElementById("amSimSave"); if(b) b.onclick=()=>{ readSim(); save(); render(); }; }
+  { const b=document.getElementById("amGenSim"); if(b) b.onclick=()=>{
+      readSettings(); readSim();
+      const N=state.players.length, comps=cx.pairsMode?Math.floor(N/2):N, minComps=cx.isCompass?2:(cx.pairsMode?2:4);
+      if(comps < minComps){ alert(L("För få deltagare för detta format.","Too few players for this format.")); return; }
+      if(state.amRounds.length && !confirm(L("Generera om från simulering? Nuvarande schema och resultat ersätts.","Regenerate from simulation? The current schedule and results are replaced."))) return;
+      const availMin = (state.amPlanHours>0?state.amPlanHours*60:0);
+      const usable = Math.max(1, availMin - Math.max(0,+state.amWarmup||0) - amBreaksList().reduce((s,b)=>s+(+b.min||0),0));
+      const sug = amSuggestPlan(state.format, N, state.courts, usable, amRoundDurationMin());
+      if(!sug){ alert(L("Kunde inte beräkna schema.","Could not compute a schedule.")); return; }
+      state.amPlanRounds = sug.rounds;
+      if(cx.roundByRound){
+        state.amRounds=[]; state.cmp=null;
+        let ok; if(cx.isCompass) ok=compassNextRound(); else if(cx.isKotC) ok=kotcNextRound(state.courts); else ok=mexNextRound(state.courts);
+        if(!ok){ alert(L("Kunde inte skapa ronden.","Could not create the round.")); return; }
+      } else amGenerate(sug.rounds, state.courts);
       save(); render();
     }; }
   { const b=document.getElementById("amBrAdd"); if(b) b.onclick=()=>{
