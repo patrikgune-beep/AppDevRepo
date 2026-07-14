@@ -468,6 +468,7 @@ function normalize(s){
   if(typeof s.amLocked!=="boolean") s.amLocked=false;   // låst inställningsflik (skydd mot oavsiktlig ändring)
   if(!(s.amPlanHours>0)) s.amPlanHours=3;               // speltid (timmar) för generering från simulering
   if(!(s.amTransMin>=0)) s.amTransMin=2;                // kort paus mellan ronder (byte + uppvärmning), min
+  if(!Array.isArray(s.kotcRest)) s.kotcRest=[];        // King of the Court: vilokö av lag
   if(typeof s.adminPin!=="string") s.adminPin="";
   if(typeof s.updatedAt!=="number") s.updatedAt=0;
   if(typeof s.archived!=="boolean") s.archived=false;
@@ -1977,20 +1978,22 @@ function mexNextRound(courts){
   return true;
 }
 // King of the Court: bana 1 = kungsbanan. Lägg till NÄSTA rond – vinnare flyttas upp, förlorare ned.
+function kotcTeamPlayers(k){ return [2*k, 2*k+1]; }   // lag/par k = spelare 2k och 2k+1
 function kotcNextRound(courts){
   amEnsure();
   const N=state.players.length, pairsMode=state.amScoreMode==="pairs";
+  const P=Math.floor(N/2);                              // antal lag (par)
   const K=Math.min(Math.max(1,courts||1), Math.floor(N/4));
   if(K<1) return false;
   const mk=(court,a,b)=>({court, a, b, s1:null, s2:null});
+  const compose=(court, top, bot)=> pairsMode
+     ? mk(court, top.slice(), bot.slice())                                  // fasta par flyttas hela
+     : (function(){ const g=[top[0],top[1],bot[0],bot[1]]; return mk(court,[g[0],g[2]],[g[1],g[3]]); })();  // ny partner varje rond
   let matches=[];
   if(state.amRounds.length===0){
-    for(let c=1;c<=K;c++){
-      if(pairsMode){ const p0=2*(c-1), p1=2*(c-1)+1; matches.push(mk(c,[2*p0,2*p0+1],[2*p1,2*p1+1])); }
-      else { const base=4*(c-1); matches.push(mk(c,[base,base+1],[base+2,base+3])); }
-    }
-    const active=new Set(); matches.forEach(m=>m.a.concat(m.b).forEach(i=>active.add(i)));
-    state.amRounds.push({ matches, rest:[...Array(N).keys()].filter(i=>!active.has(i)) });
+    for(let c=1;c<=K;c++) matches.push(compose(c, kotcTeamPlayers(2*(c-1)), kotcTeamPlayers(2*(c-1)+1)));
+    state.kotcRest=[]; for(let k=2*K;k<P;k++) state.kotcRest.push(kotcTeamPlayers(k));   // vilokö: lag som inte får plats
+    state.amRounds.push({ matches, rest: state.kotcRest.flat() });
     return true;
   }
   const prev=state.amRounds[state.amRounds.length-1];
@@ -2001,15 +2004,20 @@ function kotcNextRound(courts){
     winners[mt.court]=(aWon?mt.a:mt.b).slice();
     losers[mt.court]=(aWon?mt.b:mt.a).slice();
   }
+  const restQ = Array.isArray(state.kotcRest)? state.kotcRest.map(t=>t.slice()) : [];
   for(let c=1;c<=K;c++){
-    const top=(c===1)?winners[1]:losers[c-1];      // stannar/kommer ned uppifrån
-    const bot=(c===K)?losers[K]:winners[c+1];      // stannar/kommer upp nedifrån
+    const top=(c===1)?winners[1]:losers[c-1];          // kungsbanan: vinnaren stannar; annars kommer förlorare ned uppifrån
+    let bot;
+    if(c===K){                                          // understa banan: förloraren går till vilokön, ett vilande lag kommer in
+      if(restQ.length){ bot=restQ.shift(); if(losers[K]) restQ.push(losers[K].slice()); }
+      else bot=losers[K];                               // ingen vilokö → förloraren stannar (klassisk KotC)
+    } else bot=winners[c+1];                            // vinnare kommer upp nedifrån
     if(!top||!bot) continue;
-    if(pairsMode) matches.push(mk(c, top.slice(), bot.slice()));   // fasta par flyttas hela
-    else { const g=[top[0],top[1],bot[0],bot[1]]; matches.push(mk(c,[g[0],g[2]],[g[1],g[3]])); }  // ny partner varje rond
+    matches.push(compose(c, top, bot));
   }
   if(!matches.length) return false;
-  state.amRounds.push({ matches, rest:(prev.rest||[]).slice() });
+  state.kotcRest = restQ;
+  state.amRounds.push({ matches, rest: restQ.flat() });
   return true;
 }
 /* ---- Kompasslottning (compass draw): Öst = huvudlottning, förlorare matas till Väst/Nord/Syd ---- */
@@ -2121,7 +2129,9 @@ function amRoundsHTML(cx, editable){
   const esc=cx.esc;
   if(!cx.nR) return `<p class="muted">${cx.admin?(cx.roundByRound?L('Lägg in deltagare och generera rond 1 under Inställningar.','Add players and generate round 1 under Settings.'):L('Lägg in deltagare och generera spelschema under Inställningar.','Add players and generate a schedule under Settings.')):L('Spelschemat är inte skapat ännu.','The schedule is not created yet.')}</p>`;
   let html="";
-  state.amRounds.forEach((rd,ri)=>{
+  // Dynamiska format (nästa rond genereras efter varje spelad rond): visa senaste ronden överst.
+  const order = cx.roundByRound ? [...state.amRounds.keys()].reverse() : [...state.amRounds.keys()];
+  order.forEach(ri=>{ const rd=state.amRounds[ri];
     const restTxt=(rd.rest&&rd.rest.length)?` <span class="small muted">(${L('vilar','resting')}: ${rd.rest.map(i=>esc(state.players[i]||'')).join(", ")})</span>`:'';
     const rs=amRoundStartMin(ri), re=amRoundEndMin(ri);
     const timeTxt=(rs!=null)?` <span class="small muted">kl ${minToTime(rs)}–${minToTime(re)}</span>`:'';
@@ -2358,6 +2368,81 @@ function amSlipsPreview(cx){
   });
   return cells;
 }
+// Detaljerade regler för det aktuella spelformatet.
+function amFormatRulesHTML(){
+  const li=a=>`<li style="margin:3px 0">${a}</li>`;
+  const wrap=arr=>`<ul class="small" style="margin:6px 0 0;padding-left:18px">${arr.join("")}</ul>`;
+  switch(state.format){
+    case "americano": return wrap([
+      li(L('Socialt dubbelspel. Deltagarna byter partner varje rond så att man spelar med och mot olika personer.','Social doubles. Players change partner every round so you play with and against different people.')),
+      li(L('Antal ronder snäpps så att alla spelar <b>lika många matcher</b>.','Rounds are snapped so everyone plays an <b>equal number</b> of matches.')),
+      li(L('Ronden kan styras av <b>tid</b> (minuter per rond) eller <b>poäng</b> (spelas till ett visst antal poäng).','A round can be governed by <b>time</b> (minutes per round) or <b>points</b> (played to a set number of points).')),
+      li(L('Poäng kan redovisas <b>individuellt</b> eller <b>per par</b> (deltagare 1&2 = par 1, 3&4 = par 2 osv).','Points can be shown <b>individually</b> or <b>per pair</b> (players 1&2 = pair 1, 3&4 = pair 2, etc.).')),
+      li(L('Vinnare = flest poäng totalt när alla ronder är spelade.','Winner = most points overall once all rounds are played.'))
+    ]);
+    case "mexicano": return wrap([
+      li(L('Som Americano, men paren <b>lottas efter ställningen</b> inför varje rond för jämna matcher.','Like Americano, but pairs are <b>drawn from the standings</b> before each round for even matches.')),
+      li(L('Rond 1 följer spellistans ordning (seedning). Därefter möts, på varje bana, rank 1 & 4 mot rank 2 & 3.','Round 1 follows the player list (seeding). After that, on each court, ranks 1 & 4 play ranks 2 & 3.')),
+      li(L('Nästa rond genereras <b>efter</b> att föregående ronds resultat registrerats.','The next round is generated <b>after</b> the previous round’s results are entered.')),
+      li(L('Vinnare = flest poäng totalt.','Winner = most points overall.'))
+    ]);
+    case "kingcourt": return wrap([
+      li(L('Banstege. <b>Bana 1 är kungsbanan</b> (högst), sista banan är lägst.','Court ladder. <b>Court 1 is the king court</b> (highest), the last court is the lowest.')),
+      li(L('Vinnande lag <b>flyttas upp</b> mot kungsbanan, förlorande lag <b>flyttas ned</b>.','Winning teams <b>move up</b> toward the king court, losing teams <b>move down</b>.')),
+      li(L('Finns fler deltagare än platser roterar det: understa banans förlorare går till en <b>vilokö</b> och ett vilande lag kommer in underifrån.','With more players than slots it rotates: the bottom court’s loser goes to a <b>waiting queue</b> and a resting team enters from the bottom.')),
+      li(L('Individuellt läge: ny partner varje rond. Parläge: fasta par flyttas hela.','Individual mode: new partner each round. Pairs mode: fixed pairs move as a unit.'))
+    ]);
+    case "compass": return wrap([
+      li(L('Utslagsspel med sidolottningar. <b>Öst</b> är huvudlottningen.','Knockout with side draws. <b>East</b> is the main draw.')),
+      li(L('Förlorare i Öst rond 1 flyttas till <b>Väst</b>, i rond 2 till <b>Nord</b>. Förlorare i Väst rond 1 flyttas till <b>Syd</b>.','East round 1 losers move to <b>West</b>, round 2 losers to <b>North</b>. West round 1 losers move to <b>South</b>.')),
+      li(L('Så får alla flera matcher. En vinnare koras per lottning (Öst = huvudvinnare).','So everyone gets several matches. A winner is crowned per draw (East = main winner).')),
+      li(L('Nästa spelomgång genereras efter att resultaten registrerats.','The next play-round is generated after the results are entered.'))
+    ]);
+    default: return wrap([li(L('Utslagsturnering (cupspel) med seedning, stegar och klubbmästare.','Single-elimination cup with seeding, brackets and club champions.'))]);
+  }
+}
+// Symbol- och teckenförklaring.
+function amSymbolsHTML(){
+  const row=(s,t)=>`<li style="margin:3px 0"><b>${s}</b> — ${t}</li>`;
+  return `<ul class="small" style="margin:6px 0 0;padding-left:4px;list-style:none">
+     ${row('⚙️','Inställningar')}${row('📅',L('Spelschema','Schedule'))}${row('📝',L('Resultat','Results'))}${row('🏆','Leaderboard')}${row('✂️',L('Matchlappar','Match slips'))}${row('❓',L('Om appen','About'))}
+     ${row('🥇🥈🥉',L('placering 1–3 i ställningen','positions 1–3 in the standings'))}
+     ${row('☕',L('paus mellan ronder','break between rounds'))}${row('🔒 / 🔓',L('inställningar låsta / öppna','settings locked / open'))}
+     ${row('🧭',L('kompasslottning','compass draw'))}${row('🏁',L('färdigspelat','all rounds played'))}
+     ${row('+/-',L('poängdifferens (gjorda − insläppta)','point difference (scored − conceded)'))}
+     ${row('🔍',L('sök deltagare i spelschema/resultat','search player in schedule/results'))}
+   </ul>`;
+}
+// Flik: Om appen (regler, symboler, version, lagring, kort turneringsinfo)
+function amTabAboutHTML(cx){
+  const esc=cx.esc, admin=cx.admin, fmtName=cx.fmtName;
+  const govTxt = state.amRoundBy==="points" ? `${L('till','to')} ${state.amPointsTo} ${L('poäng/rond','pts/round')}` : `${amRoundDurationMin()} ${L('min/rond','min/round')}`;
+  const info=`<div style="overflow-x:auto"><table class="results"><tbody>
+     <tr><td style="text-align:left"><b>${L('Turnering','Tournament')}</b></td><td style="text-align:left">${esc(state.tournament.name||"")}</td></tr>
+     <tr><td style="text-align:left"><b>${L('Arrangör','Organizer')}</b></td><td style="text-align:left">${esc(arrangerName())}</td></tr>
+     <tr><td style="text-align:left"><b>${L('Datum','Dates')}</b></td><td style="text-align:left">${tournamentRangeText()}</td></tr>
+     <tr><td style="text-align:left"><b>${L('Format','Format')}</b></td><td style="text-align:left">${esc(fmtName)} · ${cx.pairsMode?L('par','pairs'):L('individuellt','individual')} · ${govTxt}</td></tr>
+     <tr><td style="text-align:left"><b>${L('Deltagare','Players')}</b></td><td style="text-align:left">${cx.N}</td></tr>
+     <tr><td style="text-align:left"><b>${L('Ronder','Rounds')}</b></td><td style="text-align:left">${cx.nR}</td></tr>
+   </tbody></table></div>`;
+  const tech = admin ? `
+     <h3 style="color:var(--head);margin:16px 0 6px">🗄 ${L('Version & lagring','Version & storage')}</h3>
+     <p class="small">${L('Appversion (senast uppladdad)','App version (last uploaded)')}: <b>${appVersionText()}</b></p>
+     ${cloudEnabled?`<p class="small">${L('Molnlagring','Cloud storage')}: Supabase · ${L('tabell','table')} <b>tournaments</b> · ${L('rad (key)','row (key)')} <b>${esc(TOURN_KEY)}</b><br>
+        <span class="muted">${L('Projekt','Project')}: ${supaProjectRef()}.supabase.co · <a href="https://supabase.com/dashboard/project/${supaProjectRef()}" target="_blank" rel="noopener">${L('öppna i Supabase','open in Supabase')} ↗</a></span></p>`
+        :`<p class="small muted">${L('Molnlagring är inte aktiverad – data sparas lokalt i webbläsaren.','Cloud storage is not enabled – data is stored locally in the browser.')}</p>`}
+     <p class="small muted">${L('Lokalt sparas turneringen i webbläsarens localStorage under nyckeln','Locally the tournament is stored in the browser’s localStorage under the key')} <b>km_${esc(TOURN_KEY)}</b>.</p>` : '';
+  return `<div class="card">
+     <h2>❓ ${L('Om appen','About')}</h2>
+     <h3 style="color:var(--head);margin:10px 0 6px">📋 ${L('Regler','Rules')} · ${esc(fmtName)}</h3>
+     ${amFormatRulesHTML()}
+     <h3 style="color:var(--head);margin:16px 0 6px">🔣 ${L('Tecken & symboler','Signs & symbols')}</h3>
+     ${amSymbolsHTML()}
+     <h3 style="color:var(--head);margin:16px 0 6px">ℹ️ ${L('Turneringsinformation','Tournament info')}</h3>
+     ${info}
+     ${tech}
+   </div>`;
+}
 // Poäng-per-rond-rutnät (kropp, utan kort-omslag) för Resultat-fliken.
 function amPlayerGridBody(cx){
   const pairsMode=cx.pairsMode, nR=cx.nR, esc=cx.esc;
@@ -2446,6 +2531,7 @@ function renderRotationFormat(){
   tabs.push(['results','📝 '+L('Resultat','Results')]);
   tabs.push(['leaderboard','🏆 Leaderboard']);
   tabs.push(['slips','✂️ '+L('Matchlappar','Slips')]);
+  tabs.push(['about','❓ '+L('Om appen','About')]);
   if(!ui.amTab || !tabs.some(t=>t[0]===ui.amTab)) ui.amTab = admin?'settings':'leaderboard';
   const active=ui.amTab;
   // Flikar i rubrikraden (#tabs) – samma placering som Klassisk KM.
@@ -2461,6 +2547,7 @@ function renderRotationFormat(){
   else if(active==="results") body=amTabResultsHTML(cx);
   else if(active==="leaderboard") body=amTabLeaderboardHTML(cx);
   else if(active==="slips") body=amTabSlipsHTML(cx);
+  else if(active==="about") body=amTabAboutHTML(cx);
   app.innerHTML=header+body;
   document.querySelectorAll("#tabs [data-amtab]").forEach(b=>b.onclick=()=>{ ui.amTab=b.dataset.amtab; render(); });
   if(active==="settings"&&admin){
