@@ -2125,18 +2125,20 @@ function amRoundsHTML(cx, editable){
     const restTxt=(rd.rest&&rd.rest.length)?` <span class="small muted">(${L('vilar','resting')}: ${rd.rest.map(i=>esc(state.players[i]||'')).join(", ")})</span>`:'';
     const rs=amRoundStartMin(ri), re=amRoundEndMin(ri);
     const timeTxt=(rs!=null)?` <span class="small muted">kl ${minToTime(rs)}–${minToTime(re)}</span>`:'';
-    html+=`<h3 style="color:var(--head);margin:14px 0 6px">${L('Rond','Round')} ${ri+1}${timeTxt}${restTxt}</h3><div style="overflow-x:auto"><table class="results"><thead><tr><th>${L('Bana','Court')}</th><th>${L('Lag 1','Team 1')}</th><th style="text-align:center">${L('Resultat','Score')}</th><th>${L('Lag 2','Team 2')}</th></tr></thead><tbody>`;
+    html+=`<div class="am-round"><h3 style="color:var(--head);margin:14px 0 6px">${L('Rond','Round')} ${ri+1}${timeTxt}${restTxt}</h3><div style="overflow-x:auto"><table class="results"><thead><tr><th>${L('Bana','Court')}</th><th>${L('Lag 1','Team 1')}</th><th style="text-align:center">${L('Resultat','Score')}</th><th>${L('Lag 2','Team 2')}</th></tr></thead><tbody>`;
     rd.matches.forEach((mt,mi)=>{
       const t1=mt.a.map(i=>esc(state.players[i]||'?')).join(" & "), t2=mt.b.map(i=>esc(state.players[i]||'?')).join(" & ");
+      const names=mt.a.concat(mt.b).map(i=>(state.players[i]||'')).join(" ").toLowerCase();
       const score=editable
         ? `<input type="number" min="0" max="99" value="${mt.s1==null?'':mt.s1}" data-am="${ri}_${mi}_1" style="width:52px"> – <input type="number" min="0" max="99" value="${mt.s2==null?'':mt.s2}" data-am="${ri}_${mi}_2" style="width:52px">`
         : `<b>${mt.s1==null?'–':mt.s1} – ${mt.s2==null?'–':mt.s2}</b>`;
       const won1=mt.s1!=null&&mt.s2!=null&&mt.s1>mt.s2, won2=mt.s1!=null&&mt.s2!=null&&mt.s2>mt.s1;
-      html+=`<tr><td>${esc(String(mt.court))}</td><td style="${won1?'font-weight:bold':''}">${t1}</td><td style="text-align:center;white-space:nowrap">${score}</td><td style="${won2?'font-weight:bold':''}">${t2}</td></tr>`;
+      html+=`<tr class="am-match" data-players="${esc(names)}"><td>${esc(String(mt.court))}</td><td style="${won1?'font-weight:bold':''}">${t1}</td><td style="text-align:center;white-space:nowrap">${score}</td><td style="${won2?'font-weight:bold':''}">${t2}</td></tr>`;
     });
     html+=`</tbody></table></div>`;
     const brk=amBreaksList().find(b=>b.after===ri+1);
     if(brk){ const bs=re, be=(bs!=null)?bs+(+brk.min||0):null; html+=`<div class="pill" style="background:#fbe9c9;color:#8a5a00;margin:10px 0 2px">☕ ${L('Paus','Break')} ${brk.min} ${L('min','min')}${bs!=null?` · kl ${minToTime(bs)}–${minToTime(be)}`:''}</div>`; }
+    html+=`</div>`;
   });
   return html;
 }
@@ -2218,9 +2220,19 @@ function amTabSettingsHTML(cx){
        </div>
      </div>`;
 }
+// Sökfält för att filtrera matcher på deltagarnamn (Spelschema/Resultat).
+function amSearchBarHTML(cx){
+  if(!cx.nR) return '';
+  const v=escXml(ui.amSearch||"");
+  return `<div class="row no-print" style="gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+     <input type="text" id="amSearch" placeholder="🔍 ${L('Sök deltagare…','Search player…')}" value="${v}" style="min-width:200px;flex:1;max-width:360px">
+     <button class="btn gray mini" id="amSearchClear">✕ ${L('Rensa','Clear')}</button>
+     <span class="small muted" id="amSearchCount"></span>
+   </div>`;
+}
 // Flik: Spelschema (läsvy)
 function amTabScheduleHTML(cx){
-  return `<div class="card"><h2>📅 ${L('Spelschema','Schedule')}</h2>${amRoundsHTML(cx, false)}</div>`;
+  return `<div class="card"><h2>📅 ${L('Spelschema','Schedule')}</h2>${amSearchBarHTML(cx)}${amRoundsHTML(cx, false)}</div>`;
 }
 // Flik: Resultat (inmatning + rutnät)
 function amTabResultsHTML(cx){
@@ -2230,11 +2242,33 @@ function amTabResultsHTML(cx){
      <button class="btn ${view==='entry'?'':'ghost'} mini" data-amview="entry">📝 ${L('Inmatning','Entry')}</button>
      <button class="btn ${view==='grid'?'':'ghost'} mini" data-amview="grid">📊 ${L('Poäng per rond','Points grid')}</button>
    </div>`;
-  let body;
+  let body, showSearch=false;
   if(!cx.nR) body=amRoundsHTML(cx, false);
   else if(view==="grid") body=(cx.isCompass?`<p class="muted">${L('Rutnätet gäller poängformaten.','The grid applies to points formats.')}</p>`:amPlayerGridBody(cx));
-  else body=amRoundsHTML(cx, cx.admin);
-  return `<div class="card"><h2>📝 ${L('Resultat','Results')}</h2>${toggle}${body}</div>`;
+  else { body=amRoundsHTML(cx, cx.admin); showSearch=true; }
+  return `<div class="card"><h2>📝 ${L('Resultat','Results')}</h2>${toggle}${showSearch?amSearchBarHTML(cx):''}${body}</div>`;
+}
+// Filtrera matchrader direkt i DOM (behåller fokus i sökfältet).
+function amApplySearch(){
+  const inp=document.getElementById("amSearch"); if(!inp) return;
+  const q=(inp.value||"").trim().toLowerCase();
+  let shown=0;
+  document.querySelectorAll(".am-round").forEach(rd=>{
+    let any=false;
+    rd.querySelectorAll(".am-match").forEach(tr=>{
+      const ok=!q || (tr.dataset.players||"").includes(q);
+      tr.style.display=ok?"":"none"; if(ok){ any=true; shown++; }
+    });
+    rd.style.display=any?"":"none";
+  });
+  const c=document.getElementById("amSearchCount");
+  if(c) c.textContent = q ? `${shown} ${L('matcher','matches')}` : "";
+}
+function bindAmSearch(){
+  const inp=document.getElementById("amSearch"); if(!inp) return;
+  inp.oninput=()=>{ ui.amSearch=inp.value; amApplySearch(); };
+  const cl=document.getElementById("amSearchClear"); if(cl) cl.onclick=()=>{ ui.amSearch=""; inp.value=""; amApplySearch(); inp.focus(); };
+  amApplySearch();
 }
 // Flik: Leaderboard
 function amTabLeaderboardHTML(cx){
@@ -2412,6 +2446,7 @@ function renderRotationFormat(){
     bindAmSettings(cx);
     if(state.amLocked) app.querySelectorAll("input,textarea,select,button").forEach(el=>{ if(el.id!=="amLockToggle") el.disabled=true; });
   }
+  if(active==="schedule") bindAmSearch();
   if(active==="results"){
     document.querySelectorAll("[data-amview]").forEach(b=>b.onclick=()=>{ ui.amResultsView=b.dataset.amview; render(); });
     if(admin) document.querySelectorAll("[data-am]").forEach(inp=>inp.onchange=()=>{
@@ -2420,6 +2455,7 @@ function renderRotationFormat(){
       const mt=state.amRounds[ri]&&state.amRounds[ri].matches[mi]; if(!mt) return;
       if(which===1) mt.s1=v; else mt.s2=v; save(); render();
     });
+    bindAmSearch();
   }
   if(active==="slips"){ const b=document.getElementById("amPrintSlips"); if(b) b.onclick=printMatchSlips; }
 }
