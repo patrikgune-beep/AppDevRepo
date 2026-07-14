@@ -790,6 +790,53 @@ async function cloudListTournaments(){
     .filter(x=>!x.app || x.app===APP_ID)   // dölj turneringar som tillhör en annan app (t.ex. TennisKM)
     .map(x=>({ key:x.key, name:x.name, arranger:x.arranger||"", archived:(x.archived===true||x.archived==="true") }));
 }
+// Säkerhetskopiera ALLA turneringar (denna app) till en JSON-fil.
+async function backupAllTournaments(){
+  if(!isAdmin()){ alert(L("Endast admin.","Admin only.")); return; }
+  if(!cloudEnabled){ exportBackup(); return; }   // utan moln: säkerhetskopiera aktuell turnering
+  try{ await cloudForcePush(); }catch(e){}        // spara pågående turnering först
+  let rows;
+  try{ const r=await fetch(`${SUPA_URL}/tournaments?select=key,data`, { headers: cloudHeaders() });
+    if(!r.ok) throw new Error("HTTP "+r.status); rows=await r.json(); }
+  catch(e){ alert(L("Kunde inte hämta turneringarna: ","Could not fetch tournaments: ")+(e.message||e)); return; }
+  const mine=(Array.isArray(rows)?rows:[])
+    .filter(x=>x.key && !x.key.startsWith("__") && x.data)
+    .filter(x=>!x.data.app || x.data.app===APP_ID);
+  if(!mine.length){ alert(L("Inga turneringar att säkerhetskopiera.","No tournaments to back up.")); return; }
+  const payload={ app:APP_ID, version:1, exportedAt:Date.now(), count:mine.length, tournaments:mine.map(x=>({key:x.key, data:x.data})) };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  const p=n=>String(n).padStart(2,"0"), d=new Date();
+  const stamp=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`;
+  a.download=`${fileSafe(APP_ID)||"turneringar"}_alla_backup_${stamp}.json`;
+  a.click();
+  alert(L(`Säkerhetskopia skapad: ${mine.length} turnering(ar).`,`Backup created: ${mine.length} tournament(s).`));
+}
+// Arkivera ALLA turneringar (kräver MasterAdmin-koden – påverkar alla turneringar).
+async function archiveAllTournaments(){
+  if(!isAdmin()){ alert(L("Endast admin.","Admin only.")); return; }
+  if(!cloudEnabled){ alert(L("Molnet krävs för att arkivera alla turneringar.","Cloud is required to archive all tournaments.")); return; }
+  const pin=prompt(L("Ange MasterAdmin-koden för att arkivera ALLA turneringar:","Enter the MasterAdmin code to archive ALL tournaments:"));
+  if(pin==null) return;
+  if(pin.trim()!==MASTER_PIN){ alert(L("Fel kod – ingenting arkiverades.","Wrong code – nothing was archived.")); return; }
+  try{ await cloudForcePush(); }catch(e){}        // spara pågående turnering först
+  let rows;
+  try{ const r=await fetch(`${SUPA_URL}/tournaments?select=key,data`, { headers: cloudHeaders() });
+    if(!r.ok) throw new Error("HTTP "+r.status); rows=await r.json(); }
+  catch(e){ alert(L("Kunde inte hämta turneringarna: ","Could not fetch tournaments: ")+(e.message||e)); return; }
+  const mine=(Array.isArray(rows)?rows:[])
+    .filter(x=>x.key && !x.key.startsWith("__") && x.data && (!x.data.app || x.data.app===APP_ID) && !x.data.archived);
+  if(!mine.length){ alert(L("Alla turneringar är redan arkiverade.","All tournaments are already archived.")); return; }
+  if(!confirm(L(`Arkivera ${mine.length} turnering(ar)? De göms från listan men kan låsas upp igen.`,`Archive ${mine.length} tournament(s)? They are hidden from the list but can be unarchived.`))) return;
+  let ok=0, bad=0;
+  for(const x of mine){
+    const data={...x.data, archived:true, archivedAt:Date.now()};
+    try{ await cloudUpsertRow(x.key, data); ok++; }catch(e){ bad++; }
+  }
+  if(mine.some(x=>x.key===TOURN_KEY)){ state.archived=true; state.archivedAt=Date.now(); saveLocal(); }
+  alert(L(`Arkiverade ${ok} turnering(ar)${bad?`, ${bad} misslyckades`:''}.`,`Archived ${ok} tournament(s)${bad?`, ${bad} failed`:''}.`));
+  renderHome();
+}
 // Skapa en ny, tom turnering och gör den aktiv.
 async function createTournament(name){
   if(!isAdmin()) return;
@@ -1494,8 +1541,19 @@ function renderHome(){
    <div class="card">
      <div id="homeList"><p class="muted">${L('Laddar…','Loading…')}</p></div>
      <div class="small muted" id="homeMsg" style="margin-top:8px"></div>
-   </div>`;
+   </div>
+   ${admin?`<div class="card">
+     <h2>🗄 ${L('Säkerhetskopiering & arkivering','Backup & archiving')}</h2>
+     <p class="small muted">${L('Gäller alla turneringar i den här appen.','Applies to all tournaments in this app.')}</p>
+     <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px">
+       <button class="btn ghost" id="homeBackupAll">⬇ ${L('Säkerhetskopiera alla turneringar','Back up all tournaments')}</button>
+       <button class="btn gray" id="homeArchiveAll">📦 ${L('Arkivera alla turneringar','Archive all tournaments')}</button>
+     </div>
+     <p class="small muted" style="margin:8px 0 0">${L('Säkerhetskopian sparas som en JSON-fil (datum + klockslag i filnamnet). Att arkivera alla kräver MasterAdmin-koden; arkiverade turneringar göms men kan låsas upp igen.','The backup is saved as a JSON file (date + time in the filename). Archiving all requires the MasterAdmin code; archived tournaments are hidden but can be unarchived.')}</p>
+   </div>`:''}`;
   updateSyncBadge();
+  { const b=document.getElementById("homeBackupAll"); if(b) b.onclick=backupAllTournaments; }
+  { const b=document.getElementById("homeArchiveAll"); if(b) b.onclick=archiveAllTournaments; }
   document.getElementById("homeShowArch").onchange=e=>{ ui.homeShowArchived=e.target.checked; renderHome(); };
   document.getElementById("homeReload").onclick=()=>renderHome();
   { const ub=document.getElementById("homeUnlockBtn"); if(ub) ub.onclick=promptAdmin; }
