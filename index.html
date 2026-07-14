@@ -462,6 +462,7 @@ function normalize(s){
   if(s.amScoreMode!=="pairs") s.amScoreMode="individual";   // poängräkning: individuellt/par
   if(!(s.amWarmup>=0)) s.amWarmup=0;                    // simulering: uppvärmning före rond 1 (min)
   if(!Array.isArray(s.amBreaks)) s.amBreaks=[];         // simulering: pauser [{after, min}]
+  if(!(s.amPlanRounds>0)) s.amPlanRounds=0;             // föreslaget antal ronder från startsidan
   if(typeof s.adminPin!=="string") s.adminPin="";
   if(typeof s.updatedAt!=="number") s.updatedAt=0;
   if(typeof s.archived!=="boolean") s.archived=false;
@@ -1379,45 +1380,42 @@ function renderTabs(){
 }
 
 /* Upplägg & förslag på startsidan: konkret plan för valt format inom tidsfönstret. */
-function homePlanHTML(fmt, N, C, startMin, endMin, roundMin, roundsWanted){
-  const window = (startMin!=null && endMin!=null && endMin>startMin) ? endMin-startMin : null;
-  const winTxt = window!=null ? ` <span class="muted">(${L('fönster','window')} ${minToTime(startMin)}–${minToTime(endMin)}, ${fmtDurationMin(window)})</span>` : '';
-  const fits=(total)=> window==null ? '' : (total<=window
-      ? ` <span class="pill" style="background:#e3f1de;color:var(--green)">✓ ${L('ryms i fönstret','fits the window')}</span>`
-      : ` <span class="pill" style="background:#fbe4e0;color:#c0392b">⚠ ${L('längre än fönstret','longer than window')} (+${fmtDurationMin(total-window)})</span>`);
+// availMin = tillgänglig speltid i minuter (från "Speltid (timmar)").
+function homePlanHTML(fmt, N, C, availMin){
+  const availTxt = availMin>0 ? ` <span class="muted">(${L('speltid','play time')} ${fmtDurationMin(availMin)})</span>` : '';
+  const fits=(total)=> availMin<=0 ? '' : (total<=availMin
+      ? ` <span class="pill" style="background:#e3f1de;color:var(--green)">✓ ${L('ryms i speltiden','fits the play time')}</span>`
+      : ` <span class="pill" style="background:#fbe4e0;color:#c0392b">⚠ ${L('längre än speltiden','longer than play time')} (+${fmtDurationMin(total-availMin)})</span>`);
   const head=`<div class="hint" style="border-color:var(--gold);background:#fbf4df">`;
   if(fmt==="americano"||fmt==="mexicano"||fmt==="kingcourt"){
-    const mpr=Math.max(1,Math.min(C, Math.floor(N/4))), active=4*mpr, rest=Math.max(0,N-active);
-    const roundsFit = window!=null ? Math.max(1,Math.floor(window/roundMin)) : null;
-    let rounds = roundsWanted>0 ? roundsWanted : Math.max(1,N-1);
-    if(roundsFit!=null && !(roundsWanted>0)) rounds=Math.min(rounds, roundsFit);
-    const total=rounds*roundMin, endT=startMin!=null?minToTime(startMin+total):null;
-    const roundsNote = (roundsFit!=null && rounds>roundsFit) ? ` <span class="pill" style="background:#fbe4e0;color:#c0392b">${L('fler ronder än som ryms','more rounds than fit')} (${roundsFit})</span>` : '';
-    return `${head}<b>🧮 ${L('Upplägg','Plan')} · ${matchFormat(fmt).name}</b>${winTxt}
+    const s=amSuggestPlan(fmt, N, C, availMin); if(!s) return '';
+    const total=s.rounds*s.roundMin;
+    const blockNote = (fmt==="americano" && s.block>1) ? ` <span class="muted">(${L('multipel av','multiple of')} ${s.block} → ${L('lika antal matcher','equal games')})</span>` : '';
+    return `${head}<b>🧮 ${L('Förslag','Suggestion')} · ${matchFormat(fmt).name}</b>${availTxt}
       <ul class="small" style="margin:8px 0 0;padding-left:18px">
-        <li>${N} ${L('deltagare','players')} · ${C} ${C==1?L('bana','court'):L('banor','courts')} · <b>${rounds}</b> ${L('ronder','rounds')} × ${roundMin} ${L('min','min')}${roundsNote}</li>
-        <li>${mpr} ${L('matcher per rond','matches per round')}${rest>0?` · ${rest} ${L('vilar varje rond','rest each round')}`:''}</li>
-        <li>${L('Total speltid','Total play time')}: <b>${fmtDurationMin(total)}</b>${endT?` · ${L('slut ca','ends approx')} ${endT}`:''}${fits(total)}</li>
+        <li>${N} ${L('deltagare','players')} · ${C} ${C==1?L('bana','court'):L('banor','courts')}</li>
+        <li>${L('Föreslaget','Suggested')}: <b>${s.rounds}</b> ${L('ronder','rounds')} × <b>${s.roundMin}</b> ${L('min/rond','min/round')}${blockNote}</li>
+        <li>${s.ppr/4} ${L('matcher per rond','matches per round')}${s.rest>0?` · ${s.rest} ${L('vilar varje rond','rest each round')}`:''}</li>
+        <li>${L('Total speltid','Total play time')}: <b>${fmtDurationMin(total)}</b>${fits(total)}</li>
       </ul>
-      <p class="small muted" style="margin:8px 0 0">${L('Justera tider, ronder eller minuter/rond och generera igen. Allt går att ändra i turneringen efteråt.','Adjust times, rounds or minutes/round and regenerate. Everything can be changed inside the tournament afterwards.')}</p></div>`;
+      <p class="small muted" style="margin:8px 0 0">${L('Minuter per rond och antal ronder förifylls i turneringen och kan ändras där.','Minutes per round and number of rounds are prefilled into the tournament and can be changed there.')}</p></div>`;
   }
   if(fmt==="compass"){
-    const playRounds=Math.ceil(Math.log2(Math.max(2,N)))+1;
-    const total=playRounds*roundMin, endT=startMin!=null?minToTime(startMin+total):null;
-    return `${head}<b>🧮 ${L('Upplägg','Plan')} · ${matchFormat(fmt).name}</b>${winTxt}
+    const s=amSuggestPlan(fmt, N, C, availMin), total=s.rounds*s.roundMin;
+    return `${head}<b>🧮 ${L('Förslag','Suggestion')} · ${matchFormat(fmt).name}</b>${availTxt}
       <ul class="small" style="margin:8px 0 0;padding-left:18px">
-        <li>${N} ${L('deltagare','players')} · ${C} ${C==1?L('bana','court'):L('banor','courts')} · ${L('ca','approx')} <b>${playRounds}</b> ${L('spelomgångar','play-rounds')} × ${roundMin} ${L('min','min')}</li>
+        <li>${N} ${L('deltagare','players')} · ${C} ${C==1?L('bana','court'):L('banor','courts')} · ${L('ca','approx')} <b>${s.rounds}</b> ${L('spelomgångar','play-rounds')} × ${s.roundMin} ${L('min','min')}</li>
         <li>${L('Öst är huvudlottning; förlorare spelar vidare i Väst/Nord/Syd.','East is the main draw; losers continue in West/North/South.')}</li>
-        <li>${L('Total speltid','Total play time')}: <b>${fmtDurationMin(total)}</b>${endT?` · ${L('slut ca','ends approx')} ${endT}`:''}${fits(total)}</li>
+        <li>${L('Total speltid','Total play time')}: <b>${fmtDurationMin(total)}</b>${fits(total)}</li>
       </ul></div>`;
   }
   // classic
   const e=(N>=2)?matchFormat("classic").est(N,C):null;
-  const total=e?e.totalMin:0, endT=(e&&startMin!=null)?minToTime(startMin+total):null;
-  return `${head}<b>🧮 ${L('Upplägg','Plan')} · ${matchFormat("classic").name}</b>${winTxt}
+  const total=e?e.totalMin:0;
+  return `${head}<b>🧮 ${L('Förslag','Suggestion')} · ${matchFormat("classic").name}</b>${availTxt}
     <ul class="small" style="margin:8px 0 0;padding-left:18px">
       <li>${N} ${L('deltagare','players')} · ${L('utslagsspel (cup)','single elimination')}</li>
-      <li>${L('Total speltid','Total play time')}: <b>${e?fmtDurationMin(total):'–'}</b>${endT?` · ${L('slut ca','ends approx')} ${endT}`:''}${e?fits(total):''}</li>
+      <li>${L('Uppskattad speltid','Estimated play time')}: <b>${e?fmtDurationMin(total):'–'}</b>${e?fits(total):''}</li>
     </ul>
     <p class="small muted" style="margin:8px 0 0">${L('Klassisk KM planeras klass för klass inne i turneringen.','Classic KM is planned class by class inside the tournament.')}</p></div>`;
 }
@@ -1450,17 +1448,10 @@ function renderHome(){
      <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap;margin-top:10px">
        <label class="small">${L('Antal deltagare','Number of players')}<br><input type="number" id="homeEstPlayers" min="2" max="128" value="16" style="width:90px"></label>
        <label class="small">${L('Antal banor','Number of courts')}<br><input type="number" id="homeEstCourts" min="1" max="16" value="2" style="width:90px"></label>
-       <label class="small">${L('Startdatum','Start date')}<br><input type="date" id="homeEstStartDate"></label>
-       <label class="small">${L('Slutdatum','End date')}<br><input type="date" id="homeEstEndDate"></label>
-     </div>
-     <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap;margin-top:8px">
-       <label class="small">${L('Starttid','Start time')}<br><input type="time" id="homeEstStart" value="09:00" style="width:110px"></label>
-       <label class="small">${L('Sluttid','End time')}<br><input type="time" id="homeEstEnd" value="17:00" style="width:110px"></label>
-       <label class="small">${L('Minuter per rond','Minutes per round')}<br><input type="number" id="homeEstRoundMin" min="1" max="120" value="15" style="width:90px"></label>
-       <label class="small">${L('Antal ronder','Rounds')}<br><input type="number" id="homeEstRounds" min="1" max="60" placeholder="${L('auto','auto')}" style="width:90px"></label>
+       <label class="small">${L('Speltid (timmar)','Play time (hours)')}<br><input type="number" id="homeEstHours" min="0.5" max="12" step="0.5" value="3" style="width:100px"></label>
        <button class="btn ghost mini" id="homePlanBtn" style="margin-bottom:1px">🧮 ${L('Generera upplägg & förslag','Generate plan & suggestion')}</button>
      </div>
-     <p class="small muted" style="margin:6px 0 0">${L('Tider, ronder och minuter/rond används för upplägget nedan och förifylls i turneringen. Antal ronder gäller där det är relevant (Americano/Mexicano/King of the Court).','Times, rounds and minutes/round drive the plan below and are prefilled into the tournament. The rounds field applies where relevant (Americano/Mexicano/King of the Court).')}</p>
+     <p class="small muted" style="margin:6px 0 0">${L('Minuter per rond och antal ronder föreslås utifrån deltagare, banor, speltid och format. Datum och exakta tider anger du inne i turneringen.','Minutes per round and number of rounds are suggested from players, courts, play time and format. Dates and exact times are set inside the tournament.')}</p>
      <div class="small" style="margin:12px 0 4px"><b>${L('Välj tävlingsformat','Choose tournament format')}</b></div>
      <div id="formatTableWrap" style="overflow-x:auto"></div>
      <div id="homePlanReadout" style="margin-top:12px"></div>
@@ -1489,37 +1480,31 @@ function renderHome(){
   { const ub=document.getElementById("homeUnlockBtn"); if(ub) ub.onclick=promptAdmin; }
   {   // "Skapa ny turnering" är tillgänglig för alla (publik + admin)
     if(!ui.homeFormat) ui.homeFormat="classic";
-    const estP=document.getElementById("homeEstPlayers"), estC=document.getElementById("homeEstCourts"), estS=document.getElementById("homeEstStart");
-    const estE=document.getElementById("homeEstEnd"), estRM=document.getElementById("homeEstRoundMin"), estR=document.getElementById("homeEstRounds");
-    const estSD=document.getElementById("homeEstStartDate"), estED=document.getElementById("homeEstEndDate");
+    const estP=document.getElementById("homeEstPlayers"), estC=document.getElementById("homeEstCourts"), estH=document.getElementById("homeEstHours");
+    const availMinOf=()=>{ const h=parseFloat(estH.value); return (h>0)?Math.round(h*60):0; };
     function renderPlan(){
       const N=Math.max(0,parseInt(estP.value,10)||0), C=Math.max(1,parseInt(estC.value,10)||1);
-      const startMin=timeToMin(estS.value), endMin=timeToMin(estE.value);
-      const roundMin=Math.max(1,parseInt(estRM.value,10)||15), roundsWanted=Math.max(0,parseInt(estR.value,10)||0);
       const box=document.getElementById("homePlanReadout");
-      if(box) box.innerHTML = N>=2 ? homePlanHTML(ui.homeFormat||"classic", N, C, startMin, endMin, roundMin, roundsWanted)
-                                   : `<p class="small muted">${L('Ange minst 2 deltagare för ett upplägg.','Enter at least 2 players for a plan.')}</p>`;
+      if(box) box.innerHTML = N>=2 ? homePlanHTML(ui.homeFormat||"classic", N, C, availMinOf())
+                                   : `<p class="small muted">${L('Ange minst 2 deltagare för ett förslag.','Enter at least 2 players for a suggestion.')}</p>`;
     }
     function updateFormatTable(){
-      const N=Math.max(0,parseInt(estP.value,10)||0), C=Math.max(1,parseInt(estC.value,10)||1), sel=ui.homeFormat;
-      const startMin=timeToMin(estS.value); const hasStart=startMin!=null;
+      const N=Math.max(0,parseInt(estP.value,10)||0), C=Math.max(1,parseInt(estC.value,10)||1), sel=ui.homeFormat, availMin=availMinOf();
       const rows=MATCH_FORMATS.map(f=>{ const e=(N>=2)?f.est(N,C):null;
-        const end=(e&&hasStart)?minToTime(startMin+e.totalMin):null;
         return `<tr style="cursor:pointer" data-fmtrow="${f.id}">
           <td style="text-align:center"><input type="radio" name="fmtPick" value="${f.id}" ${sel===f.id?'checked':''}></td>
           <td style="white-space:nowrap"><b>${f.name}</b></td>
           <td style="white-space:nowrap">${e?fmtDurationMin(e.totalMin):'–'}</td>
-          <td style="white-space:nowrap">${end||'–'}</td>
           <td style="white-space:nowrap">${e?fmtDurationMin(e.perPlayerMin):'–'}</td>
           <td class="small">${f.desc}</td></tr>`; }).join("");
-      document.getElementById("formatTableWrap").innerHTML=`<table class="results" style="min-width:720px"><thead><tr>
-          <th>${L('Välj','Pick')}</th><th>${L('Format','Format')}</th><th>${L('Total tid','Total time')}</th><th>${L('Sluttid','End time')}</th><th>${L('Speltid/deltagare','Play time/player')}</th><th>${L('Beskrivning','Description')}</th></tr></thead><tbody>${rows}</tbody></table>
-        <p class="small muted" style="margin:6px 0 0">${L('Ungefärlig uppskattning','Rough estimate')} (${N||'—'} ${L('deltagare','players')}, ${C} ${C==1?L('bana','court'):L('banor','courts')}${hasStart?`, ${L('start','start')} ${estS.value}`:''}). ${L('Faktisk tid beror på matchlängd och pauser.','Actual time depends on match length and breaks.')}</p>`;
+      document.getElementById("formatTableWrap").innerHTML=`<table class="results" style="min-width:640px"><thead><tr>
+          <th>${L('Välj','Pick')}</th><th>${L('Format','Format')}</th><th>${L('Total tid','Total time')}</th><th>${L('Speltid/deltagare','Play time/player')}</th><th>${L('Beskrivning','Description')}</th></tr></thead><tbody>${rows}</tbody></table>
+        <p class="small muted" style="margin:6px 0 0">${L('Ungefärlig uppskattning','Rough estimate')} (${N||'—'} ${L('deltagare','players')}, ${C} ${C==1?L('bana','court'):L('banor','courts')}${availMin>0?`, ${fmtDurationMin(availMin)} ${L('speltid','play time')}`:''}). ${L('Faktisk tid beror på matchlängd och pauser.','Actual time depends on match length and breaks.')}</p>`;
       document.querySelectorAll('input[name="fmtPick"]').forEach(r=>r.onchange=()=>{ ui.homeFormat=r.value; renderPlan(); });
       document.querySelectorAll('[data-fmtrow]').forEach(tr=>tr.onclick=e=>{ if(e.target.tagName!=="INPUT"){ ui.homeFormat=tr.dataset.fmtrow; updateFormatTable(); renderPlan(); } });
     }
     const refreshAll=()=>{ updateFormatTable(); renderPlan(); };
-    [estP,estC,estS,estE,estRM,estR].forEach(el=>{ if(el) el.oninput=refreshAll; });
+    [estP,estC,estH].forEach(el=>{ if(el) el.oninput=refreshAll; });
     { const pb=document.getElementById("homePlanBtn"); if(pb) pb.onclick=renderPlan; }
     updateFormatTable(); renderPlan();
     const asCopy=document.getElementById("homeAsCopy"), copyBox=document.getElementById("homeCopyBox");
@@ -1535,9 +1520,9 @@ function renderHome(){
       let pin=document.getElementById("homeNewPin").value.trim(); if(!pin) pin="0000";
       const format=ui.homeFormat||"classic";
       const courts=Math.max(1,parseInt(estC.value,10)||2);
-      const plan={ startDate:estSD.value||"", endDate:estED.value||"",
-        amStart:(timeToMin(estS.value)!=null?estS.value:""),
-        roundMin:Math.max(0,parseInt(estRM.value,10)||0) };
+      const N=Math.max(0,parseInt(estP.value,10)||0);
+      const sug=(N>=2)?amSuggestPlan(format, N, courts, availMinOf()):null;   // föreslå ronder + min/rond
+      const plan = sug ? { roundMin:sug.roundMin, planRounds:sug.rounds } : {};
       if(asCopy.checked){
         const srcKey=document.getElementById("homeCopyFrom").value;
         if(!srcKey){ alert(L("Välj en turnering att kopiera från.","Choose a tournament to copy from.")); return; }
@@ -1681,11 +1666,9 @@ function buildTournamentState(name, src, opts){
     }));
   }
   if(opts.courts>0) s.courts=opts.courts;   // angivet banantal vinner (även över kopierad info)
-  // Startsidans upplägg: förifyll datum, starttid och minuter per rond (explicita val vinner).
-  if(typeof opts.startDate==="string" && opts.startDate) s.tournament.start=opts.startDate;
-  if(typeof opts.endDate==="string" && opts.endDate) s.tournament.end=opts.endDate;
-  if(typeof opts.amStart==="string" && /^\d{1,2}:\d{2}$/.test(opts.amStart)) s.amStart=opts.amStart;
+  // Startsidans förslag: förifyll minuter per rond och planerat antal ronder.
   if(opts.roundMin>0) s.amRoundMin=opts.roundMin;
+  if(opts.planRounds>0) s.amPlanRounds=opts.planRounds;
   return normalize(s);
 }
 // Skapa ny turnering (ev. som kopia av vald källa) och öppna den i ADMINLÄGE.
@@ -1818,40 +1801,78 @@ function amGeneratePairs(numRounds, courts){
   }
   state.amRounds=rounds; return true;
 }
-// Generera Americano-schema: roterande partners, rättvis vila, minimerar upprepade par.
+// --- Americano-hjälpare (enligt americano.html) ---
+function amGcd(a,b){ return b?amGcd(b,a%b):a; }
+function amActivePerRound(n,c){ return Math.max(4, Math.floor(Math.min(c*4,n)/4)*4); }   // aktiva/rond (multipel av 4)
+function amEqualBlock(n,c){ const ppr=amActivePerRound(n,c); return n/amGcd(n,ppr); }     // minsta antal ronder för lika antal matcher
+// Kanoniskt schema för 16 spelare / 2 banor / 8 ronder (från americano.html, 1-indexerat).
+const AM_SCHED16=[
+  {courts:[{t1:[1,4],t2:[6,10]},{t1:[3,12],t2:[8,9]}],   rest:[2,5,7,11,13,14,15,16]},
+  {courts:[{t1:[13,16],t2:[14,15]},{t1:[2,5],t2:[7,11]}], rest:[1,3,4,6,8,9,10,12]},
+  {courts:[{t1:[1,6],t2:[14,16]},{t1:[4,10],t2:[13,15]}], rest:[2,3,5,7,8,9,11,12]},
+  {courts:[{t1:[5,11],t2:[8,12]},{t1:[2,7],t2:[3,9]}],    rest:[1,4,6,10,13,14,15,16]},
+  {courts:[{t1:[1,10],t2:[2,11]},{t1:[4,6],t2:[5,7]}],    rest:[3,8,9,12,13,14,15,16]},
+  {courts:[{t1:[9,12],t2:[13,14]},{t1:[3,8],t2:[15,16]}], rest:[1,2,4,5,6,7,10,11]},
+  {courts:[{t1:[1,12],t2:[3,4]},{t1:[6,8],t2:[9,10]}],    rest:[2,5,7,11,13,14,15,16]},
+  {courts:[{t1:[7,15],t2:[11,14]},{t1:[2,13],t2:[5,16]}], rest:[1,3,4,6,8,9,10,12]},
+];
+// Föreslå antal ronder + minuter per rond utifrån deltagare, banor, speltid (min) och format.
+function amSuggestPlan(fmt, N, C, availMin){
+  if(N<2) return null;
+  if(fmt==="compass"){ const rounds=Math.ceil(Math.log2(Math.max(2,N)))+1; const roundMin=availMin>0?Math.max(8,Math.min(30,Math.floor(availMin/rounds))):15; return {rounds, roundMin, rest:0, block:1}; }
+  const ppr=amActivePerRound(N,C), rest=N-ppr, block=amEqualBlock(N,C);
+  const TARGET=12, MINM=8, MAXM=20;
+  let rounds, roundMin;
+  if(availMin>0){
+    rounds=Math.max(block, Math.round((availMin/TARGET)/block)*block);
+    roundMin=Math.floor(availMin/rounds);
+    let g=0; while(roundMin<MINM && rounds>block && g++<100){ rounds-=block; roundMin=Math.floor(availMin/rounds); }
+    if(roundMin<MINM){ rounds=block; roundMin=MINM; }
+    roundMin=Math.min(roundMin, MAXM);
+  } else {
+    rounds=Math.max(block, Math.min(N-1, 8)); roundMin=15;
+  }
+  return {rounds, roundMin, ppr, rest, block};
+}
+// Generera Americano-schema enligt americano.html: lika antal matcher, rättvis vila, greedy-parning.
 function amGenerate(numRounds, courts){
   amEnsure();
   if(state.amScoreMode==="pairs") return amGeneratePairs(numRounds, courts);
   const N=state.players.length; if(N<4) return false;
-  const idx=[...Array(N).keys()];
-  const key=(a,b)=>a<b?a+"_"+b:b+"_"+a;
-  const partnerCount={}, restCount=idx.map(()=>0);
   const C=Math.max(1,courts||1);
-  const matchesPerRound=Math.min(C, Math.floor(N/4));
-  const playPer=4*matchesPerRound, restN=N-playPer;
-  const rounds=[];
-  const shuffle=a=>{ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
-  for(let r=0;r<numRounds;r++){
-    const order=shuffle([...idx]).sort((a,b)=>restCount[a]-restCount[b]);   // lägst vila vilar (rättvist)
-    const resting=order.slice(0,restN); resting.forEach(i=>restCount[i]++);
-    const playing=shuffle(order.slice(restN));
-    const matches=[];
-    for(let g=0; g+4<=playing.length; g+=4){
-      const q=playing.slice(g,g+4);
-      const splits=[[[0,1],[2,3]],[[0,2],[1,3]],[[0,3],[1,2]]];
-      let best=null,bc=Infinity;
-      for(const sp of splits){
-        const a=[q[sp[0][0]],q[sp[0][1]]], b=[q[sp[1][0]],q[sp[1][1]]];
-        const c=(partnerCount[key(a[0],a[1])]||0)+(partnerCount[key(b[0],b[1])]||0);
-        if(c<bc){ bc=c; best={a,b}; }
-      }
-      partnerCount[key(best.a[0],best.a[1])]=(partnerCount[key(best.a[0],best.a[1])]||0)+1;
-      partnerCount[key(best.b[0],best.b[1])]=(partnerCount[key(best.b[0],best.b[1])]||0)+1;
-      matches.push({ court:matches.length+1, a:best.a, b:best.b, s1:null, s2:null });
-    }
-    rounds.push({ matches, rest:resting });
+  const ppr=amActivePerRound(N,C), actualCourts=ppr/4, restPer=N-ppr, block=amEqualBlock(N,C);
+  let rounds = numRounds>0 ? numRounds : (restPer<=0 ? Math.max(block, Math.min(N-1,8)) : Math.ceil(4*N/ppr));
+  rounds = Math.max(block, Math.round(rounds/block)*block);   // snäpp till block → lika antal matcher för alla
+  // Kanoniskt schema för standardfallet 16p/2 banor/8 ronder.
+  if(N===16 && C===2 && rounds===8){
+    state.amRounds=AM_SCHED16.map(r=>({
+      matches:r.courts.map((c,ci)=>({court:ci+1, a:c.t1.map(id=>id-1), b:c.t2.map(id=>id-1), s1:null, s2:null})),
+      rest:r.rest.map(id=>id-1)
+    }));
+    return true;
   }
-  state.amRounds=rounds; return true;
+  const partnerCount={}, playCount=Array(N).fill(0);
+  const pkey=(a,b)=>a<b?a+"_"+b:b+"_"+a;
+  const getPC=(a,b)=>partnerCount[pkey(a,b)]||0, incPC=(a,b)=>{ const k=pkey(a,b); partnerCount[k]=(partnerCount[k]||0)+1; };
+  const out=[];
+  for(let r=0;r<rounds;r++){
+    let active, rest;
+    const all=[...Array(N).keys()];
+    if(restPer<=0){ active=all; rest=[]; }
+    else { all.sort((a,b)=>playCount[a]-playCount[b]||a-b); active=all.slice(0,ppr); rest=all.slice(ppr).sort((a,b)=>a-b); }  // cirkulär vila (minst spelade vilar sist)
+    const rem=[...active], pairs=[];
+    while(rem.length>=2){                                        // greedy-parning: minimera upprepade par
+      const a=rem.shift(); let bi=0, mc=Infinity;
+      for(let i=0;i<rem.length;i++){ const c=getPC(a,rem[i]); if(c<mc || (c===mc && rem[i]<rem[bi])){ mc=c; bi=i; } }
+      const b=rem.splice(bi,1)[0]; pairs.push([a,b]);
+    }
+    for(const [a,b] of pairs) incPC(a,b);
+    for(const pl of active) playCount[pl]++;
+    const matches=[];
+    for(let c=0;c<actualCourts;c++){ const i=c*2; if(i+1<pairs.length) matches.push({court:c+1, a:pairs[i], b:pairs[i+1], s1:null, s2:null}); }
+    out.push({matches, rest});
+  }
+  state.amRounds=out; return true;
 }
 // Har alla matcher i ronden fått resultat?
 function amRoundScored(rd){ return !!rd && Array.isArray(rd.matches) && rd.matches.length>0 && rd.matches.every(m=>m.s1!=null && m.s2!=null); }
@@ -2052,7 +2073,7 @@ function renderRotationFormat(){
          <label class="small">${L('Poängräkning','Scoring')}<br>
            <select id="amMode"><option value="individual" ${!pairsMode?'selected':''}>${L('Individuellt','Individual')}</option><option value="pairs" ${pairsMode?'selected':''}>${L('Par','Pairs')}</option></select></label>
          <label class="small">${L('Poäng per match','Points per match')}<br><input type="number" id="amPoints" min="1" max="99" value="${state.amPointsTo}" style="width:80px"></label>
-         <label class="small">${roundByRound?L('Planerat antal ronder','Planned rounds'):L('Antal ronder','Number of rounds')}<br><input type="number" id="amNumRounds" min="1" max="60" value="${roundByRound?Math.max(state.amRounds.length,N-1):(state.amRounds.length||Math.max(1,N-1))}" style="width:80px"></label>
+         <label class="small">${roundByRound?L('Planerat antal ronder','Planned rounds'):L('Antal ronder','Number of rounds')}<br><input type="number" id="amNumRounds" min="1" max="60" value="${roundByRound?Math.max(state.amRounds.length,state.amPlanRounds||0,N-1):(state.amRounds.length||state.amPlanRounds||Math.max(1,N-1))}" style="width:80px"></label>
          <label class="small">${L('Antal banor','Courts')}<br><input type="number" id="amCourts" min="1" max="16" value="${state.courts}" style="width:80px"></label>
          <button class="btn" id="amSavePlayers">💾 ${L('Spara','Save')}</button>
          ${roundByRound
