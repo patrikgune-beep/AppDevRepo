@@ -620,6 +620,42 @@ input:disabled, select:disabled {
 .rules-box li { margin-bottom: 4px; }
 .rules-box strong { color: var(--navy); }
 
+/* ===== ABOUT TAB ===== */
+.about-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.about-table th {
+  text-align: left;
+  vertical-align: top;
+  width: 130px;
+  padding: 7px 10px 7px 0;
+  color: var(--navy);
+  font-size: 0.68rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.about-table td { padding: 7px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.5; }
+.about-table tr:last-child td { border-bottom: none; }
+.about-table code {
+  background: var(--cream);
+  border: 1px solid var(--cream2);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.82em;
+}
+.legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.legend-row { display: flex; align-items: flex-start; gap: 12px; }
+.legend-sym {
+  flex: 0 0 auto;
+  min-width: 44px;
+  text-align: center;
+  font-weight: 800;
+  color: var(--navy);
+  font-size: 1.05rem;
+  padding-top: 1px;
+}
+.legend-row b { color: var(--navy); font-size: 0.9rem; }
+
 /* ===== SUGGESTION / PLAN ===== */
 .suggest-bar {
   display: flex;
@@ -809,6 +845,7 @@ input:disabled, select:disabled {
   <button data-tab="results" onclick="switchTab('results')">&#9998; Resultat</button>
   <button data-tab="leaderboard" onclick="switchTab('leaderboard')">&#9733; Leaderboard</button>
   <button data-tab="slips" onclick="switchTab('slips')">&#9986; Matchlappar</button>
+  <button data-tab="about" onclick="switchTab('about')">&#8505; Om appen</button>
 </nav>
 
 <main>
@@ -962,6 +999,11 @@ input:disabled, select:disabled {
   </div>
 </div>
 
+<!-- ========== ABOUT TAB ========== -->
+<div id="tab-about" class="tab-content hidden">
+  <div id="about-content"></div>
+</div>
+
 <!-- ========== RESULTS TAB ========== -->
 <div id="tab-results" class="tab-content hidden">
   <div id="results-content">
@@ -1015,6 +1057,13 @@ window.addEventListener('unhandledrejection', function (e) {
 // ============================================================
 // STATE
 // ============================================================
+const APP_VERSION = '1.9.0';
+const APP_BUILD = '2026-07-14';
+const APP_REPO = 'patrikgune-beep/patgun71';
+const APP_BRANCH = 'claude/tournament-bracket-leaderboard-i1jfnc';
+const APP_GITHUB_URL = `https://github.com/${APP_REPO}/tree/${APP_BRANCH}`;
+const STORAGE_KEY = 'kv_americano';
+
 const DEFAULT_16_NAMES = [
   "Per B","Anna B","Patrik G","Johan Sander",
   "Louise Sander","Karl T","Christina T","Jonas Sjöberg",
@@ -2030,6 +2079,109 @@ function renderSlips() {
 }
 
 // ============================================================
+// RENDER — ABOUT TAB ("Om appen")
+// ============================================================
+function renderAbout() {
+  const el = document.getElementById('about-content');
+  if (!el) return;
+
+  // --- Short tournament info (public) ---
+  const title = (val('s-title') || 'Americano').trim() || 'Americano';
+  const sub = (val('s-subtitle') || '').trim();
+  const players = S.players.length;
+  const courts = intVal('s-ncourts', 2);
+  const start = val('s-start') || '20:00';
+  const end = val('s-end') || '22:00';
+  const rounds = S.schedule ? S.schedule.length : intVal('s-nrounds', 8);
+  const matchMin = intVal('s-matchmin', 10);
+  const ppr = playersPerRound();
+  const gpp = S.schedule ? countGamesPerPlayer() : (rounds % equalGamesBlock(players, courts) === 0 ? rounds * ppr / players : '—');
+  const breaksTotal = getBreaks().reduce((s, b) => s + b.minutes, 0);
+
+  const infoRows = [
+    ['Evenemang', escHtml(title) + (sub ? ` <span class="text-xs">· ${escHtml(sub)}</span>` : '')],
+    ['Spelform', 'Americano – individuell, varierade par'],
+    ['Antal spelare', `${players} st`],
+    ['Antal banor', `${courts} st`],
+    ['Ronder', `${rounds}`],
+    ['Matchtid', `${matchMin} min/match`],
+    ['Tider', `${start}–${end}${breaksTotal ? ` · paus ${breaksTotal} min` : ''}`],
+    ['Alla spelar', `${gpp} matcher var`],
+  ].map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
+
+  // --- Symbol legend ---
+  const symbols = [
+    ['&#9881;', 'Inställningar', 'Fliken där du ställer in tider, spelare, banor och upplägg.'],
+    ['&#9654;', 'Spelschema', 'Alla ronder med tider, matcher (par) och vilande spelare.'],
+    ['&#9998;', 'Resultat', 'Fyll i matchpoäng – via matchinmatning eller direkt i spelargriden.'],
+    ['&#9733;', 'Leaderboard', 'Live-ställning, sorterad på total poäng.'],
+    ['&#9986;', 'Matchlappar', 'Utskrivbara lappar (en per match) att klippa ut.'],
+    ['&#8505;', 'Om appen', 'Den här sidan – regler, symboler och teknisk info.'],
+    ['&#127922;', 'Slumpa om spelordning', 'Ger en ny slumpad dragning av vem som möter vem.'],
+    ['<span class="round-circle" style="width:22px;height:22px;font-size:.7rem;">3</span>', 'Rondnummer', 'Cirkeln visar vilken rond det gäller.'],
+    ['<span class="team-tag">1·4</span>', 'Par (lag)', 'Två spelarnummer som spelar tillsammans den ronden.'],
+    ['vs', 'Möter', 'Lag till vänster möter lag till höger.'],
+    ['#12', 'Spelarnummer', 'Varje spelare har ett fast nummer hela kvällen.'],
+    ['&#127829; PAUS', 'Pausrad', 'Röd rad i schemat = paus (t.ex. pizza).'],
+    ['<span style="background:#e6e6e6;color:#aaa;padding:2px 8px;border-radius:3px;">·</span>', 'Skuggad ruta', 'Spelaren vilar den ronden.'],
+    ['<span style="background:#eef4ff;padding:2px 8px;border-radius:3px;color:var(--navy);font-weight:700;">9</span>', 'Ifylld ruta', 'Inmatad poäng i spelargriden.'],
+    ['&#127942;', 'Vinnare', 'Kvällens Kioskvältare (flest poäng totalt).'],
+    ['&#9989; / &#9888;&#65039;', 'Ryms / ryms inte', 'I upplägget: om schemat får plats i tidsfönstret.'],
+  ].map(([s, name, desc]) =>
+    `<div class="legend-row"><div class="legend-sym">${s}</div><div><b>${name}</b><div class="text-xs">${desc}</div></div></div>`
+  ).join('');
+
+  el.innerHTML = `
+    <!-- PUBLIC: short tournament info -->
+    <div class="card">
+      <div class="card-title"><span class="step-num">&#8505;</span> Turneringsinformation</div>
+      <table class="about-table"><tbody>${infoRows}</tbody></table>
+    </div>
+
+    <!-- PUBLIC: full rules -->
+    <div class="card rules-box">
+      <div class="card-title">Fullständiga regler — Americano</div>
+      <h4>Så spelas det</h4>
+      <ul>
+        <li><strong>Format:</strong> Individuell Americano med varierade par. Du byter partner varje rond och följer ditt spelarnummer – samma par spelar aldrig ihop två ronder i rad.</li>
+        <li><strong>Match:</strong> Varje match är ${matchMin} minuter. Spela så många poäng ni hinner.</li>
+        <li><strong>Poängräkning:</strong> Rally scoring – varje boll ger en poäng oavsett vem som servar. Oavgjort är ok, ingen förlängning behövs.</li>
+        <li><strong>Serve:</strong> 2 servar per spelare, sedan byter serven till andra laget. Rotera serven laget runt så långt ni hinner.</li>
+      </ul>
+      <h4>Resultat &amp; poäng</h4>
+      <ul>
+        <li>Varje spelare noterar de poäng som <strong>den egna sidan</strong> vann i matchen.</li>
+        <li>Poängen förs in i appen (matchinmatning eller spelargrid) eller på matchlappen som lämnas till sekretariatet.</li>
+        <li>Alla spelare spelar <strong>lika många matcher</strong> – schemat räknas alltid ut så att det blir rättvist.</li>
+      </ul>
+      <h4>Vinnare</h4>
+      <ul>
+        <li>Spelaren med <strong>flest poäng totalt</strong> vinner och koras till kvällens <strong>Kioskvältare</strong> &#127942;.</li>
+        <li><strong>Vid lika total:</strong> flest vunna matcher avgör.</li>
+      </ul>
+    </div>
+
+    <!-- Symbols & signs -->
+    <div class="card">
+      <div class="card-title">Tecken &amp; symboler i appen</div>
+      <div class="legend">${symbols}</div>
+    </div>
+
+    <!-- Technical / admin -->
+    <div class="card">
+      <div class="card-title">Teknisk information</div>
+      <table class="about-table"><tbody>
+        <tr><th>Version</th><td><b>v${APP_VERSION}</b> · uppdaterad ${APP_BUILD}</td></tr>
+        <tr><th>Källkod</th><td><a href="${APP_GITHUB_URL}" target="_blank" rel="noopener" style="color:var(--navy);font-weight:700;">GitHub: ${escHtml(APP_REPO)}</a><div class="text-xs">Gren: ${escHtml(APP_BRANCH)} — senaste versionen finns alltid här.</div></td></tr>
+        <tr><th>Datalagring</th><td>Allt sparas <b>lokalt i din webbläsare</b> (localStorage, nyckel <code>${STORAGE_KEY}</code>): spelare, schema, resultat och inställningar.</td></tr>
+        <tr><th>Molnlagring</th><td>Ingen. Appen använder <b>ingen Supabase/databas och ingen server</b> – ingen data lämnar din enhet. Rensas webbläsarens lagring försvinner turneringen, så exportera/skriv ut vid behov.</td></tr>
+      </tbody></table>
+      <div class="text-xs" style="margin-top:10px;">Vill du ha molnlagring (t.ex. Supabase) så flera enheter delar samma turnering i realtid? Det går att lägga till – säg till.</div>
+    </div>
+  `;
+}
+
+// ============================================================
 // RENDER — RESULTS TAB
 // ============================================================
 function renderResults() {
@@ -2290,6 +2442,7 @@ function switchTab(tab) {
   if (tab === 'results') renderResults();
   if (tab === 'schedule') renderSchedule();
   if (tab === 'slips') renderSlips();
+  if (tab === 'about') renderAbout();
 }
 
 // ============================================================
