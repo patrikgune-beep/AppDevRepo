@@ -2253,9 +2253,18 @@ function amSearchBarHTML(cx){
      <span class="small muted" id="amSearchCount"></span>
    </div>`;
 }
-// Flik: Spelschema (läsvy)
+// Flik: Spelschema (resultat kan registreras direkt av admin)
 function amTabScheduleHTML(cx){
-  return `<div class="card"><h2>📅 ${L('Spelschema','Schedule')}</h2>${amNextRoundBarHTML(cx)}${amSearchBarHTML(cx)}${amRoundsHTML(cx, false)}</div>`;
+  return `<div class="card"><h2>📅 ${L('Spelschema','Schedule')}</h2>${amNextRoundBarHTML(cx)}${amSearchBarHTML(cx)}${cx.admin&&cx.nR?`<p class="small muted no-print" style="margin:0 0 8px">${L('Fyll i resultat direkt i tabellen.','Enter results directly in the table.')}</p>`:''}${amRoundsHTML(cx, cx.admin)}</div>`;
+}
+// Bind poänginmatningsrutorna [data-am] (delas av Spelschema och Resultat).
+function bindAmScoreInputs(){
+  document.querySelectorAll("[data-am]").forEach(inp=>inp.onchange=()=>{
+    const [ri,mi,which]=inp.dataset.am.split("_").map(Number);
+    const v=inp.value===""?null:Math.max(0,parseInt(inp.value,10)||0);
+    const mt=state.amRounds[ri]&&state.amRounds[ri].matches[mi]; if(!mt) return;
+    if(which===1) mt.s1=v; else mt.s2=v; save(); render();
+  });
 }
 // Flik: Resultat (inmatning + rutnät)
 function amTabResultsHTML(cx){
@@ -2459,15 +2468,10 @@ function renderRotationFormat(){
     if(state.amLocked) app.querySelectorAll("input,textarea,select,button").forEach(el=>{ if(el.id!=="amLockToggle") el.disabled=true; });
   }
   if(active==="schedule"||active==="results"){ const b=document.getElementById("amNextRound2"); if(b) b.onclick=amGenerateNextRound; }
-  if(active==="schedule") bindAmSearch();
+  if(active==="schedule"){ if(admin) bindAmScoreInputs(); bindAmSearch(); }
   if(active==="results"){
     document.querySelectorAll("[data-amview]").forEach(b=>b.onclick=()=>{ ui.amResultsView=b.dataset.amview; render(); });
-    if(admin) document.querySelectorAll("[data-am]").forEach(inp=>inp.onchange=()=>{
-      const [ri,mi,which]=inp.dataset.am.split("_").map(Number);
-      const v=inp.value===""?null:Math.max(0,parseInt(inp.value,10)||0);
-      const mt=state.amRounds[ri]&&state.amRounds[ri].matches[mi]; if(!mt) return;
-      if(which===1) mt.s1=v; else mt.s2=v; save(); render();
-    });
+    if(admin) bindAmScoreInputs();
     bindAmSearch();
   }
   if(active==="slips"){ const b=document.getElementById("amPrintSlips"); if(b) b.onclick=printMatchSlips; }
