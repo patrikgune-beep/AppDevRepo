@@ -2271,6 +2271,13 @@ function amTabSettingsHTML(cx){
          <button class="btn ghost mini" id="amSavePlayers">💾 ${L('Spara','Save')}</button>
        </div>
        <p class="small muted" style="margin:8px 0 0">${noteTxt}</p>
+       ${state.players.length?`<div style="margin-top:14px">
+         <div class="small" style="margin-bottom:6px"><b>✏️ ${L('Byt namn på deltagare','Rename players')}</b> <span class="muted">${L('— ändrar namn utan att påverka schemat eller resultaten','— changes names without affecting the schedule or results')}</span></div>
+         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px">
+           ${state.players.map((nm,i)=>`<label class="small" style="display:flex;align-items:center;gap:6px"><span class="muted" style="width:22px;text-align:right">${i+1}</span><input type="text" value="${esc(nm)}" data-plname="${i}" style="flex:1"></label>`).join("")}
+         </div>
+         <button class="btn ghost mini" id="amRenameSave" style="margin-top:8px">💾 ${L('Spara namn','Save names')}</button>
+       </div>`:''}
        ${sep}
        <h3 style="color:var(--head);margin:0 0 8px">⏱ ${L('Tidssimulering','Time simulation')}</h3>
        <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
@@ -2607,6 +2614,11 @@ function bindAmSettings(cx){
   { const s=document.getElementById("amMode"); if(s) s.onchange=()=>{ const nm=s.value==="pairs"?"pairs":"individual"; if(nm!==state.amScoreMode){ state.amScoreMode=nm; state.amRounds=[]; state.cmp=null; save(); render(); } }; }
   { const s=document.getElementById("amRoundByMode"); if(s) s.onchange=()=>{ readSettings(); state.amRoundBy=s.value==="points"?"points":"time"; save(); render(); }; }
   { const b=document.getElementById("amSavePlayers"); if(b) b.onclick=()=>{ readSettings(); save(); render(); }; }
+  { const b=document.getElementById("amRenameSave"); if(b) b.onclick=()=>{
+      // Byt endast NAMN på befintliga index (schema/resultat refererar till index och påverkas inte).
+      document.querySelectorAll("[data-plname]").forEach(inp=>{ const i=+inp.dataset.plname, v=inp.value.trim(); if(v && i>=0 && i<state.players.length) state.players[i]=v; });
+      save(); render();
+    }; }
   { const b=document.getElementById("amGenerate"); if(b) b.onclick=()=>{
       readSettings();
       if(state.players.length<4){ alert(L("Minst 4 deltagare krävs.","At least 4 players required.")); return; }
