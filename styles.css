@@ -467,6 +467,29 @@ input[type="number"] {
   margin-top: 0.5rem;
 }
 
+/* ── App navigation ── */
+.app-nav {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: center;
+}
+.app-nav-link {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #7c3aed;
+  text-decoration: none;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid #ddd6fe;
+  border-radius: 999px;
+  background: #f6f4ff;
+  transition: all 0.2s;
+}
+.app-nav-link:hover {
+  border-color: #7c3aed;
+  background: #ede9fe;
+}
+
 /* ── Profile bar ── */
 .profile-bar {
   display: flex;
