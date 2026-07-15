@@ -473,6 +473,7 @@ function normalize(s){
   if(typeof s.updatedAt!=="number") s.updatedAt=0;
   if(typeof s.archived!=="boolean") s.archived=false;
   if(typeof s.archivedAt!=="number") s.archivedAt=0;
+  if(typeof s.createdAt!=="number") s.createdAt=0;   // skapad-tidsstämpel (0 = okänt för äldre turneringar)
   if(!s.extraCourts) s.extraCourts={};
   if(!s.lockedDays) s.lockedDays={};
   if(!s.planFinalDays) s.planFinalDays={};
@@ -790,51 +791,71 @@ async function cloudListTournaments(){
     .filter(x=>!x.app || x.app===APP_ID)   // dölj turneringar som tillhör en annan app (t.ex. TennisKM)
     .map(x=>({ key:x.key, name:x.name, arranger:x.arranger||"", archived:(x.archived===true||x.archived==="true") }));
 }
-// Säkerhetskopiera ALLA turneringar (denna app) till en JSON-fil.
-async function backupAllTournaments(){
-  if(!isAdmin()){ alert(L("Endast admin.","Admin only.")); return; }
-  if(!cloudEnabled){ exportBackup(); return; }   // utan moln: säkerhetskopiera aktuell turnering
-  try{ await cloudForcePush(); }catch(e){}        // spara pågående turnering först
-  let rows;
-  try{ const r=await fetch(`${SUPA_URL}/tournaments?select=key,data`, { headers: cloudHeaders() });
-    if(!r.ok) throw new Error("HTTP "+r.status); rows=await r.json(); }
-  catch(e){ alert(L("Kunde inte hämta turneringarna: ","Could not fetch tournaments: ")+(e.message||e)); return; }
-  const mine=(Array.isArray(rows)?rows:[])
-    .filter(x=>x.key && !x.key.startsWith("__") && x.data)
-    .filter(x=>!x.data.app || x.data.app===APP_ID);
-  if(!mine.length){ alert(L("Inga turneringar att säkerhetskopiera.","No tournaments to back up.")); return; }
-  const payload={ app:APP_ID, version:1, exportedAt:Date.now(), count:mine.length, tournaments:mine.map(x=>({key:x.key, data:x.data})) };
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+/* ===== Säkerhetskopiering, arkivering & besöksräkning per turnering ===== */
+function fmtDateTime(ts){ if(!ts) return "–"; const d=new Date(ts); if(isNaN(d)) return "–"; const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+function visitorId(){ try{ let v=localStorage.getItem("km_visitor"); if(!v){ v=Date.now().toString(36)+Math.random().toString(36).slice(2,10); localStorage.setItem("km_visitor", v); } return v; }catch(e){ return "anon"; } }
+// Registrera ett unikt besök på en turnering (publik + admin). Lagras i egen rad "__visits_<key>".
+async function recordVisit(key){
+  if(!cloudEnabled || !key || key.startsWith("__")) return;
+  const seen="km_vseen_"+key; try{ if(localStorage.getItem(seen)) return; }catch(e){}
+  const vid=visitorId(), vk="__visits_"+key;
+  try{
+    let d=null; try{ d=await cloudGetKey(vk); }catch(e){}
+    let ids=(d&&Array.isArray(d.ids))?d.ids:[];
+    if(ids.includes(vid)){ try{ localStorage.setItem(seen,"1"); }catch(e){} return; }
+    ids.push(vid);
+    await cloudUpsertRow(vk, { ids, updatedAt:Date.now() });
+    try{ localStorage.setItem(seen,"1"); }catch(e){}
+  }catch(e){}
+}
+// Antal unika besök per turnering (map key→antal).
+async function fetchVisitCounts(){
+  if(!cloudEnabled) return {};
+  try{
+    const r=await fetch(`${SUPA_URL}/tournaments?key=like.__visits_*&select=key,data`, { headers: cloudHeaders() });
+    if(!r.ok) return {};
+    const rows=await r.json(); const map={};
+    (Array.isArray(rows)?rows:[]).forEach(x=>{ if(!x.key||!x.key.startsWith("__visits_")) return; const k=x.key.slice("__visits_".length); map[k]=(x.data&&Array.isArray(x.data.ids))?x.data.ids.length:0; });
+    return map;
+  }catch(e){ return {}; }
+}
+async function fetchVisitCount(key){ const m=await fetchVisitCounts(); return m[key]||0; }
+// Säkerhetskopiera EN turnering till en JSON-fil.
+async function backupTournament(key, name){
+  if(!isAdmin()) return;
+  if(!cloudEnabled){ if(key===TOURN_KEY) exportBackup(); else alert(L("Molnet krävs.","Cloud required.")); return; }
+  if(key===TOURN_KEY){ try{ await cloudForcePush(); }catch(e){} }
+  let data=null; try{ data=await cloudGetKey(key); }catch(e){ alert(L("Kunde inte hämta turneringen: ","Could not fetch tournament: ")+(e.message||e)); return; }
+  if(!data){ alert(L("Turneringen hittades inte i molnet.","Tournament not found in the cloud.")); return; }
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
   const p=n=>String(n).padStart(2,"0"), d=new Date();
   const stamp=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`;
-  a.download=`${fileSafe(APP_ID)||"turneringar"}_alla_backup_${stamp}.json`;
+  const parts=[fileSafe(data.arranger||""), fileSafe((data.tournament&&data.tournament.name)||name||key)].filter(Boolean);
+  a.download=`${parts.join("_")||"turnering"}_backup_${stamp}.json`;
   a.click();
-  alert(L(`Säkerhetskopia skapad: ${mine.length} turnering(ar).`,`Backup created: ${mine.length} tournament(s).`));
 }
-// Arkivera ALLA turneringar (kräver MasterAdmin-koden – påverkar alla turneringar).
-async function archiveAllTournaments(){
-  if(!isAdmin()){ alert(L("Endast admin.","Admin only.")); return; }
-  if(!cloudEnabled){ alert(L("Molnet krävs för att arkivera alla turneringar.","Cloud is required to archive all tournaments.")); return; }
-  const pin=prompt(L("Ange MasterAdmin-koden för att arkivera ALLA turneringar:","Enter the MasterAdmin code to archive ALL tournaments:"));
+// Arkivera / avarkivera EN turnering från startsidan (kräver turneringens PIN eller MasterAdmin-koden).
+async function setArchiveTournament(key, name, archive){
+  if(!isAdmin() || !cloudEnabled) return;
+  const nm=name||key;
+  let data=null; try{ data=await cloudGetKey(key); }catch(e){}
+  let targetPin=ADMIN_PIN;
+  if(key===TOURN_KEY) targetPin=adminPin();
+  else if(data && typeof data.adminPin==="string" && data.adminPin.trim()) targetPin=data.adminPin.trim();
+  const pin=prompt(`${archive?L('Arkivera','Archive'):L('Avarkivera','Unarchive')} "${nm}"? ${L('Ange admin-koden (PIN):','Enter the admin code (PIN):')}`);
   if(pin==null) return;
-  if(pin.trim()!==MASTER_PIN){ alert(L("Fel kod – ingenting arkiverades.","Wrong code – nothing was archived.")); return; }
-  try{ await cloudForcePush(); }catch(e){}        // spara pågående turnering först
-  let rows;
-  try{ const r=await fetch(`${SUPA_URL}/tournaments?select=key,data`, { headers: cloudHeaders() });
-    if(!r.ok) throw new Error("HTTP "+r.status); rows=await r.json(); }
-  catch(e){ alert(L("Kunde inte hämta turneringarna: ","Could not fetch tournaments: ")+(e.message||e)); return; }
-  const mine=(Array.isArray(rows)?rows:[])
-    .filter(x=>x.key && !x.key.startsWith("__") && x.data && (!x.data.app || x.data.app===APP_ID) && !x.data.archived);
-  if(!mine.length){ alert(L("Alla turneringar är redan arkiverade.","All tournaments are already archived.")); return; }
-  if(!confirm(L(`Arkivera ${mine.length} turnering(ar)? De göms från listan men kan låsas upp igen.`,`Archive ${mine.length} tournament(s)? They are hidden from the list but can be unarchived.`))) return;
-  let ok=0, bad=0;
-  for(const x of mine){
-    const data={...x.data, archived:true, archivedAt:Date.now()};
-    try{ await cloudUpsertRow(x.key, data); ok++; }catch(e){ bad++; }
-  }
-  if(mine.some(x=>x.key===TOURN_KEY)){ state.archived=true; state.archivedAt=Date.now(); saveLocal(); }
-  alert(L(`Arkiverade ${ok} turnering(ar)${bad?`, ${bad} misslyckades`:''}.`,`Archived ${ok} tournament(s)${bad?`, ${bad} failed`:''}.`));
+  if(!pinOK(pin, targetPin)){ alert(L("Fel admin-kod – avbryter.","Wrong admin code – aborting.")); return; }
+  try{
+    if(key===TOURN_KEY){
+      state.archived=archive; state.archivedAt=archive?Date.now():0; state.updatedAt=Date.now(); saveLocal();
+      await cloudPut(state);
+    } else {
+      if(!data){ alert(L("Turneringen hittades inte.","Tournament not found.")); return; }
+      data.archived=archive; data.archivedAt=archive?Date.now():0; data.updatedAt=Date.now();
+      await cloudUpsertRow(key, data);
+    }
+  }catch(e){ alert(L("Kunde inte spara: ","Could not save: ")+(e.message||e)); return; }
   renderHome();
 }
 // Skapa en ny, tom turnering och gör den aktiv.
@@ -893,6 +914,7 @@ async function switchTournament(key, skipPush){
   saveLocal();
   // Arkiverad turnering öppnas på Klubbmästare (gäller både publik och admin), annars Turneringsinformation.
   ui={ tab: isArchived()?"champions":"info", classId:state.classes[0].id, day:null }; ensureDay(); render();
+  recordVisit(key);   // räkna unikt besök när en turnering öppnas
 }
 // Ta bort en turnering permanent ur molnet (bekräftas med admin-koden/PIN).
 async function deleteTournament(key){
@@ -1541,19 +1563,8 @@ function renderHome(){
    <div class="card">
      <div id="homeList"><p class="muted">${L('Laddar…','Loading…')}</p></div>
      <div class="small muted" id="homeMsg" style="margin-top:8px"></div>
-   </div>
-   ${admin?`<div class="card">
-     <h2>🗄 ${L('Säkerhetskopiering & arkivering','Backup & archiving')}</h2>
-     <p class="small muted">${L('Gäller alla turneringar i den här appen.','Applies to all tournaments in this app.')}</p>
-     <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px">
-       <button class="btn ghost" id="homeBackupAll">⬇ ${L('Säkerhetskopiera alla turneringar','Back up all tournaments')}</button>
-       <button class="btn gray" id="homeArchiveAll">📦 ${L('Arkivera alla turneringar','Archive all tournaments')}</button>
-     </div>
-     <p class="small muted" style="margin:8px 0 0">${L('Säkerhetskopian sparas som en JSON-fil (datum + klockslag i filnamnet). Att arkivera alla kräver MasterAdmin-koden; arkiverade turneringar göms men kan låsas upp igen.','The backup is saved as a JSON file (date + time in the filename). Archiving all requires the MasterAdmin code; archived tournaments are hidden but can be unarchived.')}</p>
-   </div>`:''}`;
+   </div>`;
   updateSyncBadge();
-  { const b=document.getElementById("homeBackupAll"); if(b) b.onclick=backupAllTournaments; }
-  { const b=document.getElementById("homeArchiveAll"); if(b) b.onclick=archiveAllTournaments; }
   document.getElementById("homeShowArch").onchange=e=>{ ui.homeShowArchived=e.target.checked; renderHome(); };
   document.getElementById("homeReload").onclick=()=>renderHome();
   { const ub=document.getElementById("homeUnlockBtn"); if(ub) ub.onclick=promptAdmin; }
@@ -1658,26 +1669,33 @@ async function loadHomeList(){
   const msg=document.getElementById("homeMsg");
   if(msg) msg.textContent=`${list.length} ${L('turnering(ar) totalt','tournament(s) total')}${nArch?` · ${nArch} ${L('arkiverade','archived')}`:''}.`;
   if(!shown.length){ box.innerHTML=`<p class="muted">${L('Inga turneringar att visa.','No tournaments to show.')}</p>`; return; }
+  const visits = admin ? await fetchVisitCounts() : {};
   box.innerHTML=shown.map(x=>{
     const nm=escXml(x.name||x.key), arr=escXml(x.arranger||""), active=x.key===TOURN_KEY;
     const badges=`${active?`<span class="pill" style="background:#e8eef7;color:#33507a">${L('Aktiv','Active')}</span>`:''}${x.archived?`<span class="pill" style="background:#e3f1de;color:var(--green)">📦 ${L('Arkiverad','Archived')}</span>`:''}`;
-    // Ta bort-knapp bara för admin och icke-arkiverade; arkiverade tas bort inifrån.
-    const delCell = !admin ? ''
-      : (x.archived
-          ? `<span class="muted small">${L('Arkiverad – lås upp inifrån för att ta bort','Archived – unlock inside to delete')}</span>`
-          : `<button class="btn gray mini" data-del="${escXml(x.key)}" data-name="${nm}">🗑 ${L('Ta bort','Delete')}</button>`);
-    return `<div class="row" style="align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:8px 0;flex-wrap:wrap">
-       <div style="min-width:220px">
+    const vtxt = admin ? `<div class="small muted">👁 ${visits[x.key]||0} ${L('unika besök','unique visits')}</div>` : '';
+    const adminBtns = !admin ? '' : `
+       <button class="btn ghost mini" data-backup="${escXml(x.key)}" data-name="${nm}">⬇ ${L('Säkerhetskopia','Backup')}</button>
+       ${x.archived
+          ? `<button class="btn ghost mini" data-unarch="${escXml(x.key)}" data-name="${nm}">📂 ${L('Avarkivera','Unarchive')}</button>`
+          : `<button class="btn ghost mini" data-arch="${escXml(x.key)}" data-name="${nm}">📦 ${L('Arkivera','Archive')}</button>
+             <button class="btn gray mini" data-del="${escXml(x.key)}" data-name="${nm}">🗑 ${L('Ta bort','Delete')}</button>`}`;
+    return `<div class="row" style="align-items:center;gap:8px;border-bottom:1px solid var(--line);padding:8px 0;flex-wrap:wrap">
+       <div style="min-width:200px">
          <div><b>${nm}</b> ${badges}</div>
          <div class="small muted">${arr||L('(arrangör saknas)','(no organizer)')}</div>
+         ${vtxt}
        </div>
        <span style="flex:1"></span>
        <button class="btn mini" data-open="${escXml(x.key)}">${L('Öppna','Open')} →</button>
-       ${delCell}
+       ${adminBtns}
      </div>`;
   }).join("");
   box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>openTournamentFromHome(b.dataset.open));
   box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>deleteTournamentFromHome(b.dataset.del, b.dataset.name));
+  box.querySelectorAll("[data-backup]").forEach(b=>b.onclick=()=>backupTournament(b.dataset.backup, b.dataset.name));
+  box.querySelectorAll("[data-arch]").forEach(b=>b.onclick=()=>setArchiveTournament(b.dataset.arch, b.dataset.name, true));
+  box.querySelectorAll("[data-unarch]").forEach(b=>b.onclick=()=>setArchiveTournament(b.dataset.unarch, b.dataset.name, false));
 }
 async function openTournamentFromHome(key){
   if(key===TOURN_KEY){ ui.tab = isArchived()?"champions":"info"; render(); }
@@ -1774,6 +1792,7 @@ function buildTournamentState(name, src, opts){
   if(opts.transMin>=0) s.amTransMin=opts.transMin;
   if(opts.planHours>0) s.amPlanHours=opts.planHours;
   if(opts.planRounds>0) s.amPlanRounds=opts.planRounds;
+  s.createdAt=Date.now();   // tidsstämpel för när turneringen skapades
   return normalize(s);
 }
 // Skapa ny turnering (ev. som kopia av vald källa) och öppna den i ADMINLÄGE.
@@ -1819,6 +1838,7 @@ function formatInfoCardHTML(){
        <label class="small">${L('Slutdatum','End date')}<br><input type="date" id="fiEnd" value="${esc(t.end)}"></label>
        <button class="btn mini" id="fiSave">💾 ${L('Spara','Save')}</button>
      </div>
+     <p class="small muted" style="margin:8px 0 0">${L('Skapad','Created')}: <b>${fmtDateTime(state.createdAt)}</b> · ${L('Unika besök','Unique visits')}: <b><span id="fiVisitCount">…</span></b></p>
      <div class="row" style="align-items:flex-start;gap:24px;margin-top:12px;flex-wrap:wrap">
        <div>
          <p class="small muted" style="margin:0 0 6px">${L('Logga','Logo')}</p>
@@ -1838,6 +1858,7 @@ function formatInfoCardHTML(){
 }
 function bindFormatInfoCard(){
   const g=id=>document.getElementById(id);
+  { const el=g("fiVisitCount"); if(el){ if(!cloudEnabled) el.textContent="–"; else fetchVisitCount(TOURN_KEY).then(n=>{ const e=g("fiVisitCount"); if(e) e.textContent=String(n); }).catch(()=>{ const e=g("fiVisitCount"); if(e) e.textContent="–"; }); } }
   { const b=g("fiSave"); if(b) b.onclick=()=>{
       state.tournament.name=g("fiName").value.trim()||"Turnering";
       state.arranger=g("fiArr").value.trim()||state.arranger;
@@ -2384,7 +2405,7 @@ function amTabResultsHTML(cx){
   if(!cx.nR) body=amRoundsHTML(cx, false);
   else if(view==="grid") body=(cx.isCompass?`<p class="muted">${L('Rutnätet gäller poängformaten.','The grid applies to points formats.')}</p>`:amPlayerGridBody(cx));
   else { body=amRoundsHTML(cx, cx.admin); showSearch=true; }
-  return `<div class="card"><h2>📝 ${L('Resultat','Results')}</h2>${toggle}${amNextRoundBarHTML(cx)}${showSearch?amSearchBarHTML(cx):''}${body}</div>`;
+  return `<div class="card"><h2>📅 ${L('Schema och Resultat','Schedule & results')}</h2>${toggle}${amNextRoundBarHTML(cx)}${showSearch?amSearchBarHTML(cx):''}${body}</div>`;
 }
 // Filtrera matchrader direkt i DOM (behåller fokus i sökfältet).
 function amApplySearch(){
@@ -2520,6 +2541,8 @@ function amTabAboutHTML(cx){
      <tr><td style="text-align:left"><b>${L('Turnering','Tournament')}</b></td><td style="text-align:left">${esc(state.tournament.name||"")}</td></tr>
      <tr><td style="text-align:left"><b>${L('Arrangör','Organizer')}</b></td><td style="text-align:left">${esc(arrangerName())}</td></tr>
      <tr><td style="text-align:left"><b>${L('Datum & tid','Date & time')}</b></td><td style="text-align:left">${tournamentRangeText()}${timeTxt}</td></tr>
+     <tr><td style="text-align:left"><b>${L('Skapad','Created')}</b></td><td style="text-align:left">${fmtDateTime(state.createdAt)}</td></tr>
+     <tr><td style="text-align:left"><b>${L('Unika besök','Unique visits')}</b></td><td style="text-align:left"><span id="amVisitCount">…</span></td></tr>
      <tr><td style="text-align:left"><b>${L('Format','Format')}</b></td><td style="text-align:left">${esc(fmtName)} · ${cx.pairsMode?L('par','pairs'):L('individuellt','individual')} · ${govTxt}</td></tr>
      <tr><td style="text-align:left"><b>${L('Deltagare','Players')}</b></td><td style="text-align:left">${cx.N}</td></tr>
      <tr><td style="text-align:left"><b>${L('Ronder','Rounds')}</b></td><td style="text-align:left">${cx.nR}</td></tr>
@@ -2541,6 +2564,13 @@ function amTabAboutHTML(cx){
      ${info}
      ${tech}
    </div>`;
+}
+// Fyll i antal unika besök i Om appen (asynkront).
+function bindAmAbout(cx){
+  const el=document.getElementById("amVisitCount"); if(!el) return;
+  if(!cloudEnabled){ el.textContent="–"; return; }
+  fetchVisitCount(TOURN_KEY).then(n=>{ const e=document.getElementById("amVisitCount"); if(e) e.textContent=String(n); })
+    .catch(()=>{ const e=document.getElementById("amVisitCount"); if(e) e.textContent="–"; });
 }
 // Poäng-per-rond-rutnät (kropp, utan kort-omslag) för Resultat-fliken.
 function amPlayerGridBody(cx){
@@ -2627,11 +2657,11 @@ function renderRotationFormat(){
   const cx=amContext(), esc=cx.esc, admin=cx.admin;
   const tabs=[];
   if(admin) tabs.push(['settings','⚙️ '+L('Inställningar','Settings')]);
-  tabs.push(['schedule','📅 '+L('Spelschema','Schedule')]);
-  tabs.push(['results','📝 '+L('Resultat','Results')]);
+  tabs.push(['results','📅 '+L('Schema och Resultat','Schedule & results')]);
   tabs.push(['leaderboard','🏆 Leaderboard']);
   tabs.push(['slips','✂️ '+L('Matchlappar','Slips')]);
   tabs.push(['about','❓ '+L('Om appen','About')]);
+  if(ui.amTab==='schedule') ui.amTab='results';   // Spelschema slogs ihop med Resultat
   if(!ui.amTab || !tabs.some(t=>t[0]===ui.amTab)) ui.amTab = admin?'settings':'leaderboard';
   const active=ui.amTab;
   // Flikar i rubrikraden (#tabs) – samma placering som Klassisk KM.
@@ -2643,24 +2673,23 @@ function renderRotationFormat(){
    </div>`;
   let body="";
   if(active==="settings"&&admin) body=amTabSettingsHTML(cx);
-  else if(active==="schedule") body=amTabScheduleHTML(cx);
   else if(active==="results") body=amTabResultsHTML(cx);
   else if(active==="leaderboard") body=amTabLeaderboardHTML(cx);
   else if(active==="slips") body=amTabSlipsHTML(cx);
-  else if(active==="about") body=amTabAboutHTML(cx);
+  else if(active==="about"){ body=amTabAboutHTML(cx); }
   app.innerHTML=header+body;
   document.querySelectorAll("#tabs [data-amtab]").forEach(b=>b.onclick=()=>{ ui.amTab=b.dataset.amtab; render(); });
   if(active==="settings"&&admin){
     bindAmSettings(cx);
     if(state.amLocked) app.querySelectorAll("input,textarea,select,button").forEach(el=>{ if(el.id!=="amLockToggle") el.disabled=true; });
   }
-  if(active==="schedule"||active==="results"){ const b=document.getElementById("amNextRound2"); if(b) b.onclick=amGenerateNextRound; const r=document.getElementById("amReshuffle"); if(r) r.onclick=amReshuffle; }
-  if(active==="schedule"){ if(admin) bindAmScoreInputs(); bindAmSearch(); }
   if(active==="results"){
+    { const b=document.getElementById("amNextRound2"); if(b) b.onclick=amGenerateNextRound; const r=document.getElementById("amReshuffle"); if(r) r.onclick=amReshuffle; }
     document.querySelectorAll("[data-amview]").forEach(b=>b.onclick=()=>{ ui.amResultsView=b.dataset.amview; render(); });
     if(admin) bindAmScoreInputs();
     bindAmSearch();
   }
+  if(active==="about") bindAmAbout(cx);
   if(active==="slips"){ const b=document.getElementById("amPrintSlips"); if(b) b.onclick=printMatchSlips; }
 }
 
@@ -5496,6 +5525,7 @@ if(cloudEnabled && !BOOT_HAD_TOURN_IN_URL){
 }
 render();
 cloudInit();   // anslut till molnet och synka (om aktiverat)
+if(BOOT_HAD_TOURN_IN_URL) recordVisit(TOURN_KEY);   // räkna unikt besök via den publika/unika länken
 </script>
 </body>
 </html>
