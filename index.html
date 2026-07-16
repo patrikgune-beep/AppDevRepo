@@ -1526,6 +1526,10 @@ function renderHome(){
      </div>
    </div>
    <div class="card">
+     <div id="homeList"><p class="muted">${L('Laddar…','Loading…')}</p></div>
+     <div class="small muted" id="homeMsg" style="margin-top:8px"></div>
+   </div>
+   <div class="card">
      <h2>➕ ${L('Skapa ny turnering','Create new tournament')}</h2>
      <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
        <label class="small">${L('Turneringsnamn','Tournament name')}<br><input type="text" id="homeNewName" placeholder="${L('t.ex. Vår-KM 2026','e.g. Spring Cup 2026')}" style="min-width:200px"></label>
@@ -1563,10 +1567,6 @@ function renderHome(){
        <p class="small muted" style="margin:8px 0 0">${L('Listan innehåller även arkiverade turneringar. Kopiering kräver källturneringens PIN-kod. Resultat, stegar och scheman kopieras aldrig.','The list also includes archived tournaments. Copying requires the source PIN. Results, brackets and schedules are never copied.')}</p>
      </div>
      <div class="row" style="margin-top:14px"><button class="btn" id="homeCreateBtn" style="font-size:15px;padding:8px 18px">➕ ${L('Skapa turnering','Create tournament')}</button></div>
-   </div>
-   <div class="card">
-     <div id="homeList"><p class="muted">${L('Laddar…','Loading…')}</p></div>
-     <div class="small muted" id="homeMsg" style="margin-top:8px"></div>
    </div>`;
   updateSyncBadge();
   document.getElementById("homeShowArch").onchange=e=>{ ui.homeShowArchived=e.target.checked; renderHome(); };
