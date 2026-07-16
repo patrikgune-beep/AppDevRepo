@@ -213,12 +213,9 @@
 // Delad nyckel för denna app-instans (unik per app). Styr både molnraden (Supabase)
 // och de lokala lagringsnycklarna, så två appar på samma domän aldrig delar data.
 // TOURN_KEY är numera VALBAR: varje turnering är en egen rad i molnet med sin egen nyckel.
-// Aktiv turnering minns per enhet i localStorage (app-specifik nyckel, se CURR_TOURN_LS nedan).
+// Aktiv turnering minns per enhet i localStorage ("km_current_tourn").
 const DEFAULT_TOURN_KEY = "dalaro-km";       // grundturnering om inget annat valts
 const APP_ID = DEFAULT_TOURN_KEY;            // app-namn – turneringar från en annan app (t.ex. TennisKM) döljs
-// Nyckeln för "aktiv turnering" måste vara app-specifik – annars delar två appar på SAMMA
-// domän (t.ex. GitHub Pages: /DalaroKM/ och /TennisKM/) samma localStorage och råkar visa varandras turneringar.
-const CURR_TOURN_LS = "km_current_tourn_" + APP_ID;
 // Läs turneringsnyckel ur adressen: ?t=nyckel (stöder även #t=nyckel för delade hash-länkar).
 function tournKeyFromURL(){
   try{
@@ -230,8 +227,8 @@ function tournKeyFromURL(){
 }
 function currentTournKey(){
   const fromUrl=tournKeyFromURL();
-  if(fromUrl){ try{ localStorage.setItem(CURR_TOURN_LS, fromUrl); }catch(e){} return fromUrl; }
-  try{ return localStorage.getItem(CURR_TOURN_LS) || DEFAULT_TOURN_KEY; }catch(e){ return DEFAULT_TOURN_KEY; }
+  if(fromUrl){ try{ localStorage.setItem("km_current_tourn", fromUrl); }catch(e){} return fromUrl; }
+  try{ return localStorage.getItem("km_current_tourn") || DEFAULT_TOURN_KEY; }catch(e){ return DEFAULT_TOURN_KEY; }
 }
 let TOURN_KEY   = currentTournKey();         // aktiv turnering (byts i Turneringsinformation / via ?t=)
 // Hade den ADRESS användaren öppnade en specifik turnering (?t=)? Fångas FÖRE updateTournURL() skriver om adressen.
@@ -872,7 +869,7 @@ async function createTournament(name){
   if(!name){ alert("Ange ett namn på turneringen."); return; }
   if(isAdmin()) await cloudForcePush();                       // spara pågående turnering först
   const key=(fileSafe(name).toLowerCase()||"turnering")+"-"+Date.now().toString(36);   // unik nyckel
-  localStorage.setItem(CURR_TOURN_LS, key); TOURN_KEY=key; updateTournURL();   // byt aktiv turnering
+  localStorage.setItem("km_current_tourn", key); TOURN_KEY=key; updateTournURL();   // byt aktiv turnering
   state=buildTournamentState(name, null, {});   // tom turnering: vit bakgrund, svart text, ingen logga, PIN 0000
   state.updatedAt=Date.now();
   saveLocal();
@@ -899,7 +896,7 @@ async function createTournamentCopy(newName){
   await cloudForcePush();                                     // spara källturneringen först
   const copy=makeCopyState(state, newName);
   const key=(fileSafe(newName).toLowerCase()||"turnering")+"-"+Date.now().toString(36);
-  localStorage.setItem(CURR_TOURN_LS, key); TOURN_KEY=key; updateTournURL();
+  localStorage.setItem("km_current_tourn", key); TOURN_KEY=key; updateTournURL();
   state=copy; state.updatedAt=Date.now();
   saveLocal();
   ui={ tab:"info", classId:state.classes[0].id, day:null }; ensureDay();
@@ -910,7 +907,7 @@ async function createTournamentCopy(newName){
 async function switchTournament(key, skipPush){
   if(!key || key===TOURN_KEY) return;
   if(isAdmin() && !skipPush) await cloudForcePush();          // spara pågående turnering först (ej vid borttagning)
-  localStorage.setItem(CURR_TOURN_LS, key); TOURN_KEY=key; updateTournURL();
+  localStorage.setItem("km_current_tourn", key); TOURN_KEY=key; updateTournURL();
   cloudSetStatus("connecting");
   try{
     const data=await cloudGet();
@@ -1735,7 +1732,7 @@ async function deleteTournamentFromHome(key, name){
   if(key===TOURN_KEY){
     const other=list.find(x=>x.key!==key);
     const nk=(other&&other.key)||DEFAULT_TOURN_KEY;
-    localStorage.setItem(CURR_TOURN_LS, nk); TOURN_KEY=nk; updateTournURL();
+    localStorage.setItem("km_current_tourn", nk); TOURN_KEY=nk; updateTournURL();
     try{ const d=await cloudGet(); state=d?normalize(d):newState(); }catch(e){ state=newState(); }
     saveLocal(); ensureDay();
   }
@@ -1825,7 +1822,7 @@ async function createTournamentAdvanced(name, srcKey, opts){
   const st=buildTournamentState(name, src, opts);
   const key=(fileSafe(name).toLowerCase()||"turnering")+"-"+Date.now().toString(36);
   setAdminFlag(true);                                  // den nya turneringen öppnas i adminläge
-  localStorage.setItem(CURR_TOURN_LS, key); TOURN_KEY=key; updateTournURL();
+  localStorage.setItem("km_current_tourn", key); TOURN_KEY=key; updateTournURL();
   state=st; state.updatedAt=Date.now();
   saveLocal();
   ui={ tab:"info", classId: state.classes[0].id, day:null }; ensureDay();
