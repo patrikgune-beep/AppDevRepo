@@ -469,6 +469,10 @@ function normalize(s){
   if(!(s.amPlanHours>0)) s.amPlanHours=3;               // speltid (timmar) för generering från simulering
   if(!(s.amTransMin>=0)) s.amTransMin=2;                // kort paus mellan ronder (byte + uppvärmning), min
   if(!Array.isArray(s.kotcLadder)) s.kotcLadder=[];    // King of the Court: stege (ordnad lista av lag)
+  // Kön/kategori per deltagare (parallell array mot s.players): 'm'=man, 'w'=kvinna, 'c'=barn, ''=ospecificerat
+  if(!Array.isArray(s.amGenders)) s.amGenders=[];
+  { const pl=Array.isArray(s.players)?s.players:[]; s.amGenders.length=pl.length;
+    for(let i=0;i<pl.length;i++){ const g=s.amGenders[i]; if(g!=='m'&&g!=='w'&&g!=='c') s.amGenders[i]=''; } }
   if(typeof s.adminPin!=="string") s.adminPin="";
   if(typeof s.updatedAt!=="number") s.updatedAt=0;
   if(typeof s.archived!=="boolean") s.archived=false;
@@ -1876,7 +1880,9 @@ function bindFormatInfoCard(){
 }
 
 /* ===================== Americano ===================== */
-function amEnsure(){ if(!Array.isArray(state.players)) state.players=[]; if(!(state.amPointsTo>0)) state.amPointsTo=24; if(!Array.isArray(state.amRounds)) state.amRounds=[]; }
+function amEnsure(){ if(!Array.isArray(state.players)) state.players=[]; if(!(state.amPointsTo>0)) state.amPointsTo=24; if(!Array.isArray(state.amRounds)) state.amRounds=[]; if(!Array.isArray(state.amGenders)) state.amGenders=[]; state.amGenders.length=state.players.length; }
+// Kön/kategori för deltagare i: 'm'|'w'|'c'|'' (man/kvinna/barn/ospecificerat)
+function amGender(i){ const g=state.amGenders&&state.amGenders[i]; return (g==='m'||g==='w'||g==='c')?g:''; }
 // Ställning: summera poäng per spelare över alla spelade matcher.
 function amStandings(){
   amEnsure();
@@ -2001,25 +2007,41 @@ function amGenerate(numRounds, courts, randomize){
   const partnerCount={}, playCount=Array(N).fill(0);
   const pkey=(a,b)=>a<b?a+"_"+b:b+"_"+a;
   const getPC=(a,b)=>partnerCount[pkey(a,b)]||0, incPC=(a,b)=>{ const k=pkey(a,b); partnerCount[k]=(partnerCount[k]||0)+1; };
+  // Kön/kategori: undvik (som mjuk bivillkor) att bilda rena herr-/dampar och att låta ett herrpar möta ett dampar.
+  const gen=i=>amGender(i);
+  const samePair=(a,b)=>{ const x=gen(a),y=gen(b); return (x==='m'&&y==='m')||(x==='w'&&y==='w'); };   // rent herr- eller dampar
+  const pairKind=p=>{ const x=gen(p[0]),y=gen(p[1]); if(x==='m'&&y==='m')return 'M'; if(x==='w'&&y==='w')return 'W'; return 'X'; };
+  const conflict=(t1,t2)=>(t1==='M'&&t2==='W')||(t1==='W'&&t2==='M');   // två män möter två kvinnor
   const out=[];
+  let prevRest=new Set();
   for(let r=0;r<rounds;r++){
     let active, rest;
     let all=[...Array(N).keys()];
     if(randomize) amShuffle(all);
     if(restPer<=0){ active=all; rest=[]; }
-    else { all.sort((a,b)=>playCount[a]-playCount[b] || (randomize?0:a-b)); active=all.slice(0,ppr); rest=all.slice(ppr).sort((a,b)=>a-b); }  // cirkulär vila (minst spelade vilar sist)
+    // Minst spelade vilar sist; bland lika: den som vilade förra ronden ska hellre spela nu (undvik paus/paus & match/match i rad).
+    else { all.sort((a,b)=>playCount[a]-playCount[b] || ((prevRest.has(b)?1:0)-(prevRest.has(a)?1:0)) || (randomize?0:a-b)); active=all.slice(0,ppr); rest=all.slice(ppr).sort((a,b)=>a-b); }
     const rem=[...active]; if(randomize) amShuffle(rem);
     const pairs=[];
-    while(rem.length>=2){                                        // greedy-parning: minimera upprepade par
+    while(rem.length>=2){                                        // greedy-parning: minimera upprepade par, sekundärt undvik rena herr-/dampar
       const a=rem.shift(); let bi=0, mc=Infinity;
-      for(let i=0;i<rem.length;i++){ const c=getPC(a,rem[i]); if(c<mc || (c===mc && rem[i]<rem[bi])){ mc=c; bi=i; } }
+      for(let i=0;i<rem.length;i++){ const sc=getPC(a,rem[i])*4 + (samePair(a,rem[i])?1:0); if(sc<mc || (sc===mc && rem[i]<rem[bi])){ mc=sc; bi=i; } }
       const b=rem.splice(bi,1)[0]; pairs.push([a,b]);
     }
     for(const [a,b] of pairs) incPC(a,b);
     for(const pl of active) playCount[pl]++;
-    const matches=[];
-    for(let c=0;c<actualCourts;c++){ const i=c*2; if(i+1<pairs.length) matches.push({court:c+1, a:pairs[i], b:pairs[i+1], s1:null, s2:null}); }
+    // Banfördelning: para ihop paren så att ett herrpar helst inte möter ett dampar (undvik två män mot två kvinnor).
+    const remP=pairs.slice(0, actualCourts*2), matched=[];
+    while(remP.length>=2){
+      const p1=remP.shift(), t1=pairKind(p1);
+      let idx=-1;
+      for(let i=0;i<remP.length;i++){ if(!conflict(t1,pairKind(remP[i]))){ idx=i; break; } }
+      if(idx<0) idx=0;                                           // ingen konfliktfri motståndare kvar → acceptera
+      matched.push([p1, remP.splice(idx,1)[0]]);
+    }
+    const matches=matched.map((mp,c)=>({court:c+1, a:mp[0], b:mp[1], s1:null, s2:null}));
     out.push({matches, rest});
+    prevRest=new Set(rest);
   }
   state.amRounds=out; return true;
 }
@@ -2052,7 +2074,9 @@ function mexNextRound(courts){
   const rank=new Map(order.map((i,pos)=>[i,pos]));
   let resting=[];
   if(restN>0){
-    const cand=[...Array(N).keys()].sort((a,b)=> restCount[a]-restCount[b] || rank.get(b)-rank.get(a));
+    const prevRest=new Set(state.amRounds.length?(state.amRounds[state.amRounds.length-1].rest||[]):[]);
+    // Färre vilor först; undvik att låta samma spelare vila två ronder i rad; annars lägst rankad.
+    const cand=[...Array(N).keys()].sort((a,b)=> restCount[a]-restCount[b] || ((prevRest.has(a)?1:0)-(prevRest.has(b)?1:0)) || rank.get(b)-rank.get(a));
     resting=cand.slice(0,restN);
   }
   const restSet=new Set(resting);
@@ -2272,11 +2296,11 @@ function amTabSettingsHTML(cx){
        </div>
        <p class="small muted" style="margin:8px 0 0">${noteTxt}</p>
        ${state.players.length?`<div style="margin-top:14px">
-         <div class="small" style="margin-bottom:6px"><b>✏️ ${L('Byt namn på deltagare','Rename players')}</b> <span class="muted">${L('— ändrar namn utan att påverka schemat eller resultaten','— changes names without affecting the schedule or results')}</span></div>
-         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px">
-           ${state.players.map((nm,i)=>`<label class="small" style="display:flex;align-items:center;gap:6px"><span class="muted" style="width:22px;text-align:right">${i+1}</span><input type="text" value="${esc(nm)}" data-plname="${i}" style="flex:1"></label>`).join("")}
+         <div class="small" style="margin-bottom:6px"><b>✏️ ${L('Byt namn på deltagare','Rename players')}</b> <span class="muted">${L('— ändra namn och kön/kategori (man/kvinna/barn). Påverkar inte redan spelade resultat.','— change name and gender/category (man/woman/child). Does not affect already-played results.')}</span></div>
+         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px">
+           ${state.players.map((nm,i)=>{const g=amGender(i);return `<label class="small" style="display:flex;align-items:center;gap:6px"><span class="muted" style="width:22px;text-align:right">${i+1}</span><input type="text" value="${esc(nm)}" data-plname="${i}" style="flex:1"><select data-plgender="${i}" class="small" style="width:78px" title="${L('Man/Kvinna/Barn','Man/Woman/Child')}"><option value=""${g===''?' selected':''}>${L('–','–')}</option><option value="m"${g==='m'?' selected':''}>${L('Man','Man')}</option><option value="w"${g==='w'?' selected':''}>${L('Kvinna','Woman')}</option><option value="c"${g==='c'?' selected':''}>${L('Barn','Child')}</option></select></label>`;}).join("")}
          </div>
-         <button class="btn ghost mini" id="amRenameSave" style="margin-top:8px">💾 ${L('Spara namn','Save names')}</button>
+         <button class="btn ghost mini" id="amRenameSave" style="margin-top:8px">💾 ${L('Spara namn & kön','Save names & gender')}</button>
        </div>`:''}
        ${sep}
        <h3 style="color:var(--head);margin:0 0 8px">⏱ ${L('Tidssimulering','Time simulation')}</h3>
@@ -2604,7 +2628,8 @@ function bindAmSettings(cx){
   if(state.amLocked) return;   // låst: inga redigeringshandlers binds (fälten är inaktiverade)
   const readSettings=()=>{ const lines=document.getElementById("amPlayers").value.split("\n").map(s=>s.trim()).filter(Boolean);
     state.players=lines; state.amPointsTo=Math.max(1,parseInt(document.getElementById("amPoints").value,10)||24);
-    state.courts=Math.max(1,parseInt(document.getElementById("amCourts").value,10)||state.courts); };
+    state.courts=Math.max(1,parseInt(document.getElementById("amCourts").value,10)||state.courts);
+    if(!Array.isArray(state.amGenders)) state.amGenders=[]; state.amGenders.length=state.players.length; };
   const readSim=()=>{ const t=document.getElementById("amStart").value; if(timeToMin(t)!=null) state.amStart=t;
     state.amWarmup=Math.max(0,parseInt(document.getElementById("amWarmup").value,10)||0);
     const rm=document.getElementById("amRoundMin"); if(rm) state.amRoundMin=Math.max(1,parseInt(rm.value,10)||15);
@@ -2615,8 +2640,10 @@ function bindAmSettings(cx){
   { const s=document.getElementById("amRoundByMode"); if(s) s.onchange=()=>{ readSettings(); state.amRoundBy=s.value==="points"?"points":"time"; save(); render(); }; }
   { const b=document.getElementById("amSavePlayers"); if(b) b.onclick=()=>{ readSettings(); save(); render(); }; }
   { const b=document.getElementById("amRenameSave"); if(b) b.onclick=()=>{
-      // Byt endast NAMN på befintliga index (schema/resultat refererar till index och påverkas inte).
+      // Byt endast NAMN + kön/kategori på befintliga index (schema/resultat refererar till index och påverkas inte).
       document.querySelectorAll("[data-plname]").forEach(inp=>{ const i=+inp.dataset.plname, v=inp.value.trim(); if(v && i>=0 && i<state.players.length) state.players[i]=v; });
+      if(!Array.isArray(state.amGenders)) state.amGenders=[]; state.amGenders.length=state.players.length;
+      document.querySelectorAll("[data-plgender]").forEach(sel=>{ const i=+sel.dataset.plgender, g=sel.value; if(i>=0 && i<state.players.length) state.amGenders[i]=(g==='m'||g==='w'||g==='c')?g:''; });
       save(); render();
     }; }
   { const b=document.getElementById("amGenerate"); if(b) b.onclick=()=>{
