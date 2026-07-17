@@ -399,9 +399,6 @@ const MATCH_FORMATS = [
   { id:"roundrobin", name:"Round Robin-turnering med placeringsslutspel",
     desc:"Gruppspel (Round Robin – alla möter alla i sin grupp) följt av placeringsslutspel: gruppettorna gör upp om plats 1–4 (A-slutspel), tvåorna om 5–8 (B), osv. Korta singelmatcher till t.ex. 11 poäng (super-tiebreak).",
     est:(N,C)=>{ const mm=15, g=Math.max(1,Math.round(N/4)), size=Math.max(2,Math.round(N/g)); const groupMatches=g*size*(size-1)/2, playoffMatches=Math.max(0,N-g); const total=groupMatches+playoffMatches; return { totalMin: Math.ceil(total/Math.max(1,C))*mm, perPlayerMin: (size-1+2)*mm }; } },
-  { id:"racketlon", name:"Racketlon",
-    desc:"Alla möter alla (Round Robin). Varje möte spelas i flera racketsporter (pingis, badminton, squash, padel, tennis) i vald ordning – en sport i taget. Vinnaren avgörs på total poäng sammanlagt över alla sporter. Spela över en eller två dagar.",
-    est:(N,C)=>{ const legMin=8, sports=5, enc=N*(N-1)/2; return { totalMin: enc*sports*legMin, perPlayerMin: (N-1)*sports*legMin }; } },
 ];
 function matchFormat(id){ return MATCH_FORMATS.find(f=>f.id===id) || MATCH_FORMATS[0]; }
 function formatName(id){ return matchFormat(id).name; }
@@ -485,14 +482,6 @@ function normalize(s){
   if(!Array.isArray(s.rr.rounds)) s.rr.rounds=[];       // gruppspelsronder: [{matches:[{g,a,b,s1,s2,court}]}]
   if(s.rr.playoff!==null && typeof s.rr.playoff!=="object") s.rr.playoff=null;   // slutspel (genereras efter gruppspel)
   if(typeof s.rr.playoff==="undefined") s.rr.playoff=null;
-  // Racketlon: flera racketsporter, alla möter alla, vinnare på total poäng.
-  if(!s.rl || typeof s.rl!=="object") s.rl={};
-  if(!Array.isArray(s.rl.sports) || !s.rl.sports.length) s.rl.sports=["pingis","badminton","squash","padel","tennis"];
-  if(s.rl.mode!=="minutes") s.rl.mode="points";
-  if(!(s.rl.modeValue>0)) s.rl.modeValue=(s.rl.mode==="minutes"?10:21);
-  if(s.rl.days!==2) s.rl.days=1;
-  if(!Array.isArray(s.rl.matches)) s.rl.matches=[];
-  if(!(s.rl.day1SportCount>0)) s.rl.day1SportCount=0;
   // Kön/kategori per deltagare (parallell array mot s.players): 'm'=man, 'w'=kvinna, 'c'=barn, ''=ospecificerat
   if(!Array.isArray(s.amGenders)) s.amGenders=[];
   { const pl=Array.isArray(s.players)?s.players:[]; s.amGenders.length=pl.length;
@@ -1440,7 +1429,6 @@ function render(){
     document.getElementById("tabs").innerHTML="";
     if(state.format==="americano"||state.format==="mexicano"||state.format==="kingcourt"||state.format==="compass") renderRotationFormat();
     else if(state.format==="roundrobin") renderRoundRobin();
-    else if(state.format==="racketlon") renderRacketlon();
     else renderFormatPlaceholder();
     applyLang();
     return;
@@ -1537,17 +1525,6 @@ function homePlanHTML(fmt, N, C, availMin, opt){
         <li>${L('speltid/deltagare','play/player')} ≈ <b>${fmtDurationMin(perPlayer)}</b> · ${L('Total speltid','Total play time')}: <b>${fmtDurationMin(total)}</b>${fits(total)}</li>
       </ul>
       <p class="small muted" style="margin:8px 0 0">${L('Antal grupper och gruppindelning ställs in inne i turneringen; förslaget antar grupper om ca 4.','The number of groups and the group assignment are set inside the tournament; the suggestion assumes groups of about 4.')}</p></div>`;
-  }
-  if(fmt==="racketlon"){
-    const enc=N*(N-1)/2, sports=5, legMin=8, total=enc*sports*legMin, perPlayer=(N-1)*sports*legMin;
-    return `${head}<b>🧮 ${L('Förslag','Suggestion')} · Racketlon</b>${availTxt}
-      <ul class="small" style="margin:8px 0 0;padding-left:18px">
-        <li>${N} ${L('deltagare','players')} · ${L('alla möter alla (Round Robin)','everyone plays everyone (Round Robin)')}</li>
-        <li>${L('Möten','Encounters')}: <b>${enc}</b> · ${L('spelas i varje vald sport','played in each chosen sport')} (${L('t.ex. 5 sporter','e.g. 5 sports')}) → <b>${enc*sports}</b> ${L('delmatcher totalt','sub-matches total')}</li>
-        <li>${L('Vinnare avgörs på total poäng över alla sporter.','Winner decided on total points across all sports.')}</li>
-        <li>${L('Uppskattad speltid','Estimated play time')}: <b>${fmtDurationMin(total)}</b> · ${L('per deltagare','per player')} ≈ <b>${fmtDurationMin(perPlayer)}</b>${fits(total)}</li>
-      </ul>
-      <p class="small muted" style="margin:8px 0 0">${L('Sporter, ordning, matchstyrning (poäng/minuter) och antal dagar ställs in inne i turneringen.','Sports, order, match governance (points/minutes) and number of days are set inside the tournament.')}</p></div>`;
   }
   // classic
   const e=(N>=2)?matchFormat("classic").est(N,C):null;
@@ -2018,7 +1995,6 @@ function formatEstimate(id, N, C, opt){
   opt=opt||{};
   if(id==="classic") return matchFormat("classic").est(N,C);
   if(id==="roundrobin"){ const dur=Math.max(1, Math.round(opt.dur||12)); const g=Math.max(1,Math.round(N/4)), size=Math.max(2,Math.round(N/g)); const groupMatches=g*size*(size-1)/2, playoffMatches=Math.max(0,N-g), total=groupMatches+playoffMatches; return { totalMin: Math.ceil(total/Math.max(1,C))*dur, perPlayerMin: (size-1+2)*dur }; }
-  if(id==="racketlon") return matchFormat("racketlon").est(N,C);
   const dur=Math.max(1, Math.round(opt.dur||12)), slot=dur+Math.max(0, Math.round(opt.trans||0));
   const s=amSuggestPlan(id, N, C, opt.availMin||0, slot); if(!s) return {totalMin:0, perPlayerMin:0};
   const total=s.rounds*slot;
@@ -2035,7 +2011,6 @@ function formatDesc(id){
     case "compass": return L('Utslagsspel med sidolottningar (Öst/Väst/Nord/Syd) – förlorare spelar vidare så alla får flera matcher. Vinnare koras per lottning.','Knockout with side draws (East/West/North/South) – losers keep playing so everyone gets several matches. A winner is crowned per draw.');
     case "kingcourt": return L('Banstege: vinnande lag flyttas upp mot kungsbanan (bana 1), förlorare ned. Ny partner varje rond (individuellt) eller fasta par.','Court ladder: winning teams move up toward the king court (court 1), losers down. New partner each round (individual) or fixed pairs.');
     case "roundrobin": return L('Gruppspel (Round Robin – alla möter alla i sin grupp) följt av placeringsslutspel: gruppettorna gör upp om plats 1–4, tvåorna om 5–8 osv. Korta singelmatcher till t.ex. 11 poäng.','Group stage (Round Robin – everyone plays everyone in their group) followed by a placement playoff: group winners play for places 1–4, runners-up for 5–8, etc. Short singles matches to e.g. 11 points.');
-    case "racketlon": return L('Alla möter alla (Round Robin) i flera racketsporter (pingis, badminton, squash, padel, tennis). En sport i taget i vald ordning; vinnaren avgörs på total poäng över alla sporter. Kan spelas över en eller två dagar.','Everyone plays everyone (Round Robin) across several racket sports (table tennis, badminton, squash, padel, tennis). One sport at a time in the chosen order; the winner is decided on total points across all sports. Can be played over one or two days.');
     default: return matchFormat("classic").desc;
   }
 }
@@ -3224,230 +3199,6 @@ function rrAboutHTML(){
        <li><b>${L('Placeringsslutspel','Placement playoff')}:</b> ${L('gruppettorna spelar A-slutspel om plats 1–4, tvåorna B-slutspel om 5–8, treorna C om 9–12 och fyrorna D om 13–16. Varje slutspel avgörs med semifinaler, final och bronsmatch.','group winners play the A-playoff for places 1–4, runners-up the B-playoff for 5–8, third-placed C for 9–12 and fourth-placed D for 13–16. Each playoff is decided by semifinals, a final and a bronze match.')}</li>
      </ol>
      <p class="small muted">${L('Korta singelmatcher till ett bestämt antal poäng (t.ex. 11) kallas super-tiebreak. Ställ in namn, grupper, banor, speltid och match­längd under Inställningar.','Short singles matches to a set number of points (e.g. 11) are called a super-tiebreak. Set names, groups, courts, play time and match length under Settings.')}</p>
-   </div>`;
-}
-
-/* ===================== Racketlon ===================== */
-const RL_SPORTS=[
-  { key:'pingis',    icon:'🏓', sv:'Pingis',    en:'Table tennis' },
-  { key:'badminton', icon:'🏸', sv:'Badminton', en:'Badminton' },
-  { key:'squash',    icon:'🎱', sv:'Squash',    en:'Squash' },
-  { key:'padel',     icon:'🥎', sv:'Padel',     en:'Padel' },
-  { key:'tennis',    icon:'🎾', sv:'Tennis',    en:'Tennis' },
-];
-function rlSport(k){ return RL_SPORTS.find(s=>s.key===k); }
-function rlSportLabel(k){ const s=rlSport(k); return s?L(s.sv,s.en):k; }
-function rlSportIcon(k){ const s=rlSport(k); return s?s.icon:''; }
-function rlEnsure(){
-  if(!Array.isArray(state.players)) state.players=[];
-  if(!state.rl||typeof state.rl!=="object") state.rl={};
-  const rl=state.rl;
-  if(!Array.isArray(rl.sports)||!rl.sports.length) rl.sports=RL_SPORTS.map(s=>s.key);
-  rl.sports=rl.sports.filter(k=>rlSport(k));   // rensa okända nycklar
-  if(rl.mode!=="minutes") rl.mode="points";
-  if(!(rl.modeValue>0)) rl.modeValue=(rl.mode==="minutes"?10:21);
-  if(rl.days!==2) rl.days=1;
-  if(!Array.isArray(rl.matches)) rl.matches=[];
-  if(!(rl.day1SportCount>0)) rl.day1SportCount = rl.days===2?Math.ceil(rl.sports.length/2):rl.sports.length;
-}
-function rlSyncDays(){ const rl=state.rl; rl.day1SportCount = rl.days===2?Math.ceil(rl.sports.length/2):rl.sports.length; }
-// Bygg mötena (alla möter alla) via cirkelmetoden – återanvänder rrCircleRounds.
-function rlGenerate(){
-  rlEnsure();
-  const N=state.players.length;
-  const rounds=rrCircleRounds([...Array(N).keys()]);
-  const matches=[];
-  rounds.forEach((pairs,r)=>pairs.forEach((pair,i)=>matches.push({ id:'m'+r+'-'+i, a:pair[0], b:pair[1], scores:{} })));
-  state.rl.matches=matches;
-  rlSyncDays();
-}
-// Totalsumma poäng för ett möte över alla sporter.
-function rlMatchTotals(m){
-  let ta=0, tb=0, played=false;
-  state.rl.sports.forEach(k=>{ const s=m.scores[k]; if(!s) return; const a=Number.isFinite(s.a)?s.a:0, b=Number.isFinite(s.b)?s.b:0; if(s.a!=null||s.b!=null) played=true; ta+=a; tb+=b; });
-  return { ta, tb, played };
-}
-function rlStandings(){
-  rlEnsure();
-  const rows=state.players.map((nm,i)=>({ i, name:nm||'', p:0, w:0, d:0, l:0, pf:0, pa:0 }));
-  state.rl.matches.forEach(m=>{
-    const t=rlMatchTotals(m); if(!t.played) return;
-    const A=rows[m.a], B=rows[m.b]; if(!A||!B) return;
-    A.p++; B.p++; A.pf+=t.ta; A.pa+=t.tb; B.pf+=t.tb; B.pa+=t.ta;
-    if(t.ta>t.tb){ A.w++; B.l++; } else if(t.tb>t.ta){ B.w++; A.l++; } else { A.d++; B.d++; }
-  });
-  rows.forEach(r=>r.diff=r.pf-r.pa);
-  rows.sort((x,y)=> (y.w-x.w) || (y.diff-x.diff) || (y.pf-x.pf) || (x.i-y.i));
-  return rows;
-}
-function rlSportsForDay(day){ const rl=state.rl; if(rl.days!==2) return rl.sports; const c=rl.day1SportCount||Math.ceil(rl.sports.length/2); return day===1?rl.sports.slice(0,c):rl.sports.slice(c); }
-
-function renderRacketlon(){
-  rlEnsure();
-  const admin=isAdmin(), esc=escXml;
-  const tabs=[];
-  if(admin) tabs.push(['settings','⚙️ '+L('Inställningar','Settings')]);
-  tabs.push(['results','📅 '+L('Schema och Resultat','Schedule & results')]);
-  tabs.push(['about','❓ '+L('Om appen','About')]);
-  if(!ui.rlTab || !tabs.some(t=>t[0]===ui.rlTab)) ui.rlTab=admin?'settings':'results';
-  const active=ui.rlTab;
-  document.getElementById("tabs").innerHTML=tabs.map(t=>`<button class="${t[0]===active?'active':''}" data-rltab="${t[0]}">${t[1]}</button>`).join("");
-  const govTxt = state.rl.mode==="points" ? `${L('till','to')} ${state.rl.modeValue} ${L('poäng/sport','pts/sport')}` : `${state.rl.modeValue} ${L('min/sport','min/sport')}`;
-  const header=`<div class="card">
-     <h2>${esc(state.tournament.name||"")} <span class="badge" style="background:#eef;color:#33507a">Racketlon</span></h2>
-     <p class="small muted">${esc(arrangerName())} · ${state.players.length} ${L('deltagare','players')} · ${state.rl.sports.length} ${L('sporter','sports')} · ${govTxt} · ${state.rl.days} ${state.rl.days==1?L('dag','day'):L('dagar','days')}${state.rl.matches.length?` · ${state.rl.matches.length} ${L('möten','encounters')}`:''}</p>
-   </div>`;
-  let body="";
-  if(active==="settings"&&admin) body=rlSettingsHTML();
-  else if(active==="results") body=rlResultsHTML(admin);
-  else if(active==="about") body=rlAboutHTML();
-  app.innerHTML=header+body;
-  document.querySelectorAll("#tabs [data-rltab]").forEach(b=>b.onclick=()=>{ ui.rlTab=b.dataset.rltab; render(); });
-  if(active==="settings"&&admin) bindRlSettings();
-  if(active==="results"){ if(admin) bindRlScores(); bindAmSearch(); }
-  { const b=document.getElementById("rlDelTourn"); if(b) b.onclick=()=>deleteTournament(TOURN_KEY); }
-}
-function rlSettingsHTML(){
-  const esc=escXml, N=state.players.length, rl=state.rl;
-  const renameEditor = N?`<div style="margin-top:14px">
-     <div class="small" style="margin-bottom:6px"><b>✏️ ${L('Byt namn på deltagare','Rename players')}</b> <span class="muted">${L('— påverkar inte redan spelade resultat.','— does not affect already-played results.')}</span></div>
-     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px">
-       ${state.players.map((nm,i)=>`<label class="small" style="display:flex;align-items:center;gap:6px"><span class="muted" style="width:20px;text-align:right">${i+1}</span><input type="text" value="${esc(nm)}" data-plname="${i}" style="flex:1"></label>`).join("")}
-     </div>
-     <button class="btn ghost mini" id="rlRenameSave" style="margin-top:8px">💾 ${L('Spara namn','Save names')}</button>
-   </div>`:'';
-  const sportChips = RL_SPORTS.map(s=>{ const on=rl.sports.includes(s.key); return `<label class="small" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin:0 6px 6px 0;${on?'background:#eef;':''}"><input type="checkbox" data-rlsport="${s.key}" ${on?'checked':''}> ${s.icon} ${rlSportLabel(s.key)}</label>`; }).join("");
-  const orderList = rl.sports.length?`<div class="small" style="margin:6px 0 4px"><b>${L('Spelordning','Play order')}</b> <span class="muted">${L('— en sport i taget, uppifrån och ned.','— one sport at a time, top to bottom.')}</span></div>
-     <div style="display:flex;flex-direction:column;gap:4px;max-width:360px">
-       ${rl.sports.map((k,i)=>`<div class="row" style="align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:5px 8px"><span class="muted" style="width:18px">${i+1}</span><span style="flex:1">${rlSportIcon(k)} ${rlSportLabel(k)}</span><button class="btn ghost mini" data-rlup="${i}" ${i===0?'disabled':''}>↑</button><button class="btn ghost mini" data-rldown="${i}" ${i===rl.sports.length-1?'disabled':''}>↓</button></div>`).join("")}
-     </div>`:'';
-  return formatInfoCardHTML()
-    +`<div class="card no-print">
-       <h2>${L('Deltagare & inställningar','Players & settings')}</h2>
-       <p class="small muted">${L('En deltagare per rad. Alla möter alla (Round Robin).','One player per line. Everyone plays everyone (Round Robin).')}</p>
-       <textarea id="rlPlayers" style="height:150px">${state.players.map(esc).join("\n")}</textarea>
-       ${renameEditor}
-       <div style="border-top:1px solid var(--line);margin:16px 0 12px"></div>
-       <div class="small" style="margin-bottom:6px"><b>🏓 ${L('Sporter','Sports')}</b> <span class="muted">${L('— välj en eller flera.','— choose one or more.')}</span></div>
-       <div>${sportChips}</div>
-       ${orderList}
-       <div class="row" style="margin-top:14px;align-items:flex-end;gap:10px;flex-wrap:wrap">
-         <label class="small">${L('Matchstyrning','Match governance')}<br>
-           <select id="rlMode"><option value="points" ${rl.mode!=="minutes"?'selected':''}>🎯 ${L('Poäng','Points')}</option><option value="minutes" ${rl.mode==="minutes"?'selected':''}>⏱ ${L('Minuter','Minutes')}</option></select></label>
-         <label class="small">${rl.mode==="minutes"?L('Minuter per sport','Minutes per sport'):L('Poäng per sport','Points per sport')}<br><input type="number" id="rlModeValue" min="1" max="180" value="${rl.modeValue}" style="width:120px"></label>
-         <label class="small">${L('Antal dagar','Number of days')}<br>
-           <select id="rlDays"><option value="1" ${rl.days!==2?'selected':''}>${L('1 dag','1 day')}</option><option value="2" ${rl.days===2?'selected':''}>${L('2 dagar','2 days')}</option></select></label>
-       </div>
-       <p class="small muted" style="margin:8px 0 0">${L('Vinnaren av ett möte avgörs på total poäng sammanlagt över alla sporter. Vid 2 dagar delas sporterna upp över dagarna.','The winner of an encounter is decided on total points across all sports. With 2 days the sports are split across the days.')}</p>
-       <div style="border-top:1px solid var(--line);margin:16px 0 12px"></div>
-       <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">
-         <button class="btn" id="rlGenerate">📅 ${L('Generera spelschema','Generate schedule')}</button>
-         ${rl.matches.length?`<button class="btn gray mini" id="rlReset">🗑 ${L('Nollställ schema & resultat','Reset schedule & results')}</button>`:''}
-       </div>
-     </div>
-     <div class="card no-print" style="border-color:#e6b7b2">
-       <h2>${L('Ta bort turnering','Delete tournament')}</h2>
-       <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">
-         <button class="btn gray" id="rlDelTourn">🗑 ${L('Ta bort denna turnering','Delete this tournament')}</button>
-         <span class="muted small">${L('Bekräftas med turneringens PIN eller MasterAdmin-koden.','Confirmed with the tournament PIN or the MasterAdmin code.')}</span>
-       </div>
-     </div>`;
-}
-function bindRlSettings(){
-  bindFormatInfoCard();
-  { const b=document.getElementById("rlRenameSave"); if(b) b.onclick=()=>{
-      document.querySelectorAll("[data-plname]").forEach(inp=>{ const i=+inp.dataset.plname, v=inp.value.trim(); if(v&&i>=0&&i<state.players.length) state.players[i]=v; });
-      save(); render();
-    }; }
-  document.querySelectorAll("[data-rlsport]").forEach(cb=>cb.onchange=()=>{
-    const k=cb.dataset.rlsport;
-    if(cb.checked){ if(!state.rl.sports.includes(k)) state.rl.sports.push(k); }
-    else { if(state.rl.sports.length>1) state.rl.sports=state.rl.sports.filter(x=>x!==k); }
-    rlSyncDays(); save(); render();
-  });
-  document.querySelectorAll("[data-rlup]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.rlup; if(i>0){ const a=state.rl.sports; [a[i-1],a[i]]=[a[i],a[i-1]]; save(); render(); } });
-  document.querySelectorAll("[data-rldown]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.rldown, a=state.rl.sports; if(i<a.length-1){ [a[i+1],a[i]]=[a[i],a[i+1]]; save(); render(); } });
-  { const s=document.getElementById("rlMode"); if(s) s.onchange=()=>{ const nm=s.value==="minutes"?"minutes":"points"; if(nm!==state.rl.mode){ state.rl.mode=nm; if((nm==="minutes"&&state.rl.modeValue===21)||(nm==="points"&&state.rl.modeValue===10)) state.rl.modeValue=(nm==="minutes"?10:21); } save(); render(); }; }
-  { const i=document.getElementById("rlModeValue"); if(i) i.onchange=()=>{ state.rl.modeValue=Math.max(1,parseInt(i.value,10)||state.rl.modeValue); save(); render(); }; }
-  { const s=document.getElementById("rlDays"); if(s) s.onchange=()=>{ state.rl.days=s.value==="2"?2:1; rlSyncDays(); save(); render(); }; }
-  { const b=document.getElementById("rlGenerate"); if(b) b.onclick=()=>{
-      const lines=document.getElementById("rlPlayers").value.split("\n").map(s=>s.trim()).filter(Boolean);
-      if(lines.length<2){ alert(L("Minst 2 deltagare krävs.","At least 2 players required.")); return; }
-      if(!state.rl.sports.length){ alert(L("Välj minst en sport.","Choose at least one sport.")); return; }
-      if(state.rl.matches.length && !confirm(L("Generera om? Nuvarande schema och resultat ersätts.","Regenerate? The current schedule and results are replaced."))) return;
-      state.players=lines; rlGenerate(); ui.rlTab="results"; save(); render();
-    }; }
-  { const b=document.getElementById("rlReset"); if(b) b.onclick=()=>{ if(!confirm(L("Nollställ hela schemat och alla resultat?","Reset the whole schedule and all results?"))) return; state.rl.matches=[]; save(); render(); }; }
-}
-function rlResultsHTML(admin){
-  const esc=escXml, rl=state.rl;
-  if(!rl.matches.length){
-    return `<div class="card"><h2>📅 ${L('Schema och Resultat','Schedule & results')}</h2><p class="muted">${admin?L('Lägg in deltagare, välj sporter och generera spelschema under Inställningar.','Add players, choose sports and generate the schedule under Settings.'):L('Spelschemat är inte skapat ännu.','The schedule is not created yet.')}</p></div>`;
-  }
-  const enc=rl.matches.length, orderStr=rl.sports.map(k=>rlSportIcon(k)+' '+rlSportLabel(k)).join(' → ');
-  const govStr=rl.mode==="points"?`${L('Till','To')} ${rl.modeValue} ${L('poäng/sport','pts/sport')}`:`${rl.modeValue} ${L('min/sport','min/sport')}`;
-  const sumItem=(lbl,val)=>`<div style="display:flex;flex-direction:column;gap:2px;margin-right:20px"><span class="small muted" style="text-transform:uppercase;letter-spacing:.04em">${lbl}</span><span style="font-weight:600;color:var(--head)">${val}</span></div>`;
-  let html=`<div class="card"><h2>📅 ${L('Schema och Resultat','Schedule & results')} <span class="small muted">(Racketlon)</span></h2>
-     <div class="row" style="flex-wrap:wrap;margin:4px 0 10px">${sumItem(L('Spelare','Players'),state.players.length)}${sumItem(L('Sporter','Sports'),rl.sports.length)}${sumItem(L('Möten','Encounters'),enc)}${sumItem(L('Delmatcher','Sub-matches'),enc*rl.sports.length)}${sumItem(L('Dagar','Days'),rl.days)}${sumItem(L('Matchstyrning','Governance'),govStr)}</div>
-     <p class="small muted" style="background:var(--soft,#f6f4ff);border:1px solid var(--line);border-radius:10px;padding:8px 12px"><b>${L('Format','Format')}:</b> ${L('alla möter alla, planerat per sport – alla möten i en sport spelas innan nästa. Spelordning','everyone plays everyone, planned per sport – all encounters in one sport before the next. Order')}: ${orderStr}. ${L('Vinnaren av ett möte avgörs på total poäng över alla sporter.','The winner of an encounter is decided on total points across all sports.')}</p>`;
-  // Tabell
-  const st=rlStandings(), anyPlayed=st.some(r=>r.p>0);
-  html+=`<h3 class="small" style="text-transform:uppercase;letter-spacing:.06em;color:var(--head);margin:14px 0 6px">${L('Tabell','Standings')}</h3><div style="overflow-x:auto"><table class="results"><thead><tr><th>#</th><th style="text-align:left">${L('Spelare','Player')}</th><th title="${L('Spelade','Played')}">${L('S','P')}</th><th title="${L('Vinster','Wins')}">${L('V','W')}</th><th title="${L('Oavgjorda','Draws')}">${L('O','D')}</th><th title="${L('Förluster','Losses')}">${L('F','L')}</th><th>${L('PF','PF')}</th><th>${L('PE','PA')}</th><th>+/–</th></tr></thead><tbody>`;
-  st.forEach((r,idx)=>{ const d=(r.diff>0?'+':'')+r.diff; html+=`<tr><td>${idx+1}</td><td style="text-align:left">${esc(r.name)}</td><td>${r.p}</td><td><b>${r.w}</b></td><td>${r.d}</td><td>${r.l}</td><td>${r.pf}</td><td>${r.pa}</td><td>${d}</td></tr>`; });
-  html+=`</tbody></table></div>`;
-  if(!anyPlayed) html+=`<p class="small muted" style="margin:6px 0 0">${L('Fyll i poäng i sporterna nedan så uppdateras tabellen automatiskt.','Enter points in the sports below and the table updates automatically.')}</p>`;
-  // Sök
-  html+=`<div class="row no-print" style="gap:8px;align-items:center;margin:14px 0 10px;flex-wrap:wrap">
-     <input type="text" id="amSearch" placeholder="🔍 ${L('Sök deltagare…','Search player…')}" value="${esc(ui.amSearch||'')}" style="min-width:200px;flex:1;max-width:360px">
-     <button class="btn gray mini" id="amSearchClear">✕ ${L('Rensa','Clear')}</button>
-     <span class="small muted" id="amSearchCount"></span>
-   </div>`;
-  // Schema per dag → per sport
-  const daysToRender = rl.days===2?[1,2]:[1];
-  daysToRender.forEach(day=>{
-    const daySports=rlSportsForDay(day); if(!daySports.length) return;
-    if(rl.days===2) html+=`<h3 style="color:var(--head);margin:16px 0 8px">${L('Dag','Day')} ${day}</h3>`;
-    daySports.forEach(k=>{
-      const target=rl.mode==="points"?`${L('spela till','play to')} ${rl.modeValue} p`:`${rl.modeValue} min`;
-      html+=`<div class="am-round" style="margin-bottom:14px"><h4 style="margin:6px 0 4px;color:var(--head)">${rlSportIcon(k)} ${rlSportLabel(k)} <span class="small muted">(${target})</span></h4><div style="overflow-x:auto"><table class="results"><thead><tr><th>#</th><th style="text-align:right">${L('Spelare 1','Player 1')}</th><th style="text-align:center">${L('Resultat','Score')}</th><th style="text-align:left">${L('Spelare 2','Player 2')}</th><th style="text-align:left">${L('Delresultat','Sub-result')}</th></tr></thead><tbody>`;
-      rl.matches.forEach((m,idx)=>{
-        const nA=esc(state.players[m.a]||'?'), nB=esc(state.players[m.b]||'?');
-        const s=m.scores[k]||{}, va=(s.a!=null?s.a:''), vb=(s.b!=null?s.b:'');
-        const names=((state.players[m.a]||'')+' '+(state.players[m.b]||'')).toLowerCase();
-        let leg='', legCls='';
-        if(s.a!=null&&s.b!=null){ if(s.a>s.b){ leg=`${s.a}–${s.b} · ${nA}`; legCls='color:var(--green);font-weight:600'; } else if(s.b>s.a){ leg=`${s.a}–${s.b} · ${nB}`; legCls='color:var(--green);font-weight:600'; } else { leg=`${s.a}–${s.b} · ${L('lika','tie')}`; legCls='color:#d97706;font-weight:600'; } }
-        const won1=s.a!=null&&s.b!=null&&s.a>s.b, won2=s.a!=null&&s.b!=null&&s.b>s.a;
-        const score=admin
-          ? `<input type="number" min="0" max="999" value="${va}" data-rlm="${m.id}" data-rls="${k}" data-rlside="a" style="width:48px"> – <input type="number" min="0" max="999" value="${vb}" data-rlm="${m.id}" data-rls="${k}" data-rlside="b" style="width:48px">`
-          : `<b>${s.a==null?'–':s.a} – ${s.b==null?'–':s.b}</b>`;
-        html+=`<tr class="am-match" data-players="${esc(names)}"><td>${idx+1}</td><td style="text-align:right;${won1?'font-weight:bold':''}">${nA}</td><td style="text-align:center;white-space:nowrap">${score}</td><td style="text-align:left;${won2?'font-weight:bold':''}">${nB}</td><td style="text-align:left;${legCls}">${leg}</td></tr>`;
-      });
-      html+=`</tbody></table></div></div>`;
-    });
-  });
-  html+=`</div>`;
-  return html;
-}
-function bindRlScores(){
-  document.querySelectorAll("[data-rlm]").forEach(inp=>inp.onchange=()=>{
-    const id=inp.dataset.rlm, sport=inp.dataset.rls, side=inp.dataset.rlside;
-    const m=state.rl.matches.find(x=>x.id===id); if(!m) return;
-    if(!m.scores[sport]) m.scores[sport]={a:null,b:null};
-    const v=inp.value.trim()===""?null:Math.max(0,parseInt(inp.value,10)||0);
-    m.scores[sport][side]=v; save(); render();
-  });
-}
-function rlAboutHTML(){
-  return `<div class="card"><h2>❓ ${L('Om formatet','About the format')}</h2>
-     <p><b>Racketlon</b></p>
-     <p>${L('Alla möter alla (Round Robin). Varje möte spelas i flera racketsporter i vald ordning – en sport i taget, alla möten i en sport innan nästa sport tar vid.','Everyone plays everyone (Round Robin). Each encounter is played across several racket sports in the chosen order – one sport at a time, all encounters in one sport before the next.')}</p>
-     <ul class="small">
-       <li>${L('Sporter: pingis, badminton, squash, padel, tennis (välj en eller flera, valfri ordning).','Sports: table tennis, badminton, squash, padel, tennis (choose one or more, any order).')}</li>
-       <li>${L('Varje sport spelas till ett antal poäng eller under ett antal minuter.','Each sport is played to a number of points or for a number of minutes.')}</li>
-       <li>${L('Vinnaren av ett möte avgörs på total poäng sammanlagt över alla sporter.','The winner of an encounter is decided on total points across all sports.')}</li>
-       <li>${L('Kan spelas över en eller två dagar (sporterna delas då upp över dagarna).','Can be played over one or two days (the sports are then split across the days).')}</li>
-     </ul>
-     <p class="small muted">${L('Tabellen rankar på vinster, därefter poängdifferens och poäng för.','The table ranks by wins, then points difference and points for.')}</p>
    </div>`;
 }
 
