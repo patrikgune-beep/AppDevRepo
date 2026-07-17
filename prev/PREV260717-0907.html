@@ -1510,22 +1510,6 @@ function homePlanHTML(fmt, N, C, availMin, opt){
         <li>${L('Total speltid','Total play time')}: <b>${fmtDurationMin(total)}</b>${fits(total)}</li>
       </ul></div>`;
   }
-  if(fmt==="roundrobin"){
-    const g=Math.max(1,Math.round(N/4)), size=Math.max(2,Math.round(N/Math.max(1,g)));
-    const groupMatches=Math.round(g*size*(size-1)/2);
-    const playoffMatches=Math.max(0, size*g - g);   // ca: per placering en braket (semifinal+final+brons ≈ storlek matcher)
-    const totalMatches=groupMatches+playoffMatches;
-    const total=Math.ceil(totalMatches/Math.max(1,C))*slot;
-    const perPlayer=(size-1+2)*dur;
-    return `${head}<b>🧮 ${L('Förslag','Suggestion')} · Round Robin</b>${availTxt}
-      <ul class="small" style="margin:8px 0 0;padding-left:18px">
-        <li>${N} ${L('deltagare','players')} · ${C} ${C==1?L('bana','court'):L('banor','courts')} · ${govTxt}</li>
-        <li>${L('Gruppspel','Group stage')}: ${L('ca','approx')} <b>${g}</b> ${g==1?L('grupp','group'):L('grupper','groups')} à <b>${size}</b> ${L('spelare','players')} → ${L('var och en spelar','each plays')} <b>${size-1}</b> ${L('gruppmatcher','group matches')}</li>
-        <li>${L('Gruppmatcher totalt','Total group matches')}: <b>${groupMatches}</b> · ${L('placeringsslutspel','placement playoff')}: A/B/C/D (${L('semifinal, final, bronsmatch','semifinal, final, bronze')})</li>
-        <li>${L('speltid/deltagare','play/player')} ≈ <b>${fmtDurationMin(perPlayer)}</b> · ${L('Total speltid','Total play time')}: <b>${fmtDurationMin(total)}</b>${fits(total)}</li>
-      </ul>
-      <p class="small muted" style="margin:8px 0 0">${L('Antal grupper och gruppindelning ställs in inne i turneringen; förslaget antar grupper om ca 4.','The number of groups and the group assignment are set inside the tournament; the suggestion assumes groups of about 4.')}</p></div>`;
-  }
   // classic
   const e=(N>=2)?matchFormat("classic").est(N,C):null;
   const total=e?e.totalMin:0;
