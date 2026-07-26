@@ -1498,16 +1498,14 @@ function renderTabs(){
 function homePlanHTML(fmt, N, C, availMin, opt){
   opt=opt||{mode:'time', dur:12, trans:0};
   const dur=Math.max(1, Math.round(opt.dur||12)), trans=Math.max(0, Math.round(opt.trans||0)), slot=dur+trans;
-  const warmup=Math.max(0, Math.round(opt.warmup||0)), breaksMin=(Array.isArray(opt.breaks)?opt.breaks.reduce((s,b)=>s+(+b.min||0),0):0), overhead=warmup+breaksMin;
   const transTxt = trans>0 ? ` + ${trans} ${L('min byte','min changeover')}` : '';
   const govTxt = opt.mode==='points'
     ? `${L('styrs av poäng','governed by points')}: ${L('till','to')} ${opt.pointsTo} ${L('poäng','points')} ≈ ${dur} ${L('min/rond','min/round')}${transTxt}`
     : `${L('styrs av tid','governed by time')}: ${dur} ${L('min/rond','min/round')}${transTxt}`;
-  const ohTxt = overhead>0 ? ` <span class="muted">(+ ${[warmup>0?`${warmup} ${L('min uppv.','min warm-up')}`:'', breaksMin>0?`${breaksMin} ${L('min paus','min breaks')}`:''].filter(Boolean).join(' + ')})</span>` : '';
-  const availTxt = (availMin>0 ? ` <span class="muted">(${L('speltid','play time')} ${fmtDurationMin(availMin)})</span>` : '') + ohTxt;
-  const fits=(total)=>{ const tot=total+overhead; return availMin<=0 ? '' : (tot<=availMin
+  const availTxt = availMin>0 ? ` <span class="muted">(${L('speltid','play time')} ${fmtDurationMin(availMin)})</span>` : '';
+  const fits=(total)=> availMin<=0 ? '' : (total<=availMin
       ? ` <span class="pill" style="background:#e3f1de;color:var(--green)">✓ ${L('ryms i speltiden','fits the play time')}</span>`
-      : ` <span class="pill" style="background:#fbe4e0;color:#c0392b">⚠ ${L('längre än speltiden','longer than play time')} (+${fmtDurationMin(tot-availMin)})</span>`); };
+      : ` <span class="pill" style="background:#fbe4e0;color:#c0392b">⚠ ${L('längre än speltiden','longer than play time')} (+${fmtDurationMin(total-availMin)})</span>`);
   const head=`<div class="hint" style="border-color:var(--gold);background:#fbf4df">`;
   if(fmt==="americano"||fmt==="mexicano"||fmt==="kingcourt"){
     const s=amSuggestPlan(fmt, N, C, availMin, slot); if(!s) return '';
@@ -1609,18 +1607,7 @@ function renderHome(){
        <label class="small" id="homeRoundMinWrap">${L('Minuter per rond','Minutes per round')}<br><input type="number" id="homeEstRoundMin" min="4" max="60" value="12" style="width:110px"></label>
        <label class="small" id="homePointsWrap">${L('Poäng per rond','Points per round')}<br><input type="number" id="homeEstPoints" min="1" max="99" value="21" style="width:110px"></label>
        <label class="small">${L('Byte mellan ronder (min)','Changeover (min)')}<br><input type="number" id="homeEstTrans" min="0" max="15" value="2" style="width:110px"></label>
-       <label class="small">${L('Uppvärmning (min)','Warm-up (min)')}<br><input type="number" id="homeEstWarmup" min="0" max="60" value="${Math.max(0,+ (ui.homeWarmup||0))}" style="width:100px"></label>
-       <label class="small">${L('Antal ronder','Number of rounds')}<br><input type="number" id="homeEstRounds" min="0" max="60" value="${ui.homeRounds>0?ui.homeRounds:''}" placeholder="${L('auto','auto')}" style="width:100px"></label>
-       <button class="btn ghost mini" id="homePlanBtn" style="margin-bottom:1px">🧮 ${L('Simulera','Simulate')}</button>
-     </div>
-     <div style="margin-top:10px">
-       <div class="small" style="margin-bottom:6px"><b>☕ ${L('Pauser','Breaks')}</b> <span class="muted">${L('— läggs efter en viss rond och räknas in i tiden','— placed after a given round and counted into the time')}</span></div>
-       <div id="homeBreaksList"></div>
-       <div class="row" style="align-items:flex-end;gap:8px;flex-wrap:wrap;margin-top:6px">
-         <label class="small">${L('Efter rond','After round')}<br><input type="number" id="homeBrAfter" min="1" max="60" value="1" style="width:90px"></label>
-         <label class="small">${L('Längd (min)','Length (min)')}<br><input type="number" id="homeBrMin" min="1" max="120" value="15" style="width:90px"></label>
-         <button class="btn ghost mini" id="homeBrAdd">➕ ${L('Lägg till paus','Add break')}</button>
-       </div>
+       <button class="btn ghost mini" id="homePlanBtn" style="margin-bottom:1px">🧮 ${L('Generera upplägg & förslag','Generate plan & suggestion')}</button>
      </div>
      <p class="small muted" style="margin:6px 0 0">${L('Välj om tid eller poäng styr varje rond – den ruta som inte styr är gråmarkerad. Ett kort byte kan läggas mellan ronder. Detta avgör hur många ronder som hinns med på speltiden och förifylls i turneringen.','Choose whether time or points govern each round – the box that does not govern is greyed out. A short changeover can be added between rounds. This determines how many rounds fit the play time and is prefilled into the tournament.')}</p>
      <div class="small" style="margin:12px 0 4px"><b>${L('Välj tävlingsformat','Choose tournament format')}</b></div>
@@ -1649,21 +1636,12 @@ function renderHome(){
     if(!ui.homeFormat) ui.homeFormat="classic";
     const estP=document.getElementById("homeEstPlayers"), estC=document.getElementById("homeEstCourts"), estH=document.getElementById("homeEstHours");
     const estMode=document.getElementById("homeEstMode"), estRM=document.getElementById("homeEstRoundMin"), estPts=document.getElementById("homeEstPoints"), estTrans=document.getElementById("homeEstTrans");
-    const estWarmup=document.getElementById("homeEstWarmup"), estRounds=document.getElementById("homeEstRounds");
-    if(!Array.isArray(ui.homeBreaks)) ui.homeBreaks=[];
     const availMinOf=()=>{ const h=parseFloat(estH.value); return (h>0)?Math.round(h*60):0; };
     const MPP=0.6;                                        // min per poäng (standard) för poäng-läget på startsidan
     const planOpt=()=>{ const mode=estMode.value==="points"?"points":"time";
       const pointsTo=Math.max(1,parseInt(estPts.value,10)||21), roundMin=Math.max(1,parseInt(estRM.value,10)||12);
       const dur=mode==="points"?Math.max(1,Math.round(pointsTo*MPP)):roundMin, trans=Math.max(0,parseInt(estTrans.value,10)||0);
-      const warmup=Math.max(0,parseInt(estWarmup&&estWarmup.value,10)||0), rounds=Math.max(0,parseInt(estRounds&&estRounds.value,10)||0);
-      const breaks=(Array.isArray(ui.homeBreaks)?ui.homeBreaks:[]).slice();
-      return {mode, dur, pointsTo, roundMin, trans, warmup, rounds, breaks}; };
-    const renderHomeBreaks=()=>{ const box=document.getElementById("homeBreaksList"); if(!box) return;
-      const list=(ui.homeBreaks||[]).slice().sort((a,b)=>a.after-b.after);
-      box.innerHTML = list.length ? list.map((b,bi)=>`<div class="row" style="align-items:center;gap:8px;margin-bottom:4px"><span class="pill" style="background:#fbe9c9;color:#8a5a00">${L('Efter rond','After round')} ${b.after} · ${b.min} ${L('min','min')}</span><button class="btn gray mini" data-hbrdel="${bi}">✕</button></div>`).join("") : `<span class="small muted">${L('Inga pauser.','No breaks.')}</span>`;
-      box.querySelectorAll("[data-hbrdel]").forEach(btn=>btn.onclick=()=>{ const i=+btn.dataset.hbrdel, srt=(ui.homeBreaks||[]).slice().sort((a,b)=>a.after-b.after); const rm=srt[i]; if(rm){ ui.homeBreaks=(ui.homeBreaks||[]).filter(x=>!(x.after===rm.after&&x.min===rm.min)); renderHomeBreaks(); renderPlan(); } });
-    };
+      return {mode, dur, pointsTo, roundMin, trans}; };
     // Gråmarkera + lås den ruta som inte styr ronden.
     function syncModeFields(){ const pts=estMode.value==="points";
       const gray=(wrap,off)=>{ const w=document.getElementById(wrap), inp=w&&w.querySelector("input"); if(!w) return;
@@ -1694,17 +1672,10 @@ function renderHome(){
       document.querySelectorAll('[data-fmtrow]').forEach(tr=>tr.onclick=e=>{ if(e.target.tagName!=="INPUT"){ ui.homeFormat=tr.dataset.fmtrow; updateFormatTable(); renderPlan(); } });
     }
     const refreshAll=()=>{ syncModeFields(); updateFormatTable(); renderPlan(); };
-    [estP,estC,estH,estRM,estPts,estTrans,estWarmup,estRounds].forEach(el=>{ if(el) el.oninput=refreshAll; });
+    [estP,estC,estH,estRM,estPts,estTrans].forEach(el=>{ if(el) el.oninput=refreshAll; });
     if(estMode) estMode.onchange=refreshAll;
     { const pb=document.getElementById("homePlanBtn"); if(pb) pb.onclick=renderPlan; }
-    { const ba=document.getElementById("homeBrAdd"); if(ba) ba.onclick=()=>{
-        const after=parseInt(document.getElementById("homeBrAfter").value,10)||0, min=parseInt(document.getElementById("homeBrMin").value,10)||0;
-        if(after<1||min<1){ alert(L("Ange rond och pauslängd.","Enter round and break length.")); return; }
-        if(!Array.isArray(ui.homeBreaks)) ui.homeBreaks=[];
-        const ex=ui.homeBreaks.find(x=>x.after===after); if(ex) ex.min=min; else ui.homeBreaks.push({after,min});
-        renderHomeBreaks(); renderPlan();
-      }; }
-    syncModeFields(); updateFormatTable(); renderHomeBreaks(); renderPlan();
+    syncModeFields(); updateFormatTable(); renderPlan();
     const asCopy=document.getElementById("homeAsCopy"), copyBox=document.getElementById("homeCopyBox");
     asCopy.onchange=()=>{ copyBox.style.display = asCopy.checked ? "" : "none"; };
     // Deltagare kräver att Klasser också kopieras.
@@ -1722,9 +1693,8 @@ function renderHome(){
       const o=planOpt();
       const sug=(N>=2)?amSuggestPlan(format, N, courts, availMinOf(), o.dur+o.trans):null;   // föreslå antal ronder (slot = rond + byte)
       const plan = { roundBy:o.mode, minPerPoint:MPP,
-        roundMin:o.roundMin, points:o.pointsTo, transMin:o.trans, warmup:o.warmup, breaks:o.breaks.slice(),
-        planHours:(parseFloat(estH.value)||0),
-        planRounds: (o.rounds>0 ? o.rounds : (sug?sug.rounds:0)) };
+        roundMin:o.roundMin, points:o.pointsTo, transMin:o.trans, planHours:(parseFloat(estH.value)||0),
+        ...(sug?{planRounds:sug.rounds}:{}) };
       if(asCopy.checked){
         const srcKey=document.getElementById("homeCopyFrom").value;
         if(!srcKey){ alert(L("Välj en turnering att kopiera från.","Choose a tournament to copy from.")); return; }
@@ -1884,8 +1854,6 @@ function buildTournamentState(name, src, opts){
   if(opts.points>0) s.amPointsTo=opts.points;
   if(opts.minPerPoint>0) s.amMinPerPoint=opts.minPerPoint;
   if(opts.transMin>=0) s.amTransMin=opts.transMin;
-  if(opts.warmup>=0) s.amWarmup=opts.warmup;                 // uppvärmning från startsidans simulering
-  if(Array.isArray(opts.breaks)) s.amBreaks=opts.breaks.filter(b=>b&&b.after>0&&b.min>0).map(b=>({after:+b.after,min:+b.min}));   // pauser från startsidan
   if(opts.planHours>0) s.amPlanHours=opts.planHours;
   if(opts.planRounds>0) s.amPlanRounds=opts.planRounds;
   s.createdAt=Date.now();   // tidsstämpel för när turneringen skapades
@@ -2472,8 +2440,7 @@ function amTabSettingsHTML(cx){
          <button class="btn ghost mini" id="amRenameSave" style="margin-top:8px">💾 ${L('Spara namn & kön','Save names & gender')}</button>
        </div>`:''}
        ${sep}
-       <h3 style="color:var(--head);margin:0 0 8px">⏱ ${L('Tidssimulering & spelschema','Time simulation & schedule')}</h3>
-       <p class="small muted" style="margin:0 0 10px">${L('Ställ in tider och pauser och generera spelschemat härifrån – schemat följer starttid, uppvärmning, rondlängd, byte och pauser.','Set the times and breaks and generate the schedule here – it follows start time, warm-up, round length, changeover and breaks.')}</p>
+       <h3 style="color:var(--head);margin:0 0 8px">⏱ ${L('Tidssimulering','Time simulation')}</h3>
        <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
          <label class="small">${L('Starttid','Start time')}<br><input type="time" id="amStart" value="${esc(state.amStart)}" style="width:110px"></label>
          <label class="small">${L('Uppvärmning (min)','Warm-up (min)')}<br><input type="number" id="amWarmup" min="0" max="60" value="${Math.max(0,+state.amWarmup||0)}" style="width:80px"></label>
@@ -2495,8 +2462,8 @@ function amTabSettingsHTML(cx){
            <button class="btn ghost mini" id="amBrAdd">➕ ${L('Lägg till paus','Add break')}</button>
          </div>
        </div>
-       <div style="border-top:1px dashed var(--line);margin:14px 0 10px"></div>
-       <div class="small" style="margin-bottom:6px"><b>🎲 ${L('Spelschema','Schedule')}</b> <span class="muted">${L('— generera från antal ronder eller från simuleringen ovan.','— generate from number of rounds or from the simulation above.')}</span></div>
+       ${sep}
+       <h3 style="color:var(--head);margin:0 0 8px">🎲 ${L('Generera spelschema','Generate schedule')}</h3>
        <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
          <label class="small">${roundByRound?L('Planerat antal ronder','Planned rounds'):L('Antal ronder','Number of rounds')}<br><input type="number" id="amNumRounds" min="1" max="60" value="${roundByRound?Math.max(state.amRounds.length,state.amPlanRounds||0,N-1):(state.amRounds.length||state.amPlanRounds||Math.max(1,N-1))}" style="width:110px"></label>
          ${roundByRound
