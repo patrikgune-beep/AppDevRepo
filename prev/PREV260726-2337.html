@@ -1604,10 +1604,6 @@ function renderHome(){
        <label class="small">${L('Speltid (timmar)','Play time (hours)')}<br><input type="number" id="homeEstHours" min="0.5" max="12" step="0.5" value="3" style="width:100px"></label>
      </div>
      <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap;margin-top:8px">
-       <label class="small">${L('Spelsätt','Play')}<br>
-         <select id="homeEstPlay"><option value="doubles" ${ui.homePlay!=="singles"?'selected':''}>${L('Dubbel','Doubles')}</option><option value="singles" ${ui.homePlay==="singles"?'selected':''}>${L('Singel','Singles')}</option></select></label>
-       <label class="small" id="homeScoreWrap" style="${ui.homePlay==="singles"?'opacity:.45':''}">${L('Poängräkning','Scoring')}<br>
-         <select id="homeEstScore" ${ui.homePlay==="singles"?'disabled':''}><option value="individual" ${ui.homeScore!=="pairs"?'selected':''}>${L('Individuellt','Individual')}</option><option value="pairs" ${ui.homeScore==="pairs"?'selected':''}>${L('Par','Pairs')}</option></select></label>
        <label class="small">${L('Ronden styrs av','Round governed by')}<br>
          <select id="homeEstMode"><option value="time">${L('Tid','Time')}</option><option value="points">${L('Poäng','Points')}</option></select></label>
        <label class="small" id="homeRoundMinWrap">${L('Minuter per rond','Minutes per round')}<br><input type="number" id="homeEstRoundMin" min="4" max="60" value="12" style="width:110px"></label>
@@ -1627,10 +1623,10 @@ function renderHome(){
        </div>
      </div>
      <p class="small muted" style="margin:6px 0 0">${L('Välj om tid eller poäng styr varje rond – den ruta som inte styr är gråmarkerad. Ett kort byte kan läggas mellan ronder. Detta avgör hur många ronder som hinns med på speltiden och förifylls i turneringen.','Choose whether time or points govern each round – the box that does not govern is greyed out. A short changeover can be added between rounds. This determines how many rounds fit the play time and is prefilled into the tournament.')}</p>
-     <div class="small" style="margin:12px 0 4px"><b>${L('Välj tävlingsformat','Choose tournament format')}</b> <span class="muted">${L('— klicka på formatets namn för beskrivning.','— click a format name for its description.')}</span></div>
+     <div class="small" style="margin:12px 0 4px"><b>${L('Välj tävlingsformat','Choose tournament format')}</b></div>
      <div id="formatTableWrap" style="overflow-x:auto"></div>
-     <div class="row" style="margin-top:14px"><button class="btn" id="homeCreateBtn" style="font-size:15px;padding:8px 18px">➕ ${L('Skapa turnering','Create tournament')}</button></div>
-     <label class="small" style="display:block;margin:14px 0 0"><input type="checkbox" id="homeAsCopy"> <b>${L('Skapa som kopia av en gammal turnering','Create as a copy of an old tournament')}</b></label>
+     <div id="homePlanReadout" style="margin-top:12px"></div>
+     <label class="small" style="display:block;margin:12px 0 0"><input type="checkbox" id="homeAsCopy"> <b>${L('Skapa som kopia av en gammal turnering','Create as a copy of an old tournament')}</b></label>
      <div id="homeCopyBox" style="display:none;margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
        <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
          <label class="small">${L('Kopiera från','Copy from')}<br>
@@ -1643,6 +1639,7 @@ function renderHome(){
        </div>
        <p class="small muted" style="margin:8px 0 0">${L('Listan innehåller även arkiverade turneringar. Kopiering kräver källturneringens PIN-kod. Resultat, stegar och scheman kopieras aldrig.','The list also includes archived tournaments. Copying requires the source PIN. Results, brackets and schedules are never copied.')}</p>
      </div>
+     <div class="row" style="margin-top:14px"><button class="btn" id="homeCreateBtn" style="font-size:15px;padding:8px 18px">➕ ${L('Skapa turnering','Create tournament')}</button></div>
    </div>`;
   updateSyncBadge();
   document.getElementById("homeShowArch").onchange=e=>{ ui.homeShowArchived=e.target.checked; renderHome(); };
@@ -1653,7 +1650,6 @@ function renderHome(){
     const estP=document.getElementById("homeEstPlayers"), estC=document.getElementById("homeEstCourts"), estH=document.getElementById("homeEstHours");
     const estMode=document.getElementById("homeEstMode"), estRM=document.getElementById("homeEstRoundMin"), estPts=document.getElementById("homeEstPoints"), estTrans=document.getElementById("homeEstTrans");
     const estWarmup=document.getElementById("homeEstWarmup"), estRounds=document.getElementById("homeEstRounds");
-    const estPlay=document.getElementById("homeEstPlay"), estScore=document.getElementById("homeEstScore");
     if(!Array.isArray(ui.homeBreaks)) ui.homeBreaks=[];
     const availMinOf=()=>{ const h=parseFloat(estH.value); return (h>0)?Math.round(h*60):0; };
     const MPP=0.6;                                        // min per poäng (standard) för poäng-läget på startsidan
@@ -1662,8 +1658,7 @@ function renderHome(){
       const dur=mode==="points"?Math.max(1,Math.round(pointsTo*MPP)):roundMin, trans=Math.max(0,parseInt(estTrans.value,10)||0);
       const warmup=Math.max(0,parseInt(estWarmup&&estWarmup.value,10)||0), rounds=Math.max(0,parseInt(estRounds&&estRounds.value,10)||0);
       const breaks=(Array.isArray(ui.homeBreaks)?ui.homeBreaks:[]).slice();
-      const play=(estPlay&&estPlay.value==="singles")?"singles":"doubles", score=(play==="singles")?"individual":((estScore&&estScore.value==="pairs")?"pairs":"individual");
-      return {mode, dur, pointsTo, roundMin, trans, warmup, rounds, breaks, play, score}; };
+      return {mode, dur, pointsTo, roundMin, trans, warmup, rounds, breaks}; };
     const renderHomeBreaks=()=>{ const box=document.getElementById("homeBreaksList"); if(!box) return;
       const list=(ui.homeBreaks||[]).slice().sort((a,b)=>a.after-b.after);
       box.innerHTML = list.length ? list.map((b,bi)=>`<div class="row" style="align-items:center;gap:8px;margin-bottom:4px"><span class="pill" style="background:#fbe9c9;color:#8a5a00">${L('Efter rond','After round')} ${b.after} · ${b.min} ${L('min','min')}</span><button class="btn gray mini" data-hbrdel="${bi}">✕</button></div>`).join("") : `<span class="small muted">${L('Inga pauser.','No breaks.')}</span>`;
@@ -1676,31 +1671,32 @@ function renderHome(){
       gray("homeRoundMinWrap", pts);    // tid-rutan grå i poäng-läge
       gray("homePointsWrap", !pts);     // poäng-rutan grå i tid-läge
     }
-    function renderPlan(){ updateFormatTable(); }   // förslagsrutan flyttad in i tabellens "Förslag"-kolumn
+    function renderPlan(){
+      const N=Math.max(0,parseInt(estP.value,10)||0), C=Math.max(1,parseInt(estC.value,10)||1);
+      const box=document.getElementById("homePlanReadout");
+      if(box) box.innerHTML = N>=2 ? homePlanHTML(ui.homeFormat||"classic", N, C, availMinOf(), planOpt())
+                                   : `<p class="small muted">${L('Ange minst 2 deltagare för ett förslag.','Enter at least 2 players for a suggestion.')}</p>`;
+    }
     function updateFormatTable(){
       const N=Math.max(0,parseInt(estP.value,10)||0), C=Math.max(1,parseInt(estC.value,10)||1), sel=ui.homeFormat, availMin=availMinOf();
-      const o=planOpt(), estOpt={dur:o.dur, trans:o.trans, availMin, play:o.play, score:o.score, warmup:o.warmup, breaks:o.breaks, mode:o.mode, pointsTo:o.pointsTo, roundMin:o.roundMin, rounds:o.rounds};
+      const o=planOpt(), estOpt={dur:o.dur, trans:o.trans, availMin};
       const rows=MATCH_FORMATS.map(f=>{ const e=(N>=2)?formatEstimate(f.id, N, C, estOpt):null;
         return `<tr style="cursor:pointer" data-fmtrow="${f.id}">
           <td style="text-align:center"><input type="radio" name="fmtPick" value="${f.id}" ${sel===f.id?'checked':''}></td>
-          <td style="white-space:nowrap"><a href="#" data-fmtinfo="${f.id}" style="font-weight:700;color:var(--head);text-decoration:underline dotted" title="${L('Visa beskrivning','Show description')}">${f.name}</a></td>
+          <td style="white-space:nowrap"><b>${f.name}</b></td>
           <td style="white-space:nowrap">${e?fmtDurationMin(e.totalMin):'–'}</td>
           <td style="white-space:nowrap">${e?fmtDurationMin(e.perPlayerMin):'–'}</td>
-          <td class="small">${N>=2?homeFormatCell(f.id, N, C, availMin, o):'<span class="muted">–</span>'}</td></tr>`; }).join("");
-      document.getElementById("formatTableWrap").innerHTML=`<table class="results" style="min-width:680px"><thead><tr>
-          <th>${L('Välj','Pick')}</th><th>${L('Format','Format')}</th><th>${L('Total tid','Total time')}</th><th>${L('Speltid/deltagare','Play time/player')}</th><th>${L('Förslag','Suggestion')}</th></tr></thead><tbody>${rows}</tbody></table>
-        <p class="small muted" style="margin:6px 0 0">${L('Uppdateras utifrån dina val ovan','Updates from your choices above')} (${N||'—'} ${L('deltagare','players')}, ${C} ${C==1?L('bana','court'):L('banor','courts')}${availMin>0?`, ${fmtDurationMin(availMin)} ${L('speltid','play time')}`:''}, ${o.play==="singles"?L('singel','singles'):L('dubbel','doubles')}, ${o.mode==="points"?`${o.pointsTo} ${L('poäng','pts')}`:`${o.roundMin} ${L('min/rond','min/round')}`}${o.trans>0?` + ${o.trans} ${L('min byte','min changeover')}`:''}). ${L('Klicka på formatnamnet för beskrivning. Klassisk KM uppskattas per klass.','Click a format name for its description. Classic KM is estimated per class.')}</p>`;
-      document.querySelectorAll('input[name="fmtPick"]').forEach(r=>r.onchange=()=>{ ui.homeFormat=r.value; updateFormatTable(); });
-      document.querySelectorAll('[data-fmtinfo]').forEach(a=>a.onclick=e=>{ e.preventDefault(); e.stopPropagation(); showFormatInfoPopup(a.dataset.fmtinfo); });
-      document.querySelectorAll('[data-fmtrow]').forEach(tr=>tr.onclick=e=>{ if(e.target.tagName!=="INPUT" && e.target.tagName!=="A"){ ui.homeFormat=tr.dataset.fmtrow; updateFormatTable(); } });
+          <td class="small">${formatDesc(f.id)}</td></tr>`; }).join("");
+      document.getElementById("formatTableWrap").innerHTML=`<table class="results" style="min-width:640px"><thead><tr>
+          <th>${L('Välj','Pick')}</th><th>${L('Format','Format')}</th><th>${L('Total tid','Total time')}</th><th>${L('Speltid/deltagare','Play time/player')}</th><th>${L('Beskrivning','Description')}</th></tr></thead><tbody>${rows}</tbody></table>
+        <p class="small muted" style="margin:6px 0 0">${L('Uppdateras utifrån dina val ovan','Updates from your choices above')} (${N||'—'} ${L('deltagare','players')}, ${C} ${C==1?L('bana','court'):L('banor','courts')}${availMin>0?`, ${fmtDurationMin(availMin)} ${L('speltid','play time')}`:''}, ${o.mode==="points"?`${o.pointsTo} ${L('poäng','pts')}`:`${o.roundMin} ${L('min/rond','min/round')}`}${o.trans>0?` + ${o.trans} ${L('min byte','min changeover')}`:''}). ${L('Klassisk KM uppskattas per klass.','Classic KM is estimated per class.')}</p>`;
+      document.querySelectorAll('input[name="fmtPick"]').forEach(r=>r.onchange=()=>{ ui.homeFormat=r.value; renderPlan(); });
+      document.querySelectorAll('[data-fmtrow]').forEach(tr=>tr.onclick=e=>{ if(e.target.tagName!=="INPUT"){ ui.homeFormat=tr.dataset.fmtrow; updateFormatTable(); renderPlan(); } });
     }
-    function syncPlayFields(){ const singles=estPlay&&estPlay.value==="singles"; const w=document.getElementById("homeScoreWrap"); if(w){ w.style.opacity=singles?"0.45":"1"; if(estScore) estScore.disabled=!!singles; } }
-    const refreshAll=()=>{ syncModeFields(); syncPlayFields(); updateFormatTable(); };
+    const refreshAll=()=>{ syncModeFields(); updateFormatTable(); renderPlan(); };
     [estP,estC,estH,estRM,estPts,estTrans,estWarmup,estRounds].forEach(el=>{ if(el) el.oninput=refreshAll; });
     if(estMode) estMode.onchange=refreshAll;
-    if(estPlay) estPlay.onchange=()=>{ ui.homePlay=estPlay.value; refreshAll(); };
-    if(estScore) estScore.onchange=()=>{ ui.homeScore=estScore.value; updateFormatTable(); };
-    { const pb=document.getElementById("homePlanBtn"); if(pb) pb.onclick=refreshAll; }
+    { const pb=document.getElementById("homePlanBtn"); if(pb) pb.onclick=renderPlan; }
     { const ba=document.getElementById("homeBrAdd"); if(ba) ba.onclick=()=>{
         const after=parseInt(document.getElementById("homeBrAfter").value,10)||0, min=parseInt(document.getElementById("homeBrMin").value,10)||0;
         if(after<1||min<1){ alert(L("Ange rond och pauslängd.","Enter round and break length.")); return; }
@@ -1708,7 +1704,7 @@ function renderHome(){
         const ex=ui.homeBreaks.find(x=>x.after===after); if(ex) ex.min=min; else ui.homeBreaks.push({after,min});
         renderHomeBreaks(); renderPlan();
       }; }
-    syncModeFields(); syncPlayFields(); renderHomeBreaks(); updateFormatTable();
+    syncModeFields(); updateFormatTable(); renderHomeBreaks(); renderPlan();
     const asCopy=document.getElementById("homeAsCopy"), copyBox=document.getElementById("homeCopyBox");
     asCopy.onchange=()=>{ copyBox.style.display = asCopy.checked ? "" : "none"; };
     // Deltagare kräver att Klasser också kopieras.
@@ -1724,10 +1720,9 @@ function renderHome(){
       const courts=Math.max(1,parseInt(estC.value,10)||2);
       const N=Math.max(0,parseInt(estP.value,10)||0);
       const o=planOpt();
-      const sug=(N>=2)?amSuggestPlan(format, N, courts, availMinOf(), o.dur+o.trans, o.play):null;   // föreslå antal ronder (slot = rond + byte)
+      const sug=(N>=2)?amSuggestPlan(format, N, courts, availMinOf(), o.dur+o.trans):null;   // föreslå antal ronder (slot = rond + byte)
       const plan = { roundBy:o.mode, minPerPoint:MPP,
         roundMin:o.roundMin, points:o.pointsTo, transMin:o.trans, warmup:o.warmup, breaks:o.breaks.slice(),
-        play:o.play, score:o.score,
         planHours:(parseFloat(estH.value)||0),
         planRounds: (o.rounds>0 ? o.rounds : (sug?sug.rounds:0)) };
       if(asCopy.checked){
@@ -1889,13 +1884,6 @@ function buildTournamentState(name, src, opts){
   if(opts.points>0) s.amPointsTo=opts.points;
   if(opts.minPerPoint>0) s.amMinPerPoint=opts.minPerPoint;
   if(opts.transMin>=0) s.amTransMin=opts.transMin;
-  // Spelsätt (singel/dubbel) + poängräkning från startsidan → till rätt fält beroende på format.
-  if(opts.play==="singles"||opts.play==="doubles"){
-    const sc=(opts.score==="pairs")?"pairs":"individual";
-    if(s.format==="roundrobin"){ s.rr=s.rr||{}; s.rr.play=opts.play; s.rr.score=(opts.play==="singles")?"individual":sc; }
-    else if(s.format==="racketlon"){ s.rl=s.rl||{}; s.rl.play=opts.play; s.rl.score=(opts.play==="singles")?"individual":sc; }
-    else if(s.format!=="classic"){ s.amPlay=opts.play; s.amScoreMode=(opts.play==="singles")?"individual":sc; }
-  }
   if(opts.warmup>=0) s.amWarmup=opts.warmup;                 // uppvärmning från startsidans simulering
   if(Array.isArray(opts.breaks)) s.amBreaks=opts.breaks.filter(b=>b&&b.after>0&&b.min>0).map(b=>({after:+b.after,min:+b.min}));   // pauser från startsidan
   if(opts.planHours>0) s.amPlanHours=opts.planHours;
@@ -2056,73 +2044,29 @@ const AM_SCHED16=[
 ];
 // Föreslå antal ronder utifrån deltagare, banor, speltid (min) och tid per rond inkl. byte (slotMin).
 // slotMin = rondlängd + byte/uppvärmning mellan ronder.
-function amSuggestPlan(fmt, N, C, availMin, slotMin, play){
+function amSuggestPlan(fmt, N, C, availMin, slotMin){
   if(N<2) return null;
   slotMin=Math.max(1, Math.round(slotMin||14));
-  const singles = play ? play==="singles" : amSingles();
-  if(fmt==="compass"){ const comps=singles?N:Math.floor(N/2); const rounds=Math.ceil(Math.log2(Math.max(2,comps)))+1; return {rounds, slotMin, rest:0, ppr:0, block:1, singles}; }
-  let ppr, block;
-  if(singles){ ppr=Math.min(2*C, N-(N%2)); block=1; }       // singel: 2 spelare/bana
-  else { ppr=amActivePerRound(N,C); block=amEqualBlock(N,C); }
-  const rest=N-ppr;
+  if(fmt==="compass"){ const rounds=Math.ceil(Math.log2(Math.max(2,N)))+1; return {rounds, slotMin, rest:0, ppr:0, block:1}; }
+  const ppr=amActivePerRound(N,C), rest=N-ppr, block=amEqualBlock(N,C);
   let rounds;
   if(availMin>0) rounds=Math.max(block, Math.round((availMin/slotMin)/block)*block);   // snäpp till block → lika antal matcher
   else rounds=Math.max(block, Math.min(N-1, 8));
-  return {rounds, slotMin, ppr, rest, block, singles};
+  return {rounds, slotMin, ppr, rest, block};
 }
-// Uppskatta total tid + speltid per deltagare utifrån valda inställningar (för formattabellen). opt.play = singles/doubles.
+// Uppskatta total tid + speltid per deltagare utifrån valda inställningar (för formattabellen).
 function formatEstimate(id, N, C, opt){
   opt=opt||{};
-  const singles = opt.play==="singles";
   if(id==="classic") return matchFormat("classic").est(N,C);
-  if(id==="roundrobin"){ const dur=Math.max(1, Math.round(opt.dur||12)), NC=singles?N:Math.floor(N/2); const g=Math.max(1,Math.round(NC/4)), size=Math.max(2,Math.round(NC/Math.max(1,g))); const groupMatches=g*size*(size-1)/2, playoffMatches=Math.max(0,NC-g), total=groupMatches+playoffMatches; return { totalMin: Math.ceil(total/Math.max(1,C))*dur, perPlayerMin: (size-1+2)*dur }; }
-  if(id==="racketlon"){ const legMin=8, sports=5, NC=singles?N:Math.floor(N/2), enc=NC*(NC-1)/2; return { totalMin: enc*sports*legMin, perPlayerMin: (NC-1)*sports*legMin }; }
+  if(id==="roundrobin"){ const dur=Math.max(1, Math.round(opt.dur||12)); const g=Math.max(1,Math.round(N/4)), size=Math.max(2,Math.round(N/g)); const groupMatches=g*size*(size-1)/2, playoffMatches=Math.max(0,N-g), total=groupMatches+playoffMatches; return { totalMin: Math.ceil(total/Math.max(1,C))*dur, perPlayerMin: (size-1+2)*dur }; }
+  if(id==="racketlon") return matchFormat("racketlon").est(N,C);
   const dur=Math.max(1, Math.round(opt.dur||12)), slot=dur+Math.max(0, Math.round(opt.trans||0));
-  const s=amSuggestPlan(id, N, C, opt.availMin||0, slot, opt.play); if(!s) return {totalMin:0, perPlayerMin:0};
+  const s=amSuggestPlan(id, N, C, opt.availMin||0, slot); if(!s) return {totalMin:0, perPlayerMin:0};
   const total=s.rounds*slot;
   let per;
-  if(id==="compass") per = Math.min(s.rounds, Math.ceil(Math.log2(Math.max(2,singles?N:Math.floor(N/2)))))*dur;    // ca antal matcher i huvudlottningen
-  else { const ppr=s.ppr||amActivePerRound(N,C); per = Math.round(s.rounds*ppr/Math.max(1,N))*dur; }
+  if(id==="compass") per = Math.min(s.rounds, Math.ceil(Math.log2(Math.max(2,N))))*dur;    // ca antal matcher i huvudlottningen
+  else { const ppr=amActivePerRound(N,C); per = Math.round(s.rounds*ppr/Math.max(1,N))*dur; }
   return { totalMin: total, perPlayerMin: per };
-}
-// Kompakt "Förslag"-cell per format: simuleringens resultat + rekommendation för att klara speltiden.
-function homeFormatCell(id, N, C, availMin, o){
-  const est=formatEstimate(id, N, C, {dur:o.dur, trans:o.trans, availMin, play:o.play, score:o.score});
-  const overhead=Math.max(0,Math.round(o.warmup||0)) + (Array.isArray(o.breaks)?o.breaks.reduce((s,b)=>s+(+b.min||0),0):0);
-  const total=(est.totalMin||0)+overhead;
-  let detail="";
-  if(id==="classic"){ detail=L('Cupspel – planeras per klass.','Cup – planned per class.'); }
-  else if(id==="roundrobin"){ const NC=o.play==="singles"?N:Math.floor(N/2), g=Math.max(1,Math.round(NC/4)); detail=`${L('Gruppspel','Groups')} (${g} ${g==1?L('grupp','group'):L('grupper','groups')}) + ${L('slutspel','playoff')}`; }
-  else if(id==="racketlon"){ const NC=o.play==="singles"?N:Math.floor(N/2); detail=`${NC*(NC-1)/2} ${L('möten × sporter','encounters × sports')}`; }
-  else { const slot=o.dur+Math.max(0,o.trans||0), s=amSuggestPlan(id,N,C,availMin,slot,o.play);
-    const dur=o.dur, rr=(o.rounds>0?o.rounds:(s?s.rounds:0));
-    detail=`${rr} ${L('ronder','rounds')} × ${dur} ${L('min','min')}${o.trans>0?` (+${o.trans} ${L('byte','chg')})`:''}`; }
-  // Ryms-koll + rekommendation (prioritet: deltagare → banor & speltid → ronder & rondlängd).
-  let fit="";
-  if(availMin>0){
-    if(total<=availMin) fit=`<span class="pill" style="background:#e3f1de;color:var(--green)">✓ ${L('ryms','fits')} (${fmtDurationMin(total)})</span>`;
-    else { const over=total-availMin;
-      const rec = (id==="classic"||id==="roundrobin"||id==="racketlon")
-        ? L('öka banor/speltid','add courts/play time')
-        : L('öka banor/speltid, annars färre ronder / kortare ronder','add courts/play time, else fewer/shorter rounds');
-      fit=`<span class="pill" style="background:#fbe4e0;color:#c0392b">⚠ +${fmtDurationMin(over)}</span> <span class="muted">${L('Tips','Tip')}: ${rec}</span>`; }
-  } else fit=`<span class="muted">${fmtDurationMin(total)}</span>`;
-  return `<div>${detail}</div><div style="margin-top:3px">${fit}</div>`;
-}
-// Beskrivnings-popup när man klickar på formatnamnet.
-function showFormatInfoPopup(id){
-  const f=matchFormat(id);
-  const ov=document.createElement("div");
-  ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px";
-  ov.innerHTML=`<div style="background:var(--card,#fff);color:var(--text,#1a1a2e);max-width:460px;width:100%;border-radius:14px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.3)">
-     <h3 style="margin:0 0 8px;color:var(--head)">${escXml(f.name)}</h3>
-     <p style="margin:0 0 14px;line-height:1.5">${formatDesc(id)}</p>
-     <div style="text-align:right"><button class="btn" id="fmtInfoClose">${L('Stäng','Close')}</button></div>
-   </div>`;
-  const close=()=>{ if(ov.parentNode) ov.parentNode.removeChild(ov); };
-  ov.onclick=e=>{ if(e.target===ov) close(); };
-  document.body.appendChild(ov);
-  const cb=document.getElementById("fmtInfoClose"); if(cb) cb.onclick=close;
 }
 // Formatbeskrivning uppdaterad efter aktuell funktionalitet.
 function formatDesc(id){
