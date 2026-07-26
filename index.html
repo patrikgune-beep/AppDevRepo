@@ -483,6 +483,8 @@ function normalize(s){
   if(!Array.isArray(s.kotcLadder)) s.kotcLadder=[];    // King of the Court: stege (ordnad lista av lag)
   // Round Robin med placeringsslutspel: grupper, gruppspelsronder och slutspel.
   if(!s.rr || typeof s.rr!=="object") s.rr={};
+  if(s.rr.play!=="doubles") s.rr.play="singles";       // spelsätt: singel/dubbel (fasta par)
+  if(s.rr.score!=="pairs") s.rr.score="individual";    // vid dubbel: ställning individuellt/per par
   if(!(s.rr.numGroups>0)) s.rr.numGroups=Math.max(1, Math.round((Array.isArray(s.players)?s.players.length:0)/4)||1);
   if(!Array.isArray(s.rr.groupOf)) s.rr.groupOf=[];    // grupp-index (0-baserat) per spelare, parallell mot s.players
   if(!Array.isArray(s.rr.rounds)) s.rr.rounds=[];       // gruppspelsronder: [{matches:[{g,a,b,s1,s2,court}]}]
@@ -491,6 +493,8 @@ function normalize(s){
   // Racketlon: flera racketsporter, alla möter alla, vinnare på total poäng.
   if(!s.rl || typeof s.rl!=="object") s.rl={};
   if(!Array.isArray(s.rl.sports) || !s.rl.sports.length) s.rl.sports=["pingis","badminton","squash","padel","tennis"];
+  if(s.rl.play!=="doubles") s.rl.play="singles";       // spelsätt: singel/dubbel (fasta par)
+  if(s.rl.score!=="pairs") s.rl.score="individual";    // vid dubbel: ställning individuellt/per par
   if(s.rl.mode!=="minutes") s.rl.mode="points";
   if(!(s.rl.modeValue>0)) s.rl.modeValue=(s.rl.mode==="minutes"?10:21);
   if(s.rl.days!==2) s.rl.days=1;
@@ -2896,26 +2900,34 @@ function rrEnsure(){
   if(!Array.isArray(state.players)) state.players=[];
   if(!state.rr||typeof state.rr!=="object") state.rr={};
   const rr=state.rr;
-  if(!(rr.numGroups>0)) rr.numGroups=Math.max(1, Math.round(state.players.length/4)||1);
+  if(rr.play!=="doubles") rr.play="singles";                 // spelsätt: singel (spelare) / dubbel (fasta par)
+  if(rr.score!=="pairs") rr.score="individual";              // vid dubbel: visa ställning individuellt eller per par
+  if(!(rr.numGroups>0)) rr.numGroups=Math.max(1, Math.round(rrNC()/4)||1);
   if(!Array.isArray(rr.groupOf)) rr.groupOf=[];
   if(!Array.isArray(rr.rounds)) rr.rounds=[];
   if(typeof rr.playoff==="undefined") rr.playoff=null;
-  rr.groupOf.length=state.players.length;
+  rr.groupOf.length=rrNC();
   if(!Array.isArray(state.amGenders)) state.amGenders=[]; state.amGenders.length=state.players.length;
 }
+// Tävlingsenheter (competitors): singel = en spelare, dubbel = fasta par (spelare 2c & 2c+1 enligt listordning).
+function rrPlay(){ return (state.rr && state.rr.play==="doubles") ? "doubles" : "singles"; }
+function rrNC(){ return rrPlay()==="doubles" ? Math.floor(state.players.length/2) : state.players.length; }
+function rrCompPlayers(c){ return rrPlay()==="doubles" ? [2*c,2*c+1] : [c]; }
+function rrCompName(c){ return rrPlay()==="doubles" ? ((state.players[2*c]||'?')+' & '+(state.players[2*c+1]||'?')) : (state.players[c]||'?'); }
+function rrCompSearch(c){ return rrCompPlayers(c).map(i=>state.players[i]||'').join(' ').toLowerCase(); }
 // Fördela deltagare i grupper med ormlottning (sprider spellistans ordning jämnt).
 function rrDistribute(){
   rrEnsure();
-  const N=state.players.length, G=Math.max(1, state.rr.numGroups);
-  const go=Array(N).fill(0);
+  const NC=rrNC(), G=Math.max(1, state.rr.numGroups);
+  const go=Array(NC).fill(0);
   let g=0, dir=1;
-  for(let i=0;i<N;i++){ go[i]=g; g+=dir; if(g>=G){ g=G-1; dir=-1; } else if(g<0){ g=0; dir=1; } }
+  for(let i=0;i<NC;i++){ go[i]=g; g+=dir; if(g>=G){ g=G-1; dir=-1; } else if(g<0){ g=0; dir=1; } }
   state.rr.groupOf=go;
 }
 function rrGroups(){
   rrEnsure();
-  const G=Math.max(1,state.rr.numGroups), out=Array.from({length:G},()=>[]);
-  state.players.forEach((_,i)=>{ let g=state.rr.groupOf[i]; if(!(g>=0&&g<G)) g=0; out[g].push(i); });
+  const G=Math.max(1,state.rr.numGroups), NC=rrNC(), out=Array.from({length:G},()=>[]);
+  for(let c=0;c<NC;c++){ let g=state.rr.groupOf[c]; if(!(g>=0&&g<G)) g=0; out[g].push(c); }
   return out;
 }
 // Round-robin-ronder för en spelarlista (cirkelmetoden). Returnerar [[ [a,b], ... ], ...].
@@ -2952,7 +2964,7 @@ function rrGenerateGroupSchedule(){
 function rrGroupStandings(g){
   rrEnsure();
   const members=rrGroups()[g]||[];
-  const st=new Map(members.map(i=>[i,{i,name:state.players[i]||'',p:0,w:0,l:0,pf:0,pa:0}]));
+  const st=new Map(members.map(i=>[i,{i,name:rrCompName(i),p:0,w:0,l:0,pf:0,pa:0}]));
   for(const rd of state.rr.rounds) for(const m of rd.matches){
     if(m.g!==g || m.s1==null || m.s2==null) continue;
     const A=st.get(m.a), B=st.get(m.b); if(!A||!B) continue;
@@ -3034,7 +3046,7 @@ function rrResolveBracket(br){
   br.done = pl.filter(x=>x!=null).length>=need;
 }
 // Om en spelare fick frielott i rond 1 (motståndare = null).
-function rrMatchName(i){ return state.players[i]!=null?escXml(state.players[i]):'?'; }
+function rrMatchName(i){ return i!=null?escXml(rrCompName(i)):'?'; }
 
 function renderRoundRobin(){
   rrEnsure();
@@ -3052,7 +3064,7 @@ function renderRoundRobin(){
   const govTxt = state.amRoundBy==="points"? `${L('till','to')} ${state.amPointsTo} ${L('poäng','points')}` : `${amRoundDurationMin()} ${L('min/match','min/match')}`;
   const header=`<div class="card">
      <h2>${esc(state.tournament.name||"")} <span class="badge" style="background:#eef;color:#33507a">Round Robin</span></h2>
-     <p class="small muted">${esc(arrangerName())} · ${state.players.length} ${L('deltagare','players')} · ${nG} ${L('grupper','groups')} · ${state.courts} ${L('banor','courts')} · ${govTxt}${state.rr.rounds.length?` · ${state.rr.rounds.length} ${L('gruppronder','group rounds')}`:''}</p>
+     <p class="small muted">${esc(arrangerName())} · ${rrPlay()==="doubles"?`${L('Dubbel','Doubles')} · ${rrNC()} ${L('par','pairs')}`:`${L('Singel','Singles')} · ${state.players.length} ${L('deltagare','players')}`} · ${nG} ${L('grupper','groups')} · ${state.courts} ${L('banor','courts')} · ${govTxt}${state.rr.rounds.length?` · ${state.rr.rounds.length} ${L('gruppronder','group rounds')}`:''}</p>
    </div>`;
   let body="";
   if(active==="settings"&&admin) body=rrSettingsHTML();
@@ -3078,12 +3090,13 @@ function renderRoundRobin(){
 function rrSettingsHTML(){
   const esc=escXml, N=state.players.length, timeGoverns=state.amRoundBy!=="points", G=Math.max(1,state.rr.numGroups);
   const groups=rrGroups();
-  const groupEditor = N?`<div style="margin-top:14px">
-     <div class="small" style="margin-bottom:6px"><b>👥 ${L('Gruppindelning','Group assignment')}</b> <span class="muted">${L('— ändra grupp per deltagare vid behov.','— change the group per participant if needed.')}</span></div>
-     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px">
-       ${state.players.map((nm,i)=>{ let g=state.rr.groupOf[i]; if(!(g>=0&&g<G)) g=0; return `<label class="small" style="display:flex;align-items:center;gap:6px"><span class="muted" style="width:20px;text-align:right">${i+1}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(nm)}</span><select data-rrgroup="${i}" style="width:96px">${Array.from({length:G},(_,gi)=>`<option value="${gi}" ${gi===g?'selected':''}>${L('Grupp','Group')} ${String.fromCharCode(65+gi)}</option>`).join("")}</select></label>`; }).join("")}
+  const NC=rrNC(), unitLbl=rrPlay()==="doubles"?L('par','pairs'):L('deltagare','players');
+  const groupEditor = NC?`<div style="margin-top:14px">
+     <div class="small" style="margin-bottom:6px"><b>👥 ${L('Gruppindelning','Group assignment')}</b> <span class="muted">${L('— ändra grupp per','— change the group per')} ${unitLbl} ${L('vid behov.','if needed.')}</span></div>
+     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px">
+       ${Array.from({length:NC},(_,c)=>{ let g=state.rr.groupOf[c]; if(!(g>=0&&g<G)) g=0; return `<label class="small" style="display:flex;align-items:center;gap:6px"><span class="muted" style="width:20px;text-align:right">${c+1}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(rrCompName(c))}</span><select data-rrgroup="${c}" style="width:96px">${Array.from({length:G},(_,gi)=>`<option value="${gi}" ${gi===g?'selected':''}>${L('Grupp','Group')} ${String.fromCharCode(65+gi)}</option>`).join("")}</select></label>`; }).join("")}
      </div>
-     <p class="small muted" style="margin:6px 0 0">${groups.map((gp,gi)=>`${L('Grupp','Group')} ${String.fromCharCode(65+gi)}: ${gp.length} ${L('st','players')}`).join(" · ")}</p>
+     <p class="small muted" style="margin:6px 0 0">${groups.map((gp,gi)=>`${L('Grupp','Group')} ${String.fromCharCode(65+gi)}: ${gp.length} ${unitLbl}`).join(" · ")}</p>
    </div>`:'';
   const renameEditor = N?`<div style="margin-top:14px">
      <div class="small" style="margin-bottom:6px"><b>✏️ ${L('Byt namn på deltagare','Rename players')}</b> <span class="muted">${L('— ändra namn och kön/kategori (man/kvinna/barn).','— change name and gender/category (man/woman/child).')}</span></div>
@@ -3095,9 +3108,13 @@ function rrSettingsHTML(){
   return formatInfoCardHTML()
     +`<div class="card no-print">
        <h2>${L('Deltagare & grupper','Players & groups')}</h2>
-       <p class="small muted">${L('En deltagare per rad. Efter att du sparat fördelas de automatiskt i grupperna (ormlottning) – justera vid behov nedan.','One player per line. After saving they are auto-distributed into the groups (snake seeding) – adjust below if needed.')}</p>
+       <p class="small muted">${L('En deltagare per rad. Efter att du sparat fördelas de automatiskt i grupperna (ormlottning) – justera vid behov nedan.','One player per line. After saving they are auto-distributed into the groups (snake seeding) – adjust below if needed.')}${rrPlay()==="doubles"?` <b>${L('Dubbel: par bildas i listordning (rad 1&2 = Par 1, 3&4 = Par 2 …).','Doubles: pairs are formed in list order (rows 1&2 = Pair 1, 3&4 = Pair 2 …).')}</b>`:''}</p>
        <textarea id="rrPlayers" style="height:150px">${state.players.map(esc).join("\n")}</textarea>
        <div class="row" style="margin-top:10px;align-items:flex-end;gap:10px;flex-wrap:wrap">
+         <label class="small">${L('Spelsätt','Play')}<br>
+           <select id="rrPlaySel"><option value="singles" ${rrPlay()!=="doubles"?'selected':''}>${L('Singel','Singles')}</option><option value="doubles" ${rrPlay()==="doubles"?'selected':''}>${L('Dubbel','Doubles')}</option></select></label>
+         ${rrPlay()==="doubles"?`<label class="small">${L('Poängräkning','Scoring')}<br>
+           <select id="rrScoreSel"><option value="individual" ${state.rr.score!=="pairs"?'selected':''}>${L('Individuellt','Individual')}</option><option value="pairs" ${state.rr.score==="pairs"?'selected':''}>${L('Par','Pairs')}</option></select></label>`:''}
          <label class="small">${L('Antal grupper','Number of groups')}<br><input type="number" id="rrNumGroups" min="1" max="16" value="${G}" style="width:90px"></label>
          <label class="small">${L('Antal banor','Courts')}<br><input type="number" id="rrCourts" min="1" max="16" value="${state.courts}" style="width:80px"></label>
          <label class="small">${L('Matchen styrs av','Match governed by')}<br>
@@ -3135,6 +3152,8 @@ function bindRrSettings(){
     const ng=document.getElementById("rrNumGroups"); if(ng) state.rr.numGroups=Math.max(1,parseInt(ng.value,10)||1);
   };
   { const b=document.getElementById("rrRoundByMode"); if(b) b.onchange=()=>{ readTime(); save(); render(); }; }
+  { const s=document.getElementById("rrPlaySel"); if(s) s.onchange=()=>{ const nm=s.value==="doubles"?"doubles":"singles"; if(nm!==state.rr.play){ state.rr.play=nm; if(nm!=="doubles") state.rr.score="individual"; state.rr.rounds=[]; state.rr.playoff=null; rrEnsure(); rrDistribute(); save(); render(); } }; }
+  { const s=document.getElementById("rrScoreSel"); if(s) s.onchange=()=>{ state.rr.score=s.value==="pairs"?"pairs":"individual"; save(); render(); }; }
   { const b=document.getElementById("rrSavePlayers"); if(b) b.onclick=()=>{
       const lines=document.getElementById("rrPlayers").value.split("\n").map(s=>s.trim()).filter(Boolean);
       state.players=lines; readTime(); rrEnsure(); rrDistribute();
@@ -3147,10 +3166,10 @@ function bindRrSettings(){
       document.querySelectorAll("[data-plgender]").forEach(sel=>{ const i=+sel.dataset.plgender, g=sel.value; if(i>=0&&i<state.players.length) state.amGenders[i]=(g==='m'||g==='w'||g==='c')?g:''; });
       save(); render();
     }; }
-  document.querySelectorAll("[data-rrgroup]").forEach(sel=>sel.onchange=()=>{ const i=+sel.dataset.rrgroup, g=+sel.value; if(i>=0&&i<state.players.length){ state.rr.groupOf[i]=g; save(); render(); } });
+  document.querySelectorAll("[data-rrgroup]").forEach(sel=>sel.onchange=()=>{ const i=+sel.dataset.rrgroup, g=+sel.value; if(i>=0&&i<rrNC()){ state.rr.groupOf[i]=g; save(); render(); } });
   { const b=document.getElementById("rrGenSchedule"); if(b) b.onclick=()=>{
       readTime();
-      if(state.players.length<2){ alert(L("Minst 2 deltagare krävs.","At least 2 players required.")); return; }
+      if(rrNC()<2){ alert(rrPlay()==="doubles"?L("Minst 2 par (4 deltagare) krävs.","At least 2 pairs (4 players) required."):L("Minst 2 deltagare krävs.","At least 2 players required.")); return; }
       rrDistributeIfNeeded();
       const groups=rrGroups(); if(groups.some(g=>g.length===1)){ if(!confirm(L("En eller flera grupper har bara 1 deltagare (spelar inga matcher). Fortsätta ändå?","One or more groups have only 1 player (no matches). Continue anyway?"))) return; }
       if(state.rr.rounds.length && !confirm(L("Generera om? Nuvarande schema och resultat ersätts.","Regenerate? The current schedule and results are replaced."))) return;
@@ -3162,7 +3181,7 @@ function bindRrSettings(){
 function rrDistributeIfNeeded(){
   rrEnsure();
   const G=Math.max(1,state.rr.numGroups);
-  const valid=state.rr.groupOf.length===state.players.length && state.rr.groupOf.every(g=>g>=0&&g<G);
+  const valid=state.rr.groupOf.length===rrNC() && state.rr.groupOf.every(g=>g>=0&&g<G);
   const usesMulti = new Set(state.rr.groupOf).size>1 || G===1;
   if(!valid || !usesMulti) rrDistribute();
 }
@@ -3190,7 +3209,7 @@ function rrGroupsHTML(admin){
     html+=`<div class="am-round"><div style="overflow-x:auto"><table class="results"><thead><tr><th>${L('Rond','Round')}</th><th>${L('Bana','Court')}</th><th style="text-align:right">${L('Spelare 1','Player 1')}</th><th style="text-align:center">${L('Resultat','Score')}</th><th style="text-align:left">${L('Spelare 2','Player 2')}</th></tr></thead><tbody>`;
     state.rr.rounds.forEach((rd,ri)=>{ rd.matches.forEach((m,mi)=>{
       if(m.g!==g) return;
-      const names=(state.players[m.a]||'')+' '+(state.players[m.b]||'');
+      const names=rrCompSearch(m.a)+' '+rrCompSearch(m.b);
       const won1=m.s1!=null&&m.s2!=null&&m.s1>m.s2, won2=m.s1!=null&&m.s2!=null&&m.s2>m.s1;
       const rs=amRoundStartMin(ri), timeTxt=(rs!=null)?` <span class="small muted">${minToTime(rs)}</span>`:'';
       const score=admin
@@ -3242,7 +3261,7 @@ function rrPlayoffHTML(admin){
       html+=`</tbody></table></div></div>`;
     }
     if(br.placings.filter(x=>x!=null).length){
-      html+=`<p class="small" style="margin:8px 0 0">${br.placings.map((pi,k)=> pi!=null?`<b>${base+k+1}.</b> ${esc(state.players[pi]||'')}`:'').filter(Boolean).join(" &nbsp;·&nbsp; ")}</p>`;
+      html+=`<p class="small" style="margin:8px 0 0">${br.placings.map((pi,k)=> pi!=null?`<b>${base+k+1}.</b> ${esc(rrCompName(pi))}`:'').filter(Boolean).join(" &nbsp;·&nbsp; ")}</p>`;
     }
     html+=`</div>`;
   });
@@ -3258,8 +3277,8 @@ function rrBracketRowHTML(bi,ri,mi,m,admin){
   else if(a==null||b==null) score=`<span class="small muted">—</span>`;
   else if(admin) score=`<input type="number" min="0" max="99" value="${m.s1==null?'':m.s1}" data-rrp="${key}_1" style="width:48px"> – <input type="number" min="0" max="99" value="${m.s2==null?'':m.s2}" data-rrp="${key}_2" style="width:48px">`;
   else score=`<b>${m.s1==null?'–':m.s1} – ${m.s2==null?'–':m.s2}</b>`;
-  const nA = a!=null?esc(state.players[a]||'?'):`<span class="muted">${L('väntar','TBD')}</span>`;
-  const nB = b!=null?esc(state.players[b]||'?'):(bye?`<span class="muted">—</span>`:`<span class="muted">${L('väntar','TBD')}</span>`);
+  const nA = a!=null?esc(rrCompName(a)):`<span class="muted">${L('väntar','TBD')}</span>`;
+  const nB = b!=null?esc(rrCompName(b)):(bye?`<span class="muted">—</span>`:`<span class="muted">${L('väntar','TBD')}</span>`);
   return `<tr><td style="text-align:right;${won1?'font-weight:bold':''}">${nA}</td><td style="text-align:center;white-space:nowrap">${score}</td><td style="text-align:left;${won2?'font-weight:bold':''}">${nB}</td></tr>`;
 }
 function bindRrPlayoffInputs(){
@@ -3280,8 +3299,11 @@ function rrFinalHTML(){
   const esc=escXml;
   if(!state.rr.playoff){ return `<div class="card"><h2>🥇 ${L('Slutställning','Final standings')}</h2><p class="muted">${L('Slutställningen visas när slutspelet är genererat och spelat.','The final standings appear once the playoff is generated and played.')}</p></div>`; }
   const G=rrGroups().filter(g=>g.length).length;
+  const indiv = rrPlay()==="doubles" && state.rr.score!=="pairs";   // visa individuellt (varje spelare på parets plats)
   const rows=[];
-  state.rr.playoff.brackets.forEach(br=>{ rrResolveBracket(br); const base=br.posIndex*G; br.placings.forEach((pi,k)=>{ if(pi!=null) rows.push({place:base+k+1, name:state.players[pi]||''}); }); });
+  state.rr.playoff.brackets.forEach(br=>{ rrResolveBracket(br); const base=br.posIndex*G; br.placings.forEach((pi,k)=>{ if(pi==null) return;
+    if(indiv) rrCompPlayers(pi).forEach(p=>rows.push({place:base+k+1, name:state.players[p]||''}));
+    else rows.push({place:base+k+1, name:rrCompName(pi)}); }); });
   rows.sort((a,b)=>a.place-b.place);
   let html=`<div class="card"><h2>🥇 ${L('Slutställning','Final standings')}</h2>`;
   if(!rows.length){ html+=`<p class="muted">${L('Inga placeringar avgjorda ännu.','No placements decided yet.')}</p></div>`; return html; }
@@ -3321,18 +3343,26 @@ function rlEnsure(){
   const rl=state.rl;
   if(!Array.isArray(rl.sports)||!rl.sports.length) rl.sports=RL_SPORTS.map(s=>s.key);
   rl.sports=rl.sports.filter(k=>rlSport(k));   // rensa okända nycklar
+  if(rl.play!=="doubles") rl.play="singles";   // spelsätt: singel (spelare) / dubbel (fasta par)
+  if(rl.score!=="pairs") rl.score="individual";
   if(rl.mode!=="minutes") rl.mode="points";
   if(!(rl.modeValue>0)) rl.modeValue=(rl.mode==="minutes"?10:21);
   if(rl.days!==2) rl.days=1;
   if(!Array.isArray(rl.matches)) rl.matches=[];
   if(!(rl.day1SportCount>0)) rl.day1SportCount = rl.days===2?Math.ceil(rl.sports.length/2):rl.sports.length;
 }
+// Tävlingsenheter: singel = spelare, dubbel = fasta par (spelare 2c & 2c+1 enligt listordning).
+function rlPlay(){ return (state.rl && state.rl.play==="doubles") ? "doubles" : "singles"; }
+function rlNC(){ return rlPlay()==="doubles" ? Math.floor(state.players.length/2) : state.players.length; }
+function rlCompPlayers(c){ return rlPlay()==="doubles" ? [2*c,2*c+1] : [c]; }
+function rlCompName(c){ return rlPlay()==="doubles" ? ((state.players[2*c]||'?')+' & '+(state.players[2*c+1]||'?')) : (state.players[c]||'?'); }
+function rlCompSearch(c){ return rlCompPlayers(c).map(i=>state.players[i]||'').join(' ').toLowerCase(); }
 function rlSyncDays(){ const rl=state.rl; rl.day1SportCount = rl.days===2?Math.ceil(rl.sports.length/2):rl.sports.length; }
 // Bygg mötena (alla möter alla) via cirkelmetoden – återanvänder rrCircleRounds.
 function rlGenerate(){
   rlEnsure();
-  const N=state.players.length;
-  const rounds=rrCircleRounds([...Array(N).keys()]);
+  const NC=rlNC();
+  const rounds=rrCircleRounds([...Array(NC).keys()]);   // möten mellan tävlingsenheter (spelare eller par)
   const matches=[];
   rounds.forEach((pairs,r)=>pairs.forEach((pair,i)=>matches.push({ id:'m'+r+'-'+i, a:pair[0], b:pair[1], scores:{} })));
   state.rl.matches=matches;
@@ -3346,7 +3376,7 @@ function rlMatchTotals(m){
 }
 function rlStandings(){
   rlEnsure();
-  const rows=state.players.map((nm,i)=>({ i, name:nm||'', p:0, w:0, d:0, l:0, pf:0, pa:0 }));
+  const rows=Array.from({length:rlNC()},(_,c)=>({ i:c, name:rlCompName(c), p:0, w:0, d:0, l:0, pf:0, pa:0 }));
   state.rl.matches.forEach(m=>{
     const t=rlMatchTotals(m); if(!t.played) return;
     const A=rows[m.a], B=rows[m.b]; if(!A||!B) return;
@@ -3372,7 +3402,7 @@ function renderRacketlon(){
   const govTxt = state.rl.mode==="points" ? `${L('till','to')} ${state.rl.modeValue} ${L('poäng/sport','pts/sport')}` : `${state.rl.modeValue} ${L('min/sport','min/sport')}`;
   const header=`<div class="card">
      <h2>${esc(state.tournament.name||"")} <span class="badge" style="background:#eef;color:#33507a">Racketlon</span></h2>
-     <p class="small muted">${esc(arrangerName())} · ${state.players.length} ${L('deltagare','players')} · ${state.rl.sports.length} ${L('sporter','sports')} · ${govTxt} · ${state.rl.days} ${state.rl.days==1?L('dag','day'):L('dagar','days')}${state.rl.matches.length?` · ${state.rl.matches.length} ${L('möten','encounters')}`:''}</p>
+     <p class="small muted">${esc(arrangerName())} · ${rlPlay()==="doubles"?`${L('Dubbel','Doubles')} · ${rlNC()} ${L('par','pairs')}`:`${L('Singel','Singles')} · ${state.players.length} ${L('deltagare','players')}`} · ${state.rl.sports.length} ${L('sporter','sports')} · ${govTxt} · ${state.rl.days} ${state.rl.days==1?L('dag','day'):L('dagar','days')}${state.rl.matches.length?` · ${state.rl.matches.length} ${L('möten','encounters')}`:''}</p>
    </div>`;
   let body="";
   if(active==="settings"&&admin) body=rlSettingsHTML();
@@ -3401,8 +3431,14 @@ function rlSettingsHTML(){
   return formatInfoCardHTML()
     +`<div class="card no-print">
        <h2>${L('Deltagare & inställningar','Players & settings')}</h2>
-       <p class="small muted">${L('En deltagare per rad. Alla möter alla (Round Robin).','One player per line. Everyone plays everyone (Round Robin).')}</p>
+       <p class="small muted">${L('En deltagare per rad. Alla möter alla (Round Robin).','One player per line. Everyone plays everyone (Round Robin).')}${rlPlay()==="doubles"?` <b>${L('Dubbel: par bildas i listordning (rad 1&2 = Par 1 …).','Doubles: pairs are formed in list order (rows 1&2 = Pair 1 …).')}</b>`:''}</p>
        <textarea id="rlPlayers" style="height:150px">${state.players.map(esc).join("\n")}</textarea>
+       <div class="row" style="margin-top:10px;align-items:flex-end;gap:10px;flex-wrap:wrap">
+         <label class="small">${L('Spelsätt','Play')}<br>
+           <select id="rlPlaySel"><option value="singles" ${rlPlay()!=="doubles"?'selected':''}>${L('Singel','Singles')}</option><option value="doubles" ${rlPlay()==="doubles"?'selected':''}>${L('Dubbel','Doubles')}</option></select></label>
+         ${rlPlay()==="doubles"?`<label class="small">${L('Poängräkning','Scoring')}<br>
+           <select id="rlScoreSel"><option value="individual" ${rl.score!=="pairs"?'selected':''}>${L('Individuellt','Individual')}</option><option value="pairs" ${rl.score==="pairs"?'selected':''}>${L('Par','Pairs')}</option></select></label>`:''}
+       </div>
        ${renameEditor}
        <div style="border-top:1px solid var(--line);margin:16px 0 12px"></div>
        <div class="small" style="margin-bottom:6px"><b>🏓 ${L('Sporter','Sports')}</b> <span class="muted">${L('— välj en eller flera.','— choose one or more.')}</span></div>
@@ -3436,6 +3472,8 @@ function bindRlSettings(){
       document.querySelectorAll("[data-plname]").forEach(inp=>{ const i=+inp.dataset.plname, v=inp.value.trim(); if(v&&i>=0&&i<state.players.length) state.players[i]=v; });
       save(); render();
     }; }
+  { const s=document.getElementById("rlPlaySel"); if(s) s.onchange=()=>{ const nm=s.value==="doubles"?"doubles":"singles"; if(nm!==state.rl.play){ state.rl.play=nm; if(nm!=="doubles") state.rl.score="individual"; state.rl.matches=[]; save(); render(); } }; }
+  { const s=document.getElementById("rlScoreSel"); if(s) s.onchange=()=>{ state.rl.score=s.value==="pairs"?"pairs":"individual"; save(); render(); }; }
   document.querySelectorAll("[data-rlsport]").forEach(cb=>cb.onchange=()=>{
     const k=cb.dataset.rlsport;
     if(cb.checked){ if(!state.rl.sports.includes(k)) state.rl.sports.push(k); }
@@ -3449,7 +3487,8 @@ function bindRlSettings(){
   { const s=document.getElementById("rlDays"); if(s) s.onchange=()=>{ state.rl.days=s.value==="2"?2:1; rlSyncDays(); save(); render(); }; }
   { const b=document.getElementById("rlGenerate"); if(b) b.onclick=()=>{
       const lines=document.getElementById("rlPlayers").value.split("\n").map(s=>s.trim()).filter(Boolean);
-      if(lines.length<2){ alert(L("Minst 2 deltagare krävs.","At least 2 players required.")); return; }
+      state.players=lines;
+      if(rlNC()<2){ alert(rlPlay()==="doubles"?L("Minst 2 par (4 deltagare) krävs.","At least 2 pairs (4 players) required."):L("Minst 2 deltagare krävs.","At least 2 players required.")); return; }
       if(!state.rl.sports.length){ alert(L("Välj minst en sport.","Choose at least one sport.")); return; }
       if(state.rl.matches.length && !confirm(L("Generera om? Nuvarande schema och resultat ersätts.","Regenerate? The current schedule and results are replaced."))) return;
       state.players=lines; rlGenerate(); ui.rlTab="results"; save(); render();
@@ -3465,12 +3504,15 @@ function rlResultsHTML(admin){
   const govStr=rl.mode==="points"?`${L('Till','To')} ${rl.modeValue} ${L('poäng/sport','pts/sport')}`:`${rl.modeValue} ${L('min/sport','min/sport')}`;
   const sumItem=(lbl,val)=>`<div style="display:flex;flex-direction:column;gap:2px;margin-right:20px"><span class="small muted" style="text-transform:uppercase;letter-spacing:.04em">${lbl}</span><span style="font-weight:600;color:var(--head)">${val}</span></div>`;
   let html=`<div class="card"><h2>📅 ${L('Schema och Resultat','Schedule & results')} <span class="small muted">(Racketlon)</span></h2>
-     <div class="row" style="flex-wrap:wrap;margin:4px 0 10px">${sumItem(L('Spelare','Players'),state.players.length)}${sumItem(L('Sporter','Sports'),rl.sports.length)}${sumItem(L('Möten','Encounters'),enc)}${sumItem(L('Delmatcher','Sub-matches'),enc*rl.sports.length)}${sumItem(L('Dagar','Days'),rl.days)}${sumItem(L('Matchstyrning','Governance'),govStr)}</div>
+     <div class="row" style="flex-wrap:wrap;margin:4px 0 10px">${sumItem(rlPlay()==="doubles"?L('Par','Pairs'):L('Spelare','Players'),rlNC())}${sumItem(L('Sporter','Sports'),rl.sports.length)}${sumItem(L('Möten','Encounters'),enc)}${sumItem(L('Delmatcher','Sub-matches'),enc*rl.sports.length)}${sumItem(L('Dagar','Days'),rl.days)}${sumItem(L('Matchstyrning','Governance'),govStr)}</div>
      <p class="small muted" style="background:var(--soft,#f6f4ff);border:1px solid var(--line);border-radius:10px;padding:8px 12px"><b>${L('Format','Format')}:</b> ${L('alla möter alla, planerat per sport – alla möten i en sport spelas innan nästa. Spelordning','everyone plays everyone, planned per sport – all encounters in one sport before the next. Order')}: ${orderStr}. ${L('Vinnaren av ett möte avgörs på total poäng över alla sporter.','The winner of an encounter is decided on total points across all sports.')}</p>`;
   // Tabell
   const st=rlStandings(), anyPlayed=st.some(r=>r.p>0);
-  html+=`<h3 class="small" style="text-transform:uppercase;letter-spacing:.06em;color:var(--head);margin:14px 0 6px">${L('Tabell','Standings')}</h3><div style="overflow-x:auto"><table class="results"><thead><tr><th>#</th><th style="text-align:left">${L('Spelare','Player')}</th><th title="${L('Spelade','Played')}">${L('S','P')}</th><th title="${L('Vinster','Wins')}">${L('V','W')}</th><th title="${L('Oavgjorda','Draws')}">${L('O','D')}</th><th title="${L('Förluster','Losses')}">${L('F','L')}</th><th>${L('PF','PF')}</th><th>${L('PE','PA')}</th><th>+/–</th></tr></thead><tbody>`;
-  st.forEach((r,idx)=>{ const d=(r.diff>0?'+':'')+r.diff; html+=`<tr><td>${idx+1}</td><td style="text-align:left">${esc(r.name)}</td><td>${r.p}</td><td><b>${r.w}</b></td><td>${r.d}</td><td>${r.l}</td><td>${r.pf}</td><td>${r.pa}</td><td>${d}</td></tr>`; });
+  const indiv = rlPlay()==="doubles" && rl.score!=="pairs";   // visa individuellt (varje spelare på parets rad)
+  const colLbl = (rlPlay()==="doubles" && !indiv) ? L('Par','Pair') : L('Spelare','Player');
+  html+=`<h3 class="small" style="text-transform:uppercase;letter-spacing:.06em;color:var(--head);margin:14px 0 6px">${L('Tabell','Standings')}</h3><div style="overflow-x:auto"><table class="results"><thead><tr><th>#</th><th style="text-align:left">${colLbl}</th><th title="${L('Spelade','Played')}">${L('S','P')}</th><th title="${L('Vinster','Wins')}">${L('V','W')}</th><th title="${L('Oavgjorda','Draws')}">${L('O','D')}</th><th title="${L('Förluster','Losses')}">${L('F','L')}</th><th>${L('PF','PF')}</th><th>${L('PE','PA')}</th><th>+/–</th></tr></thead><tbody>`;
+  st.forEach((r,idx)=>{ const d=(r.diff>0?'+':'')+r.diff; const names = indiv ? rlCompPlayers(r.i).map(pi=>state.players[pi]||'') : [r.name];
+    names.forEach(nm=>{ html+=`<tr><td>${idx+1}</td><td style="text-align:left">${esc(nm)}</td><td>${r.p}</td><td><b>${r.w}</b></td><td>${r.d}</td><td>${r.l}</td><td>${r.pf}</td><td>${r.pa}</td><td>${d}</td></tr>`; }); });
   html+=`</tbody></table></div>`;
   if(!anyPlayed) html+=`<p class="small muted" style="margin:6px 0 0">${L('Fyll i poäng i sporterna nedan så uppdateras tabellen automatiskt.','Enter points in the sports below and the table updates automatically.')}</p>`;
   // Sök
@@ -3488,9 +3530,9 @@ function rlResultsHTML(admin){
       const target=rl.mode==="points"?`${L('spela till','play to')} ${rl.modeValue} p`:`${rl.modeValue} min`;
       html+=`<div class="am-round" style="margin-bottom:14px"><h4 style="margin:6px 0 4px;color:var(--head)">${rlSportIcon(k)} ${rlSportLabel(k)} <span class="small muted">(${target})</span></h4><div style="overflow-x:auto"><table class="results"><thead><tr><th>#</th><th style="text-align:right">${L('Spelare 1','Player 1')}</th><th style="text-align:center">${L('Resultat','Score')}</th><th style="text-align:left">${L('Spelare 2','Player 2')}</th><th style="text-align:left">${L('Delresultat','Sub-result')}</th></tr></thead><tbody>`;
       rl.matches.forEach((m,idx)=>{
-        const nA=esc(state.players[m.a]||'?'), nB=esc(state.players[m.b]||'?');
+        const nA=esc(rlCompName(m.a)), nB=esc(rlCompName(m.b));
         const s=m.scores[k]||{}, va=(s.a!=null?s.a:''), vb=(s.b!=null?s.b:'');
-        const names=((state.players[m.a]||'')+' '+(state.players[m.b]||'')).toLowerCase();
+        const names=rlCompSearch(m.a)+' '+rlCompSearch(m.b);
         let leg='', legCls='';
         if(s.a!=null&&s.b!=null){ if(s.a>s.b){ leg=`${s.a}–${s.b} · ${nA}`; legCls='color:var(--green);font-weight:600'; } else if(s.b>s.a){ leg=`${s.a}–${s.b} · ${nB}`; legCls='color:var(--green);font-weight:600'; } else { leg=`${s.a}–${s.b} · ${L('lika','tie')}`; legCls='color:#d97706;font-weight:600'; } }
         const won1=s.a!=null&&s.b!=null&&s.a>s.b, won2=s.a!=null&&s.b!=null&&s.b>s.a;
