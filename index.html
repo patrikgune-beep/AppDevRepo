@@ -2537,7 +2537,7 @@ function amTabSettingsHTML(cx){
          <label class="small">${L('Spelsätt','Play')}<br>
            <select id="amPlay"><option value="doubles" ${!cx.singles?'selected':''}>${L('Dubbel','Doubles')}</option><option value="singles" ${cx.singles?'selected':''}>${L('Singel','Singles')}</option></select></label>
          ${cx.isCompass?'':`<label class="small">${L('Poängräkning','Scoring')}<br>
-           <select id="amMode" ${cx.singles?'disabled':''}><option value="individual" ${!pairsMode?'selected':''}>${L('Individuellt','Individual')}</option><option value="pairs" ${pairsMode?'selected':''}>${L('Par','Pairs')}</option></select>${cx.singles?`<br><span class="small muted">${L('(singel → individuellt)','(singles → individual)')}</span>`:''}</label>`}
+           <select id="amMode" ${cx.singles?'disabled':''}><option value="individual" ${!pairsMode?'selected':''}>${L('Individuellt','Individual')}</option><option value="pairs" ${pairsMode?'selected':''}>${L('Par','Pairs')}</option></select></label>`}
          <label class="small">${L('Ronden styrs av','Round governed by')}<br>
            <select id="amRoundByMode"><option value="time" ${state.amRoundBy!=="points"?'selected':''}>${L('Tid','Time')}</option><option value="points" ${state.amRoundBy==="points"?'selected':''}>${L('Poäng','Points')}</option></select></label>
          <label class="small" style="opacity:${timeGoverns?'1':'0.45'}">${L('Minuter per rond','Minutes per round')}<br><input type="number" id="amRoundMin" min="1" max="120" value="${state.amRoundMin}" ${timeGoverns?'':'disabled'} style="width:100px"></label>
@@ -3249,10 +3249,12 @@ function rrSettingsHTML(){
          <label class="small" style="opacity:${timeGoverns?'1':'0.45'}">${L('Minuter per match','Minutes per match')}<br><input type="number" id="rrRoundMin" min="1" max="120" value="${state.amRoundMin}" ${timeGoverns?'':'disabled'} style="width:110px"></label>
          <label class="small" style="opacity:${timeGoverns?'0.45':'1'}">${L('Poäng per match','Points per match')}<br><input type="number" id="rrPoints" min="1" max="99" value="${state.amPointsTo}" ${timeGoverns?'disabled':''} style="width:110px"></label>
          <label class="small">${L('Starttid','Start time')}<br><input type="time" id="rrStart" value="${esc(state.amStart||'09:00')}" style="width:110px"></label>
+         <label class="small">${L('Speltid (timmar)','Play time (hours)')}<br><input type="number" id="rrHours" min="0.5" max="12" step="0.5" value="${state.amPlanHours||3}" style="width:100px"></label>
          <button class="btn ghost mini" id="rrSavePlayers">💾 ${L('Spara & fördela','Save & distribute')}</button>
        </div>
        ${groupEditor}
        ${renameEditor}
+       <div id="rrSimReadout" class="hint" style="border-color:var(--gold);background:#fbf4df;margin-top:14px"></div>
        <div style="border-top:1px solid var(--line);margin:16px 0 12px"></div>
        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">
          <button class="btn" id="rrGenSchedule">📅 ${L('Generera gruppspelsschema','Generate group schedule')}</button>
@@ -3277,6 +3279,7 @@ function bindRrSettings(){
     const pt=document.getElementById("rrPoints"); if(pt) state.amPointsTo=Math.max(1,parseInt(pt.value,10)||11);
     const stt=document.getElementById("rrStart"); if(stt && timeToMin(stt.value)!=null) state.amStart=stt.value;
     const ng=document.getElementById("rrNumGroups"); if(ng) state.rr.numGroups=Math.max(1,parseInt(ng.value,10)||1);
+    const h=document.getElementById("rrHours"); if(h){ const v=parseFloat(h.value); if(v>0) state.amPlanHours=v; }
   };
   { const b=document.getElementById("rrRoundByMode"); if(b) b.onchange=()=>{ readTime(); save(); render(); }; }
   { const s=document.getElementById("rrPlaySel"); if(s) s.onchange=()=>{ const nm=s.value==="doubles"?"doubles":"singles"; if(nm!==state.rr.play){ state.rr.play=nm; if(nm!=="doubles") state.rr.score="individual"; state.rr.rounds=[]; state.rr.playoff=null; rrEnsure(); rrDistribute(); save(); render(); } }; }
@@ -3303,6 +3306,33 @@ function bindRrSettings(){
       rrGenerateGroupSchedule(); save(); render();
     }; }
   { const b=document.getElementById("rrResetSchedule"); if(b) b.onclick=()=>{ if(!confirm(L("Nollställ hela schemat och alla resultat?","Reset the whole schedule and all results?"))) return; state.rr.rounds=[]; state.rr.playoff=null; save(); render(); }; }
+  // Live förhandsvisning: antal matcher, total tid och speltid/deltagare vart efter man ändrar inställningarna.
+  const g=id=>document.getElementById(id);
+  function updateRrSim(){
+    const el=g("rrSimReadout"); if(!el) return;
+    const N=state.players.length, NC=rrPlay()==="doubles"?Math.floor(N/2):N;
+    const C=Math.max(1,parseInt((g("rrCourts")||{}).value,10)||state.courts||1);
+    const G=Math.max(1,parseInt((g("rrNumGroups")||{}).value,10)||1);
+    const roundBy=(g("rrRoundByMode")&&g("rrRoundByMode").value==="points")?"points":"time";
+    const roundMin=Math.max(1,parseInt((g("rrRoundMin")||{}).value,10)||state.amRoundMin);
+    const points=Math.max(1,parseInt((g("rrPoints")||{}).value,10)||state.amPointsTo);
+    const dur=roundBy==="points"?Math.max(1,Math.round(points*(state.amMinPerPoint||0.6))):roundMin;
+    const hours=Math.max(0,parseFloat((g("rrHours")||{}).value)||0), availMin=hours>0?Math.round(hours*60):0;
+    if(NC<2){ el.innerHTML=`<b>📊 ${L('Förhandsvisning','Preview')}:</b> ${L('för få deltagare','too few players')}`; return; }
+    // gruppstorlekar
+    const base=Math.floor(NC/G), extra=NC%G, sizes=Array.from({length:G},(_,i)=>base+(i<extra?1:0));
+    const groupMatches=sizes.reduce((a,s)=>a+s*(s-1)/2,0), maxSize=Math.max(...sizes);
+    const bracketMatches = G<=1?0:((G-1)+(G>=4?1:0));   // knockout per placering: G-1 + ev. bronsmatch
+    const playoffMatches = maxSize*bracketMatches;
+    const totalMatches=groupMatches+playoffMatches;
+    const total=Math.ceil(totalMatches/C)*dur;
+    const per=(Math.max(0,maxSize-1) + (G>1?(G>=4?3:1):0))*dur;
+    let fit="";
+    if(availMin>0){ fit = total<=availMin ? ` <span class="pill" style="background:#e3f1de;color:var(--green)">✓ ${L('ryms i speltiden','fits the play time')}</span>` : ` <span class="pill" style="background:#fbe4e0;color:#c0392b">⚠ ${L('längre än speltiden','longer than play time')} +${fmtDurationMin(total-availMin)}</span>`; }
+    el.innerHTML=`<b>📊 ${L('Förhandsvisning','Preview')}:</b> ${G} ${G==1?L('grupp','group'):L('grupper','groups')} · <b>${totalMatches}</b> ${L('matcher','matches')} (${groupMatches} ${L('gruppspel','group')} + ${playoffMatches} ${L('slutspel','playoff')}) × ${dur} ${L('min','min')} · ${L('total tid','total time')} <b>${fmtDurationMin(total)}</b> · ${L('speltid/deltagare','play/player')} ≈ <b>${fmtDurationMin(per)}</b>${fit}`;
+  }
+  ["rrCourts","rrNumGroups","rrRoundMin","rrPoints","rrHours"].forEach(id=>{ const el=g(id); if(!el) return; el.oninput=updateRrSim; el.onchange=()=>{ readTime(); save(); updateRrSim(); }; });
+  updateRrSim();
 }
 // Fördela bara om ingen giltig indelning finns (behåll manuella ändringar).
 function rrDistributeIfNeeded(){
@@ -3577,8 +3607,11 @@ function rlSettingsHTML(){
          <label class="small">${rl.mode==="minutes"?L('Minuter per sport','Minutes per sport'):L('Poäng per sport','Points per sport')}<br><input type="number" id="rlModeValue" min="1" max="180" value="${rl.modeValue}" style="width:120px"></label>
          <label class="small">${L('Antal dagar','Number of days')}<br>
            <select id="rlDays"><option value="1" ${rl.days!==2?'selected':''}>${L('1 dag','1 day')}</option><option value="2" ${rl.days===2?'selected':''}>${L('2 dagar','2 days')}</option></select></label>
+         <label class="small">${L('Antal banor','Courts')}<br><input type="number" id="rlCourts" min="1" max="16" value="${state.courts}" style="width:80px"></label>
+         <label class="small">${L('Speltid (timmar)','Play time (hours)')}<br><input type="number" id="rlHours" min="0.5" max="12" step="0.5" value="${state.amPlanHours||3}" style="width:100px"></label>
        </div>
        <p class="small muted" style="margin:8px 0 0">${L('Vinnaren av ett möte avgörs på total poäng sammanlagt över alla sporter. Vid 2 dagar delas sporterna upp över dagarna.','The winner of an encounter is decided on total points across all sports. With 2 days the sports are split across the days.')}</p>
+       <div id="rlSimReadout" class="hint" style="border-color:var(--gold);background:#fbf4df;margin-top:12px"></div>
        <div style="border-top:1px solid var(--line);margin:16px 0 12px"></div>
        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">
          <button class="btn" id="rlGenerate">📅 ${L('Generera spelschema','Generate schedule')}</button>
@@ -3621,6 +3654,27 @@ function bindRlSettings(){
       state.players=lines; rlGenerate(); ui.rlTab="results"; save(); render();
     }; }
   { const b=document.getElementById("rlReset"); if(b) b.onclick=()=>{ if(!confirm(L("Nollställ hela schemat och alla resultat?","Reset the whole schedule and all results?"))) return; state.rl.matches=[]; save(); render(); }; }
+  // Live förhandsvisning: möten, delmatcher, total tid och speltid/deltagare.
+  const g=id=>document.getElementById(id);
+  function updateRlSim(){
+    const el=g("rlSimReadout"); if(!el) return;
+    const N=state.players.length, NC=rlPlay()==="doubles"?Math.floor(N/2):N;
+    const C=Math.max(1,parseInt((g("rlCourts")||{}).value,10)||state.courts||1);
+    const sports=state.rl.sports.length;
+    const mode=(g("rlMode")&&g("rlMode").value==="minutes")?"minutes":"points";
+    const mv=Math.max(1,parseInt((g("rlModeValue")||{}).value,10)||state.rl.modeValue);
+    const legMin=mode==="minutes"?mv:Math.max(4,Math.round(mv*0.5));   // uppskattad tid per delmatch (sport)
+    const hours=Math.max(0,parseFloat((g("rlHours")||{}).value)||0), availMin=hours>0?Math.round(hours*60):0;
+    if(NC<2||sports<1){ el.innerHTML=`<b>📊 ${L('Förhandsvisning','Preview')}:</b> ${L('för få deltagare eller sporter','too few players or sports')}`; return; }
+    const enc=NC*(NC-1)/2, sub=enc*sports;
+    const total=Math.ceil(sub/C)*legMin;
+    const per=(NC-1)*sports*legMin;
+    let fit="";
+    if(availMin>0){ fit = total<=availMin ? ` <span class="pill" style="background:#e3f1de;color:var(--green)">✓ ${L('ryms i speltiden','fits the play time')}</span>` : ` <span class="pill" style="background:#fbe4e0;color:#c0392b">⚠ ${L('längre än speltiden','longer than play time')} +${fmtDurationMin(total-availMin)}</span>`; }
+    el.innerHTML=`<b>📊 ${L('Förhandsvisning','Preview')}:</b> <b>${enc}</b> ${L('möten','encounters')} × ${sports} ${L('sporter','sports')} = <b>${sub}</b> ${L('delmatcher','sub-matches')} × ${legMin} ${L('min','min')} · ${L('total tid','total time')} <b>${fmtDurationMin(total)}</b> · ${L('speltid/deltagare','play/player')} ≈ <b>${fmtDurationMin(per)}</b>${fit}`;
+  }
+  ["rlModeValue","rlCourts","rlHours"].forEach(id=>{ const el=g(id); if(!el) return; el.oninput=updateRlSim; el.onchange=()=>{ const c=g("rlCourts"); if(c) state.courts=Math.max(1,parseInt(c.value,10)||state.courts); const h=g("rlHours"); if(h){ const v=parseFloat(h.value); if(v>0) state.amPlanHours=v; } save(); updateRlSim(); }; });
+  updateRlSim();
 }
 function rlResultsHTML(admin){
   const esc=escXml, rl=state.rl;
