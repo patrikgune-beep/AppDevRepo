@@ -383,7 +383,7 @@ function playersOf(m){
 const MATCH_FORMATS = [
   { id:"classic", name:"Klassisk KM",
     desc:"Utslagsturnering (cupspel). Förlorar man är man ute. Seedning, stegar och klubbmästare – som idag.",
-    est:(N,C)=>{ const mm=matchFormatDurationMin(); let players=Math.max(2,N), slots=0; while(players>1){ const m=Math.floor(players/2); slots+=Math.ceil(m/Math.max(1,C)); players=Math.ceil(players/2);} return { totalMin: slots*mm, perPlayerMin: Math.round(2*(N-1)/Math.max(1,N))*mm }; } },
+    est:(N,C)=>{ const mm=40; let players=Math.max(2,N), slots=0; while(players>1){ const m=Math.floor(players/2); slots+=Math.ceil(m/Math.max(1,C)); players=Math.ceil(players/2);} return { totalMin: slots*mm, perPlayerMin: Math.round(2*(N-1)/Math.max(1,N))*mm }; } },
   { id:"americano", name:"Americano",
     desc:"Socialt dubbelspel. Man byter partner varje rond och spelar korta matcher (t.ex. till 21–24 poäng). Alla poäng räknas individuellt – flest poäng vinner.",
     est:(N,C)=>{ const gm=14, R=Math.max(1,N-1), mpr=Math.max(1,Math.floor(N/4)), active=4*mpr; return { totalMin: R*Math.ceil(mpr/Math.max(1,C))*gm, perPlayerMin: Math.round(R*gm*active/Math.max(1,N)) }; } },
@@ -503,8 +503,7 @@ function normalize(s){
   if(!(s.rl.day1SportCount>0)) s.rl.day1SportCount=0;
   // Matchformat (info) för KM och Round Robin: setlängd, antal set, avgörande set.
   if(!s.matchFormat || typeof s.matchFormat!=="object") s.matchFormat={};
-  if(s.matchFormat.setLength==="tiebreak") s.matchFormat.setLength="tb10";   // migrera gammalt "Matchtiebreak" → Tiebreak 10p
-  if(["6","4","tb10","tb7"].indexOf(s.matchFormat.setLength)<0) s.matchFormat.setLength="6";
+  if(s.matchFormat.setLength!=="4" && s.matchFormat.setLength!=="tiebreak") s.matchFormat.setLength="6";
   if(s.matchFormat.bestOf!==5) s.matchFormat.bestOf=3;
   if(s.matchFormat.decider!=="full") s.matchFormat.decider="tiebreak";
   // Kön/kategori per deltagare (parallell array mot s.players): 'm'=man, 'w'=kvinna, 'c'=barn, ''=ospecificerat
@@ -2144,46 +2143,26 @@ function formatDesc(id){
   }
 }
 /* ===== Matchformat (info) för KM & Round Robin ===== */
-// Setlängd → uppskattad tid (minuter) för ett set/tiebreak.
-const MF_SET_MIN={ "6":45, "4":30, "tb10":20, "tb7":15 };
-function mfIsTb(sl){ return sl==="tb10"||sl==="tb7"; }
-function mfSetLenName(sl){ return sl==="4"?L('set till 4','sets to 4'):sl==="tb10"?L('tiebreak 10p','tiebreak 10p'):sl==="tb7"?L('tiebreak 7p','tiebreak 7p'):L('set till 6','sets to 6'); }
-// Uppskattad matchlängd i minuter utifrån matchformatet: set-tid × uppskattat antal spelade set.
-function matchFormatDurationMin(mf){
-  mf=mf||state.matchFormat||{};
-  const sl=["6","4","tb10","tb7"].indexOf(mf.setLength)>=0?mf.setLength:"6";
-  const bestOf=mf.bestOf===5?5:3;
-  const setMin=MF_SET_MIN[sl];
-  const expSets=bestOf===5?4.0:2.5;          // förväntat antal spelade set
-  if(mfIsTb(sl)) return Math.max(1,Math.round(expSets*setMin));   // hela matchen är tiebreaks
-  if(mf.decider==="full") return Math.max(1,Math.round(expSets*setMin));
-  // avgörande set spelas som matchtiebreak (10p → 20 min)
-  const decFrac=bestOf===5?0.4:0.5;          // andel matcher som når avgörande set
-  return Math.max(1,Math.round((expSets-decFrac)*setMin + decFrac*MF_SET_MIN.tb10));
-}
 function matchFormatText(){
   const mf=state.matchFormat||{};
+  const len = mf.setLength==="4"?L('set till 4','sets to 4'):mf.setLength==="tiebreak"?L('matchtiebreak','match tiebreak'):L('set till 6','sets to 6');
   const bo = L('bäst av','best of')+' '+(mf.bestOf===5?5:3);
-  if(mfIsTb(mf.setLength)) return `${bo} ${mfSetLenName(mf.setLength)} · ~${fmtDurationMin(matchFormatDurationMin(mf))}`;
+  if(mf.setLength==="tiebreak") return `${bo} ${L('matchtiebreak','match tiebreaks')}`;
   const dec = L('avgörande set','deciding set')+': '+(mf.decider==="full"?L('fullt set','full set'):L('matchtiebreak','match tiebreak'));
-  return `${bo} · ${mfSetLenName(mf.setLength)} · ${dec} · ~${fmtDurationMin(matchFormatDurationMin(mf))}`;
-}
-// Inline-kontroller (setlängd/antal set/avgörande set) – används både i kort (KM) och i rad (Round Robin).
-function matchFormatControlsHTML(){
-  const mf=state.matchFormat||{}, tb=mfIsTb(mf.setLength);
-  return `<label class="small">${L('Setlängd','Set length')}<br>
-     <select id="mfSetLen"><option value="6" ${mf.setLength==="6"?'selected':''}>${L('Set till 6','Sets to 6')}</option><option value="4" ${mf.setLength==="4"?'selected':''}>${L('Set till 4','Sets to 4')}</option><option value="tb10" ${mf.setLength==="tb10"?'selected':''}>${L('Tiebreak 10p','Tiebreak 10p')}</option><option value="tb7" ${mf.setLength==="tb7"?'selected':''}>${L('Tiebreak 7p','Tiebreak 7p')}</option></select></label>
-   <label class="small">${L('Antal set','Number of sets')}<br>
-     <select id="mfBestOf"><option value="3" ${mf.bestOf!==5?'selected':''}>${L('Bäst av 3','Best of 3')}</option><option value="5" ${mf.bestOf===5?'selected':''}>${L('Bäst av 5','Best of 5')}</option></select></label>
-   <label class="small" style="opacity:${tb?'0.45':'1'}">${L('Avgörande set','Deciding set')}<br>
-     <select id="mfDecider" ${tb?'disabled':''}><option value="tiebreak" ${mf.decider!=="full"?'selected':''}>${L('Matchtiebreak','Match tiebreak')}</option><option value="full" ${mf.decider==="full"?'selected':''}>${L('Fullt set','Full set')}</option></select></label>`;
+  return `${bo} · ${len} · ${dec}`;
 }
 function matchFormatCardHTML(){
+  const mf=state.matchFormat||{}, tb=mf.setLength==="tiebreak";
   return `<div class="card no-print">
      <h2>🎾 ${L('Matchformat','Match format')}</h2>
-     <p class="small muted">${L('Styr hur matcherna spelas. Resultat matas in som vanligt – detta styr även den uppskattade matchlängden i simuleringen.','Controls how matches are played. Results are entered as usual – this also drives the estimated match length in the simulation.')}</p>
+     <p class="small muted">${L('Styr hur matcherna spelas. Resultat matas in som vanligt – detta är information om matchformatet.','Controls how matches are played. Results are entered as usual – this is match-format information.')}</p>
      <div class="row" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
-       ${matchFormatControlsHTML()}
+       <label class="small">${L('Setlängd','Set length')}<br>
+         <select id="mfSetLen"><option value="6" ${mf.setLength==="6"?'selected':''}>${L('Set till 6','Sets to 6')}</option><option value="4" ${mf.setLength==="4"?'selected':''}>${L('Set till 4','Sets to 4')}</option><option value="tiebreak" ${tb?'selected':''}>${L('Matchtiebreak','Match tiebreak')}</option></select></label>
+       <label class="small">${L('Antal set','Number of sets')}<br>
+         <select id="mfBestOf"><option value="3" ${mf.bestOf!==5?'selected':''}>${L('Bäst av 3','Best of 3')}</option><option value="5" ${mf.bestOf===5?'selected':''}>${L('Bäst av 5','Best of 5')}</option></select></label>
+       <label class="small" style="opacity:${tb?'0.45':'1'}">${L('Avgörande set','Deciding set')}<br>
+         <select id="mfDecider" ${tb?'disabled':''}><option value="tiebreak" ${mf.decider!=="full"?'selected':''}>${L('Matchtiebreak','Match tiebreak')}</option><option value="full" ${mf.decider==="full"?'selected':''}>${L('Fullt set','Full set')}</option></select></label>
        <span class="pill" style="background:#eef;color:#33507a">${matchFormatText()}</span>
      </div>
    </div>`;
@@ -2191,7 +2170,7 @@ function matchFormatCardHTML(){
 function bindMatchFormat(){
   const g=id=>document.getElementById(id);
   const save3=()=>{ const mf=state.matchFormat=Object.assign({},state.matchFormat||{});
-    const sl=g("mfSetLen"); if(sl) mf.setLength=(["6","4","tb10","tb7"].indexOf(sl.value)>=0)?sl.value:"6";
+    const sl=g("mfSetLen"); if(sl) mf.setLength=(sl.value==="4"||sl.value==="tiebreak")?sl.value:"6";
     const bo=g("mfBestOf"); if(bo) mf.bestOf=bo.value==="5"?5:3;
     const dc=g("mfDecider"); if(dc) mf.decider=dc.value==="full"?"full":"tiebreak";
     save(); render(); };
@@ -3251,7 +3230,7 @@ function renderRoundRobin(){
   const active=ui.rrTab;
   document.getElementById("tabs").innerHTML=tabs.map(t=>`<button class="${t[0]===active?'active':''}" data-rrtab="${t[0]}">${t[1]}</button>`).join("");
   const nG=groups.filter(g=>g.length).length;
-  const govTxt = matchFormatText();
+  const govTxt = state.amRoundBy==="points"? `${L('till','to')} ${state.amPointsTo} ${L('poäng','points')}` : `${amRoundDurationMin()} ${L('min/match','min/match')}`;
   const header=`<div class="card">
      <h2>${esc(state.tournament.name||"")} <span class="badge" style="background:#eef;color:#33507a">Round Robin</span></h2>
      <p class="small muted">${esc(arrangerName())} · ${rrPlay()==="doubles"?`${L('Dubbel','Doubles')} · ${rrNC()} ${L('par','pairs')}`:`${L('Singel','Singles')} · ${state.players.length} ${L('deltagare','players')}`} · ${nG} ${L('grupper','groups')} · ${state.courts} ${L('banor','courts')} · ${govTxt}${state.rr.rounds.length?` · ${state.rr.rounds.length} ${L('gruppronder','group rounds')}`:''}</p>
@@ -3278,7 +3257,7 @@ function renderRoundRobin(){
 }
 // --- Inställningar ---
 function rrSettingsHTML(){
-  const esc=escXml, N=state.players.length, G=Math.max(1,state.rr.numGroups);
+  const esc=escXml, N=state.players.length, timeGoverns=state.amRoundBy!=="points", G=Math.max(1,state.rr.numGroups);
   const groups=rrGroups();
   const NC=rrNC(), unitLbl=rrPlay()==="doubles"?L('par','pairs'):L('deltagare','players');
   const groupEditor = NC?`<div style="margin-top:14px">
@@ -3309,15 +3288,12 @@ function rrSettingsHTML(){
            <select id="rrPlaySel"><option value="singles" ${rrPlay()!=="doubles"?'selected':''}>${L('Singel','Singles')}</option><option value="doubles" ${rrPlay()==="doubles"?'selected':''}>${L('Dubbel','Doubles')}</option></select></label>
          ${rrPlay()==="doubles"?`<label class="small">${L('Poängräkning','Scoring')}<br>
            <select id="rrScoreSel"><option value="individual" ${state.rr.score!=="pairs"?'selected':''}>${L('Individuellt','Individual')}</option><option value="pairs" ${state.rr.score==="pairs"?'selected':''}>${L('Par','Pairs')}</option></select></label>`:''}
-       </div>
-       <div class="row" style="margin-top:10px;align-items:flex-end;gap:10px;flex-wrap:wrap">
-         <span class="small muted" style="align-self:center">🎾 ${L('Matchformat','Match format')}:</span>
-         ${matchFormatControlsHTML()}
-         <span class="pill" style="background:#eef;color:#33507a">${matchFormatText()}</span>
-       </div>
-       <div class="row" style="margin-top:10px;align-items:flex-end;gap:10px;flex-wrap:wrap">
          <label class="small">${L('Antal grupper','Number of groups')}<br><input type="number" id="rrNumGroups" min="1" max="16" value="${G}" style="width:90px"></label>
          <label class="small">${L('Antal banor','Courts')}<br><input type="number" id="rrCourts" min="1" max="16" value="${state.courts}" style="width:80px"></label>
+         <label class="small">${L('Matchen styrs av','Match governed by')}<br>
+           <select id="rrRoundByMode"><option value="time" ${timeGoverns?'selected':''}>${L('Tid','Time')}</option><option value="points" ${!timeGoverns?'selected':''}>${L('Poäng','Points')}</option></select></label>
+         <label class="small" style="opacity:${timeGoverns?'1':'0.45'}">${L('Minuter per match','Minutes per match')}<br><input type="number" id="rrRoundMin" min="1" max="120" value="${state.amRoundMin}" ${timeGoverns?'':'disabled'} style="width:110px"></label>
+         <label class="small" style="opacity:${timeGoverns?'0.45':'1'}">${L('Poäng per match','Points per match')}<br><input type="number" id="rrPoints" min="1" max="99" value="${state.amPointsTo}" ${timeGoverns?'disabled':''} style="width:110px"></label>
          <label class="small">${L('Starttid','Start time')}<br><input type="time" id="rrStart" value="${esc(state.amStart||'09:00')}" style="width:110px"></label>
          <label class="small">${L('Speltid (timmar)','Play time (hours)')}<br><input type="number" id="rrHours" min="0.5" max="12" step="0.5" value="${state.amPlanHours||3}" style="width:100px"></label>
          <button class="btn ghost mini" id="rrSavePlayers">💾 ${L('Spara & fördela','Save & distribute')}</button>
@@ -3332,6 +3308,7 @@ function rrSettingsHTML(){
        </div>
        <p class="small muted" style="margin:8px 0 0">${L('Genereringen skapar Round Robin (alla möter alla) i varje grupp. Slutspelet genereras separat under fliken Slutspel när alla gruppmatcher är spelade.','Generation creates a Round Robin (everyone plays everyone) in each group. The playoff is generated separately under the Playoff tab once all group matches are played.')}</p>
      </div>
+     ${matchFormatCardHTML()}
      <div class="card no-print" style="border-color:#e6b7b2">
        <h2>${L('Ta bort turnering','Delete tournament')}</h2>
        <div class="row" style="align-items:center;gap:10px;flex-wrap:wrap">
@@ -3344,10 +3321,14 @@ function bindRrSettings(){
   bindFormatInfoCard();
   const readTime=()=>{
     const c=document.getElementById("rrCourts"); if(c) state.courts=Math.max(1,parseInt(c.value,10)||state.courts);
+    const rb=document.getElementById("rrRoundByMode"); if(rb) state.amRoundBy=rb.value==="points"?"points":"time";
+    const rm=document.getElementById("rrRoundMin"); if(rm) state.amRoundMin=Math.max(1,parseInt(rm.value,10)||15);
+    const pt=document.getElementById("rrPoints"); if(pt) state.amPointsTo=Math.max(1,parseInt(pt.value,10)||11);
     const stt=document.getElementById("rrStart"); if(stt && timeToMin(stt.value)!=null) state.amStart=stt.value;
     const ng=document.getElementById("rrNumGroups"); if(ng) state.rr.numGroups=Math.max(1,parseInt(ng.value,10)||1);
     const h=document.getElementById("rrHours"); if(h){ const v=parseFloat(h.value); if(v>0) state.amPlanHours=v; }
   };
+  { const b=document.getElementById("rrRoundByMode"); if(b) b.onchange=()=>{ readTime(); save(); render(); }; }
   { const s=document.getElementById("rrPlaySel"); if(s) s.onchange=()=>{ const nm=s.value==="doubles"?"doubles":"singles"; if(nm!==state.rr.play){ state.rr.play=nm; if(nm!=="doubles") state.rr.score="individual"; state.rr.rounds=[]; state.rr.playoff=null; rrEnsure(); rrDistribute(); save(); render(); } }; }
   { const s=document.getElementById("rrScoreSel"); if(s) s.onchange=()=>{ state.rr.score=s.value==="pairs"?"pairs":"individual"; save(); render(); }; }
   { const b=document.getElementById("rrSavePlayers"); if(b) b.onclick=()=>{
@@ -3381,7 +3362,10 @@ function bindRrSettings(){
     const N=state.players.length, NC=rrPlay()==="doubles"?Math.floor(N/2):N;
     const C=Math.max(1,parseInt((g("rrCourts")||{}).value,10)||state.courts||1);
     const G=Math.max(1,parseInt((g("rrNumGroups")||{}).value,10)||1);
-    const dur=matchFormatDurationMin();          // matchlängd styrs av matchformatet
+    const roundBy=(g("rrRoundByMode")&&g("rrRoundByMode").value==="points")?"points":"time";
+    const roundMin=Math.max(1,parseInt((g("rrRoundMin")||{}).value,10)||state.amRoundMin);
+    const points=Math.max(1,parseInt((g("rrPoints")||{}).value,10)||state.amPointsTo);
+    const dur=roundBy==="points"?Math.max(1,Math.round(points*(state.amMinPerPoint||0.6))):roundMin;
     const hours=Math.max(0,parseFloat((g("rrHours")||{}).value)||0), availMin=hours>0?Math.round(hours*60):0;
     if(NC<2){ el.innerHTML=`<b>📊 ${L('Förhandsvisning','Preview')}:</b> ${L('för få deltagare','too few players')}`; return; }
     // gruppstorlekar
@@ -3394,9 +3378,9 @@ function bindRrSettings(){
     const per=(Math.max(0,maxSize-1) + (G>1?(G>=4?3:1):0))*dur;
     let fit="";
     if(availMin>0){ fit = total<=availMin ? ` <span class="pill" style="background:#e3f1de;color:var(--green)">✓ ${L('ryms i speltiden','fits the play time')}</span>` : ` <span class="pill" style="background:#fbe4e0;color:#c0392b">⚠ ${L('längre än speltiden','longer than play time')} +${fmtDurationMin(total-availMin)}</span>`; }
-    el.innerHTML=`<b>📊 ${L('Förhandsvisning','Preview')}:</b> ${G} ${G==1?L('grupp','group'):L('grupper','groups')} · <b>${totalMatches}</b> ${L('matcher','matches')} (${groupMatches} ${L('gruppspel','group')} + ${playoffMatches} ${L('slutspel','playoff')}) × ~${dur} ${L('min','min')} (${matchFormatText()}) · ${L('total tid','total time')} <b>${fmtDurationMin(total)}</b>${fit}`;
+    el.innerHTML=`<b>📊 ${L('Förhandsvisning','Preview')}:</b> ${G} ${G==1?L('grupp','group'):L('grupper','groups')} · <b>${totalMatches}</b> ${L('matcher','matches')} (${groupMatches} ${L('gruppspel','group')} + ${playoffMatches} ${L('slutspel','playoff')}) × ${dur} ${L('min','min')} · ${L('total tid','total time')} <b>${fmtDurationMin(total)}</b>${fit}`;
   }
-  ["rrCourts","rrNumGroups","rrHours"].forEach(id=>{ const el=g(id); if(!el) return; el.oninput=updateRrSim; el.onchange=()=>{ readTime(); save(); updateRrSim(); }; });
+  ["rrCourts","rrNumGroups","rrRoundMin","rrPoints","rrHours"].forEach(id=>{ const el=g(id); if(!el) return; el.oninput=updateRrSim; el.onchange=()=>{ readTime(); save(); updateRrSim(); }; });
   updateRrSim();
 }
 // Fördela bara om ingen giltig indelning finns (behåll manuella ändringar).
