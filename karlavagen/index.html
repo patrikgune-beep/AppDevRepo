@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--ARTIFACT-START-->
+<title>Karlavägen 71 Kostnader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#f3f4f1; --surface:#ffffff; --surface-2:#eceee9; --line:#d9ddd5;
+  --ink:#1c2528; --ink-2:#56615f; --ink-3:#86908d;
+  --accent:#a8691a; --accent-soft:#f3e6d2;
+  --good:#3c7a4c; --good-soft:#e1efe4; --bad:#b0412f; --bad-soft:#f6e1dc;
+  --warn:#9a6b00; --warn-soft:#f7edcf;
+  --ata:#5b5a9e; --ata-soft:#e7e6f5;
+  --shadow:0 1px 2px rgba(28,37,40,.06);
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#141a1b; --surface:#1c2426; --surface-2:#242d2f; --line:#324043;
+    --ink:#e7ebe8; --ink-2:#a7b1ae; --ink-3:#77827f;
+    --accent:#e0a14f; --accent-soft:#3a2d1b;
+    --good:#7cc08c; --good-soft:#1f3326; --bad:#ec8b78; --bad-soft:#3d2320;
+    --warn:#e3bb57; --warn-soft:#3a3017;
+    --ata:#a9a8e8; --ata-soft:#2a2a45;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#141a1b; --surface:#1c2426; --surface-2:#242d2f; --line:#324043;
+  --ink:#e7ebe8; --ink-2:#a7b1ae; --ink-3:#77827f;
+  --accent:#e0a14f; --accent-soft:#3a2d1b;
+  --good:#7cc08c; --good-soft:#1f3326; --bad:#ec8b78; --bad-soft:#3d2320;
+  --warn:#e3bb57; --warn-soft:#3a3017;
+  --ata:#a9a8e8; --ata-soft:#2a2a45;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px;padding-block:24px 64px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(26px,4vw,36px);font-weight:800}
+h2{font-size:20px;font-weight:700}
+h3{font-size:16px;font-weight:700}
+.num,td.n,th.n{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.muted{color:var(--ink-2)} .faint{color:var(--ink-3)}
+.eyebrow{font:600 11px/1.2 var(--body);text-transform:uppercase;letter-spacing:.09em;color:var(--ink-3)}
+header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+header.top .meta{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.tag{display:inline-block;font:600 11px/1 var(--body);padding:4px 7px;border-radius:4px;letter-spacing:.03em;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.tag.ata{background:var(--ata-soft);color:var(--ata)}
+.tag.grund{background:var(--surface-2);color:var(--ink-2)}
+.tag.ue{background:var(--accent-soft);color:var(--accent)}
+.tag.ok{background:var(--good-soft);color:var(--good)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:24px;scrollbar-width:none}
+nav.tabs button{font:600 14px/1 var(--body);color:var(--ink-2);background:none;border:0;border-bottom:3px solid transparent;padding:14px 12px 11px;cursor:pointer;white-space:nowrap}
+nav.tabs button:hover{color:var(--ink)}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+nav.tabs button:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+nav.tabs .sub{font-weight:500;color:var(--ink-3);margin-left:6px;font-size:12px}
+
+section.panel{display:grid;gap:28px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi{background:var(--surface);padding:16px 18px;display:grid;gap:4px;align-content:start}
+.kpi .v{font:700 24px/1.15 var(--display);font-variant-numeric:tabular-nums}
+.kpi .s{font-size:12.5px;color:var(--ink-2)}
+.kpi.missing .v{color:var(--warn)}
+
+.block{display:grid;gap:12px}
+.block>.head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font:600 11.5px/1.3 var(--body);text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tr.total td{font-weight:700;border-top:2px solid var(--ink);border-bottom:0;background:var(--surface-2)}
+tr.sub td{background:var(--surface-2);font-weight:600}
+tr.paslag td{color:var(--accent)}
+td .desc{display:block;font-size:12.5px;color:var(--ink-2)}
+.bar{height:8px;border-radius:4px;background:var(--surface-2);position:relative;min-width:90px}
+.bar i{position:absolute;inset:0 auto 0 0;border-radius:4px;background:var(--accent)}
+.diff-pos{color:var(--bad);font-weight:600} .diff-neg{color:var(--good);font-weight:600}
+
+.banner{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border-radius:10px;background:var(--warn-soft);color:var(--ink);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent)}
+.banner b{color:var(--warn)}
+.banner p{margin:0}
+
+.checks{display:grid;gap:0}
+.check{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.check:last-child{border-bottom:0}
+.check p{margin:0;font-size:14px}
+.check .t{font-weight:600}
+
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:24px;align-items:start}
+
+details.inv{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}
+details.inv>summary{list-style:none;cursor:pointer;padding:14px 16px;display:grid;grid-template-columns:1fr auto;gap:8px 16px;align-items:center}
+details.inv>summary::-webkit-details-marker{display:none}
+details.inv>summary .l{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+details.inv>summary .nr{font:700 17px/1.2 var(--display)}
+details.inv>summary .amt{font:700 18px/1.2 var(--display);font-variant-numeric:tabular-nums;text-align:right}
+details.inv>summary .amt small{display:block;font:500 12px/1.3 var(--body);color:var(--ink-2)}
+details.inv>summary::before{content:"";grid-column:1/-1;display:none}
+details.inv[open]>summary{border-bottom:1px solid var(--line)}
+.chev{display:inline-block;transition:transform .15s;color:var(--ink-3)}
+details[open]>summary .chev{transform:rotate(90deg)}
+.invbody{padding:6px 4px 12px}
+.facts{display:flex;flex-wrap:wrap;gap:6px 22px;padding:10px 12px 4px;font-size:13px;color:var(--ink-2)}
+.facts b{color:var(--ink);font-weight:600}
+details.ue{margin:0}
+details.ue>summary{cursor:pointer;list-style:none;display:inline-flex;gap:6px;align-items:center;color:var(--accent);font-size:12.5px;font-weight:600;margin-top:4px}
+details.ue>summary::-webkit-details-marker{display:none}
+.uebox{margin:8px 0 4px;border-left:2px solid var(--accent-soft);padding-left:10px}
+.uebox table{font-size:13px}
+.uebox td,.uebox th{padding:5px 8px}
+
+.filters{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 12.5px/1 var(--body);padding:8px 11px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.group{display:grid;gap:10px}
+.group>h3{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.foot{font-size:12.5px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:14px}
+code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+@media (max-width:560px){
+  .wrap{padding-inline:16px}
+  td,th{padding:8px 8px}
+  .kpi .v{font-size:21px}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important} }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Renovering · Lgh 1502 · Projekt P2079</div>
+      <h1>Karlavägen 71</h1>
+    </div>
+    <div class="meta" id="meta"></div>
+  </header>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Flikar"></nav>
+  <main id="view"></main>
+</div>
+
+<script id="kv-data" type="application/json">
+{
+  "updated": "2026-09-27",
+  "project": { "name": "Karlavägen 71", "projnr": "P2079", "apartment": "1502" },
+
+  "budget": {
+    "received": false,
+    "source": "",
+    "note": "Budgetofferten har inte kommit in ännu. Beloppen läggs in per arbetsmoment (exkl. moms) när offerten är inläst.",
+    "items": {}
+  },
+
+  "moments": [
+    "Rivning",
+    "Rivning undergolv",
+    "Undergolv – regling & skivor",
+    "Avfall & bortforsling",
+    "Arbetsledning",
+    "Projektering (arkitekt)"
+  ],
+  "slag": [
+    "Arbete", "Arbetsledning", "Arvode", "Material", "Förbrukningsmaterial",
+    "Maskin- & verktygshyra", "Transport & frakt", "Servicebil & parkering",
+    "Avfall", "Försäkring & avgifter", "Påslag UE (12 %)"
+  ],
+
+  "suppliers": [
+    { "id": "thessen", "name": "Thessén & Ek Byggentreprenad AB", "short": "Thessén & Ek", "role": "Huvudentreprenör", "orgnr": "556818-1092", "contact": "Alexander Thessén" },
+    { "id": "arkitekt", "name": "Viktor Erlandsson & Artefacts AB", "short": "Arkitekt V. Erlandsson", "role": "Arkitekt", "orgnr": "559014-3391", "contact": "Viktor Erlandsson" }
+  ],
+
+  "invoices": [
+    {
+      "id": "132354", "supplier": "thessen", "nr": "132354", "date": "2026-08-31", "due": "2026-09-10",
+      "kind": "Grund", "project": "Karlavägen 71 – rev 1",
+      "exMoms": 167883.20, "moms": 41970.80, "rounding": 0, "rot": 50000, "toPay": 159854,
+      "lines": [
+        { "text": "Arbetsledning Alexander Thessén", "desc": "12 tillfällen 6/8–31/8", "qty": 15.5, "unit": "h", "price": 680, "amount": 10540, "moment": "Arbetsledning", "slag": "Arbetsledning" },
+        { "text": "P-avgift röd zon", "qty": 16, "unit": "h", "price": 28, "amount": 448, "moment": "Arbetsledning", "slag": "Servicebil & parkering" },
+        { "ue": "HW-33849", "text": "Hard Workers of Sweden AB, 33849", "amount": 103045.60 },
+        { "ue": "HW-33857", "text": "Hard Workers of Sweden AB, 33857", "amount": 53849.60 }
+      ]
+    },
+    {
+      "id": "132370", "supplier": "thessen", "nr": "132370", "date": "2026-08-31", "due": "2026-09-30",
+      "kind": "ÄTA", "project": "Karlavägen 71, ÄTA 1 – Diverse tillkommande arbeten",
+      "exMoms": 55988.80, "moms": 13997.20, "rounding": 0, "rot": 0, "toPay": 69986,
+      "lines": [
+        { "ue": "HW-33864", "text": "Hard Workers of Sweden AB, 33864", "amount": 55988.80 }
+      ]
+    },
+    {
+      "id": "132387", "supplier": "thessen", "nr": "132387", "date": "2026-09-25", "due": "2026-10-05",
+      "kind": "Grund", "project": "Karlavägen 71 – rev 1",
+      "exMoms": 44058.91, "moms": 11014.73, "rounding": 0.36, "rot": 0, "toPay": 55074,
+      "lines": [
+        { "text": "Arbetsledning Alexander Thessén", "desc": "13 tillfällen 2/9–21/9", "qty": 15, "unit": "h", "price": 680, "amount": 10200, "moment": "Arbetsledning", "slag": "Arbetsledning" },
+        { "text": "P-avgift röd zon", "qty": 16, "unit": "h", "price": 25, "amount": 400, "moment": "Arbetsledning", "slag": "Servicebil & parkering" },
+        { "ue": "HW-33869", "text": "Hard Workers of Sweden AB, 33869", "amount": 22960 },
+        { "ue": "BE-851828", "text": "Beijer Byggmaterial AB, 260980851828 (del)", "amount": 5947.20 },
+        { "ue": "SO-183677491", "text": "Sortera Recycling AB (Big Bag), 183677491", "amount": 4551.71 }
+      ]
+    },
+    {
+      "id": "132388", "supplier": "thessen", "nr": "132388", "date": "2026-09-25", "due": "2026-10-05",
+      "kind": "ÄTA", "project": "Karlavägen 71, ÄTA 1 – Diverse tillkommande arbeten",
+      "exMoms": 67332.33, "moms": 16833.08, "rounding": -0.41, "rot": 0, "toPay": 84165,
+      "lines": [
+        { "text": "Arbetsledning Micael Airaksinen", "desc": "8/9", "qty": 2, "unit": "h", "price": 680, "amount": 1360, "moment": "Arbetsledning", "slag": "Arbetsledning" },
+        { "text": "Alejandro Boragina – leverans av maskiner för regling", "desc": "9/9", "qty": 2, "unit": "h", "price": 520, "amount": 1040, "moment": "Undergolv – regling & skivor", "slag": "Arbete" },
+        { "text": "Carlos Alberto Castedo Anes – regling undergolv, städning", "desc": "9/9–11/9, 3 × 8 h", "qty": 24, "unit": "h", "price": 520, "amount": 12480, "moment": "Undergolv – regling & skivor", "slag": "Arbete" },
+        { "text": "Dubal Jeovany Calero Arregui – bära material, regling undergolv", "desc": "9/9–11/9, 3 × 8 h", "qty": 24, "unit": "h", "price": 520, "amount": 12480, "moment": "Undergolv – regling & skivor", "slag": "Arbete" },
+        { "text": "Servicebil", "qty": 4, "unit": "dag", "price": 500, "amount": 2000, "moment": "Undergolv – regling & skivor", "slag": "Servicebil & parkering" },
+        { "text": "P-avgift röd zon", "qty": 28, "unit": "h", "price": 25, "amount": 700, "moment": "Undergolv – regling & skivor", "slag": "Servicebil & parkering" },
+        { "ue": "BE-851927", "text": "Beijer Byggmaterial AB, 260980851927 – undergolv", "amount": 15101.24 },
+        { "ue": "HLL-110503600", "text": "HLL Hyreslandslaget, 110503600 – luftrenare", "amount": 3684.37 },
+        { "ue": "BE-851828", "text": "Beijer Byggmaterial AB, 260980851828 – undergolv (del)", "amount": 14496.87 },
+        { "ue": "HLL-110510632", "text": "HLL Hyreslandslaget, 110510632 – luftrenare", "amount": 3989.85 }
+      ]
+    },
+    {
+      "id": "9256", "supplier": "arkitekt", "nr": "9256", "date": "2026-09-07", "due": "2026-09-22",
+      "kind": "Grund", "project": "Arkitektarvode – juli",
+      "exMoms": 17236.80, "moms": 4309.20, "rounding": 0, "rot": 0, "toPay": 21546,
+      "lines": [
+        { "text": "Arkitektarvode juli", "desc": "Listpris 1 512 kr/h, rabatt 40 % → 907,20 kr/h", "qty": 19, "unit": "h", "price": 907.20, "amount": 17236.80, "moment": "Projektering (arkitekt)", "slag": "Arvode" }
+      ]
+    }
+  ],
+
+  "ue": [
+    {
+      "id": "HW-33849", "vendor": "Hard Workers of Sweden AB", "short": "Hard Workers", "nr": "33849", "date": "2026-08-20",
+      "period": "6/8–14/8", "desc": "Intäckning. Rivning av slaggväggar enligt ÖK, inredning och pentry, matta.", "rounding": 0,
+      "lines": [
+        { "text": "Rivning enligt rivrapport v 32–33", "qty": 160, "unit": "tim", "price": 430, "amount": 68800, "moment": "Rivning", "slag": "Arbete" },
+        { "text": "Förbrukningsmaterial", "desc": "Täckpapp, 13 masonit, sågblad, tejp, plast, floorcover, säckar, dammfilter m.m.", "qty": 1, "unit": "st", "price": 15340, "amount": 15340, "moment": "Rivning", "slag": "Förbrukningsmaterial" },
+        { "text": "Servicebil", "qty": 11, "unit": "st", "price": 475, "amount": 5225, "moment": "Rivning", "slag": "Servicebil & parkering" },
+        { "text": "Parkering", "qty": 1, "unit": "st", "price": 2640, "amount": 2640, "moment": "Rivning", "slag": "Servicebil & parkering" }
+      ]
+    },
+    {
+      "id": "HW-33857", "vendor": "Hard Workers of Sweden AB", "short": "Hard Workers", "nr": "33857", "date": "2026-08-24",
+      "period": "17/8–21/8", "desc": "Fortsatt rivning av slaggväggar enligt ÖK, panelväggar i hall, wc-väggar och golv, parkettgolv. Forsling av sopor.", "rounding": 0,
+      "lines": [
+        { "text": "Rivning enligt rivrapport v 34", "qty": 104, "unit": "tim", "price": 430, "amount": 44720, "moment": "Rivning", "slag": "Arbete" },
+        { "text": "Servicebil", "qty": 5, "unit": "st", "price": 475, "amount": 2375, "moment": "Rivning", "slag": "Servicebil & parkering" },
+        { "text": "Parkering", "qty": 1, "unit": "st", "price": 985, "amount": 985, "moment": "Rivning", "slag": "Servicebil & parkering" }
+      ]
+    },
+    {
+      "id": "HW-33864", "vendor": "Hard Workers of Sweden AB", "short": "Hard Workers", "nr": "33864", "date": "2026-08-31",
+      "period": "25/8–28/8", "desc": "ÄTA: rivning av undergolv (parkett, brädor, masonit, spånskiva), rensning av spik, forsling av sopor.", "rounding": 0,
+      "lines": [
+        { "text": "Tillkommande arbeten enligt rivrapport", "qty": 86, "unit": "tim", "price": 430, "amount": 36980, "moment": "Rivning undergolv", "slag": "Arbete" },
+        { "text": "Förbrukningsmaterial", "desc": "Sågblad, sopsäckar, handskar, 10 pirrsäckar", "qty": 1, "unit": "st", "price": 2150, "amount": 2150, "moment": "Rivning undergolv", "slag": "Förbrukningsmaterial" },
+        { "text": "Hyra tigersåg", "qty": 1, "unit": "st", "price": 500, "amount": 500, "moment": "Rivning undergolv", "slag": "Maskin- & verktygshyra" },
+        { "text": "Servicebil", "qty": 4, "unit": "st", "price": 475, "amount": 1900, "moment": "Rivning undergolv", "slag": "Servicebil & parkering" },
+        { "text": "Parkering", "qty": 1, "unit": "st", "price": 960, "amount": 960, "moment": "Rivning undergolv", "slag": "Servicebil & parkering" },
+        { "text": "Sophantering", "qty": 1, "unit": "st", "price": 7500, "amount": 7500, "moment": "Avfall & bortforsling", "slag": "Avfall" }
+      ]
+    },
+    {
+      "id": "HW-33869", "vendor": "Hard Workers of Sweden AB", "short": "Hard Workers", "nr": "33869", "date": "2026-09-07",
+      "period": "24/8", "desc": "Rivning av slaggvägg i hall, matta och parkettgolv. Forsling av sopor.", "rounding": 0,
+      "lines": [
+        { "text": "Rivning enligt rivrapport 24/8", "qty": 19, "unit": "tim", "price": 430, "amount": 8170, "moment": "Rivning", "slag": "Arbete" },
+        { "text": "Förbrukningsmaterial", "desc": "Feinblad, åldersbeständig plast, sopsäck, dammfilter m.m.", "qty": 1, "unit": "st", "price": 1240, "amount": 1240, "moment": "Rivning", "slag": "Förbrukningsmaterial" },
+        { "text": "Hyra tigersåg", "qty": 1, "unit": "st", "price": 1495, "amount": 1495, "moment": "Rivning", "slag": "Maskin- & verktygshyra" },
+        { "text": "Servicebil", "qty": 2, "unit": "st", "price": 475, "amount": 950, "moment": "Rivning", "slag": "Servicebil & parkering" },
+        { "text": "Parkering", "qty": 1, "unit": "st", "price": 245, "amount": 245, "moment": "Rivning", "slag": "Servicebil & parkering" },
+        { "text": "Sophantering 6/8–24/8", "qty": 1, "unit": "st", "price": 8400, "amount": 8400, "moment": "Avfall & bortforsling", "slag": "Avfall" }
+      ]
+    },
+    {
+      "id": "BE-851828", "vendor": "Beijer Byggmaterial AB", "short": "Beijer", "nr": "260980851828", "date": "2026-09-09",
+      "period": "Lev. 9/9", "desc": "Reglar, skruv, lim och isolering till undergolv. Thessén har fakturerat den i två delar: 14 496,87 kr som ÄTA och 5 947,20 kr som grund.", "rounding": 0.23,
+      "lines": [
+        { "text": "Frakt zon 1 + klockslagsleverans", "qty": 1, "unit": "st", "price": 1634.88, "amount": 1634.88, "moment": "Undergolv – regling & skivor", "slag": "Transport & frakt" },
+        { "text": "Byggregel 45×95 C24, 4,2 m", "qty": 252, "unit": "lpm", "price": 27.51, "amount": 6932.52, "moment": "Undergolv – regling & skivor", "slag": "Material" },
+        { "text": "Byggregel 45×70 G4-2, 3,6 m", "qty": 90, "unit": "lpm", "price": 23.11, "amount": 2079.90, "moment": "Undergolv – regling & skivor", "slag": "Material" },
+        { "text": "Trälim Sika 750 ml + 5 l", "qty": 4, "unit": "st", "price": null, "amount": 1242, "moment": "Undergolv – regling & skivor", "slag": "Material" },
+        { "text": "Träskruv 6×90, 6×120, 5×80 + bandad spånskiveskruv", "qty": 7, "unit": "fp", "price": null, "amount": 2626.92, "moment": "Undergolv – regling & skivor", "slag": "Material" },
+        { "text": "Vägg-/bjälklagsskiva 70 mm (isolering)", "qty": 26.44, "unit": "m²", "price": 47.28, "amount": 1250.18, "moment": "Undergolv – regling & skivor", "slag": "Material" },
+        { "text": "Vindsull SHT 1, 15 kg", "qty": 5, "unit": "säck", "price": 396, "amount": 1980, "moment": "Undergolv – regling & skivor", "slag": "Material" },
+        { "text": "Emballage, pallar", "qty": 4, "unit": "st", "price": null, "amount": 457, "moment": "Undergolv – regling & skivor", "slag": "Transport & frakt" },
+        { "text": "Trängselavgift", "qty": 1, "unit": "st", "price": 50, "amount": 50, "moment": "Undergolv – regling & skivor", "slag": "Försäkring & avgifter" }
+      ]
+    },
+    {
+      "id": "BE-851927", "vendor": "Beijer Byggmaterial AB", "short": "Beijer", "nr": "260980851927", "date": "2026-09-09",
+      "period": "Lev. 9/9", "desc": "Takplywood till undergolv.", "rounding": 0.25,
+      "lines": [
+        { "text": "Takplywood TG2L 21×2400×600, 7-ply", "qty": 42, "unit": "st", "price": 282, "amount": 11844, "moment": "Undergolv – regling & skivor", "slag": "Material" },
+        { "text": "Frakt B-pickis (hämtas hos BOA)", "qty": 1, "unit": "st", "price": 1450, "amount": 1450, "moment": "Undergolv – regling & skivor", "slag": "Transport & frakt" },
+        { "text": "Emballage", "qty": 1, "unit": "st", "price": 189, "amount": 189, "moment": "Undergolv – regling & skivor", "slag": "Transport & frakt" }
+      ]
+    },
+    {
+      "id": "HLL-110503600", "vendor": "HLL Hyreslandslaget Sverige AB", "short": "HLL", "nr": "110503600", "date": "2026-09-10",
+      "period": "Hyra 9/9–10/9", "desc": "Luftrenare och stoftavskiljare vid rivning av undergolv. Märkt P1079 på fakturan, inte P2079.", "rounding": 0.16,
+      "lines": [
+        { "text": "Luftrenare mikrofilter (2 dgr, −25 %)", "qty": 1, "unit": "st", "price": 648, "amount": 648, "moment": "Rivning undergolv", "slag": "Maskin- & verktygshyra" },
+        { "text": "Stoftavskiljare < 2 kW (2 dgr, −25 %)", "qty": 1, "unit": "st", "price": 348, "amount": 348, "moment": "Rivning undergolv", "slag": "Maskin- & verktygshyra" },
+        { "text": "Microfilter DC 1800/2000 (hyra)", "qty": 2, "unit": "st", "price": null, "amount": 103.50, "moment": "Rivning undergolv", "slag": "Maskin- & verktygshyra" },
+        { "text": "Grovfilter, finfilter, 11 plastsäckar (köp)", "qty": 1, "unit": "st", "price": null, "amount": 976, "moment": "Rivning undergolv", "slag": "Förbrukningsmaterial" },
+        { "text": "Leveranstransport", "qty": 1, "unit": "st", "price": 1126, "amount": 1126, "moment": "Rivning undergolv", "slag": "Transport & frakt" },
+        { "text": "Försäkring", "qty": 1, "unit": "st", "price": 87.96, "amount": 87.96, "moment": "Rivning undergolv", "slag": "Försäkring & avgifter" }
+      ]
+    },
+    {
+      "id": "HLL-110510632", "vendor": "HLL Hyreslandslaget Sverige AB", "short": "HLL", "nr": "110510632", "date": "2026-09-20",
+      "period": "Hyra 11/9–20/9", "desc": "Fortsatt hyra av luftrenare och stoftavskiljare. Märkt P1079 på fakturan.", "rounding": -0.01,
+      "lines": [
+        { "text": "Luftrenare mikrofilter (6 dgr, −25 %)", "qty": 1, "unit": "st", "price": 1944, "amount": 1944, "moment": "Rivning undergolv", "slag": "Maskin- & verktygshyra" },
+        { "text": "Stoftavskiljare < 2 kW (6 dgr, −25 %)", "qty": 1, "unit": "st", "price": 1044, "amount": 1044, "moment": "Rivning undergolv", "slag": "Maskin- & verktygshyra" },
+        { "text": "Microfilter DC 1800/2000 (hyra)", "qty": 2, "unit": "st", "price": null, "amount": 310.50, "moment": "Rivning undergolv", "slag": "Maskin- & verktygshyra" },
+        { "text": "Försäkring", "qty": 1, "unit": "st", "price": 263.88, "amount": 263.88, "moment": "Rivning undergolv", "slag": "Försäkring & avgifter" }
+      ]
+    },
+    {
+      "id": "SO-183677491", "vendor": "Sortera Recycling AB (Big Bag)", "short": "Sortera / Big Bag", "nr": "183677491", "date": "2026-09-24",
+      "period": "Hämtning 18/9", "desc": "Hämtning av 2 medium + 1 large byggsäck: blandat avfall och fyllnadsmassor.", "rounding": 0.15,
+      "lines": [
+        { "text": "Hämtning av byggsäckar", "qty": 3, "unit": "st", "price": null, "amount": 1159.20, "moment": "Avfall & bortforsling", "slag": "Avfall" },
+        { "text": "Innerstadstillägg + tidspass (måste idag)", "qty": 2, "unit": "st", "price": null, "amount": 1890, "moment": "Avfall & bortforsling", "slag": "Avfall" },
+        { "text": "Blandat avfall för eftersortering", "qty": 250, "unit": "kg", "price": 2.10, "amount": 524.12, "moment": "Avfall & bortforsling", "slag": "Avfall" },
+        { "text": "Fyllnadsmassor", "qty": 560, "unit": "kg", "price": 0.88, "amount": 490.56, "moment": "Avfall & bortforsling", "slag": "Avfall" }
+      ]
+    }
+  ],
+
+  "checks": [
+    { "level": "warn", "title": "Budgetofferten saknas", "text": "Jämförelsen mot budget är tom tills offerten läses in." },
+    { "level": "info", "title": "12 % påslag på allt vidarefakturerat", "text": "Thessén lägger exakt 12 % på varje underleverantörsfaktura och på materialet. Totalt 30 387 kr hittills. Kontrollera att det stämmer med avtalat påslag i offerten." },
+    { "level": "warn", "title": "Beijer 260980851828 är delad mellan ÄTA och grund", "text": "Fakturan (18 254 kr exkl. moms) är vidarefakturerad med 14 496,87 kr på ÄTA-fakturan 132388 och 5 947,20 kr på 132387. Summan stämmer på öret, men det framgår inte vilka rader som är grund. Fråga Thessén." },
+    { "level": "warn", "title": "HLL-fakturorna är märkta P1079", "text": "Projektet heter P2079. Troligen ett skrivfel hos HLL, men bekräfta att hyran av luftrenare hör till Karlavägen." },
+    { "level": "info", "title": "P-avgift 28 kr/h på första fakturan", "text": "132354 debiterar 28 kr/h, senare fakturor 25 kr/h. Skillnad 48 kr." },
+    { "level": "info", "title": "Timpriser", "text": "Hard Workers 430 kr/h, 481,60 kr/h med påslag. Thesséns egen personal 520 kr/h, arbetsledning 680 kr/h, arkitekt 907,20 kr/h efter 40 % rabatt." },
+    { "level": "info", "title": "ROT-avdrag", "text": "50 000 kr är avdraget på faktura 132354. Det är taket för en person per år. Ytterligare ROT kräver en till person som äger bostaden." }
+  ]
+}
+</script>
+
+<script>
+(function(){
+  var D = JSON.parse(document.getElementById('kv-data').textContent);
+  var OWN = 'Thessén & Ek (egen personal)';
+  var fmt0 = new Intl.NumberFormat('sv-SE',{maximumFractionDigits:0});
+  var fmt2 = new Intl.NumberFormat('sv-SE',{minimumFractionDigits:2,maximumFractionDigits:2});
+  function kr(v){ return fmt0.format(Math.round(v)) + ' kr'; }
+  function k2(v){ return v==null ? '' : fmt2.format(v); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function r2(v){ return Math.round(v*100)/100; }
+  function fmtDate(d){ var p=d.split('-'); return +p[2]+'/'+(+p[1])+' '+p[0]; }
+
+  var supById = {}; D.suppliers.forEach(function(s){ supById[s.id]=s; });
+  var ueById = {}; D.ue.forEach(function(u){
+    u.lineSum = u.lines.reduce(function(a,l){return a+l.amount;},0);
+    u.cost = r2(u.lineSum + (u.rounding||0));
+    u.billed = 0; u.billedIn = []; ueById[u.id]=u;
+  });
+  D.invoices.forEach(function(inv){
+    inv.lines.forEach(function(l){
+      if(l.ue){ var u=ueById[l.ue]; u.billed=r2(u.billed+l.amount); u.billedIn.push({inv:inv.id, amount:l.amount, kind:inv.kind}); }
+    });
+    inv.calc = r2(inv.lines.reduce(function(a,l){return a+l.amount;},0));
+    inv.total = r2(inv.exMoms + inv.moms + (inv.rounding||0));
+  });
+  D.ue.forEach(function(u){ u.markup = u.billed - u.cost; u.rate = u.cost ? u.markup/u.cost : 0; });
+
+  /* Flat list of cost rows. Every row carries amount ex moms and origin. */
+  var rows = [];
+  D.invoices.forEach(function(inv){
+    var sup = supById[inv.supplier];
+    inv.lines.forEach(function(l){
+      if(l.ue) return;
+      rows.push({ supplier:inv.supplier, source: inv.supplier==='thessen'? OWN : sup.short, inv:inv.id, kind:inv.kind,
+        text:l.text, desc:l.desc, qty:l.qty, unit:l.unit, price:l.price, amount:l.amount, moment:l.moment, slag:l.slag });
+    });
+  });
+  D.ue.forEach(function(u){
+    var kinds = u.billedIn.map(function(b){return b.kind;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(' + ');
+    var invs = u.billedIn.map(function(b){return b.inv;}).join(', ');
+    u.lines.forEach(function(l){
+      var share = u.lineSum ? l.amount/u.lineSum : 0;
+      rows.push({ supplier:'thessen', source:u.short, ue:u.id, inv:invs, kind:kinds, text:l.text, desc:l.desc, qty:l.qty, unit:l.unit, price:l.price,
+        amount:l.amount, moment:l.moment, slag:l.slag });
+      rows.push({ supplier:'thessen', source:u.short, ue:u.id, inv:invs, kind:kinds, paslag:true, text:'Påslag på '+l.text,
+        amount: u.markup*share, moment:l.moment, slag:'Påslag UE (12 %)' });
+    });
+    if(u.rounding){
+      rows.push({ supplier:'thessen', source:u.short, ue:u.id, inv:invs, kind:kinds, text:'Öresavrundning', amount:u.rounding, moment:u.lines[0].moment, slag:'Försäkring & avgifter' });
+    }
+  });
+
+  function sum(list){ return list.reduce(function(a,r){return a+r.amount;},0); }
+  function groupSum(list,key){ var m={}; list.forEach(function(r){ m[r[key]]=(m[r[key]]||0)+r.amount; }); return m; }
+
+  var totEx = D.invoices.reduce(function(a,i){return a+i.exMoms;},0);
+  var totMoms = D.invoices.reduce(function(a,i){return a+i.moms;},0);
+  var totInkl = D.invoices.reduce(function(a,i){return a+i.total;},0);
+  var totRot = D.invoices.reduce(function(a,i){return a+(i.rot||0);},0);
+  var totPay = D.invoices.reduce(function(a,i){return a+i.toPay;},0);
+  var totMarkup = D.ue.reduce(function(a,u){return a+u.markup;},0);
+  var rowsTotal = sum(rows);
+  var reconciled = Math.abs(rowsTotal - totEx) < 0.05 && D.invoices.every(function(i){return Math.abs(i.calc-i.exMoms)<0.05;});
+
+  document.getElementById('meta').innerHTML =
+    '<span>Uppdaterad '+fmtDate(D.updated)+'</span><span>'+D.invoices.length+' fakturor · '+D.ue.length+' underlag</span>'+
+    (reconciled ? '<span class="tag ok">Avstämt mot fakturor</span>' : '<span class="tag bad">Avstämning avviker</span>');
+
+  /* ---------- Tabs ---------- */
+  var tabs = [{id:'sammanstallning', label:'Sammanställning'}];
+  D.suppliers.forEach(function(s){
+    var n = D.invoices.filter(function(i){return i.supplier===s.id;}).length;
+    tabs.push({id:'lev-'+s.id, label:s.short, sub:n+' fakt.'});
+  });
+  tabs.push({id:'detaljer', label:'Detaljer'});
+  tabs.push({id:'uppdatera', label:'Lägg till faktura'});
+
+  var nav = document.getElementById('tabs');
+  var view = document.getElementById('view');
+  nav.innerHTML = tabs.map(function(t){
+    return '<button role="tab" id="tab-'+t.id+'" data-tab="'+t.id+'" aria-selected="false">'+esc(t.label)+(t.sub?'<span class="sub">'+t.sub+'</span>':'')+'</button>';
+  }).join('');
+  nav.addEventListener('click',function(e){ var b=e.target.closest('button[data-tab]'); if(b) show(b.dataset.tab); });
+
+  var current;
+  function show(id){
+    if(!tabs.some(function(t){return t.id===id;})) id='sammanstallning';
+    current=id;
+    Array.prototype.forEach.call(nav.children,function(b){ b.setAttribute('aria-selected', b.dataset.tab===id?'true':'false'); });
+    if(id==='sammanstallning') view.innerHTML = renderSummary();
+    else if(id==='detaljer') view.innerHTML = renderDetails();
+    else if(id==='uppdatera') view.innerHTML = renderHowTo();
+    else view.innerHTML = renderSupplier(id.slice(4));
+    try{ localStorage.setItem('kv71-tab', id); }catch(e){}
+    if(id==='detaljer') bindDetails();
+  }
+
+  /* ---------- Sammanställning ---------- */
+  function renderSummary(){
+    var b = D.budget, hasBudget = b.received && Object.keys(b.items).length>0;
+    var budgetTot = hasBudget ? Object.keys(b.items).reduce(function(a,k){return a+b.items[k];},0) : null;
+    var byMoment = groupSum(rows,'moment');
+    var moments = D.moments.slice();
+    Object.keys(byMoment).forEach(function(m){ if(moments.indexOf(m)<0) moments.push(m); });
+    if(hasBudget) Object.keys(b.items).forEach(function(m){ if(moments.indexOf(m)<0) moments.push(m); });
+    var maxV = Math.max.apply(null, moments.map(function(m){ return Math.max(byMoment[m]||0, hasBudget?(b.items[m]||0):0); }).concat([1]));
+
+    var ata = D.invoices.filter(function(i){return i.kind==='ÄTA';}).reduce(function(a,i){return a+i.exMoms;},0);
+
+    var h = '<section class="panel">';
+    if(!hasBudget){
+      h += '<div class="banner"><div><p><b>Budget saknas.</b> '+esc(b.note)+'</p></div></div>';
+    }
+    h += '<div class="kpis">'+
+      kpi('Fakturerat exkl. moms', kr(totEx), 'varav ÄTA '+kr(ata)) +
+      kpi('Fakturerat inkl. moms', kr(totInkl), 'moms '+kr(totMoms)) +
+      kpi('ROT-avdrag', '−'+kr(totRot), 'på faktura 132354') +
+      kpi('Att betala totalt', kr(totPay), 'efter ROT, inkl. moms') +
+      (hasBudget
+        ? kpi('Kvar av budget', kr(budgetTot-totEx), fmt0.format(totEx/budgetTot*100)+' % förbrukat', '')
+        : kpi('Budget', 'Saknas', 'skicka offerten i chatten', 'missing')) +
+      '</div>';
+
+    // Budget vs utfall
+    h += '<div class="block"><div class="head"><h2>Budget mot utfall per arbetsmoment</h2><span class="muted">exkl. moms, inkl. påslag</span></div>'+
+      '<div class="card scroll"><table><thead><tr><th>Arbetsmoment</th><th class="n">Budget</th><th class="n">Utfall</th><th class="n">Avvikelse</th><th style="width:28%">Andel av utfall</th></tr></thead><tbody>';
+    moments.forEach(function(m){
+      var v = byMoment[m]||0, bv = hasBudget ? (b.items[m]||0) : null;
+      if(!v && !bv) return;
+      var diff = bv==null ? null : v-bv;
+      h += '<tr><td>'+esc(m)+'</td><td class="n">'+(bv==null?'<span class="faint">—</span>':kr(bv))+'</td><td class="n">'+kr(v)+'</td>'+
+        '<td class="n">'+(diff==null?'<span class="faint">—</span>':'<span class="'+(diff>0?'diff-pos':'diff-neg')+'">'+(diff>0?'+':'−')+kr(Math.abs(diff))+'</span>')+'</td>'+
+        '<td><div class="bar" title="'+fmt0.format(v/totEx*100)+' %"><i style="width:'+(v/maxV*100).toFixed(1)+'%"></i></div></td></tr>';
+    });
+    h += '<tr class="total"><td>Totalt</td><td class="n">'+(hasBudget?kr(budgetTot):'—')+'</td><td class="n">'+kr(rowsTotal)+'</td><td class="n">'+(hasBudget?kr(rowsTotal-budgetTot):'—')+'</td><td></td></tr>';
+    h += '</tbody></table></div></div>';
+
+    // Per leverantör + per kostnadsslag
+    var bySource = groupSum(rows.filter(function(r){return !r.paslag;}),'source');
+    h += '<div class="grid2">';
+    h += '<div class="block"><div class="head"><h2>Per fakturerande leverantör</h2></div><div class="card scroll"><table><thead><tr><th>Leverantör</th><th class="n">Exkl. moms</th><th class="n">Inkl. moms</th><th class="n">Att betala</th></tr></thead><tbody>';
+    D.suppliers.forEach(function(s){
+      var inv = D.invoices.filter(function(i){return i.supplier===s.id;});
+      h += '<tr><td>'+esc(s.name)+'<span class="desc">'+esc(s.role)+' · '+inv.length+' fakturor</span></td><td class="n">'+kr(inv.reduce(function(a,i){return a+i.exMoms;},0))+'</td><td class="n">'+kr(inv.reduce(function(a,i){return a+i.total;},0))+'</td><td class="n">'+kr(inv.reduce(function(a,i){return a+i.toPay;},0))+'</td></tr>';
+    });
+    h += '<tr class="total"><td>Totalt</td><td class="n">'+kr(totEx)+'</td><td class="n">'+kr(totInkl)+'</td><td class="n">'+kr(totPay)+'</td></tr></tbody></table></div></div>';
+
+    h += '<div class="block"><div class="head"><h2>Vem har utfört arbetet</h2><span class="muted">exkl. moms</span></div><div class="card scroll"><table><thead><tr><th>Utförare</th><th class="n">Kostnad</th><th class="n">Andel</th></tr></thead><tbody>';
+    Object.keys(bySource).sort(function(a,b){return bySource[b]-bySource[a];}).forEach(function(s){
+      h += '<tr><td>'+esc(s)+'</td><td class="n">'+kr(bySource[s])+'</td><td class="n">'+fmt0.format(bySource[s]/totEx*100)+' %</td></tr>';
+    });
+    h += '<tr class="paslag"><td>Påslag Thessén på UE och material</td><td class="n">'+kr(totMarkup)+'</td><td class="n">'+fmt0.format(totMarkup/totEx*100)+' %</td></tr>';
+    h += '<tr class="total"><td>Totalt</td><td class="n">'+kr(totEx)+'</td><td class="n">100 %</td></tr></tbody></table></div></div>';
+    h += '</div>';
+
+    // Fakturaförteckning
+    var today = D.updated;
+    h += '<div class="block"><div class="head"><h2>Alla fakturor</h2><span class="muted">sorterat på fakturadatum</span></div><div class="card scroll"><table><thead><tr><th>Datum</th><th>Leverantör</th><th>Nr</th><th>Typ</th><th class="n">Exkl. moms</th><th class="n">Inkl. moms</th><th class="n">Att betala</th><th>Förfaller</th></tr></thead><tbody>';
+    D.invoices.slice().sort(function(a,b){return a.date<b.date?-1:1;}).forEach(function(i){
+      var dueTag = i.due < today ? '<span class="tag">'+fmtDate(i.due)+'</span>' : '<span class="tag warn">'+fmtDate(i.due)+'</span>';
+      h += '<tr><td class="num" style="text-align:left">'+fmtDate(i.date)+'</td><td>'+esc(supById[i.supplier].short)+'</td><td>'+esc(i.nr)+'</td><td><span class="tag '+(i.kind==='ÄTA'?'ata':'grund')+'">'+i.kind+'</span></td><td class="n">'+kr(i.exMoms)+'</td><td class="n">'+kr(i.total)+'</td><td class="n">'+kr(i.toPay)+'</td><td>'+dueTag+'</td></tr>';
+    });
+    h += '</tbody></table></div><p class="faint" style="margin:0;font-size:12.5px">Gul förfallodag = ligger efter '+fmtDate(today)+'. Betalstatus registreras inte i appen.</p></div>';
+
+    // Att kontrollera
+    h += '<div class="block"><div class="head"><h2>Att kontrollera</h2></div><div class="card checks">';
+    D.checks.forEach(function(c){
+      h += '<div class="check"><span class="tag '+(c.level==='warn'?'warn':'')+'">'+(c.level==='warn'?'Åtgärd':'Info')+'</span><div><p class="t">'+esc(c.title)+'</p><p class="muted">'+esc(c.text)+'</p></div></div>';
+    });
+    h += '</div></div>';
+    h += '<p class="foot">Alla belopp i SEK. Utfall per arbetsmoment och utförare räknas exkl. moms. Påslaget fördelas på samma moment som den rad det hör till.</p>';
+    return h + '</section>';
+  }
+  function kpi(label,v,s,cls){ return '<div class="kpi '+(cls||'')+'"><span class="eyebrow">'+label+'</span><span class="v">'+v+'</span><span class="s">'+s+'</span></div>'; }
+
+  /* ---------- Leverantörsflik ---------- */
+  function renderSupplier(sid){
+    var s = supById[sid];
+    var inv = D.invoices.filter(function(i){return i.supplier===sid;}).sort(function(a,b){return a.date<b.date?-1:1;});
+    var ex = inv.reduce(function(a,i){return a+i.exMoms;},0), tot = inv.reduce(function(a,i){return a+i.total;},0), pay = inv.reduce(function(a,i){return a+i.toPay;},0);
+    var h = '<section class="panel"><div class="block"><div class="head"><div><div class="eyebrow">'+esc(s.role)+' · org.nr '+esc(s.orgnr)+' · ref. '+esc(s.contact)+'</div><h2 style="font-size:24px;margin-top:4px">'+esc(s.name)+'</h2></div></div>';
+    h += '<div class="kpis">'+kpi('Exkl. moms',kr(ex),inv.length+' fakturor')+kpi('Inkl. moms',kr(tot),'moms '+kr(tot-ex))+kpi('Att betala',kr(pay),'efter ROT-avdrag');
+    if(sid==='thessen'){
+      var ueb = D.ue.reduce(function(a,u){return a+u.billed;},0);
+      h += kpi('Vidarefakturerat',kr(ueb),'varav påslag '+kr(totMarkup));
+    }
+    h += '</div></div><div class="block">';
+    inv.forEach(function(i, idx){ h += invoiceCard(i, idx===inv.length-1); });
+    h += '</div>';
+    if(sid==='thessen'){
+      h += '<div class="block"><div class="head"><h2>Underleverantörsfakturor</h2><span class="muted">bilagor som Thessén vidarefakturerat</span></div><div class="card scroll"><table><thead><tr><th>Underleverantör</th><th>Nr</th><th>Datum</th><th class="n">Kostnad UE</th><th class="n">Fakturerat</th><th class="n">Påslag</th><th>På Thessén-faktura</th></tr></thead><tbody>';
+      D.ue.forEach(function(u){
+        h += '<tr><td>'+esc(u.vendor)+'<span class="desc">'+esc(u.period)+'</span></td><td>'+esc(u.nr)+'</td><td class="num" style="text-align:left">'+fmtDate(u.date)+'</td><td class="n">'+k2(u.cost)+'</td><td class="n">'+k2(u.billed)+'</td><td class="n">'+fmt2.format(u.rate*100)+' %</td><td>'+u.billedIn.map(function(b){return esc(b.inv)+' <span class="tag '+(b.kind==='ÄTA'?'ata':'grund')+'">'+b.kind+'</span>';}).join('<br>')+'</td></tr>';
+      });
+      var c = D.ue.reduce(function(a,u){return a+u.cost;},0), bl = D.ue.reduce(function(a,u){return a+u.billed;},0);
+      h += '<tr class="total"><td colspan="3">Totalt</td><td class="n">'+k2(c)+'</td><td class="n">'+k2(bl)+'</td><td class="n">'+fmt2.format((bl/c-1)*100)+' %</td><td></td></tr></tbody></table></div></div>';
+    }
+    return h + '</section>';
+  }
+
+  function invoiceCard(i, open){
+    var ok = Math.abs(i.calc - i.exMoms) < 0.05;
+    var h = '<details class="inv"'+(open?' open':'')+'><summary><div class="l"><span class="chev">▸</span><span class="nr">Faktura '+esc(i.nr)+'</span><span class="tag '+(i.kind==='ÄTA'?'ata':'grund')+'">'+i.kind+'</span><span class="muted">'+fmtDate(i.date)+'</span>'+(ok?'':'<span class="tag bad">Rader ≠ total</span>')+'</div>'+
+      '<div class="amt">'+kr(i.toPay)+'<small>exkl. moms '+kr(i.exMoms)+'</small></div></summary><div class="invbody">';
+    h += '<div class="facts"><span>Projekt <b>'+esc(i.project)+'</b></span><span>Förfaller <b>'+fmtDate(i.due)+'</b></span><span>Moms <b>'+k2(i.moms)+'</b></span>'+(i.rot?'<span>ROT-avdrag <b>−'+k2(i.rot)+'</b></span>':'')+(i.rounding?'<span>Öresavrundning <b>'+k2(i.rounding)+'</b></span>':'')+'</div>';
+    h += '<div class="scroll"><table><thead><tr><th>Rad</th><th class="n">Antal</th><th class="n">À-pris</th><th class="n">Belopp</th><th>Arbetsmoment</th></tr></thead><tbody>';
+    i.lines.forEach(function(l){
+      if(l.ue){
+        var u = ueById[l.ue];
+        var share = u.billed ? l.amount/u.billed : 1;
+        h += '<tr><td>'+esc(l.text)+' <span class="tag ue">UE</span>'+
+          '<details class="ue"><summary>Visa underlag · kostnad '+k2(u.cost*share)+' + påslag '+k2(u.markup*share)+'</summary><div class="uebox">'+ueTable(u)+'</div></details></td>'+
+          '<td class="n"></td><td class="n"></td><td class="n">'+k2(l.amount)+'</td><td>'+esc(momentsOf(u))+'</td></tr>';
+      } else {
+        h += '<tr><td>'+esc(l.text)+(l.desc?'<span class="desc">'+esc(l.desc)+'</span>':'')+'</td><td class="n">'+(l.qty!=null?fmt2.format(l.qty).replace(/,00$/,'')+' '+esc(l.unit||''):'')+'</td><td class="n">'+k2(l.price)+'</td><td class="n">'+k2(l.amount)+'</td><td>'+esc(l.moment)+'</td></tr>';
+      }
+    });
+    h += '<tr class="total"><td>Summa exkl. moms</td><td></td><td></td><td class="n">'+k2(i.exMoms)+'</td><td></td></tr></tbody></table></div></div></details>';
+    return h;
+  }
+  function momentsOf(u){ return u.lines.map(function(l){return l.moment;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(', '); }
+  function ueTable(u){
+    var h = '<p class="muted" style="margin:4px 0 6px;font-size:12.5px"><b>'+esc(u.vendor)+'</b> nr '+esc(u.nr)+' · '+fmtDate(u.date)+' · '+esc(u.period)+'<br>'+esc(u.desc)+'</p><div class="scroll"><table><tbody>';
+    u.lines.forEach(function(l){
+      h += '<tr><td>'+esc(l.text)+(l.desc?'<span class="desc">'+esc(l.desc)+'</span>':'')+'</td><td class="n">'+(l.qty!=null?fmt2.format(l.qty).replace(/,00$/,'')+' '+esc(l.unit||''):'')+'</td><td class="n">'+k2(l.amount)+'</td><td class="faint">'+esc(l.slag)+'</td></tr>';
+    });
+    if(u.rounding) h += '<tr><td>Öresavrundning</td><td></td><td class="n">'+k2(u.rounding)+'</td><td></td></tr>';
+    h += '<tr class="sub"><td>Kostnad UE exkl. moms</td><td></td><td class="n">'+k2(u.cost)+'</td><td></td></tr>';
+    h += '<tr class="paslag"><td>Påslag Thessén '+fmt2.format(u.rate*100)+' %</td><td></td><td class="n">'+k2(u.markup)+'</td><td></td></tr>';
+    h += '<tr class="sub"><td>Vidarefakturerat</td><td></td><td class="n">'+k2(u.billed)+'</td><td></td></tr>';
+    return h + '</tbody></table></div>';
+  }
+
+  /* ---------- Detaljer ---------- */
+  var detailFilter = 'Alla';
+  function renderDetails(){
+    var list = detailFilter==='Alla' ? rows : rows.filter(function(r){return r.moment===detailFilter;});
+    var tot = sum(list);
+    var sources = [OWN,'Hard Workers','Beijer','HLL','Sortera / Big Bag','Arkitekt V. Erlandsson'];
+    rows.forEach(function(r){ if(sources.indexOf(r.source)<0) sources.push(r.source); });
+    sources = sources.filter(function(s){ return list.some(function(r){return r.source===s;}); });
+
+    var h = '<section class="panel">';
+    h += '<div class="block"><div class="head"><h2>Detaljer per kostnadsslag och utförare</h2><span class="muted">exkl. moms · '+kr(tot)+'</span></div>';
+    h += '<div class="filters" role="group" aria-label="Filtrera på arbetsmoment">';
+    ['Alla'].concat(D.moments).forEach(function(m){
+      if(m!=='Alla' && !rows.some(function(r){return r.moment===m;})) return;
+      h += '<button class="chip" data-moment="'+esc(m)+'" aria-pressed="'+(m===detailFilter)+'">'+esc(m)+'</button>';
+    });
+    h += '</div>';
+
+    // Matrix
+    h += '<div class="card scroll"><table><thead><tr><th>Kostnadsslag</th>';
+    sources.forEach(function(s){ h += '<th class="n">'+esc(s.replace(' (egen personal)',' egen'))+'</th>'; });
+    h += '<th class="n">Totalt</th><th class="n">Andel</th></tr></thead><tbody>';
+    D.slag.forEach(function(sl){
+      var r = list.filter(function(x){return x.slag===sl;}); if(!r.length) return;
+      var rs = sum(r);
+      h += '<tr'+(sl.indexOf('Påslag')===0?' class="paslag"':'')+'><td>'+esc(sl)+'</td>';
+      sources.forEach(function(s){ var v = sum(r.filter(function(x){return x.source===s;})); h += '<td class="n">'+(v?kr(v):'<span class="faint">·</span>')+'</td>'; });
+      h += '<td class="n"><b>'+kr(rs)+'</b></td><td class="n">'+fmt0.format(rs/tot*100)+' %</td></tr>';
+    });
+    h += '<tr class="total"><td>Totalt</td>';
+    sources.forEach(function(s){ h += '<td class="n">'+kr(sum(list.filter(function(x){return x.source===s;})))+'</td>'; });
+    h += '<td class="n">'+kr(tot)+'</td><td class="n">100 %</td></tr></tbody></table></div></div>';
+
+    // Per leverantör → underleverantör
+    D.suppliers.forEach(function(s){
+      var sl = list.filter(function(r){return r.supplier===s.id;}); if(!sl.length) return;
+      h += '<div class="group"><h3 style="font-size:19px">'+esc(s.name)+' <span class="muted" style="font:500 14px var(--body)">'+kr(sum(sl))+'</span></h3>';
+      var subs = [];
+      sl.forEach(function(r){ if(subs.indexOf(r.source)<0) subs.push(r.source); });
+      subs.forEach(function(src){
+        var sr = sl.filter(function(r){return r.source===src;});
+        var isUE = sr.some(function(r){return r.ue;});
+        h += '<div class="card"><div style="padding:12px 14px 4px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><h3>'+esc(src)+' '+(isUE?'<span class="tag ue">Underleverantör</span>':'')+'</h3><span class="num"><b>'+kr(sum(sr))+'</b></span></div>';
+        h += '<div class="scroll"><table><thead><tr><th>Rad</th><th>Faktura</th><th>Arbetsmoment</th><th>Kostnadsslag</th><th class="n">Antal</th><th class="n">Belopp</th></tr></thead><tbody>';
+        var byUe = {};
+        sr.forEach(function(r){
+          if(r.paslag){ var k=r.ue; byUe[k]=(byUe[k]||0)+r.amount; return; }
+          h += '<tr><td>'+esc(r.text)+(r.desc?'<span class="desc">'+esc(r.desc)+'</span>':'')+'</td><td class="faint">'+esc(r.ue?ueById[r.ue].nr+' → '+r.inv:r.inv)+'</td><td>'+esc(r.moment)+'</td><td>'+esc(r.slag)+'</td><td class="n">'+(r.qty!=null?fmt2.format(r.qty).replace(/,00$/,'')+' '+esc(r.unit||''):'')+'</td><td class="n">'+k2(r.amount)+'</td></tr>';
+        });
+        Object.keys(byUe).forEach(function(k){
+          h += '<tr class="paslag"><td>Påslag Thessén 12 % på '+esc(ueById[k].nr)+'</td><td class="faint">→ '+esc(ueById[k].billedIn.map(function(b){return b.inv;}).join(', '))+'</td><td></td><td>Påslag UE (12 %)</td><td></td><td class="n">'+k2(byUe[k])+'</td></tr>';
+        });
+        h += '</tbody></table></div></div>';
+      });
+      h += '</div>';
+    });
+    return h + '</section>';
+  }
+  function bindDetails(){
+    view.querySelectorAll('.chip').forEach(function(c){
+      c.addEventListener('click',function(){ detailFilter=c.dataset.moment; show('detaljer'); });
+    });
+  }
+
+  /* ---------- Så uppdaterar du ---------- */
+  function renderHowTo(){
+    return '<section class="panel"><div class="block" style="max-width:68ch"><h2>Lägga till nya fakturor</h2>'+
+      '<p>Appen uppdateras via chatten med Claude. Ladda upp den nya fakturan som PDF och skriv till exempel <code>Ny faktura från Thessén</code>. Bilagorna från underleverantörerna läses också.</p>'+
+      '<p>Claude lägger in fakturan, delar upp underlagen på arbetsmoment och kostnadsslag, räknar ut påslaget och stämmer av raderna mot fakturans total. Sedan publiceras en ny version på samma länk.</p>'+
+      '<p>Budgetofferten läses in på samma sätt. Då fylls kolumnen Budget i på Sammanställningen.</p>'+
+      '<p class="muted">Kostnader per arbetsmoment är Claudes bedömning utifrån fakturatexterna. Säg till om något ska ligga på ett annat moment.</p>'+
+      '<div class="card" style="padding:14px 16px;display:grid;gap:6px"><span class="eyebrow">Senast inlästa</span>'+
+      D.invoices.slice().sort(function(a,b){return a.date<b.date?1:-1;}).map(function(i){return '<div style="display:flex;justify-content:space-between;gap:12px"><span>'+esc(supById[i.supplier].short)+' '+esc(i.nr)+'</span><span class="num muted">'+fmtDate(i.date)+'</span></div>';}).join('')+
+      '</div></div></section>';
+  }
+
+  var start = 'sammanstallning';
+  try{ start = (location.hash||'').slice(1) || localStorage.getItem('kv71-tab') || start; }catch(e){}
+  show(start);
+})();
+</script>
+<!--ARTIFACT-END-->
+</body>
+</html>
