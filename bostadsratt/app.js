@@ -53,6 +53,26 @@
     if (v === null || v === undefined) return '–';
     return '<span class="' + (v < 0 ? 'neg' : 'pos') + '">' + (v > 0 ? '+' : '') + kr(v) + '</span>';
   }
+  /* ---------- Egna dialoger (webbläsarens confirm/prompt fungerar inte överallt) ---------- */
+  // Visar en fråga i sidan. Med opts.input returneras texten, annars true; null vid avbryt.
+  function ask(opts) {
+    return new Promise(function (resolve) {
+      var d = document.getElementById('ask');
+      d.innerHTML = '<form method="dialog"><div class="dlg-head"><h2>' + esc(opts.title) + '</h2></div>' +
+        '<div class="dlg-body">' + (opts.text ? '<p style="margin:0 0 12px">' + esc(opts.text) + '</p>' : '') +
+        (opts.input ? '<label class="ask-label" for="ask-input">' + esc(opts.input) + '</label><input id="ask-input" autocomplete="off">' : '') +
+        '</div><div class="dlg-foot"><button class="btn ' + (opts.danger ? 'danger' : 'primary') + '" value="ok">' + esc(opts.ok || 'OK') + '</button>' +
+        '<span class="spacer"></span><button type="button" class="btn" id="ask-cancel">Avbryt</button></div></form>';
+      d.querySelector('#ask-cancel').addEventListener('click', function () { d.close('cancel'); });
+      d.onclose = function () {
+        if (d.returnValue !== 'ok') return resolve(null);
+        resolve(opts.input ? d.querySelector('#ask-input').value.trim() : true);
+      };
+      d.returnValue = '';
+      d.showModal();
+    });
+  }
+
   function uid() { return 'id' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function critLabel(cr) {
     if (typeof cr === 'string') cr = C.CRITERIA.find(function (x) { return x.key === cr; });
@@ -289,8 +309,14 @@
         if (action === 'archive') c.arkiv = !c.arkiv;
         if (isNew) state.candidates.push(c);
       } else if (action === 'delete') {
-        if (!confirm('Ta bort ' + (c.adress || 'lägenheten') + '?')) return;
-        state.candidates = state.candidates.filter(function (x) { return x.id !== c.id; });
+        ask({ title: 'Ta bort ' + (c.adress || 'lägenheten') + '?', text: 'Alla uppgifter om lägenheten försvinner.', ok: 'Ta bort', danger: true })
+          .then(function (yes) {
+            if (!yes) return;
+            state.candidates = state.candidates.filter(function (x) { return x.id !== c.id; });
+            save();
+            render();
+          });
+        return;
       } else return;
       save();
       render();
@@ -539,48 +565,90 @@
         projekt: 'Karlavägen 71', exkl: '', moms: '', att: '', status: 'Obetald', kommentar: '', split: {} });
       save(); renderInvTables();
     } else if (act === 'del-inv') {
-      var f = state.invoices[+t.getAttribute('data-i')];
-      if (confirm('Ta bort faktura ' + (f.nr || '') + '?')) {
-        state.invoices.splice(+t.getAttribute('data-i'), 1);
+      var fi = +t.getAttribute('data-i'), f = state.invoices[fi];
+      ask({ title: 'Ta bort faktura ' + (f.nr || '') + '?', ok: 'Ta bort', danger: true }).then(function (yes) {
+        if (!yes) return;
+        state.invoices.splice(fi, 1);
         save(); renderInvTables();
-      }
+      });
     } else if (act === 'add-cat') {
-      var name = prompt('Namn på ny kostnadskategori');
-      if (name && state.categories.indexOf(name) < 0) { state.categories.push(name); save(); renderInvTables(); }
+      ask({ title: 'Ny kostnadskategori', input: 'Namn', ok: 'Lägg till' }).then(function (name) {
+        if (name && state.categories.indexOf(name) < 0) { state.categories.push(name); save(); renderInvTables(); }
+      });
     } else if (act === 'del-cat') {
       var ci = +t.getAttribute('data-i'), cat = state.categories[ci];
-      if (confirm('Ta bort kategorin ' + cat + '? Belopp i den försvinner.')) {
+      ask({ title: 'Ta bort kategorin ' + cat + '?', text: 'Beloppen i kategorin försvinner.', ok: 'Ta bort', danger: true }).then(function (yes) {
+        if (!yes) return;
         state.categories.splice(ci, 1);
         state.invoices.forEach(function (x) { if (x.split) delete x.split[cat]; });
         save(); renderInvTables();
-      }
+      });
     }
   });
 
-  /* ---------- Export / import ---------- */
-  document.getElementById('btn-export').addEventListener('click', function () {
-    var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'ettor-' + new Date().toISOString().slice(0, 10) + '.json';
-    a.click();
-    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-  });
-  document.getElementById('btn-import').addEventListener('click', function () {
-    document.getElementById('file-import').click();
-  });
-  document.getElementById('file-import').addEventListener('change', function (e) {
-    var file = e.target.files[0];
-    if (!file) return;
-    file.text().then(function (txt) {
-      var s = JSON.parse(txt);
-      if (!s.params || !s.candidates) throw new Error('fel format');
-      if (!confirm('Ersätta nuvarande data med innehållet i ' + file.name + '?')) return;
+  /* ---------- Säkerhetskopia (export / import) ---------- */
+  // Kopiera/klistra in fungerar även där nedladdning är blockerad (t.ex. delade sidor).
+  document.getElementById('btn-backup').addEventListener('click', function () {
+    var d = document.getElementById('ask');
+    d.innerHTML = '<div class="dlg-head"><h2>Säkerhetskopia</h2><button type="button" class="btn small" data-x>✕</button></div>' +
+      '<div class="dlg-body"><p class="hint" style="margin-top:0">Kopiera texten och spara den, t.ex. i en anteckning. Klistra in en tidigare kopia eller välj en fil för att läsa tillbaka den.</p>' +
+      '<textarea id="backup-text" rows="10" spellcheck="false" style="width:100%;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace"></textarea>' +
+      '<p id="backup-msg" class="hint" role="status"></p></div>' +
+      '<div class="dlg-foot"><button type="button" class="btn primary" id="backup-copy">Kopiera</button>' +
+      '<button type="button" class="btn" id="backup-download">Ladda ner fil</button>' +
+      '<span class="spacer"></span><button type="button" class="btn" id="backup-file">Välj fil…</button>' +
+      '<button type="button" class="btn" id="backup-load">Läs in från rutan</button></div>';
+    var ta = d.querySelector('#backup-text'), msg = d.querySelector('#backup-msg');
+    var json = JSON.stringify(state, null, 2);
+    ta.value = json;
+    var armed = false;
+    function loadText(txt) {
+      var s;
+      try { s = JSON.parse(txt); } catch (err) { msg.textContent = 'Texten är inte en giltig säkerhetskopia (JSON kunde inte läsas).'; return; }
+      if (!s || !s.params || !s.candidates) { msg.textContent = 'Texten saknar appens data (params och candidates).'; return; }
+      if (!armed) {
+        armed = true;
+        msg.textContent = 'Klicka igen för att ersätta all nuvarande data med kopian.';
+        d.querySelector('#backup-load').textContent = 'Ja, ersätt nuvarande data';
+        return;
+      }
       state = normalize(s);
       save();
+      d.close();
       render();
-    }).catch(function (err) { alert('Kunde inte läsa filen: ' + err.message); });
-    e.target.value = '';
+    }
+    d.querySelector('[data-x]').addEventListener('click', function () { d.close(); });
+    d.querySelector('#backup-copy').addEventListener('click', function () {
+      ta.value = json;
+      navigator.clipboard.writeText(json).then(function () { msg.textContent = 'Kopierat.'; }, function () {
+        ta.focus(); ta.select();
+        msg.textContent = 'Texten är markerad – kopiera med Ctrl/Cmd+C.';
+      });
+    });
+    d.querySelector('#backup-download').addEventListener('click', function () {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+      a.download = 'ettor-' + new Date().toISOString().slice(0, 10) + '.json';
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      msg.textContent = 'Hände inget? Då blockerar sidan nedladdning – använd Kopiera i stället.';
+    });
+    d.querySelector('#backup-file').addEventListener('click', function () { document.getElementById('file-import').click(); });
+    d.querySelector('#backup-load').addEventListener('click', function () { loadText(ta.value); });
+    ta.addEventListener('input', function () { armed = false; d.querySelector('#backup-load').textContent = 'Läs in från rutan'; });
+    document.getElementById('file-import').onchange = function (e) {
+      var file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      file.text().then(function (txt) {
+        ta.value = txt;
+        armed = false;
+        msg.textContent = 'Filen ' + file.name + ' är inläst i rutan.';
+        loadText(txt);
+      });
+    };
+    d.onclose = null;
+    d.showModal();
   });
 
   try { tab = sessionStorage.getItem('ettor-tab') || tab; } catch (err) { /* ignoreras */ }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Ettor – utvärdering</title>
+<title>Ettor-kalkylen</title>
 <style>
   :root{
     --bg:#f5f3ee; --card:#ffffff; --ink:#1f2328; --muted:#6a6f76; --line:#e2ded4;
@@ -13,17 +13,26 @@
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
+      color-scheme:dark;
       --bg:#15181c; --card:#1e2227; --ink:#e7e9ec; --muted:#9aa1a9; --line:#30363d;
       --accent:#6fb3e0; --accent-ink:#0d1b26; --input:#2a2716; --input-line:#5b5323;
       --ok:#6cc58f; --warn:#f28b82; --warn-bg:#3a1f1d; --ok-bg:#1b3325; --chip:#26303a;
       --bar:#6fb3e0; --bar-bg:#2a333c;
     }
   }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#15181c; --card:#1e2227; --ink:#e7e9ec; --muted:#9aa1a9; --line:#30363d;
+    --accent:#6fb3e0; --accent-ink:#0d1b26; --input:#2a2716; --input-line:#5b5323;
+    --ok:#6cc58f; --warn:#f28b82; --warn-bg:#3a1f1d; --ok-bg:#1b3325; --chip:#26303a;
+    --bar:#6fb3e0; --bar-bg:#2a333c;
+  }
   *{box-sizing:border-box}
+  a{color:var(--accent)}
   [hidden]{display:none!important}
   html,body{margin:0}
   body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.4;font-size:15px}
-  header{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+  header{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);z-index:10}
   .head-row{display:flex;align-items:center;gap:12px;padding:12px 16px;max-width:1200px;margin:0 auto;flex-wrap:wrap}
   h1{font-size:18px;margin:0}
   .head-row .sub{color:var(--muted);font-size:13px}
@@ -93,6 +102,9 @@
   .crit.zero:not(.off) .crit-name{color:var(--muted)}
   .form label.off{opacity:.5}
   dialog{border:0;border-radius:12px;padding:0;width:min(720px,calc(100vw - 32px));max-height:calc(100vh - 32px);background:var(--card);color:var(--ink)}
+  dialog.small{width:min(560px,calc(100vw - 32px))}
+  .ask-label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+  #ask-input{width:100%}
   dialog::backdrop{background:rgba(0,0,0,.45)}
   .dlg-head{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card);z-index:1}
   .dlg-head h2{margin:0;font-size:17px;flex:1}
@@ -121,8 +133,7 @@
       <div class="sub">Rådmansgatan såld → Karlavägen köpt → kvarvarande kapital till en etta</div>
     </div>
     <div class="spacer"></div>
-    <button class="btn small" id="btn-export">Exportera</button>
-    <button class="btn small" id="btn-import">Importera</button>
+    <button class="btn small" id="btn-backup">Säkerhetskopia</button>
     <input type="file" id="file-import" accept="application/json" hidden />
   </div>
   <nav id="tabs">
@@ -137,6 +148,7 @@
 <main id="view"></main>
 
 <dialog id="dlg"></dialog>
+<dialog id="ask" class="small"></dialog>
 
 <script src="calc.js"></script>
 <script src="app.js"></script>
