@@ -27,6 +27,16 @@ fx.expected.forEach((e, i) => {
   }
 });
 
+// Släckt kriterium ska ge samma resultat som vikt 0, och vikten ska ligga kvar.
+const off = JSON.parse(JSON.stringify(state));
+off.criteria.vallentuna.av = true;
+const zero = JSON.parse(JSON.stringify(state));
+zero.weights.vallentuna = 0;
+const rOff = Calc.evaluate(off), rZero = Calc.evaluate(zero);
+rOff.rows.forEach((r, i) => close(r.total, rZero.rows[i].total, `släckt = vikt 0 (${i})`));
+assert.strictEqual(off.weights.vallentuna, 5, 'vikten ligger kvar när kriteriet släcks');
+assert.ok(Math.abs(rOff.rows[0].total - res.rows[0].total) > 1e-6, 'släckning påverkar totalen');
+
 // Avvikelse från Excel (medveten): alternativkostnad bara på kapital som binds i lägenheten.
 const cheap = Calc.purchase({ utgangspris: 2000000 }, state.params, 3499200);
 close(cheap.altkost, 2000000 * 0.04 / 12, 'altkost begränsas till priset');

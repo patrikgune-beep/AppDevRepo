@@ -6,9 +6,10 @@ webbläsaren; använd **Exportera/Importera** för säkerhetskopia eller för at
 
 | Excel-flik | I appen |
 |---|---|
-| Simulering (bakgrund + antaganden) | Kapital & antaganden |
+| Simulering (Rådmansgatan såld: reavinst, uppskov, skatt) | Sålda lägenheter |
+| Simulering (Karlavägen köpt + antaganden) | Kapital & antaganden |
 | Simulering (kandidat-ettor, köpa vs hyra) | Lägenheter |
-| Utvärdering + vikter | Utvärdering |
+| Utvärdering + vikter | Utvärdering (kriterier kan döpas om och släckas/tändas) |
 | Fakturor Karlavägen 71 | Fakturor Karlavägen |
 | Betygsskala & metod | Metod |
 

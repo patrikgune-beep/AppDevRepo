@@ -33,6 +33,13 @@
     tbana: 1, branta: 3, vallentuna: 5, dramaten: 5, eget1: 1, eget2: 1
   };
 
+  // Släckt kriterium eller vikt 0 = räknas inte i totalen.
+  function weightOf(state, key) {
+    var c = state.criteria && state.criteria[key];
+    if (c && c.av) return 0;
+    return num(state.weights[key]) || 0;
+  }
+
   function num(v) {
     if (v === '' || v === null || v === undefined) return null;
     var n = typeof v === 'number' ? v : parseFloat(String(v).replace(/\s/g, '').replace(',', '.'));
@@ -145,7 +152,6 @@
     var p = state.params;
     var bg = background(p);
     var kontant = handpenning(p, bg);
-    var weights = state.weights;
     var rows = state.candidates.map(function (c) {
       return { c: c, k: purchase(c, p, kontant) };
     });
@@ -186,7 +192,7 @@
       s.eget2 = num(c.eget2) || 0;
       var sum = 0, den = 0;
       CRITERIA.forEach(function (cr) {
-        var w = num(weights[cr.key]) || 0;
+        var w = weightOf(state, cr.key);
         sum += w * s[cr.key];
         if (s[cr.key] > 0) den += w;
       });
@@ -223,6 +229,13 @@
     return { totals: tot, cats: cats, catTotal: catTotal, splitSums: splitSums };
   }
 
+  // Per kriterium: eget namn (tomt = standardnamnet) och om det är släckt.
+  function defaultCriteria() {
+    var o = {};
+    CRITERIA.forEach(function (cr) { o[cr.key] = { namn: '', av: false }; });
+    return o;
+  }
+
   /* ---------- Startdata från Excel-filen ---------- */
   function defaultState() {
     return {
@@ -235,6 +248,7 @@
         handpenningAuto: true, handpenningManuell: 6835600
       },
       weights: Object.assign({}, DEFAULT_WEIGHTS),
+      criteria: defaultCriteria(),
       candidates: [],
       categories: [
         'Arbete & arbetsledning', 'Material (Beijer Byggmaterial)', 'Rivning (Hard Workers)',
@@ -267,6 +281,7 @@
 
   var api = {
     CRITERIA: CRITERIA, DEFAULT_WEIGHTS: DEFAULT_WEIGHTS, num: num,
+    weightOf: weightOf, defaultCriteria: defaultCriteria,
     background: background, purchase: purchase, evaluate: evaluate,
     invoices: invoices, minutesScore: minutesScore, defaultState: defaultState
   };

@@ -20,6 +20,14 @@
     var d = C.defaultState();
     s.params = Object.assign(d.params, s.params);
     s.weights = Object.assign(d.weights, s.weights);
+    var crit = d.criteria;
+    Object.keys(crit).forEach(function (k) { crit[k] = Object.assign(crit[k], (s.criteria || {})[k]); });
+    // Tidigare version sparade bara namn för de egna kriterierna.
+    ['eget1', 'eget2'].forEach(function (k) {
+      if (s.params[k + 'Namn'] && !crit[k].namn) crit[k].namn = s.params[k + 'Namn'];
+      delete s.params[k + 'Namn'];
+    });
+    s.criteria = crit;
     s.candidates = s.candidates || [];
     s.invoices = s.invoices || d.invoices;
     s.categories = s.categories || d.categories;
@@ -47,10 +55,11 @@
   }
   function uid() { return 'id' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function critLabel(cr) {
-    if (cr.key === 'eget1' && state.params.eget1Namn) return state.params.eget1Namn;
-    if (cr.key === 'eget2' && state.params.eget2Namn) return state.params.eget2Namn;
-    return cr.label;
+    if (typeof cr === 'string') cr = C.CRITERIA.find(function (x) { return x.key === cr; });
+    var namn = (state.criteria[cr.key].namn || '').trim();
+    return namn || cr.label;
   }
+  function critOff(key) { return !!state.criteria[key].av; }
 
   /* ---------- Inmatningsfält kopplade till state ---------- */
   // kind: money | pct | num | text
@@ -84,10 +93,10 @@
     return '<div class="row' + (cls ? ' ' + cls : '') + '"><span>' + label + '</span><span class="val" data-out="' + key + '"></span></div>';
   }
 
-  function renderSim() {
-    var p = state.params;
+  /* ---------- Flik: Sålda lägenheter ---------- */
+  function renderSold() {
     return '<div class="grid">' +
-      '<section class="card"><h2>Rådmansgatan 59 såld</h2>' +
+      '<section class="card"><h2>Rådmansgatan 59 – försäljning</h2>' +
         inRow('Försäljningspris', 'params.saljpris', 'money', 'kr') +
         inRow('Inköpspris', 'params.inkopspris', 'money', 'kr') +
         inRow('Förbättringsutgifter', 'params.forbattringar', 'money', 'kr') +
@@ -97,13 +106,24 @@
         outRow('Reavinst (före uppskov)', 'reavinst') +
         '<div class="notice" id="inkop-notice" hidden>Inköpspriset är 0 – då räknas hela försäljningspriset som vinst. Fyll i verkligt inköpspris för en korrekt vinstskatt.</div>' +
       '</section>' +
-      '<section class="card"><h2>Karlavägen 71 köpt (ersättningsbostad)</h2>' +
-        inRow('Köppris Karlavägen', 'params.karlavagenPris', 'money', 'kr') +
+      '<section class="card"><h2>Skatt, uppskov &amp; likvid</h2>' +
+        outRow('Ersättningsbostad (Karlavägen 71)', 'ersattning') +
+        '<p class="hint">Köppriset för Karlavägen ändras under Kapital &amp; antaganden. Uppskovet begränsas när ersättningsbostaden är billigare än den sålda.</p>' +
         inRow('Takbelopp uppskov', 'params.takbelopp', 'money', 'kr') +
         '<p class="hint">Takbeloppet gäller per person – äger ni två, ange er andel eller dubbla taket.</p>' +
         outRow('Uppskov', 'uppskov') +
         outRow('Vinstskatt som betalas nu (22 %)', 'vinstskatt') +
-        outRow('Nettolikvid Rådmansgatan', 'nettolikvid') +
+        outRow('Nettolikvid Rådmansgatan', 'nettolikvid', 'total') +
+      '</section>' +
+    '</div>';
+  }
+
+  function renderSim() {
+    var p = state.params;
+    return '<div class="grid">' +
+      '<section class="card"><h2>Karlavägen 71 köpt (ersättningsbostad)</h2>' +
+        '<div class="row"><span>Nettolikvid från såld lägenhet <a href="#" data-goto="sold">(Sålda lägenheter)</a></span><span class="val" data-out="nettolikvid"></span></div>' +
+        inRow('Köppris Karlavägen', 'params.karlavagenPris', 'money', 'kr') +
         inRow('Lån på Karlavägen', 'params.karlavagenLan', 'money', 'kr') +
         outRow('Kontantinsats Karlavägen', 'kontantKarlavagen') +
         outRow('Kvarvarande kapital till etta', 'kvarvarande', 'total') +
@@ -131,11 +151,12 @@
 
   function updateSimOutputs() {
     var r = C.evaluate(state);
-    var vals = Object.assign({}, r.bg, { kontant: r.kontant });
+    var vals = Object.assign({}, r.bg, { kontant: r.kontant, ersattning: C.num(state.params.karlavagenPris) });
     document.querySelectorAll('[data-out]').forEach(function (el) {
       el.textContent = kr(vals[el.getAttribute('data-out')]);
     });
-    document.getElementById('inkop-notice').hidden = !!C.num(state.params.inkopspris);
+    var notice = document.getElementById('inkop-notice');
+    if (notice) notice.hidden = !!C.num(state.params.inkopspris);
   }
 
   /* ---------- Flik: Lägenheter ---------- */
@@ -203,19 +224,19 @@
     { k: 'underhall', l: 'Underhåll/drift per mån (kr)', kind: 'money' },
     { k: 'hyra', l: 'Hyra för motsvarande etta/mån (kr)', kind: 'money' },
     { title: 'Mjuka kriterier (tomma räknas inte)' },
-    { k: 'vatten', l: 'Vattenutsikt', opts: ['Ja', 'Nej'] },
-    { k: 'balkong', l: 'Balkong', opts: ['Inglasad', 'Ja', 'Nej'] },
-    { k: 'pplats', l: 'P-plats', opts: ['Ja', 'Nej'] },
-    { k: 'hiss', l: 'Hiss', opts: ['Ja', 'Nej'] },
-    { k: 'trappor', l: 'Antal trappor', kind: 'num' },
-    { k: 'branta', l: 'Branta backar', opts: ['Ja', 'Nej'] },
-    { k: 'gron', l: 'Grönområde (min)', kind: 'num' },
-    { k: 'matbutik', l: 'Matbutik (min)', kind: 'num' },
-    { k: 'tbana', l: 'T-bana (min)', kind: 'num' },
-    { k: 'vallentuna', l: 'Vallentuna (min)', kind: 'num' },
-    { k: 'dramaten', l: 'Dramaten/City (min)', kind: 'num' },
-    { k: 'eget1', l: 'eget1', kind: 'num', score: true },
-    { k: 'eget2', l: 'eget2', kind: 'num', score: true },
+    { k: 'vatten', crit: true, opts: ['Ja', 'Nej'] },
+    { k: 'balkong', crit: true, opts: ['Inglasad', 'Ja', 'Nej'] },
+    { k: 'pplats', crit: true, opts: ['Ja', 'Nej'] },
+    { k: 'hiss', crit: true, opts: ['Ja', 'Nej'] },
+    { k: 'trappor', crit: true, kind: 'num' },
+    { k: 'branta', crit: true, opts: ['Ja', 'Nej'] },
+    { k: 'gron', crit: true, unit: ' (min)', kind: 'num' },
+    { k: 'matbutik', crit: true, unit: ' (min)', kind: 'num' },
+    { k: 'tbana', crit: true, unit: ' (min)', kind: 'num' },
+    { k: 'vallentuna', crit: true, unit: ' (min)', kind: 'num' },
+    { k: 'dramaten', crit: true, unit: ' (min)', kind: 'num' },
+    { k: 'eget1', crit: true, unit: ' (1–5)', kind: 'num', score: true },
+    { k: 'eget2', crit: true, unit: ' (1–5)', kind: 'num', score: true },
     { k: 'anteckning', l: 'Anteckningar', kind: 'area', full: true }
   ];
 
@@ -227,7 +248,7 @@
       if (f.title) { body += (body ? '</div>' : '') + '<h3 class="section-title">' + f.title + '</h3><div class="form">'; return; }
       var v = c[f.k];
       var label = f.l;
-      if (f.score) label = esc(critLabel(C.CRITERIA.find(function (x) { return x.key === f.k; }))) + ' (1–5)';
+      if (f.crit) label = esc(critLabel(f.k)) + (f.unit || '') + (critOff(f.k) ? ' <em>(släckt)</em>' : '');
       var input;
       if (f.opts) {
         input = '<select name="' + f.k + '"><option value="">–</option>' + f.opts.map(function (o) {
@@ -241,7 +262,8 @@
         input = '<input name="' + f.k + '" data-kind="' + f.kind + '"' + ph + mm +
           (f.kind === 'text' ? '' : ' inputmode="decimal"') + ' value="' + esc(toInput(v, f.kind)) + '">';
       }
-      body += '<label' + (f.full ? ' class="full"' : '') + '>' + label + input + '</label>';
+      var cls = [f.full ? 'full' : '', f.crit && critOff(f.k) ? 'off' : ''].filter(Boolean).join(' ');
+      body += '<label' + (cls ? ' class="' + cls + '"' : '') + '>' + label + input + '</label>';
     });
     body += '</div>';
     if (c.lank) body += '<p><a href="' + esc(c.lank) + '" target="_blank" rel="noopener">Öppna annonsen ↗</a></p>';
@@ -282,13 +304,23 @@
 
   /* ---------- Flik: Utvärdering ---------- */
   function renderEval() {
-    var html = '<section class="card" style="margin-bottom:16px"><h2>Vikter</h2>' +
-      '<p class="hint">0 = kriteriet räknas inte. Totalen är ett viktat medelvärde av poängen 1–5; tomma kriterier hoppas över.</p>' +
-      '<div class="weights">' + C.CRITERIA.map(function (cr) {
-        return '<label>' + esc(critLabel(cr)) + field('weights.' + cr.key, 'num', '', ' type="number" min="0" step="1"') + '</label>';
+    var html = '<section class="card" style="margin-bottom:16px"><h2>Kriterier &amp; vikter</h2>' +
+      '<p class="hint">Bocken tänder/släcker ett kriterium – vikten sparas så att du kan tända det igen. Skriv i namnfältet för att döpa om (tomt = standardnamn). ' +
+      'Totalen är ett viktat medelvärde av poängen 1–5; tomma och släckta kriterier räknas inte.</p>' +
+      '<div class="toolbar" style="margin-bottom:10px"><button class="btn small" data-act="crit-all-on">Tänd alla</button>' +
+      '<button class="btn small" data-act="crit-all-off">Släck alla</button></div>' +
+      '<div class="crits">' + C.CRITERIA.map(function (cr) {
+        var off = critOff(cr.key);
+        var zero = !(C.num(state.weights[cr.key]) > 0);
+        return '<div class="crit' + (off ? ' off' : '') + (zero ? ' zero' : '') + '" data-crit="' + cr.key + '"' +
+          (zero ? ' title="Vikt 0 – räknas inte"' : '') + '>' +
+          '<input type="checkbox" class="crit-on" data-crit-on="' + cr.key + '"' + (off ? '' : ' checked') +
+          ' title="' + (off ? 'Tänd' : 'Släck') + ' kriteriet" aria-label="' + esc(cr.label) + ' på/av">' +
+          '<input class="crit-name" data-bind="criteria.' + cr.key + '.namn" data-kind="text" placeholder="' + esc(cr.label) +
+          '" value="' + esc(state.criteria[cr.key].namn) + '" aria-label="Namn på ' + esc(cr.label) + '">' +
+          '<span class="crit-w">×' + field('weights.' + cr.key, 'num', '', ' type="number" min="0" step="1" aria-label="Vikt"') + '</span>' +
+          '</div>';
       }).join('') + '</div>' +
-      '<div class="form" style="margin:12px 0 0"><label>Namn på eget kriterium 1' + field('params.eget1Namn', 'text') + '</label>' +
-      '<label>Namn på eget kriterium 2' + field('params.eget2Namn', 'text') + '</label></div>' +
       '</section>' +
       '<div class="toolbar"><label><input type="checkbox" id="chk-archive"' + (showArchive ? ' checked' : '') + '> Visa arkiv</label></div>' +
       '<div id="eval-table"></div>';
@@ -299,7 +331,7 @@
     var rows = sortByRank(r.rows.filter(function (x) { return showArchive || !x.c.arkiv; }));
     var el = document.getElementById('eval-table');
     if (!rows.length) { el.innerHTML = '<div class="empty">Inga lägenheter att utvärdera ännu.</div>'; return; }
-    var crit = C.CRITERIA.filter(function (cr) { return (C.num(state.weights[cr.key]) || 0) > 0; });
+    var crit = C.CRITERIA.filter(function (cr) { return C.weightOf(state, cr.key) > 0; });
     var head = '<tr><th>Lägenhet</th><th>Rang</th><th>Total</th><th>Pris</th><th>Lån</th><th>Boendekostn./mån</th>' +
       crit.map(function (cr) { return '<th title="Vikt ' + state.weights[cr.key] + '">' + esc(critLabel(cr)) + ' ×' + state.weights[cr.key] + '</th>'; }).join('') + '</tr>';
     var body = rows.map(function (x) {
@@ -403,7 +435,7 @@
       '<li><b>Trappor:</b> 0 = 5, 1 = 4, 2 = 3, 3 = 2, 4+ = 1. Räknas inte alls om huset har hiss.</li>' +
       '<li><b>Gångtider</b> (grönområde, matbutik, T-bana, Vallentuna, Dramaten/City): enligt skalan ovan.</li>' +
       '<li><b>Egna kriterier:</b> du sätter 1–5 direkt.</li>' +
-      '<li><b>Total:</b> viktat medelvärde av poängen. Tomma kriterier räknas inte. Rang 1 = högst total.</li></ul>' +
+      '<li><b>Total:</b> viktat medelvärde av poängen. Tomma, släckta och 0-viktade kriterier räknas inte. Rang 1 = högst total.</li></ul>' +
       '<h2 style="margin-top:20px">Köpkalkyl</h2><ul>' +
       '<li>Lån = pris − kontantinsats. Belåningsgrad = lån / pris; varning över bolånetaket.</li>' +
       '<li>Amortering: 2 % över 70 % belåning, 1 % över 50 %, plus 1 % om lånet är över 4,5 × bruttoinkomsten (om skärpt krav är påslaget).</li>' +
@@ -411,7 +443,7 @@
       '<li>Betalar/mån = ränta + amortering + avgift + underhåll. Verklig kostnad = ränta − ränteavdrag + avgift + underhåll.</li>' +
       '<li>Köpa, full kostnad = verklig kostnad + alternativkostnad för kapitalet − förväntad värdeökning. Jämförs mot hyran.</li></ul>' +
       '<h2 style="margin-top:20px">Anmärkningar &amp; begränsningar</h2><ul>' +
-      '<li>Pris, handpenning och lånebelopp mäter i praktiken samma sak. Handpenningen är densamma för alla lägenheter och ger därför alltid 3 poäng; lånebeloppet följer priset exakt. Med vikt på alla tre dubbelräknas priset – sätt lån och handpenning till 0 om du inte vill det.</li>' +
+      '<li>Pris, handpenning och lånebelopp mäter i praktiken samma sak. Handpenningen är densamma för alla lägenheter och ger därför alltid 3 poäng; lånebeloppet följer priset exakt. Med vikt på alla tre dubbelräknas priset – släck lån och handpenning om du inte vill det.</li>' +
       '<li>Min–max-normaliseringen är relativ: ett objekts poäng beror på vilka andra objekt som finns i listan.</li>' +
       '<li>Vallentuna, vatten och Dramaten drar geografiskt åt olika håll. Den verkliga avvägningen görs i vikterna.</li>' +
       '<li>Skillnader mot Excel-filen: kontantinsatsen hämtas från kapitalberäkningen (Excel hade ett separat, hårdkodat belopp på fliken Utvärdering), alternativkostnaden räknas bara på kapital som faktiskt binds i lägenheten, och antalet lägenheter är inte begränsat till 5 + 10.</li>' +
@@ -425,6 +457,7 @@
       b.classList.toggle('active', b.getAttribute('data-tab') === tab);
     });
     if (tab === 'sim') { v.innerHTML = renderSim(); updateSimOutputs(); }
+    else if (tab === 'sold') { v.innerHTML = renderSold(); updateSimOutputs(); }
     else if (tab === 'apts') v.innerHTML = renderApts();
     else if (tab === 'eval') { v.innerHTML = renderEval(); renderEvalTable(); }
     else if (tab === 'inv') { v.innerHTML = renderInv(); renderInvTables(); }
@@ -434,10 +467,14 @@
   document.getElementById('tabs').addEventListener('click', function (e) {
     var b = e.target.closest('button[data-tab]');
     if (!b) return;
-    tab = b.getAttribute('data-tab');
+    showTab(b.getAttribute('data-tab'));
+  });
+  function showTab(name) {
+    tab = name;
     try { sessionStorage.setItem('ettor-tab', tab); } catch (err) { /* ignoreras */ }
     render();
-  });
+    window.scrollTo(0, 0);
+  }
 
   var view = document.getElementById('view');
   view.addEventListener('input', function (e) {
@@ -445,8 +482,12 @@
     if (t.hasAttribute('data-bind')) {
       setPath(t.getAttribute('data-bind'), fromInput(t.value, t.getAttribute('data-kind')));
       save();
-      if (tab === 'sim') updateSimOutputs();
-      if (tab === 'eval') renderEvalTable();
+      if (tab === 'sim' || tab === 'sold') updateSimOutputs();
+      if (tab === 'eval') {
+        var box = t.closest('.crit');
+        if (box && /^weights\./.test(t.getAttribute('data-bind'))) box.classList.toggle('zero', !(C.num(t.value) > 0));
+        renderEvalTable();
+      }
     }
   });
   view.addEventListener('change', function (e) {
@@ -458,8 +499,12 @@
     } else if (t.id === 'chk-archive') {
       showArchive = t.checked;
       renderEvalTable();
-    } else if (t.hasAttribute('data-bind') && tab === 'eval' && /Namn$/.test(t.getAttribute('data-bind'))) {
-      render();
+    } else if (t.hasAttribute('data-crit-on')) {
+      state.criteria[t.getAttribute('data-crit-on')].av = !t.checked;
+      t.closest('.crit').classList.toggle('off', !t.checked);
+      t.title = (t.checked ? 'Släck' : 'Tänd') + ' kriteriet';
+      save();
+      renderEvalTable();
     } else if (t.hasAttribute('data-inv')) {
       var f = state.invoices[+t.getAttribute('data-inv')], k = t.getAttribute('data-k');
       var kind = t.getAttribute('data-kind');
@@ -479,10 +524,15 @@
     }
   });
   view.addEventListener('click', function (e) {
+    var g = e.target.closest('[data-goto]');
+    if (g) { e.preventDefault(); showTab(g.getAttribute('data-goto')); return; }
     var t = e.target.closest('[data-act]');
     if (!t) return;
     var act = t.getAttribute('data-act');
-    if (act === 'add-apt') openApt(null);
+    if (act === 'crit-all-on' || act === 'crit-all-off') {
+      C.CRITERIA.forEach(function (cr) { state.criteria[cr.key].av = act === 'crit-all-off'; });
+      save(); render();
+    } else if (act === 'add-apt') openApt(null);
     else if (act === 'edit-apt') { e.preventDefault(); openApt(t.getAttribute('data-id')); }
     else if (act === 'add-inv') {
       state.invoices.push({ id: uid(), nr: '', datum: new Date().toISOString().slice(0, 10), forfallo: '', leverantor: '',

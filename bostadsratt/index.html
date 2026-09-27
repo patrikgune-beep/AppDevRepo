@@ -82,9 +82,16 @@
   .bar{display:flex;align-items:center;gap:8px;justify-content:flex-end}
   .bar span.track{width:80px;height:8px;background:var(--bar-bg);border-radius:4px;overflow:hidden}
   .bar span.fill{display:block;height:100%;background:var(--bar)}
-  .weights{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
-  .weights label{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:13px;background:var(--chip);border-radius:6px;padding:4px 8px}
-  .weights input{width:52px;text-align:right;padding:3px 6px}
+  .crits{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+  .crit{display:flex;align-items:center;gap:8px;background:var(--chip);border-radius:8px;padding:6px 8px}
+  .crit .crit-on{width:18px;height:18px;flex:0 0 auto;accent-color:var(--accent);cursor:pointer}
+  .crit .crit-name{flex:1;min-width:0;background:var(--card);border-color:var(--line)}
+  .crit .crit-w{display:flex;align-items:center;gap:2px;color:var(--muted);font-size:13px}
+  .crit .crit-w input{width:52px;text-align:right;padding:4px 6px}
+  .crit.off{opacity:.45}
+  .crit.off .crit-name{text-decoration:line-through}
+  .crit.zero:not(.off) .crit-name{color:var(--muted)}
+  .form label.off{opacity:.5}
   dialog{border:0;border-radius:12px;padding:0;width:min(720px,calc(100vw - 32px));max-height:calc(100vh - 32px);background:var(--card);color:var(--ink)}
   dialog::backdrop{background:rgba(0,0,0,.45)}
   .dlg-head{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card);z-index:1}
@@ -119,6 +126,7 @@
     <input type="file" id="file-import" accept="application/json" hidden />
   </div>
   <nav id="tabs">
+    <button data-tab="sold">Sålda lägenheter</button>
     <button data-tab="sim" class="active">Kapital &amp; antaganden</button>
     <button data-tab="apts">Lägenheter</button>
     <button data-tab="eval">Utvärdering</button>
