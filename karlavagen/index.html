@@ -158,10 +158,50 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
   "project": { "name": "Karlavägen 71", "projnr": "P2079", "apartment": "1502" },
 
   "budget": {
-    "received": false,
-    "source": "",
-    "note": "Budgetofferten har inte kommit in ännu. Beloppen läggs in per arbetsmoment (exkl. moms) när offerten är inläst.",
-    "items": {}
+    "received": true,
+    "source": "Offert D2053-1, Thessén & Ek, 2026-04-28",
+    "vatIncluded": true,
+    "rot": 200000,
+    "note": "Offertens belopp är inkl. moms och uppskattade. Arbetet utförs på löpande räkning.",
+    "posts": [
+      { "name": "Rivningsarbeten", "amount": 198750, "incl": "Rivning kök, wc, innerväggar, matta och parkett. 2 nya dörrhål. Spårning för el, 32 h." },
+      { "name": "Byggnadsarbeten", "amount": 387500, "incl": "Täckning, nya väggar, socklar, 6 innerdörrar, bastupanel, montering kök och glaspartier." },
+      { "name": "Målningsarbeten", "amount": 365000, "incl": "Lagning av spår, spackling och målning av tak, väggar, fönster och snickerier. Jotun." },
+      { "name": "Plattarbeten", "amount": 202500, "incl": "Hall, badrum och bastu: spackling, tätskikt, sättning och fogning." },
+      { "name": "Rörarbeten", "amount": 140000, "incl": "Demontering, flytt av avlopp, 2 brunnar, tappvatten kök och bad." },
+      { "name": "Elarbeten", "amount": 314250, "incl": "Demontering, omdragning, golvvärme, bastu, spotlights, Plejd, Renova." },
+      { "name": "Parkettarbeten", "amount": 200000, "incl": "Ny fiskbensparkett, slipning och hårdvaxolja, 6 trösklar." },
+      { "name": "Putsarbeten", "amount": 70000, "incl": "Putslagningar efter rivning, schablon." },
+      { "name": "Ventilationsarbeten", "amount": 28750, "incl": "Kök och badrum, schablon." },
+      { "name": "Allmänna kostnader", "amount": 209250, "incl": "Transporter, kranlyft, arbetsledning, materialhantering, förbrukningsmaterial, etablering." },
+      { "name": "Sophantering", "amount": 76250, "incl": "Big Bag, sorterat." },
+      { "name": "Badrum, bastu & sten (schablon)", "amount": 200000, "incl": "Schablon för inredning och sten." },
+      { "name": "Kök, vitvaror & stenskivor (schablon)", "amount": 750000, "incl": "Schablon." },
+      { "name": "Utanför offerten", "amount": 0, "incl": "Arkitekt och konstruktör. Offerten undantar arkitekt, KA och besiktning." }
+    ],
+    "slagToPost": {
+      "Arbetsledning": "Allmänna kostnader",
+      "Förbrukningsmaterial": "Allmänna kostnader",
+      "Transport & frakt": "Allmänna kostnader",
+      "Servicebil & parkering": "Allmänna kostnader",
+      "Maskin- & verktygshyra": "Allmänna kostnader",
+      "Försäkring & avgifter": "Allmänna kostnader"
+    },
+    "momentToPost": {
+      "Rivning": "Rivningsarbeten",
+      "Rivning undergolv": "Rivningsarbeten",
+      "Undergolv – regling & skivor": "Byggnadsarbeten",
+      "Avfall & bortforsling": "Sophantering",
+      "Arbetsledning": "Allmänna kostnader",
+      "Projektering (arkitekt)": "Utanför offerten",
+      "Konstruktion": "Utanför offerten"
+    },
+    "rates": [
+      { "what": "Snickare / målare", "offer": 650, "billed": 650, "note": "520 kr/h exkl. moms" },
+      { "what": "Arbetsledare", "offer": 875, "billed": 850, "note": "Fakturerat 680 kr/h exkl. moms, offert 700" },
+      { "what": "Bil per dag", "offer": 625, "billed": 625, "note": "500 kr/dag exkl. moms" },
+      { "what": "Påslag material och UE", "offer": "12 %", "billed": "12 %", "note": "Kontrollerat på alla underlag" }
+    ]
   },
 
   "moments": [
@@ -170,7 +210,8 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     "Undergolv – regling & skivor",
     "Avfall & bortforsling",
     "Arbetsledning",
-    "Projektering (arkitekt)"
+    "Projektering (arkitekt)",
+    "Konstruktion"
   ],
   "slag": [
     "Arbete", "Arbetsledning", "Arvode", "Material", "Förbrukningsmaterial",
@@ -180,7 +221,7 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
 
   "suppliers": [
     { "id": "thessen", "name": "Thessén & Ek Byggentreprenad AB", "short": "Thessén & Ek", "role": "Huvudentreprenör", "orgnr": "556818-1092", "contact": "Alexander Thessén" },
-    { "id": "arkitekt", "name": "Viktor Erlandsson & Artefacts AB", "short": "Arkitekt V. Erlandsson", "role": "Arkitekt", "orgnr": "559014-3391", "contact": "Viktor Erlandsson" }
+    { "id": "arkitekt", "name": "Viktor Erlandsson & Artefacts AB", "short": "Arkitekt V. Erlandsson", "role": "Arkitekt · tidigare STR Design AB, samma org.nr", "orgnr": "559014-3391", "contact": "Viktor Erlandsson" }
   ],
 
   "invoices": [
@@ -193,6 +234,14 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
         { "text": "P-avgift röd zon", "qty": 16, "unit": "h", "price": 28, "amount": 448, "moment": "Arbetsledning", "slag": "Servicebil & parkering" },
         { "ue": "HW-33849", "text": "Hard Workers of Sweden AB, 33849", "amount": 103045.60 },
         { "ue": "HW-33857", "text": "Hard Workers of Sweden AB, 33857", "amount": 53849.60 }
+      ]
+    },
+    {
+      "id": "132355", "supplier": "thessen", "nr": "132355", "date": "2026-08-31", "due": "2026-09-10",
+      "kind": "ÄTA", "project": "Karlavägen 71, ÄTA 1 – Diverse tillkommande arbeten",
+      "exMoms": 4312.56, "moms": 1078.14, "rounding": 0.30, "rot": 0, "toPay": 5391,
+      "lines": [
+        { "ue": "EN-514", "text": "Engblom Konstruktion AB – konstruktör, 0000514", "amount": 4312.56 }
       ]
     },
     {
@@ -239,10 +288,33 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
       "lines": [
         { "text": "Arkitektarvode juli", "desc": "Listpris 1 512 kr/h, rabatt 40 % → 907,20 kr/h", "qty": 19, "unit": "h", "price": 907.20, "amount": 17236.80, "moment": "Projektering (arkitekt)", "slag": "Arvode" }
       ]
+    },
+    {
+      "id": "9248", "supplier": "arkitekt", "nr": "9248", "date": "2026-08-15", "due": "2026-08-30",
+      "kind": "Grund", "project": "Arkitektarvode – juni, juli (utställd som STR Design AB)",
+      "exMoms": 19958.40, "moms": 4989.60, "rounding": 0, "rot": 0, "toPay": 24948,
+      "lines": [
+        { "text": "Arkitektarvode juni, juli", "desc": "Listpris 1 512 kr/h, rabatt 40 % → 907,20 kr/h", "qty": 22, "unit": "h", "price": 907.20, "amount": 19958.40, "moment": "Projektering (arkitekt)", "slag": "Arvode" }
+      ]
+    },
+    {
+      "id": "9257", "supplier": "arkitekt", "nr": "9257", "date": "2026-09-07", "due": "2026-09-22",
+      "kind": "Grund", "project": "Arkitektarvode – augusti",
+      "exMoms": 22680, "moms": 5670, "rounding": 0, "rot": 0, "toPay": 28350,
+      "lines": [
+        { "text": "Arkitektarvode augusti", "desc": "Listpris 1 512 kr/h, rabatt 40 % → 907,20 kr/h", "qty": 25, "unit": "h", "price": 907.20, "amount": 22680, "moment": "Projektering (arkitekt)", "slag": "Arvode" }
+      ]
     }
   ],
 
   "ue": [
+    {
+      "id": "EN-514", "vendor": "Engblom Konstruktion AB", "short": "Engblom (konstruktör)", "nr": "0000514", "date": "2026-08-31",
+      "period": "Augusti", "desc": "Platsbesök, relationshandlingar och konstruktionsstöd för bärande väggar.", "rounding": 0.50,
+      "lines": [
+        { "text": "Konstruktör", "qty": 3.5, "unit": "tim", "price": 1100, "amount": 3850, "moment": "Konstruktion", "slag": "Arvode" }
+      ]
+    },
     {
       "id": "HW-33849", "vendor": "Hard Workers of Sweden AB", "short": "Hard Workers", "nr": "33849", "date": "2026-08-20",
       "period": "6/8–14/8", "desc": "Intäckning. Rivning av slaggväggar enligt ÖK, inredning och pentry, matta.", "rounding": 0,
@@ -345,13 +417,16 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
   ],
 
   "checks": [
-    { "level": "warn", "title": "Budgetofferten saknas", "text": "Jämförelsen mot budget är tom tills offerten läses in." },
-    { "level": "info", "title": "12 % påslag på allt vidarefakturerat", "text": "Thessén lägger exakt 12 % på varje underleverantörsfaktura och på materialet. Totalt 30 387 kr hittills. Kontrollera att det stämmer med avtalat påslag i offerten." },
-    { "level": "warn", "title": "Beijer 260980851828 är delad mellan ÄTA och grund", "text": "Fakturan (18 254 kr exkl. moms) är vidarefakturerad med 14 496,87 kr på ÄTA-fakturan 132388 och 5 947,20 kr på 132387. Summan stämmer på öret, men det framgår inte vilka rader som är grund. Fråga Thessén." },
-    { "level": "warn", "title": "HLL-fakturorna är märkta P1079", "text": "Projektet heter P2079. Troligen ett skrivfel hos HLL, men bekräfta att hyran av luftrenare hör till Karlavägen." },
-    { "level": "info", "title": "P-avgift 28 kr/h på första fakturan", "text": "132354 debiterar 28 kr/h, senare fakturor 25 kr/h. Skillnad 48 kr." },
-    { "level": "info", "title": "Timpriser", "text": "Hard Workers 430 kr/h, 481,60 kr/h med påslag. Thesséns egen personal 520 kr/h, arbetsledning 680 kr/h, arkitekt 907,20 kr/h efter 40 % rabatt." },
-    { "level": "info", "title": "ROT-avdrag", "text": "50 000 kr är avdraget på faktura 132354. Det är taket för en person per år. Ytterligare ROT kräver en till person som äger bostaden." }
+    {"level": "warn", "title": "Rivningen ligger på 112 % av offertposten", "text": "222 138 kr inkl. moms mot offertens 198 750 kr. Rivning enligt grundofferten ligger på 170 366 kr (86 %). Det är ÄTA-rivningen av undergolvet, 51 772 kr, som tar posten över. Spårning för el (32 h) och 2 dörrhål ingår i posten. Om de inte är gjorda än ökar överskridandet."},
+    {"level": "warn", "title": "Allmänna kostnader är till 47 % förbrukade", "text": "97 354 kr av 209 250 kr inkl. moms, fast bara rivning och undergolv är gjorda. Ungefär hälften, 50 400 kr, är Hard Workers förbrukningsmaterial, servicebil, parkering och sågar. Resten är främst arbetsledning, frakter och luftrenare. Fortsätter takten räcker posten inte hela projektet. Ta upp det med Thessén."},
+    {"level": "warn", "title": "Juli finns på två arkitektfakturor", "text": "9248 gäller juni och juli (22 h) och 9256 gäller juli (19 h). Det kan vara olika timmar, men be om tidrapporten så att inga timmar är dubbelfakturerade."},
+    {"level": "warn", "title": "150 000 kr ROT-avdrag är inte utnyttjat", "text": "Offerten räknar med −200 000 kr i ROT (två personer, 2026 och 2027). Bara faktura 132354 har ROT-avdrag, 50 000 kr. Fakturorna 132387, 132370 och 132388 innehåller arbetskostnad men har inget avdrag. Kontrollera med Thessén att den andra personens ROT används för 2026."},
+    {"level": "info", "title": "Arkitekt och konstruktör ligger utanför offerten", "text": "80 234 kr inkl. moms hittills: arkitekt 74 844 kr (66 h) och konstruktör Engblom 5 391 kr. Offerten undantar arkitekt och övriga konsulter, så de kostnaderna tillkommer."},
+    {"level": "info", "title": "12 % påslag stämmer med offerten", "text": "Thessén lägger exakt 12 % på varje underleverantör och på material, som avtalat. Totalt 30 849 kr exkl. moms hittills. Timpriserna följer offerten. Arbetsledning faktureras 680 kr/h mot offertens 700 kr/h, alltså till din fördel."},
+    {"level": "warn", "title": "Beijer 260980851828 är delad mellan ÄTA och grund", "text": "Fakturan (18 254 kr exkl. moms) är vidarefakturerad med 14 496,87 kr på ÄTA-fakturan 132388 och 5 947,20 kr på 132387. Summan stämmer på öret, men det framgår inte vilka rader som är grund. Fråga Thessén."},
+    {"level": "warn", "title": "HLL-fakturorna är märkta P1079", "text": "Projektet heter P2079. Troligen ett skrivfel hos HLL, men bekräfta att hyran av luftrenare hör till Karlavägen."},
+    {"level": "info", "title": "Arkitektfaktura 9248 är utställd av STR Design AB", "text": "Det är samma org.nr (559014-3391) som Viktor Erlandsson & Artefacts AB. Troligen har bolaget bytt namn. Fakturan är lagd under samma leverantör."},
+    {"level": "info", "title": "P-avgift 28 kr/h på första fakturan", "text": "132354 debiterar 28 kr/h, senare fakturor 25 kr/h. Skillnad 48 kr."}
   ]
 }
 </script>
@@ -401,12 +476,19 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
       rows.push({ supplier:'thessen', source:u.short, ue:u.id, inv:invs, kind:kinds, text:l.text, desc:l.desc, qty:l.qty, unit:l.unit, price:l.price,
         amount:l.amount, moment:l.moment, slag:l.slag });
       rows.push({ supplier:'thessen', source:u.short, ue:u.id, inv:invs, kind:kinds, paslag:true, text:'Påslag på '+l.text,
-        amount: u.markup*share, moment:l.moment, slag:'Påslag UE (12 %)' });
+        amount: u.markup*share, moment:l.moment, slag:'Påslag UE (12 %)', baseSlag:l.slag });
     });
     if(u.rounding){
       rows.push({ supplier:'thessen', source:u.short, ue:u.id, inv:invs, kind:kinds, text:'Öresavrundning', amount:u.rounding, moment:u.lines[0].moment, slag:'Försäkring & avgifter' });
     }
   });
+
+  var B = D.budget;
+  function postFor(r){
+    var s = r.baseSlag || r.slag;
+    return (B.slagToPost && B.slagToPost[s]) || (B.momentToPost && B.momentToPost[r.moment]) || 'Ej kopplad';
+  }
+  rows.forEach(function(r){ r.post = postFor(r); });
 
   function sum(list){ return list.reduce(function(a,r){return a+r.amount;},0); }
   function groupSum(list,key){ var m={}; list.forEach(function(r){ m[r[key]]=(m[r[key]]||0)+r.amount; }); return m; }
@@ -440,7 +522,8 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
   }).join('');
   nav.addEventListener('click',function(e){ var b=e.target.closest('button[data-tab]'); if(b) show(b.dataset.tab); });
 
-  var current;
+  var current, vatMode = 'inkl';
+  try{ vatMode = localStorage.getItem('kv71-vat') || 'inkl'; }catch(e){}
   function show(id){
     if(!tabs.some(function(t){return t.id===id;})) id='sammanstallning';
     current=id;
@@ -451,18 +534,23 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     else view.innerHTML = renderSupplier(id.slice(4));
     try{ localStorage.setItem('kv71-tab', id); }catch(e){}
     if(id==='detaljer') bindDetails();
+    if(id==='sammanstallning') view.querySelectorAll('[data-vat]').forEach(function(c){
+      c.addEventListener('click',function(){ vatMode=c.dataset.vat; try{localStorage.setItem('kv71-vat',vatMode);}catch(e){} show('sammanstallning'); });
+    });
   }
 
   /* ---------- Sammanställning ---------- */
   function renderSummary(){
-    var b = D.budget, hasBudget = b.received && Object.keys(b.items).length>0;
-    var budgetTot = hasBudget ? Object.keys(b.items).reduce(function(a,k){return a+b.items[k];},0) : null;
-    var byMoment = groupSum(rows,'moment');
-    var moments = D.moments.slice();
-    Object.keys(byMoment).forEach(function(m){ if(moments.indexOf(m)<0) moments.push(m); });
-    if(hasBudget) Object.keys(b.items).forEach(function(m){ if(moments.indexOf(m)<0) moments.push(m); });
-    var maxV = Math.max.apply(null, moments.map(function(m){ return Math.max(byMoment[m]||0, hasBudget?(b.items[m]||0):0); }).concat([1]));
-
+    var b = B, hasBudget = b.received && b.posts && b.posts.length>0;
+    var inkl = vatMode==='inkl';
+    var bf = b.vatIncluded ? (inkl?1:1/1.25) : (inkl?1.25:1);   // offer → display
+    var af = inkl ? 1.25 : 1;                                   // actual (exkl.) → display
+    var byPost = groupSum(rows,'post');
+    var posts = hasBudget ? b.posts.map(function(p){return p.name;}) : [];
+    Object.keys(byPost).forEach(function(p){ if(posts.indexOf(p)<0) posts.push(p); });
+    var budgetOf = {}; if(hasBudget) b.posts.forEach(function(p){ budgetOf[p.name]=p.amount; });
+    var inclOf = {}; if(hasBudget) b.posts.forEach(function(p){ inclOf[p.name]=p.incl; });
+    var budgetTot = hasBudget ? b.posts.reduce(function(a,p){return a+p.amount;},0) : null; // as stated in offer
     var ata = D.invoices.filter(function(i){return i.kind==='ÄTA';}).reduce(function(a,i){return a+i.exMoms;},0);
 
     var h = '<section class="panel">';
@@ -470,28 +558,45 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
       h += '<div class="banner"><div><p><b>Budget saknas.</b> '+esc(b.note)+'</p></div></div>';
     }
     h += '<div class="kpis">'+
-      kpi('Fakturerat exkl. moms', kr(totEx), 'varav ÄTA '+kr(ata)) +
-      kpi('Fakturerat inkl. moms', kr(totInkl), 'moms '+kr(totMoms)) +
-      kpi('ROT-avdrag', '−'+kr(totRot), 'på faktura 132354') +
+      kpi('Fakturerat inkl. moms', kr(totInkl), 'exkl. moms '+kr(totEx)+' · varav ÄTA '+kr(ata*1.25)+' inkl.') +
+      (hasBudget ? kpi('Offert inkl. moms', kr(budgetTot), 'före ROT · '+esc(b.source.split(',')[0])) : kpi('Budget','Saknas','skicka offerten i chatten','missing')) +
+      (hasBudget ? kpi('Förbrukat av offerten', fmt0.format(totInkl/budgetTot*100)+' %', 'kvar '+kr(budgetTot-totInkl)+' inkl. moms') : '') +
+      kpi('ROT-avdrag', '−'+kr(totRot), (hasBudget&&b.rot? 'offerten räknar med −'+kr(b.rot) : 'på faktura 132354')) +
       kpi('Att betala totalt', kr(totPay), 'efter ROT, inkl. moms') +
-      (hasBudget
-        ? kpi('Kvar av budget', kr(budgetTot-totEx), fmt0.format(totEx/budgetTot*100)+' % förbrukat', '')
-        : kpi('Budget', 'Saknas', 'skicka offerten i chatten', 'missing')) +
       '</div>';
 
-    // Budget vs utfall
-    h += '<div class="block"><div class="head"><h2>Budget mot utfall per arbetsmoment</h2><span class="muted">exkl. moms, inkl. påslag</span></div>'+
-      '<div class="card scroll"><table><thead><tr><th>Arbetsmoment</th><th class="n">Budget</th><th class="n">Utfall</th><th class="n">Avvikelse</th><th style="width:28%">Andel av utfall</th></tr></thead><tbody>';
-    moments.forEach(function(m){
-      var v = byMoment[m]||0, bv = hasBudget ? (b.items[m]||0) : null;
-      if(!v && !bv) return;
-      var diff = bv==null ? null : v-bv;
-      h += '<tr><td>'+esc(m)+'</td><td class="n">'+(bv==null?'<span class="faint">—</span>':kr(bv))+'</td><td class="n">'+kr(v)+'</td>'+
-        '<td class="n">'+(diff==null?'<span class="faint">—</span>':'<span class="'+(diff>0?'diff-pos':'diff-neg')+'">'+(diff>0?'+':'−')+kr(Math.abs(diff))+'</span>')+'</td>'+
-        '<td><div class="bar" title="'+fmt0.format(v/totEx*100)+' %"><i style="width:'+(v/maxV*100).toFixed(1)+'%"></i></div></td></tr>';
+    // Offert mot utfall
+    h += '<div class="block"><div class="head"><div><h2>Offert mot utfall per offertpost</h2><p class="muted" style="margin:4px 0 0;font-size:13px">'+esc(b.source||'')+'. Påslaget räknas på samma post som raden det hör till.</p></div>'+
+      '<div class="filters" role="group" aria-label="Moms"><button class="chip" data-vat="inkl" aria-pressed="'+inkl+'">Inkl. moms</button><button class="chip" data-vat="exkl" aria-pressed="'+(!inkl)+'">Exkl. moms</button></div></div>'+
+      '<div class="card scroll"><table><thead><tr><th>Offertpost</th><th class="n">Offert</th><th class="n">Utfall</th><th class="n">Kvar</th><th style="width:24%">Förbrukat</th></tr></thead><tbody>';
+    var sumB=0, sumA=0;
+    posts.forEach(function(p){
+      var a = (byPost[p]||0)*af, bv = budgetOf[p]!=null ? budgetOf[p]*bf : null;
+      sumA += a; if(bv) sumB += bv;
+      var left = bv==null ? null : bv - a;
+      var pct = bv ? a/bv*100 : (a>0?Infinity:0);
+      var over = pct>100;
+      var barW = Math.min(pct,100);
+      h += '<tr><td>'+esc(p)+(inclOf[p]?'<span class="desc">'+esc(inclOf[p])+'</span>':'')+'</td>'+
+        '<td class="n">'+(bv==null?'<span class="faint">—</span>':kr(bv))+'</td>'+
+        '<td class="n">'+(a?kr(a):'<span class="faint">0</span>')+'</td>'+
+        '<td class="n">'+(left==null?'<span class="faint">—</span>':'<span class="'+(left<0?'diff-pos':'')+'">'+(left<0?'−'+kr(-left):kr(left))+'</span>')+'</td>'+
+        '<td><div style="display:flex;gap:8px;align-items:center"><div class="bar" style="flex:1"><i style="width:'+barW.toFixed(1)+'%;'+(over?'background:var(--bad)':'')+'"></i></div><span class="num '+(over?'diff-pos':'faint')+'" style="min-width:44px">'+(isFinite(pct)?fmt0.format(pct)+' %':(a?'utanför':''))+'</span></div></td></tr>';
     });
-    h += '<tr class="total"><td>Totalt</td><td class="n">'+(hasBudget?kr(budgetTot):'—')+'</td><td class="n">'+kr(rowsTotal)+'</td><td class="n">'+(hasBudget?kr(rowsTotal-budgetTot):'—')+'</td><td></td></tr>';
-    h += '</tbody></table></div></div>';
+    h += '<tr class="total"><td>Totalt</td><td class="n">'+(hasBudget?kr(sumB):'—')+'</td><td class="n">'+kr(sumA)+'</td><td class="n">'+(hasBudget?kr(sumB-sumA):'—')+'</td><td class="num">'+(hasBudget?fmt0.format(sumA/sumB*100)+' %':'')+'</td></tr>';
+    if(hasBudget && b.rot){
+      h += '<tr><td>ROT-avdrag</td><td class="n">−'+kr(b.rot)+'</td><td class="n">−'+kr(totRot)+'</td><td class="n">'+kr(b.rot-totRot)+' outnyttjat</td><td></td></tr>';
+    }
+    h += '</tbody></table></div>';
+    if(hasBudget && b.rates){
+      h += '<div class="card scroll"><table><thead><tr><th>Avtalat pris</th><th class="n">Offert</th><th class="n">Fakturerat</th><th>Kommentar</th></tr></thead><tbody>';
+      b.rates.forEach(function(r){
+        var ok = typeof r.offer==='number' ? r.billed<=r.offer : r.billed===r.offer;
+        h += '<tr><td>'+esc(r.what)+'</td><td class="n">'+(typeof r.offer==='number'?kr(r.offer)+'/'+(r.what.indexOf('dag')>0?'dag':'h'):esc(r.offer))+'</td><td class="n">'+(typeof r.billed==='number'?kr(r.billed):esc(r.billed))+'</td><td><span class="tag '+(ok?'ok':'bad')+'">'+(ok?'OK':'Över')+'</span> <span class="muted">'+esc(r.note)+'</span></td></tr>';
+      });
+      h += '</tbody></table></div><p class="faint" style="margin:0;font-size:12.5px">Timpriserna i offerten är inkl. moms.</p>';
+    }
+    h += '</div>';
 
     // Per leverantör + per kostnadsslag
     var bySource = groupSum(rows.filter(function(r){return !r.paslag;}),'source');
@@ -594,7 +699,7 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
   function renderDetails(){
     var list = detailFilter==='Alla' ? rows : rows.filter(function(r){return r.moment===detailFilter;});
     var tot = sum(list);
-    var sources = [OWN,'Hard Workers','Beijer','HLL','Sortera / Big Bag','Arkitekt V. Erlandsson'];
+    var sources = [OWN,'Hard Workers','Beijer','HLL','Sortera / Big Bag','Engblom (konstruktör)','Arkitekt V. Erlandsson'];
     rows.forEach(function(r){ if(sources.indexOf(r.source)<0) sources.push(r.source); });
     sources = sources.filter(function(s){ return list.some(function(r){return r.source===s;}); });
 
@@ -632,14 +737,14 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
         var sr = sl.filter(function(r){return r.source===src;});
         var isUE = sr.some(function(r){return r.ue;});
         h += '<div class="card"><div style="padding:12px 14px 4px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><h3>'+esc(src)+' '+(isUE?'<span class="tag ue">Underleverantör</span>':'')+'</h3><span class="num"><b>'+kr(sum(sr))+'</b></span></div>';
-        h += '<div class="scroll"><table><thead><tr><th>Rad</th><th>Faktura</th><th>Arbetsmoment</th><th>Kostnadsslag</th><th class="n">Antal</th><th class="n">Belopp</th></tr></thead><tbody>';
+        h += '<div class="scroll"><table><thead><tr><th>Rad</th><th>Faktura</th><th>Arbetsmoment</th><th>Kostnadsslag</th><th>Offertpost</th><th class="n">Antal</th><th class="n">Belopp</th></tr></thead><tbody>';
         var byUe = {};
         sr.forEach(function(r){
           if(r.paslag){ var k=r.ue; byUe[k]=(byUe[k]||0)+r.amount; return; }
-          h += '<tr><td>'+esc(r.text)+(r.desc?'<span class="desc">'+esc(r.desc)+'</span>':'')+'</td><td class="faint">'+esc(r.ue?ueById[r.ue].nr+' → '+r.inv:r.inv)+'</td><td>'+esc(r.moment)+'</td><td>'+esc(r.slag)+'</td><td class="n">'+(r.qty!=null?fmt2.format(r.qty).replace(/,00$/,'')+' '+esc(r.unit||''):'')+'</td><td class="n">'+k2(r.amount)+'</td></tr>';
+          h += '<tr><td>'+esc(r.text)+(r.desc?'<span class="desc">'+esc(r.desc)+'</span>':'')+'</td><td class="faint">'+esc(r.ue?ueById[r.ue].nr+' → '+r.inv:r.inv)+'</td><td>'+esc(r.moment)+'</td><td>'+esc(r.slag)+'</td><td class="faint">'+esc(r.post)+'</td><td class="n">'+(r.qty!=null?fmt2.format(r.qty).replace(/,00$/,'')+' '+esc(r.unit||''):'')+'</td><td class="n">'+k2(r.amount)+'</td></tr>';
         });
         Object.keys(byUe).forEach(function(k){
-          h += '<tr class="paslag"><td>Påslag Thessén 12 % på '+esc(ueById[k].nr)+'</td><td class="faint">→ '+esc(ueById[k].billedIn.map(function(b){return b.inv;}).join(', '))+'</td><td></td><td>Påslag UE (12 %)</td><td></td><td class="n">'+k2(byUe[k])+'</td></tr>';
+          h += '<tr class="paslag"><td>Påslag Thessén 12 % på '+esc(ueById[k].nr)+'</td><td class="faint">→ '+esc(ueById[k].billedIn.map(function(b){return b.inv;}).join(', '))+'</td><td></td><td>Påslag UE (12 %)</td><td></td><td></td><td class="n">'+k2(byUe[k])+'</td></tr>';
         });
         h += '</tbody></table></div></div>';
       });
@@ -658,8 +763,8 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     return '<section class="panel"><div class="block" style="max-width:68ch"><h2>Lägga till nya fakturor</h2>'+
       '<p>Appen uppdateras via chatten med Claude. Ladda upp den nya fakturan som PDF och skriv till exempel <code>Ny faktura från Thessén</code>. Bilagorna från underleverantörerna läses också.</p>'+
       '<p>Claude lägger in fakturan, delar upp underlagen på arbetsmoment och kostnadsslag, räknar ut påslaget och stämmer av raderna mot fakturans total. Sedan publiceras en ny version på samma länk.</p>'+
-      '<p>Budgetofferten läses in på samma sätt. Då fylls kolumnen Budget i på Sammanställningen.</p>'+
-      '<p class="muted">Kostnader per arbetsmoment är Claudes bedömning utifrån fakturatexterna. Säg till om något ska ligga på ett annat moment.</p>'+
+      '<p>Varje rad kopplas till en post i offerten. Arbetsledning, förbrukningsmaterial, transporter, bil, parkering och maskinhyra räknas som Allmänna kostnader, precis som i offerten. Övriga rader kopplas via arbetsmomentet.</p>'+
+      '<p class="muted">Kopplingen till arbetsmoment och offertpost är Claudes bedömning utifrån fakturatexterna. Säg till om något ska ligga på en annan post.</p>'+
       '<div class="card" style="padding:14px 16px;display:grid;gap:6px"><span class="eyebrow">Senast inlästa</span>'+
       D.invoices.slice().sort(function(a,b){return a.date<b.date?1:-1;}).map(function(i){return '<div style="display:flex;justify-content:space-between;gap:12px"><span>'+esc(supById[i.supplier].short)+' '+esc(i.nr)+'</span><span class="num muted">'+fmtDate(i.date)+'</span></div>';}).join('')+
       '</div></div></section>';
