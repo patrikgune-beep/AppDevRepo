@@ -139,4 +139,4 @@ async function ask(db, { question, scope, history = [] }, { client }) {
   return { answer: 'Frågan krävde för många steg. Försök avgränsa den.', queries };
 }
 
-module.exports = { ask, runReadOnlySql, describeScope, SYSTEM_PROMPT };
+module.exports = { ask, runReadOnlySql, describeScope, SYSTEM_PROMPT, RUN_SQL_TOOL };

@@ -1,9 +1,27 @@
 'use strict';
+const { renderPdfImages } = require('../src/pdf-pages');
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const kr = (n, d = 0) => (n == null ? '–' : Number(n).toLocaleString('sv-SE', { minimumFractionDigits: d, maximumFractionDigits: d }));
 const kr2 = (n) => kr(n, 2);
+
+// Egna dialogrutor: confirm()/alert() fungerar inte överallt (t.ex. när appen öppnas via Claude).
+function confirmBox(message, okLabel = 'Ta bort') {
+  const dlg = $('#confirm-dialog');
+  $('#confirm-text').textContent = message;
+  $('#confirm-ok').textContent = okLabel;
+  dlg.returnValue = '';
+  dlg.showModal();
+  return new Promise((resolve) => { dlg.onclose = () => resolve(dlg.returnValue === 'ok'); });
+}
+function notify(message) {
+  const el = $('#toast');
+  el.textContent = message;
+  el.hidden = false;
+  clearTimeout(notify.t);
+  notify.t = setTimeout(() => { el.hidden = true; }, 6000);
+}
 
 const state = { meta: null, projects: [], projectId: null, submissionId: null, askHistory: [] };
 
@@ -44,7 +62,7 @@ $('#project-form').addEventListener('submit', async (e) => {
     e.target.reset();
     await loadProjects();
     selectProject(r.id);
-  } catch (err) { alert(err.message); }
+  } catch (err) { notify(err.message); }
 });
 
 let pollTimer = null;
@@ -121,7 +139,7 @@ async function renderProject() {
   on('#pick-folder', () => pickFolder(p));
   on('#sync-btn', () => runSync(`/api/projects/${p.id}/sync`));
   on('#forget-folder', async () => {
-    if (!confirm('Koppla bort mappen? Redan inlästa fakturor ligger kvar.')) return;
+    if (!await confirmBox('Koppla bort mappen? Redan inlästa fakturor ligger kvar.')) return;
     await api(`/api/projects/${p.id}/folder`, { method: 'DELETE' });
     await loadProjects(); renderProject();
   });
@@ -129,12 +147,12 @@ async function renderProject() {
   $$('[data-open]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); openSubmission(Number(a.dataset.open)); }));
   $$('[data-retry]').forEach((b) => b.addEventListener('click', async () => { await api(`/api/submissions/${b.dataset.retry}/retry`, { method: 'POST' }); renderProject(); }));
   $$('[data-del]').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Ta bort underlaget och all tolkad data? Filen läses inte in igen vid nästa uppdatering.')) return;
+    if (!await confirmBox('Ta bort underlaget och all tolkad data? Filen läses inte in igen vid nästa uppdatering.')) return;
     await api(`/api/submissions/${b.dataset.del}`, { method: 'DELETE' });
     await loadProjects(); renderProject();
   }));
   $('#del-project').addEventListener('click', async () => {
-    if (!confirm(`Ta bort projektet ${p.name} med alla underlag? Filerna i din mapp påverkas inte.`)) return;
+    if (!await confirmBox(`Ta bort projektet ${p.name} med alla underlag? Filerna i din mapp påverkas inte.`)) return;
     await api(`/api/projects/${p.id}`, { method: 'DELETE' });
     state.projectId = null; await loadProjects();
     $('#project-detail').innerHTML = '<p class="muted">Välj eller skapa ett projekt.</p>';
@@ -201,7 +219,7 @@ async function onUpload(e) {
   e.preventDefault();
   const form = e.target;
   const files = [...form.files.files];
-  if (!files.length) return alert('Välj en eller flera filer.');
+  if (!files.length) return notify('Välj en eller flera filer.');
   const btn = $('button', form);
   btn.disabled = true;
   setImportStatus('Läser filerna…');
@@ -218,13 +236,25 @@ $('#sync-all').addEventListener('click', () => runSync('/api/sync'));
 // Originalfil visas i appen
 async function showFile(id) {
   const { name, blob } = await api(`/api/files/${id}`);
-  const url = URL.createObjectURL(blob);
   const dlg = $('#file-dialog');
+  const urls = [];
+  const frame = $('#file-frame');
   $('#file-title').textContent = name;
-  $('#file-frame').innerHTML = blob.type.startsWith('image/')
-    ? `<img src="${url}" alt="">` : `<iframe src="${url}" title="${esc(name)}"></iframe>`;
-  dlg.onclose = () => { URL.revokeObjectURL(url); $('#file-frame').innerHTML = ''; };
+  dlg.onclose = () => { urls.forEach((u) => URL.revokeObjectURL(u)); frame.innerHTML = ''; };
   dlg.showModal();
+  if (blob.type.startsWith('image/')) {
+    urls.push(URL.createObjectURL(blob));
+    frame.innerHTML = `<img src="${urls[0]}" alt="">`;
+  } else if (blob.type === 'application/pdf' && globalThis.pdfjsLib) {
+    // Där inbäddade PDF:er inte tillåts ritas sidorna som bilder
+    frame.innerHTML = '<p class="muted"><span class="spinner"></span> Öppnar…</p>';
+    const pages = await renderPdfImages(blob);
+    urls.push(...pages.map((b) => URL.createObjectURL(b)));
+    frame.innerHTML = urls.map((u, i) => `<img src="${u}" alt="Sida ${i + 1}">`).join('');
+  } else {
+    urls.push(URL.createObjectURL(blob));
+    frame.innerHTML = `<iframe src="${urls[0]}" title="${esc(name)}"></iframe>`;
+  }
 }
 $('#file-close').addEventListener('click', () => $('#file-dialog').close());
 
@@ -276,7 +306,7 @@ async function openSubmission(id) {
     </div>`;
   $('#close-sub').addEventListener('click', () => { state.submissionId = null; $('#submission-detail').innerHTML = ''; });
   $$('[data-edit]').forEach((b) => b.addEventListener('click', () => editLine(JSON.parse(b.dataset.edit))));
-  $$('[data-file]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); showFile(Number(a.dataset.file)).catch((err) => alert(err.message)); }));
+  $$('[data-file]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); showFile(Number(a.dataset.file)).catch((err) => notify(err.message)); }));
 }
 
 const kindName = (k) => ({ huvudfaktura: 'Faktura', underleverantorsfaktura: 'Bilaga (UE/leverantör)', kvitto: 'Kvitto', kreditfaktura: 'Kreditfaktura' }[k] || k);
@@ -303,7 +333,7 @@ function editLine(l) {
         cost_category: f.cost_category.value, trade: f.trade.value, material_type: f.material_type.value, unit: f.unit.value,
       }) });
       openSubmission(state.submissionId);
-    } catch (err) { alert(err.message); }
+    } catch (err) { notify(err.message); }
   };
 }
 
@@ -464,7 +494,11 @@ async function renderSettings() {
     usage = `Appen använder ${(est.usage / 1e6).toFixed(1)} MB på enheten.`;
   } catch { /* okänt */ }
   $('#settings-out').innerHTML = `
-    <div class="panel stack">
+    ${st.llmMode === 'sample' ? `<div class="panel stack">
+      <h2>Claude</h2>
+      <p class="muted">Tolkning och frågor går via ditt Claude-konto – ingen API-nyckel behövs. Första gången
+        frågar Claude om appen får använda ditt konto. Fakturorna skickas till Claude för tolkning – allt annat stannar på enheten.</p>
+    </div>` : `<div class="panel stack">
       <h2>API-nyckel för Claude</h2>
       <p class="muted">Behövs för att tolka fakturor och ställa frågor. Nyckeln sparas bara på den här enheten.
         Fakturorna skickas till Claude för tolkning – allt annat stannar på enheten.</p>
@@ -474,19 +508,19 @@ async function renderSettings() {
         <button>Spara</button>
         ${st.hasApiKey ? '<button type="button" class="ghost" id="key-clear">Ta bort</button>' : ''}
       </form>
-    </div>
+    </div>`}
     <div class="panel stack">
       <h2>Data på enheten</h2>
       <p class="muted">${esc(usage)} Om appen raderas försvinner datan – gör en säkerhetskopia ibland.
         Originalfilerna finns kvar i din mapp och kan läsas in igen.</p>
       <div class="row">
         <button type="button" id="backup">Spara säkerhetskopia…</button>
-        <label class="ghost-btn">Återställ från säkerhetskopia<input type="file" id="restore" accept=".sqlite,.db,application/octet-stream" hidden></label>
+        <label class="ghost-btn">Återställ från säkerhetskopia<input type="file" id="restore" accept=".sqlite,.db,.json,application/json,application/octet-stream" hidden></label>
         <button type="button" class="ghost" id="demo">Läs in exempel (Karlavägen 71)</button>
       </div>
       <p id="settings-status" class="muted"></p>
     </div>`;
-  $('#key-form').addEventListener('submit', async (e) => {
+  if ($('#key-form')) $('#key-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     await api('/api/settings', { method: 'PUT', body: { apiKey: e.target.apiKey.value } });
     state.meta = await api('/api/meta'); renderSettings();
@@ -498,7 +532,7 @@ async function renderSettings() {
   });
   $('#restore').addEventListener('change', async (e) => {
     const f = e.target.files[0];
-    if (!f || !confirm('Ersätta all data i appen med säkerhetskopian?')) return;
+    if (!f || !await confirmBox('Ersätta all data i appen med säkerhetskopian?')) return;
     try {
       await api('/api/restore', { method: 'POST', body: { bytes: new Uint8Array(await f.arrayBuffer()) } });
       location.reload();

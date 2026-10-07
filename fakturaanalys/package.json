@@ -8,7 +8,8 @@
     "test": "node --no-warnings --test test/*.test.js",
     "ios:add": "npm run build && npx cap add ios",
     "ios:sync": "npm run build && npx cap sync ios",
-    "ios:open": "npx cap open ios"
+    "ios:open": "npx cap open ios",
+    "build:link": "node scripts/build.js --artifact"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "pdfjs-dist": "^3.11.174"
   }
 }

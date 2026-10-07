@@ -5,8 +5,8 @@
 const { COST_CATEGORIES, TRADES } = require('./taxonomy');
 const { saveExtraction, reconcile } = require('./store');
 const { overview, compareUnitPrices, dimensions, buildWhere } = require('./analytics');
-const { ask } = require('./ask');
-const { extractSubmission, friendlyError, createClient } = require('./extract');
+const { friendlyError } = require('./extract');
+const { createSdkLlm } = require('./llm');
 const { importFiles, mimeFromName, isSupported, sha256, createQueue } = require('./importer');
 const { loadFixture } = require('./demo');
 
@@ -21,25 +21,20 @@ function httpError(status, message) {
  *   db          – databas med node:sqlite-kompatibelt API (sql.js-adapter i appen)
  *   store       – { kvGet, kvSet, blobGet, blobPut, blobDel }
  *   folders     – { folderMode, pickFolder, listFolder, forgetFolder }
- *   toBase64    – (Blob) => Promise<string>
- *   makeClient  – (apiKey) => Anthropic-klient (kan bytas ut i tester)
+ *   llm         – vägen till Claude (src/llm.js); standard: API med nyckel från inställningarna
  *   fixture     – exempeldata för "Läs in exempel"
  *   exportDb / importDb – säkerhetskopia av databasen
  */
 function createLocalApi(deps) {
-  const { db, store, folders, toBase64, fixture } = deps;
-  const makeClient = deps.makeClient || createClient;
+  const { db, store, folders, fixture } = deps;
   const parseIds = (v) => (v ? String(v).split(',').filter(Boolean).map(Number) : []);
   const filtersFrom = (q) => ({
     projectIds: parseIds(q.get('projects')), from: q.get('from') || null, to: q.get('to') || null,
     supplier: q.get('supplier') || null, category: q.get('category') || null, monthBasis: q.get('monthBasis') || 'work',
   });
   const apiKey = async () => (await store.kvGet('apiKey')) || '';
-  const requireKey = async () => {
-    const key = await apiKey();
-    if (!key) throw httpError(400, 'Ange din API-nyckel under Inställningar för att kunna tolka fakturor och ställa frågor.');
-    return key;
-  };
+  const llm = deps.llm || createSdkLlm({ getApiKey: apiKey, makeClient: deps.makeClient, toBase64: deps.toBase64 });
+  const requireKey = () => llm.ensureReady();
   const project = (id) => {
     const p = db.prepare('SELECT * FROM projects WHERE id = ?').get(Number(id));
     if (!p) throw httpError(404, 'Projektet finns inte');
@@ -56,10 +51,9 @@ function createLocalApi(deps) {
       for (const f of rows) {
         const blob = await store.blobGet(f.sha256);
         if (!blob) throw new Error(`Originalfilen ${f.original_name} saknas på enheten – lägg till den igen.`);
-        files.push({ original_name: f.original_name, mime_type: f.mime_type, data: await toBase64(blob) });
+        files.push({ original_name: f.original_name, mime_type: f.mime_type, blob });
       }
-      const client = makeClient(await requireKey());
-      const ex = await extractSubmission(files, { client, projectName: s.project_name });
+      const ex = await llm.extract(files, { projectName: s.project_name });
       saveExtraction(db, sid, s.project_id, ex);
       reconcile(db, s.project_id);
     } catch (e) {
@@ -133,7 +127,7 @@ function createLocalApi(deps) {
   // ---- Rutter
   const routes = [
     ['GET', /^\/api\/meta$/, async () => ({
-      categories: COST_CATEGORIES, trades: TRADES, aiEnabled: Boolean(await apiKey()),
+      categories: COST_CATEGORIES, trades: TRADES, aiEnabled: await llm.available(), llmMode: llm.mode,
       folderMode: folders.folderMode(), queue: queue.size,
     })],
 
@@ -271,18 +265,18 @@ function createLocalApi(deps) {
     }],
 
     ['POST', /^\/api\/ask$/, async (m, body) => {
-      const client = makeClient(await requireKey());
+      await requireKey();
       if (!body.question) throw httpError(400, 'Fråga saknas');
       const scope = body.scope || {};
       const history = Array.isArray(body.history) ? body.history.filter((x) =>
         (x.role === 'user' || x.role === 'assistant') && typeof x.content === 'string').slice(-8) : [];
-      return ask(db, { question: String(body.question), scope, history }, { client });
+      return llm.ask(db, { question: String(body.question), scope, history });
     }],
 
     // ---- Inställningar, exempel och säkerhetskopia
     ['GET', /^\/api\/settings$/, async () => {
       const key = await apiKey();
-      return { hasApiKey: Boolean(key), apiKeyHint: key ? `…${key.slice(-4)}` : '' };
+      return { hasApiKey: Boolean(key), apiKeyHint: key ? `…${key.slice(-4)}` : '', llmMode: llm.mode };
     }],
     ['PUT', /^\/api\/settings$/, async (m, body) => {
       if ('apiKey' in body) await store.kvSet('apiKey', String(body.apiKey || '').trim());
@@ -306,7 +300,12 @@ function createLocalApi(deps) {
     throw httpError(404, `Okänd funktion: ${method} ${url.pathname}`);
   }
 
-  return { api, queue, resumeInterrupted, syncProject, processSubmission };
+  // Alternativ när tolkning inte får starta av sig själv: markera för "Kör om".
+  function markInterrupted() {
+    db.prepare("UPDATE submissions SET status = 'error', error = 'Avbröts när appen stängdes – tryck Kör om.' WHERE status = 'processing'").run();
+  }
+
+  return { api, queue, resumeInterrupted, markInterrupted, syncProject, processSubmission };
 }
 
 module.exports = { createLocalApi };

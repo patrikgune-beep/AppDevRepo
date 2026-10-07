@@ -98,6 +98,13 @@
     <div class="row" style="justify-content:space-between"><b id="file-title"></b><button id="file-close" type="button" class="small">Stäng</button></div>
     <div id="file-frame"></div>
   </dialog>
+  <dialog id="confirm-dialog">
+    <form method="dialog" class="stack">
+      <p id="confirm-text"></p>
+      <div class="row"><button value="ok" id="confirm-ok">Ta bort</button><button value="cancel" class="ghost">Avbryt</button></div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
   <div id="boot" class="boot"><span class="spinner"></span> Startar…</div>
 
   <dialog id="line-dialog">
