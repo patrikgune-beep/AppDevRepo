@@ -116,7 +116,7 @@ async function boot() {
   if (ARTIFACT) local.markInterrupted(); else local.resumeInterrupted();
   document.getElementById('boot').hidden = true;
 
-  if (!ARTIFACT && 'serviceWorker' in navigator && !Capacitor.isNativePlatform() && window.isSecureContext) {
+  if (!ARTIFACT && 'serviceWorker' in navigator && !Capacitor.isNativePlatform() && window.isSecureContext && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 }

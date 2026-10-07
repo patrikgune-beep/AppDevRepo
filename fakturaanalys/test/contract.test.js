@@ -140,3 +140,16 @@ test('filer i mappen "Avtal" eller "Kontrakt" läses in som avtal', () => {
   assert.equal(kindFromPath('Faktura 132387/huvud.pdf'), 'faktura');
   assert.equal(kindFromPath('offert.pdf'), 'faktura'); // bara mappnamnet avgör
 });
+
+test('avtalstolkning med API-nyckel: PDF skickas som dokument, svaret normaliseras', async () => {
+  const { createSdkLlm } = require('../src/llm');
+  let params;
+  const client = { beta: { messages: { stream: (p) => { params = p; return { finalMessage: async () => ({ stop_reason: 'end_turn',
+    content: [{ type: 'text', text: JSON.stringify({ summary: 's', warnings: [], documents: [{ ...TEST_CONTRACT.documents[0], markup_ue_pct: '10 %' }] }) }] }) }; } } } };
+  const llm = createSdkLlm({ getApiKey: async () => 'k', makeClient: () => client, toBase64: async () => 'JVBERi0=' });
+  const cx = await llm.extractContract([{ original_name: 'kontrakt.pdf', mime_type: 'application/pdf', blob: null }]);
+  assert.equal(params.output_config.format.type, 'json_schema');
+  assert.equal(params.messages[0].content[1].type, 'document');
+  assert.equal(cx.documents[0].markup_ue_pct, 10);
+  assert.equal(cx.documents[0].rates.length, 2);
+});

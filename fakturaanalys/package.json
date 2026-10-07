@@ -9,7 +9,8 @@
     "ios:add": "npm run build && npx cap add ios",
     "ios:sync": "npm run build && npx cap sync ios",
     "ios:open": "npx cap open ios",
-    "build:link": "node scripts/build.js --artifact"
+    "build:link": "node scripts/build.js --artifact",
+    "build:local": "node scripts/build.js --local"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

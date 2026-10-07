@@ -11,6 +11,7 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const watch = process.argv.includes('--watch');
 const artifact = process.argv.includes('--artifact');
+const local = process.argv.includes('--local');
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174';
 
 const baseOptions = {
@@ -79,4 +80,29 @@ ${js}
   console.log(`${path.relative(root, file)}  ${(page.length / 1e6).toFixed(2)} MB`);
 }
 
-(artifact ? buildArtifact() : buildApp()).catch((e) => { console.error(e); process.exit(1); });
+// En fristående fil att öppna direkt på datorn (dubbelklick). Claude nås med egen API-nyckel.
+// Ingen WebAssembly och inga externa skript: fungerar från file:// och utan installation.
+async function buildLocal() {
+  const sqlAsm = {
+    name: 'sql-asm',
+    setup(b) {
+      b.onResolve({ filter: /^sql\.js$/ }, () => ({ path: path.join(root, 'node_modules/sql.js/dist/sql-asm.js') }));
+    },
+  };
+  const result = await esbuild.build({ ...baseOptions, define: { __ARTIFACT__: 'false' }, write: false, outfile: 'app.js',
+    plugins: [sqlAsm], external: ['fs', 'path', 'crypto', 'node:fs', 'node:path', 'node:crypto'] });
+  const js = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--');
+  const css = fs.readFileSync(path.join(root, 'web/styles.css'), 'utf8');
+  const html = fs.readFileSync(path.join(root, 'web/index.html'), 'utf8')
+    .replace(/\s*<link rel="(manifest|icon|apple-touch-icon|stylesheet)"[^>]*>/g, '')
+    .replace('</head>', () => `<style>\n${css}\n</style>\n</head>`)
+    // Funktion som ersättning: annars tolkas $& och $' i koden som specialmönster
+    .replace('<script src="app.js"></script>', () => `<script>\n${js}\n</script>`);
+  const out = path.join(root, 'dist');
+  fs.mkdirSync(out, { recursive: true });
+  const file = path.join(out, 'fakturaanalys-lokal.html');
+  fs.writeFileSync(file, html);
+  console.log(`${path.relative(root, file)}  ${(html.length / 1e6).toFixed(2)} MB`);
+}
+
+(artifact ? buildArtifact() : local ? buildLocal() : buildApp()).catch((e) => { console.error(e); process.exit(1); });

@@ -88,7 +88,7 @@ async function renderProject() {
          <div class="row"><button id="sync-btn" type="button">⟳ Uppdatera</button>
            <button id="pick-folder" type="button" class="ghost">Byt mapp</button>
            <button id="forget-folder" type="button" class="ghost small">Koppla bort</button></div>`
-      : `<p class="muted">Välj mappen där fakturorna för projektet ligger – i Filer (iCloud Drive, På min iPad …). Lägg nya fakturor där och tryck Uppdatera.</p>
+      : `<p class="muted">Välj mappen där fakturorna för projektet ligger (t.ex. i iCloud Drive eller på datorn). Lägg nya fakturor där och tryck Uppdatera.</p>
          <button id="pick-folder" type="button">Välj mapp…</button>`;
 
   $('#project-detail').innerHTML = `
