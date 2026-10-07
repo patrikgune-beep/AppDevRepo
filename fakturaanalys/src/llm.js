@@ -5,6 +5,7 @@
 const { extractSubmission, createClient, SYSTEM_PROMPT: EXTRACT_PROMPT, EXTRACTION_SCHEMA } = require('./extract');
 const { ask, runReadOnlySql, describeScope, SYSTEM_PROMPT: ASK_PROMPT, RUN_SQL_TOOL } = require('./ask');
 const { normalizeExtraction } = require('./normalize');
+const { coveredPages, linkAttachments, mergeExtraction } = require('./coverage');
 
 function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
@@ -31,7 +32,9 @@ function createSdkLlm({ getApiKey, makeClient = createClient, toBase64 = blobToB
     async extract(files, { projectName }) {
       const withData = [];
       for (const f of files) withData.push({ original_name: f.original_name, mime_type: f.mime_type, data: await toBase64(f.blob) });
-      return extractSubmission(withData, { client: await client(), projectName });
+      const ex = await extractSubmission(withData, { client: await client(), projectName });
+      linkAttachments(ex);
+      return ex;
     },
     async ask(db, args) { return ask(db, args, { client: await client() }); },
     ensureReady: client,
@@ -72,52 +75,93 @@ function createSampleLlm({ sample, pdfToPages }) {
     async extract(files, { projectName }) {
       const lim = await getLimits();
       const maxImages = lim.images ? lim.images.maxCount : 0;
-      const images = [];
-      const skipped = [];
-      const parts = [];
+
+      // 1. Dela upp underlaget i sidor: text där PDF:en har text, bild där sidan är skannad.
+      const pages = [];
       for (const f of files) {
         if (f.mime_type === 'application/pdf') {
-          const pages = await pdfToPages(f.blob);
-          for (const p of pages) {
-            let body = p.text || '(ingen text på sidan)';
-            if (p.image) {
-              if (images.length < maxImages) {
-                images.push(p.image);
-                body = `[Skannad sida – se bild ${images.length}]`;
-              } else {
-                skipped.push(`${f.original_name} sida ${p.n}`);
-                body = '[Skannad sida som inte kunde skickas med]';
-              }
-            }
-            parts.push(`=== Fil: ${f.original_name}, sida ${p.n} av ${pages.length} ===\n${body}`);
-          }
+          const pp = await pdfToPages(f.blob);
+          for (const p of pp) pages.push({ file: f.original_name, n: p.n, of: pp.length, text: p.text, image: p.image });
         } else if (f.mime_type.startsWith('image/')) {
-          if (images.length < maxImages) {
-            images.push(f.blob);
-            parts.push(`=== Fil: ${f.original_name} ===\n[Bild ${images.length}]`);
-          } else skipped.push(f.original_name);
+          pages.push({ file: f.original_name, n: 1, of: 1, text: '', image: f.blob });
         } else {
-          parts.push(`=== Fil: ${f.original_name} ===\n${(await f.blob.text()).slice(0, 60000)}`);
+          pages.push({ file: f.original_name, n: 1, of: 1, text: (await f.blob.text()).slice(0, 60000), image: null });
         }
       }
-      const prompt = [
-        EXTRACT_PROMPT,
-        '',
-        'Svara ENBART med ett JSON-objekt som följer detta JSON-schema exakt (alla fält ska finnas, okänt = null):',
-        JSON.stringify(EXTRACTION_SCHEMA),
-        '',
-        `Projekt: ${projectName || 'okänt'}.`,
-        images.length ? `Bifogade bilder (${images.length} st) är skannade sidor i den ordning de nämns nedan.` : '',
-        '',
-        'UNDERLAG (text per sida):',
-        parts.join('\n\n'),
-      ].join('\n');
-      let raw;
-      try {
-        raw = await sample.json(prompt, { images: images.length ? images : undefined, modelTier: 'default' });
-      } catch (e) { throw wrapSampleError(e); }
-      const ex = normalizeExtraction(raw);
-      if (skipped.length) ex.warnings.push(`Följande skannade sidor kunde inte läsas (för många bilder i ett underlag): ${skipped.join(', ')}. Dela upp filen.`);
+      const fileNames = files.map((f) => f.original_name);
+      const label = (p) => `${p.file} sida ${p.n}`;
+
+      // Bygger en omgång: alla givna textsidor, och högst maxImages skannade sidor.
+      const pass = async (subset, intro) => {
+        const images = [];
+        const later = [];
+        const parts = [];
+        for (const p of subset) {
+          let body = p.text || '(ingen text på sidan)';
+          if (p.image) {
+            if (images.length < maxImages) { images.push(p.image); body = `[Skannad sida – se bild ${images.length}]`; }
+            else { later.push(p); continue; }
+          }
+          parts.push(`=== Fil: ${p.file}, sida ${p.n} av ${p.of} ===\n${body}`);
+        }
+        const prompt = [
+          EXTRACT_PROMPT, '', intro,
+          'Ange för varje faktura och bilaga exakt vilka sidor den finns på (pages) och vilken fil (source_file).',
+          'Sidor som är tomma eller saknar relevant innehåll anges i "ignored_pages": [{"source_file", "page", "reason"}].',
+          'Svara ENBART med ett JSON-objekt som följer detta JSON-schema exakt (alla fält ska finnas, okänt = null), plus fältet ignored_pages:',
+          JSON.stringify(EXTRACTION_SCHEMA), '',
+          `Projekt: ${projectName || 'okänt'}.`,
+          images.length ? `Bifogade bilder (${images.length} st) är skannade sidor i den ordning de nämns nedan.` : '',
+          '', 'UNDERLAG (per sida):', parts.join('\n\n'),
+        ].join('\n');
+        let raw;
+        try {
+          raw = await sample.json(prompt, { images: images.length ? images : undefined, modelTier: 'default' });
+        } catch (e) { throw wrapSampleError(e); }
+        return { ex: normalizeExtraction(raw), later };
+      };
+
+      // 2. Första omgången: hela underlaget (skannade sidor som inte får plats tas i nästa omgång).
+      const first = await pass(pages, 'Tolka hela underlaget nedan.');
+      const ex = first.ex;
+      let passes = 1;
+
+      // 3. Kompletterande omgångar för sidor som inte blev tolkade.
+      const uncovered = () => {
+        const cov = coveredPages(ex, fileNames);
+        return pages.filter((p) => !(cov.get(p.file) || new Set()).has(p.n));
+      };
+      for (let round = 1; round <= 4; round++) {
+        const missing = uncovered().filter((p) => p.image || (p.text && p.text.length > 40));
+        if (!missing.length) break;
+        linkAttachments(ex);
+        const known = ex.invoices.map((i) => `${i.ref}: ${i.kind}, ${i.supplier_name}, nr ${i.invoice_number || '?'}, sidor ${i.pages}`).join('\n');
+        const openLines = ex.invoices.filter((i) => i.kind === 'huvudfaktura').flatMap((i) => i.lines
+          .filter((l) => !l.attachment_ref && l.amount_excl_vat != null).map((l) => `${i.ref}: "${l.description}" ${l.amount_excl_vat} kr`)).join('\n');
+        const intro = [
+          'Detta är en KOMPLETTERANDE tolkning. Följande sidor ur underlaget kom inte med i första tolkningen.',
+          'Tolka ENBART sidorna nedan. Skapa nya poster med egna ref (t.ex. B1, B2).',
+          'Redan tolkade fakturor (använd deras ref i parent_ref om en bilaga hör till dem):', known || '(inga)',
+          'Rader på huvudfakturan som vidarefakturerar något men saknar bilaga:', openLines || '(inga)',
+        ].join('\n');
+        const r = await pass(missing, intro);
+        passes++;
+        const before = missing.length;
+        mergeExtraction(ex, r.ex, `R${round}`);
+        if (uncovered().filter((p) => p.image || (p.text && p.text.length > 40)).length >= before) break; // ingen framgång
+      }
+      linkAttachments(ex);
+
+      // 4. Läslogg och varning för sidor som fortfarande saknas.
+      const still = uncovered().filter((p) => p.image || (p.text && p.text.length > 40));
+      if (still.length) ex.warnings.push(`Dessa sidor kunde inte tolkas: ${still.map(label).join(', ')}. Tryck "Kör om", eller ladda upp sidorna som en separat fil.`);
+      ex.read_log = {
+        pages: pages.length,
+        text_pages: pages.filter((p) => !p.image).length,
+        scanned_pages: pages.filter((p) => p.image).length,
+        passes,
+        missing: still.map(label),
+      };
       return ex;
     },
 

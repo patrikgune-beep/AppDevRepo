@@ -297,6 +297,7 @@ async function openSubmission(id) {
       <div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(d.submission.label || 'Underlag')}</h2>
         <button class="small" id="close-sub">Stäng</button></div>
       <p>${esc(d.submission.summary || '')}</p>
+      ${readLog(d.submission.read_log)}
       <div class="row">${d.files.map((f) => `<a href="#" data-file="${f.id}">📄 ${esc(f.original_name)}</a>`).join(' ')}</div>
       ${d.findings.map((f) => `<div class="finding ${f.severity}">${f.severity === 'varning' ? '⚠️' : 'ℹ️'} ${esc(f.message)}</div>`).join('')}
       ${roots.map((r) => renderInv(r, false)).join('')}
@@ -307,6 +308,17 @@ async function openSubmission(id) {
   $('#close-sub').addEventListener('click', () => { state.submissionId = null; $('#submission-detail').innerHTML = ''; });
   $$('[data-edit]').forEach((b) => b.addEventListener('click', () => editLine(JSON.parse(b.dataset.edit))));
   $$('[data-file]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); showFile(Number(a.dataset.file)).catch((err) => notify(err.message)); }));
+}
+
+// Hur underlaget lästes: antal sidor, text/skannat och om någon sida inte kunde tolkas
+function readLog(json) {
+  if (!json) return '';
+  let l;
+  try { l = JSON.parse(json); } catch { return ''; }
+  const ok = !l.missing || !l.missing.length;
+  return `<p class="small ${ok ? 'muted' : ''}">${ok ? '✓' : '⚠️'} ${l.pages} sidor lästa: ${l.text_pages} med text, ${l.scanned_pages} skannade
+    ${l.passes > 1 ? ` · ${l.passes - 1} kompletterande tolkning${l.passes > 2 ? 'ar' : ''} för missade sidor` : ''}
+    ${ok ? ' · alla sidor tolkade' : ` · ej tolkade: ${esc(l.missing.join(', '))}`}</p>`;
 }
 
 const kindName = (k) => ({ huvudfaktura: 'Faktura', underleverantorsfaktura: 'Bilaga (UE/leverantör)', kvitto: 'Kvitto', kreditfaktura: 'Kreditfaktura' }[k] || k);
@@ -426,21 +438,61 @@ $('#cmp-run').addEventListener('click', async () => {
 
 // ---------- Fråga
 let askInit = false;
-const EXAMPLES = [
-  'Vad kostar elektriker per timme i respektive projekt? Ange medel, högst och lägst.',
-  'Vad kostar betong per m3 i de olika projekten?',
-  'Sammanställ kostnaderna per leverantör och kostnadstyp för vald period.',
-  'Hur stort påslag tar entreprenören på underentreprenörer och material?',
-  'Vilka timmar har fakturerats för rivning och vad gjordes enligt arbetsbeskrivningarna?',
-  'Finns det något i underlaget som bör kontrolleras innan betalning?',
-];
 async function initAsk() {
   if (askInit) return;
   askInit = true;
   await filterControls($('#ask-filters'), () => {});
-  $('#ask-examples').innerHTML = EXAMPLES.map((e) => `<button class="ghost" type="button">${esc(e)}</button>`).join('');
-  $$('#ask-examples button').forEach((b) => b.addEventListener('click', () => { $('#ask-q').value = b.textContent; }));
+  renderQuestions();
 }
+
+// Mina frågor: allt du frågar sparas; stjärnmärk de du ställer ofta.
+async function renderQuestions() {
+  const qs = await api('/api/questions');
+  const favs = qs.filter((q) => q.favorite);
+  const recent = qs.filter((q) => !q.favorite).slice(0, 30);
+  const item = (q) => `
+    <li class="q-item" data-q="${q.id}">
+      <button type="button" class="star ${q.favorite ? 'on' : ''}" data-star="${q.id}" aria-pressed="${q.favorite ? 'true' : 'false'}"
+        aria-label="${q.favorite ? 'Ta bort från favoriter' : 'Spara som favorit'}">${q.favorite ? '★' : '☆'}</button>
+      <div class="q-body">
+        <a href="#" data-use="${q.id}">${esc(q.text)}</a>
+        <div class="muted small">Ställd ${q.times_asked} ${q.times_asked === 1 ? 'gång' : 'gånger'}${q.last_asked_at ? ' · senast ' + esc(fmtTime(q.last_asked_at)) : ''}</div>
+        ${q.last_answer ? `<details><summary>Senaste svar</summary><div class="answer">${markdown(q.last_answer)}</div></details>` : ''}
+      </div>
+      <div class="q-actions">
+        <button type="button" class="small" data-run="${q.id}">Fråga igen</button>
+        <button type="button" class="small" data-qdel="${q.id}" aria-label="Ta bort frågan">✕</button>
+      </div>
+    </li>`;
+  $('#my-questions').innerHTML = qs.length ? `
+    <h2>Mina frågor</h2>
+    ${favs.length ? `<h3>★ Favoriter</h3><ul class="list q-list">${favs.map(item).join('')}</ul>` : '<p class="muted small">Tryck ☆ vid en fråga för att spara den som favorit.</p>'}
+    ${recent.length ? `<h3>Senaste</h3><ul class="list q-list">${recent.map(item).join('')}</ul>` : ''}`
+    : '<h2>Mina frågor</h2><p class="muted">Frågorna du ställer sparas här. Markera de du ställer ofta med ☆ så hamnar de överst.</p>';
+  const byId = (id) => qs.find((q) => q.id === Number(id));
+  $$('[data-star]', $('#my-questions')).forEach((b) => b.addEventListener('click', async () => {
+    const q = byId(b.dataset.star);
+    await api(`/api/questions/${q.id}`, { method: 'PATCH', body: { favorite: !q.favorite } });
+    renderQuestions();
+  }));
+  $$('[data-use]', $('#my-questions')).forEach((a) => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    $('#ask-q').value = byId(a.dataset.use).text;
+    $('#ask-q').focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }));
+  $$('[data-run]', $('#my-questions')).forEach((b) => b.addEventListener('click', () => {
+    $('#ask-q').value = byId(b.dataset.run).text;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    $('#ask-form').requestSubmit();
+  }));
+  $$('[data-qdel]', $('#my-questions')).forEach((b) => b.addEventListener('click', async () => {
+    if (!await confirmBox('Ta bort frågan från listan?')) return;
+    await api(`/api/questions/${b.dataset.qdel}`, { method: 'DELETE' });
+    renderQuestions();
+  }));
+}
+
 $('#ask-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const question = $('#ask-q').value.trim();
@@ -448,16 +500,34 @@ $('#ask-form').addEventListener('submit', async (e) => {
   const scope = readFilters($('#ask-filters'));
   const box = document.createElement('div');
   box.className = 'panel';
-  box.innerHTML = `<b>${esc(question)}</b><div class="answer"><span class="spinner"></span> Analyserar…</div>`;
+  box.innerHTML = `<div class="row" style="justify-content:space-between"><b>${esc(question)}</b><span class="fav-slot"></span></div>
+    <div class="answer"><span class="spinner"></span> Analyserar…</div>`;
   $('#ask-log').prepend(box);
   $('#ask-btn').disabled = true;
   try {
-    const r = await api('/api/ask', { method: 'POST', body: JSON.stringify({ question, scope, history: state.askHistory }) });
+    const r = await api('/api/ask', { method: 'POST', body: { question, scope, history: state.askHistory } });
     state.askHistory.push({ role: 'user', content: question }, { role: 'assistant', content: r.answer });
     $('.answer', box).innerHTML = markdown(r.answer) + (r.queries.length ? `<details><summary>Visa ${r.queries.length} databasfrågor bakom svaret</summary>${r.queries.map((q) => `<p><b>${esc(q.purpose)}</b> ${q.error ? `<span class="tag warn">${esc(q.error)}</span>` : `<span class="muted">(${q.rows} rader)</span>`}</p><pre>${esc(q.sql)}</pre>`).join('')}</details>` : '');
+    if (r.questionId) {
+      const fav = document.createElement('button');
+      fav.type = 'button';
+      fav.className = 'small';
+      fav.textContent = '☆ Spara som favorit';
+      fav.addEventListener('click', async () => {
+        await api(`/api/questions/${r.questionId}`, { method: 'PATCH', body: { favorite: true } });
+        fav.textContent = '★ Favorit';
+        fav.disabled = true;
+        renderQuestions();
+      });
+      $('.fav-slot', box).append(fav);
+    }
+    $('#ask-q').value = '';
   } catch (err) {
     $('.answer', box).innerHTML = `<span class="tag warn">${esc(err.message)}</span>`;
-  } finally { $('#ask-btn').disabled = false; }
+  } finally {
+    $('#ask-btn').disabled = false;
+    renderQuestions();
+  }
 });
 
 // Enkel och säker Markdown (rubriker, fetstil, listor, tabeller)

@@ -79,8 +79,8 @@ function saveExtraction(db, submissionId, projectId, ex) {
     }
     for (const w of ex.warnings || []) addFinding.run(submissionId, projectId, null, 'varning', 'tolkning', w);
 
-    db.prepare("UPDATE submissions SET summary = ?, status = 'done', processed_at = datetime('now'), error = NULL WHERE id = ?")
-      .run(ex.summary || null, submissionId);
+    db.prepare("UPDATE submissions SET summary = ?, read_log = ?, status = 'done', processed_at = datetime('now'), error = NULL WHERE id = ?")
+      .run(ex.summary || null, ex.read_log ? JSON.stringify(ex.read_log) : null, submissionId);
   });
 }
 

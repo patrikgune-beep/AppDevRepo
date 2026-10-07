@@ -148,3 +148,23 @@ test('sql.js: skrivskyddade frågor och lagring som bytes', async () => {
   const copy = adapt(new SQL.Database(db.export()));
   assert.equal(copy.prepare('SELECT COUNT(*) n FROM projects').get().n, 1);
 });
+
+test('frågor sparas, samma fråga räknas upp, favoriter ligger först', async () => {
+  const { api, db } = await setup({});
+  await api('/api/demo', { method: 'POST' });
+  const fakeAsk = { mode: 'sdk' };
+  // Byt ut Claude-anropet mot ett fast svar
+  const { createLocalApi } = require('../src/local-api');
+  const local = createLocalApi({ db, store: { kvGet: async () => 'k', kvSet: async () => {}, blobGet: async () => null, blobPut: async () => {}, blobDel: async () => {} },
+    folders: fakeFolders({}), fixture, llm: { ...fakeAsk, available: async () => true, ensureReady: async () => true, ask: async () => ({ answer: 'svar', queries: [] }) } });
+  const r1 = await local.api('/api/ask', { method: 'POST', body: { question: 'Vad kostar rivning per timme?' } });
+  await local.api('/api/ask', { method: 'POST', body: { question: '  vad kostar rivning per timme ' } });
+  await local.api('/api/ask', { method: 'POST', body: { question: 'Vilka leverantörer finns?' } });
+  await local.api(`/api/questions/${r1.questionId}`, { method: 'PATCH', body: { favorite: true } });
+  let qs = await local.api('/api/questions');
+  assert.equal(qs.length, 2);
+  assert.deepEqual([qs[0].text, qs[0].favorite, qs[0].times_asked, qs[0].last_answer], ['Vad kostar rivning per timme?', 1, 2, 'svar']);
+  await local.api(`/api/questions/${qs[1].id}`, { method: 'DELETE' });
+  qs = await local.api('/api/questions');
+  assert.equal(qs.length, 1);
+});

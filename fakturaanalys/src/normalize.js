@@ -54,6 +54,9 @@ function normalizeExtraction(raw) {
         attachment_ref: str(l.attachment_ref),
       })),
     })),
+    ignored_pages: (Array.isArray(ex.ignored_pages) ? ex.ignored_pages : []).map((x) => ({
+      source_file: str(x && x.source_file) || '', page: num(x && x.page), reason: str(x && x.reason) || '',
+    })).filter((x) => x.page != null),
     supporting_documents: (Array.isArray(ex.supporting_documents) ? ex.supporting_documents : []).map((d) => ({
       source_file: str(d.source_file) || '',
       pages: str(d.pages) || '',

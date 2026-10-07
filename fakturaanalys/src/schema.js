@@ -138,6 +138,17 @@ WHERE li.counted = 1;
 // filen inte läsas igen för att räkna ut hashen.
 const EXTRA = `
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
+-- Frågor som användaren ställt (sparas automatiskt) och favoriter
+CREATE TABLE IF NOT EXISTS saved_questions (
+  id INTEGER PRIMARY KEY,
+  text TEXT NOT NULL,
+  norm TEXT NOT NULL UNIQUE,
+  favorite INTEGER NOT NULL DEFAULT 0,
+  times_asked INTEGER NOT NULL DEFAULT 0,
+  last_asked_at TEXT,
+  last_answer TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS file_index (
   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   rel_path TEXT NOT NULL,
@@ -163,6 +174,7 @@ function migrate(db) {
   add('files', 'rel_path', 'TEXT');               // sökväg i den synkade mappen
   add('projects', 'folder_path', 'TEXT');         // projektets fakturamapp, relativt FAKTURA_ROOT
   add('projects', 'last_synced_at', 'TEXT');
+  add('submissions', 'read_log', 'TEXT');          // JSON: sidor, text/skannat, omgångar, ej tolkade sidor
   db.exec(`CREATE INDEX IF NOT EXISTS ix_files_sha ON files(sha256);
     -- Filer som användaren tagit bort ska inte läsas in igen vid nästa synk.
     CREATE TABLE IF NOT EXISTS ignored_files (

@@ -124,6 +124,17 @@ function createLocalApi(deps) {
     if (!db.prepare('SELECT 1 FROM files WHERE sha256 = ? LIMIT 1').get(hash)) await store.blobDel(hash);
   }
 
+  // ---- Sparade frågor: varje fråga sparas, samma fråga igen räknas upp i stället för att dubbleras.
+  const normQuestion = (t) => t.trim().replace(/\s+/g, ' ').toLowerCase().replace(/[?.!\s]+$/, '');
+  function rememberQuestion(text) {
+    const clean = text.trim().replace(/\s+/g, ' ');
+    const norm = normQuestion(clean);
+    db.prepare(`INSERT INTO saved_questions (text, norm, times_asked, last_asked_at) VALUES (?, ?, 1, datetime('now'))
+      ON CONFLICT(norm) DO UPDATE SET times_asked = times_asked + 1, last_asked_at = excluded.last_asked_at`)
+      .run(clean, norm);
+    return db.prepare('SELECT id FROM saved_questions WHERE norm = ?').get(norm).id;
+  }
+
   // ---- Rutter
   const routes = [
     ['GET', /^\/api\/meta$/, async () => ({
@@ -267,10 +278,24 @@ function createLocalApi(deps) {
     ['POST', /^\/api\/ask$/, async (m, body) => {
       await requireKey();
       if (!body.question) throw httpError(400, 'Fråga saknas');
+      const qid = rememberQuestion(String(body.question));
       const scope = body.scope || {};
       const history = Array.isArray(body.history) ? body.history.filter((x) =>
         (x.role === 'user' || x.role === 'assistant') && typeof x.content === 'string').slice(-8) : [];
-      return llm.ask(db, { question: String(body.question), scope, history });
+      const result = await llm.ask(db, { question: String(body.question), scope, history });
+      db.prepare('UPDATE saved_questions SET last_answer = ? WHERE id = ?').run(result.answer, qid);
+      return { ...result, questionId: qid };
+    }],
+
+    ['GET', /^\/api\/questions$/, () => db.prepare(`SELECT id, text, favorite, times_asked, last_asked_at, last_answer
+      FROM saved_questions ORDER BY favorite DESC, last_asked_at DESC LIMIT 100`).all()],
+    ['PATCH', /^\/api\/questions\/(\d+)$/, ([, id], body) => {
+      db.prepare('UPDATE saved_questions SET favorite = ? WHERE id = ?').run(body.favorite ? 1 : 0, Number(id));
+      return { ok: true };
+    }],
+    ['DELETE', /^\/api\/questions\/(\d+)$/, ([, id]) => {
+      db.prepare('DELETE FROM saved_questions WHERE id = ?').run(Number(id));
+      return { ok: true };
     }],
 
     // ---- Inställningar, exempel och säkerhetskopia
