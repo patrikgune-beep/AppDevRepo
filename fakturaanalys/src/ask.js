@@ -2,7 +2,7 @@
 // Fritextfrågor: Claude får läsa databasen via en skrivskyddad SQL-funktion och svarar med
 // siffror som går att spåra. Varje fråga som körs returneras till användaren.
 const { COST_CATEGORIES, TRADES } = require('./taxonomy');
-const { createClient, baseParams, MODEL } = require('./extract');
+const { baseParams, MODEL, env } = require('./extract');
 
 const MAX_ROWS = 200;
 const MAX_STEPS = 12;
@@ -67,14 +67,17 @@ const RUN_SQL_TOOL = {
   },
 };
 
-function runReadOnlySql(roDb, sql) {
+function runReadOnlySql(db, sql) {
   const s = String(sql || '').trim().replace(/;\s*$/, '');
   if (!/^(select|with)\b/i.test(s)) throw new Error('Endast SELECT/WITH tillåts.');
   if (s.includes(';')) throw new Error('Endast en sats åt gången.');
   if (/\b(attach|detach|pragma|insert|update|delete|drop|alter|create|vacuum|reindex)\b/i.test(s)) {
     throw new Error('Otillåtet nyckelord i frågan.');
   }
-  const rows = roDb.prepare(s).all();
+  // query_only gör att SQLite själv vägrar alla skrivningar under frågan.
+  db.prepare('PRAGMA query_only = ON').run();
+  let rows;
+  try { rows = db.prepare(s).all(); } finally { db.prepare('PRAGMA query_only = OFF').run(); }
   return { rows: rows.slice(0, MAX_ROWS), truncated: rows.length > MAX_ROWS, total_rows: rows.length };
 }
 
@@ -97,7 +100,7 @@ function describeScope(db, scope = {}) {
   return parts.join('\n');
 }
 
-async function ask(db, roDb, { question, scope, history = [] }, { client = createClient() } = {}) {
+async function ask(db, { question, scope, history = [] }, { client }) {
   const messages = [
     ...history,
     { role: 'user', content: `Avgränsning:\n${describeScope(db, scope)}\n\nFråga: ${question}` },
@@ -109,7 +112,7 @@ async function ask(db, roDb, { question, scope, history = [] }, { client = creat
       model: MODEL,
       max_tokens: 16000,
       system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
-      output_config: { effort: process.env.ASK_EFFORT || 'medium' },
+      output_config: { effort: env('ASK_EFFORT') || 'medium' },
       tools: [RUN_SQL_TOOL],
       messages,
     });
@@ -123,7 +126,7 @@ async function ask(db, roDb, { question, scope, history = [] }, { client = creat
     const results = [];
     for (const tu of toolUses) {
       try {
-        const out = runReadOnlySql(roDb, tu.input.sql);
+        const out = runReadOnlySql(db, tu.input.sql);
         queries.push({ purpose: tu.input.purpose, sql: tu.input.sql, rows: out.total_rows });
         results.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(out) });
       } catch (e) {

@@ -1,7 +1,6 @@
 'use strict';
-const { DatabaseSync } = require('node:sqlite');
-const fs = require('fs');
-const path = require('path');
+// Databasschema, migrering och transaktioner. Oberoende av SQLite-motor: fungerar med
+// node:sqlite (tester) och sql.js (i appen på iPhone/iPad).
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS projects (
@@ -135,12 +134,24 @@ JOIN projects p ON p.id = li.project_id
 WHERE li.counted = 1;
 `;
 
-function open(dbPath) {
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-  const db = new DatabaseSync(dbPath);
-  db.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
+// Gemensamt filindex för mappsynk: om sökväg, storlek och ändringstid är oförändrade behöver
+// filen inte läsas igen för att räkna ut hashen.
+const EXTRA = `
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS file_index (
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  rel_path TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  modified REAL NOT NULL,
+  sha256 TEXT NOT NULL,
+  PRIMARY KEY (project_id, rel_path)
+);`;
+
+function init(db) {
+  db.exec('PRAGMA foreign_keys = ON;');
   db.exec(SCHEMA);
   migrate(db);
+  db.exec(EXTRA);
   return db;
 }
 
@@ -161,10 +172,6 @@ function migrate(db) {
     );`);
 }
 
-function openReadOnly(dbPath) {
-  return new DatabaseSync(dbPath, { readOnly: true });
-}
-
 function tx(db, fn) {
   db.exec('BEGIN');
   try {
@@ -177,4 +184,4 @@ function tx(db, fn) {
   }
 }
 
-module.exports = { open, openReadOnly, tx, SCHEMA };
+module.exports = { SCHEMA, init, migrate, tx };

@@ -1,7 +1,7 @@
 'use strict';
 // Sparar tolkat underlag och stämmer av huvudfaktura mot bilagor så att
 // varje krona räknas exakt en gång och påslag synliggörs.
-const { tx } = require('./db');
+const { tx } = require('./schema');
 const { COST_CATEGORIES, TRADES } = require('./taxonomy');
 
 const round2 = (n) => (n == null ? null : Math.round(n * 100) / 100);

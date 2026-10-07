@@ -4,12 +4,12 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { open, openReadOnly } = require('../src/db');
+const { open } = require('../src/node-db');
 const { saveExtraction, reconcile } = require('../src/store');
 const { overview, compareUnitPrices } = require('../src/analytics');
 const { runReadOnlySql, ask } = require('../src/ask');
 const { extractSubmission } = require('../src/extract');
-const { loadFixture } = require('../scripts/demo');
+const { loadFixture } = require('../src/demo');
 const fixture = require('../fixtures/karlavagen71.json');
 
 function tmpDb() {
@@ -101,20 +101,24 @@ test('jämförelse mellan projekt: elektriker per timme, medel/min/max', () => {
 });
 
 test('SQL-verktyget släpper bara igenom läsfrågor', () => {
-  const { db, file } = tmpDb();
+  const { db } = tmpDb();
   loadFixture(db, fixture);
-  const ro = openReadOnly(file);
+  const ro = db;
   assert.ok(runReadOnlySql(ro, 'SELECT COUNT(*) AS n FROM cost_lines').rows[0].n > 0);
   for (const bad of ['DELETE FROM projects', 'SELECT 1; DROP TABLE projects', "ATTACH 'x' AS y",
     'WITH x AS (SELECT 1) DELETE FROM projects', 'PRAGMA table_info(projects)']) {
     assert.throws(() => runReadOnlySql(ro, bad), undefined, bad);
   }
+  // query_only stoppar skrivningar även om en fråga skulle slinka igenom ordfiltret
+  db.prepare('PRAGMA query_only = ON').run();
+  assert.throws(() => db.prepare("UPDATE projects SET name = 'x'").run());
+  db.prepare('PRAGMA query_only = OFF').run();
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM projects').get().n, 1);
 });
 
 test('ask: verktygsloop med fejkad klient kör SQL och returnerar svar + frågor', async () => {
-  const { db, file } = tmpDb();
+  const { db } = tmpDb();
   loadFixture(db, fixture);
-  const ro = openReadOnly(file);
   let call = 0;
   const seen = [];
   const client = { beta: { messages: { create: async (params) => {
@@ -127,7 +131,7 @@ test('ask: verktygsloop med fejkad klient kör SQL och returnerar svar + frågor
     const result = params.messages.at(-1).content[0];
     return { stop_reason: 'end_turn', content: [{ type: 'text', text: `Totalt: ${JSON.parse(result.content).rows[0].s}` }] };
   } } } };
-  const r = await ask(db, ro, { question: 'Total?', scope: {} }, { client });
+  const r = await ask(db, { question: 'Total?', scope: {} }, { client });
   assert.match(r.answer, /Totalt: 1000/);
   assert.equal(r.queries.length, 1);
   assert.equal(seen[0].model, 'claude-opus-5-5');
@@ -135,16 +139,13 @@ test('ask: verktygsloop med fejkad klient kör SQL och returnerar svar + frågor
 });
 
 test('extract: skickar PDF som dokument och tolkar JSON-svaret', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fa-'));
-  const pdf = path.join(dir, 'a.pdf');
-  fs.writeFileSync(pdf, '%PDF-1.4 test');
   let params;
   const client = { beta: { messages: { stream: (p) => {
     params = p;
     return { finalMessage: async () => ({ stop_reason: 'end_turn',
       content: [{ type: 'text', text: JSON.stringify(fixture.submissions[0].extraction) }] }) };
   } } } };
-  const ex = await extractSubmission([{ stored_path: pdf, original_name: 'a.pdf', mime_type: 'application/pdf', size_bytes: 13 }],
+  const ex = await extractSubmission([{ original_name: 'a.pdf', mime_type: 'application/pdf', data: Buffer.from('%PDF-1.4 test').toString('base64') }],
     { client, projectName: 'P' });
   assert.equal(ex.invoices.length, 2);
   assert.equal(params.output_config.format.type, 'json_schema');

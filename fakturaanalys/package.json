@@ -1,20 +1,28 @@
 {
   "name": "fakturaanalys",
   "version": "1.0.0",
-  "description": "Fakturaanalys för byggprojekt – tolkar fakturaunderlag med bilagor och gör analyser och jämförelser mellan projekt",
-  "main": "server.js",
+  "description": "Fakturaanalys för byggprojekt – körs helt på iPhone/iPad: tolkar fakturaunderlag med bilagor och gör analyser och jämförelser mellan projekt",
   "scripts": {
-    "start": "node --no-warnings server.js",
-    "demo": "node --no-warnings scripts/demo.js",
-    "test": "node --no-warnings --test test/*.test.js"
+    "build": "node scripts/build.js",
+    "dev": "node scripts/build.js --watch",
+    "test": "node --no-warnings --test test/*.test.js",
+    "ios:add": "npm run build && npx cap add ios",
+    "ios:sync": "npm run build && npx cap sync ios",
+    "ios:open": "npx cap open ios"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
-    "express": "^5.2.1",
-    "multer": "^2.4.0"
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
+    "capacitor-folder-access": "file:native/capacitor-folder-access",
+    "sql.js": "^1.14.2"
   },
   "private": true,
   "engines": {
     "node": ">=22.13"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
+    "esbuild": "^0.28.2"
   }
 }

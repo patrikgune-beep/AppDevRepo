@@ -7,16 +7,10 @@ const kr2 = (n) => kr(n, 2);
 
 const state = { meta: null, projects: [], projectId: null, submissionId: null, askHistory: [] };
 
-async function api(path, opts = {}) {
-  const res = await fetch(path, {
-    ...opts,
-    headers: opts.body && !(opts.body instanceof FormData) ? { 'Content-Type': 'application/json' } : undefined,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (res.status === 401 && path !== '/api/login') showLogin();
-  if (!res.ok) throw new Error(data.error || res.statusText);
-  return data;
-}
+// Allt körs på enheten: anropen går till den lokala motorn (src/local-api.js), inte till en server.
+let api = async () => { throw new Error('Appen startar…'); };
+function setApi(fn) { api = fn; }
+
 const catName = (k) => (state.meta.categories[k] || k || '–');
 const tradeName = (k) => (k ? state.meta.trades[k] || k : '');
 
@@ -28,6 +22,7 @@ function showTab(name) {
   if (name === 'analys') renderAnalysis();
   if (name === 'jamfor') initCompare();
   if (name === 'fraga') initAsk();
+  if (name === 'installningar') renderSettings();
 }
 
 // ---------- Projekt
@@ -38,7 +33,7 @@ async function loadProjects() {
       <span>${p.folder_path != null ? '📁 ' : ''}${esc(p.name)}</span><span class="muted">${p.total ? kr(p.total) + ' kr' : ''}</span></li>`).join('')
     || '<li class="muted">Inga projekt ännu</li>';
   $$('#project-list li[data-id]').forEach((li) => li.addEventListener('click', () => selectProject(Number(li.dataset.id))));
-  $('#sync-all').hidden = !state.meta.aiEnabled || !state.projects.some((p) => p.folder_path != null);
+  $('#sync-all').hidden = !state.meta.aiEnabled || state.meta.folderMode === 'none' || !state.projects.some((p) => p.folder_path != null);
 }
 
 $('#project-form').addEventListener('submit', async (e) => {
@@ -66,48 +61,49 @@ async function renderProject() {
   if (!p) return;
   const subs = await api(`/api/projects/${p.id}/submissions`);
   const ai = state.meta.aiEnabled;
-  const localHandle = canPickDir ? await idbGet(`dir-${p.id}`) : null;
+  const fm = state.meta.folderMode;
+  const folderBox = fm === 'none'
+    ? `<p class="muted">Den här webbläsaren kan inte komma ihåg en mapp. Installera iOS-appen för att välja en mapp i Filer en gång och sedan bara trycka Uppdatera – eller välj filerna nedan.</p>`
+    : p.folder_path != null
+      ? `<p><b>${esc(p.folder_path)}</b><br>
+         <span class="muted">${p.last_synced_at ? 'Senast uppdaterad ' + esc(fmtTime(p.last_synced_at)) : 'Inte uppdaterad ännu'}</span></p>
+         <div class="row"><button id="sync-btn" type="button">⟳ Uppdatera</button>
+           <button id="pick-folder" type="button" class="ghost">Byt mapp</button>
+           <button id="forget-folder" type="button" class="ghost small">Koppla bort</button></div>`
+      : `<p class="muted">Välj mappen där fakturorna för projektet ligger – i Filer (iCloud Drive, På min iPad …). Lägg nya fakturor där och tryck Uppdatera.</p>
+         <button id="pick-folder" type="button">Välj mapp…</button>`;
+
   $('#project-detail').innerHTML = `
     <div class="row" style="justify-content:space-between">
       <div><h2 style="margin:0">${esc(p.name)}</h2><div class="muted">${esc(p.description || '')}</div></div>
       <div style="text-align:right"><div class="muted">Kostnad exkl. moms</div><div class="kpi">${kr(p.total)} kr</div></div>
     </div>
-
+    ${ai ? '' : '<p class="finding varning">Ange din API-nyckel under ⚙︎ Inställningar för att kunna läsa in fakturor.</p>'}
     <div class="sources" ${ai ? '' : 'hidden'}>
       <div class="source">
         <h3>📁 Fakturamapp</h3>
-        ${p.folder_path != null
-    ? `<p><b>${esc(state.meta.folderRoot)}/${esc(p.folder_path)}</b><br>
-           <span class="muted">${p.last_synced_at ? 'Senast uppdaterad ' + esc(p.last_synced_at) + ' (UTC)' : 'Inte uppdaterad ännu'}</span></p>
-           <div class="row"><button id="sync-btn" type="button">⟳ Uppdatera</button>
-             <button id="pick-folder" type="button" class="ghost">Byt mapp</button></div>`
-    : `<p class="muted">Välj en mapp (t.ex. i iCloud Drive). Lägg nya fakturor där – i Filer på iPad/iPhone eller på datorn – och tryck Uppdatera.</p>
-           <button id="pick-folder" type="button">Välj mapp…</button>`}
+        ${folderBox}
         <p class="muted small">Filer i en undermapp tolkas tillsammans (faktura + bilagor). Filer direkt i mappen tolkas var för sig. Redan inlästa filer hoppas över.</p>
       </div>
-
       <form id="upload-form" class="source">
-        <h3>📄 Filer från den här enheten</h3>
+        <h3>📄 Välj filer</h3>
         <input type="file" name="files" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.csv,application/pdf,image/*">
         <div class="row radios">
           <label><input type="radio" name="mode" value="separate" checked> Varje fil är en egen faktura</label>
           <label><input type="radio" name="mode" value="together"> Filerna hör ihop (faktura + bilagor)</label>
         </div>
-        <button>Ladda upp &amp; tolka</button>
-        <p class="muted small">På iPad/iPhone: tryck "Välj" i Filer och markera alla filer i mappen. Bara nya filer läses in.</p>
-        ${canPickDir ? `<div class="row" style="margin-top:8px">
-          <button type="button" class="ghost" id="pick-local">${localHandle ? 'Byt mapp på datorn' : 'Välj mapp på datorn…'}</button>
-          ${localHandle ? `<button type="button" id="sync-local">⟳ Uppdatera från ${esc(localHandle.name)}</button>` : ''}</div>` : ''}
+        <button>Läs in &amp; tolka</button>
+        <p class="muted small">Tips: i Filer, tryck "Välj" och markera alla filer i mappen. Bara nya filer läses in.</p>
       </form>
     </div>
     <p id="import-status" class="muted"></p>
 
     <h3>Underlag</h3>
     <div class="table-wrap"><table class="subs">
-      <thead><tr><th>Uppladdat</th><th>Underlag</th><th>Status</th><th class="num">Kostnad</th><th></th></tr></thead>
+      <thead><tr><th>Inläst</th><th>Underlag</th><th>Status</th><th class="num">Kostnad</th><th></th></tr></thead>
       <tbody>${subs.map((s) => `
         <tr data-id="${s.id}">
-          <td data-label="Uppladdat">${esc(s.uploaded_at.slice(0, 10))}</td>
+          <td data-label="Inläst">${esc(s.uploaded_at.slice(0, 10))}</td>
           <td data-label="Underlag"><a href="#" data-open="${s.id}">${esc(s.label || s.files || 'Underlag ' + s.id)}</a>
             ${s.summary ? `<div class="muted">${esc(s.summary)}</div>` : ''}
             ${s.error ? `<div class="tag warn">${esc(s.error)}</div>` : ''}</td>
@@ -122,10 +118,13 @@ async function renderProject() {
 
   $('#upload-form').addEventListener('submit', onUpload);
   const on = (sel, fn) => { const el = $(sel); if (el) el.addEventListener('click', fn); };
-  on('#pick-folder', () => openFolderPicker(p));
+  on('#pick-folder', () => pickFolder(p));
   on('#sync-btn', () => runSync(`/api/projects/${p.id}/sync`));
-  on('#pick-local', () => pickLocalFolder(p));
-  on('#sync-local', () => syncLocalFolder(p));
+  on('#forget-folder', async () => {
+    if (!confirm('Koppla bort mappen? Redan inlästa fakturor ligger kvar.')) return;
+    await api(`/api/projects/${p.id}/folder`, { method: 'DELETE' });
+    await loadProjects(); renderProject();
+  });
 
   $$('[data-open]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); openSubmission(Number(a.dataset.open)); }));
   $$('[data-retry]').forEach((b) => b.addEventListener('click', async () => { await api(`/api/submissions/${b.dataset.retry}/retry`, { method: 'POST' }); renderProject(); }));
@@ -135,18 +134,23 @@ async function renderProject() {
     await loadProjects(); renderProject();
   }));
   $('#del-project').addEventListener('click', async () => {
-    if (!confirm(`Ta bort projektet ${p.name} med alla underlag?`)) return;
+    if (!confirm(`Ta bort projektet ${p.name} med alla underlag? Filerna i din mapp påverkas inte.`)) return;
     await api(`/api/projects/${p.id}`, { method: 'DELETE' });
     state.projectId = null; await loadProjects();
     $('#project-detail').innerHTML = '<p class="muted">Välj eller skapa ett projekt.</p>';
   });
 
+  if (state.importStatus && state.importStatus.projectId === p.id) $('#import-status').textContent = state.importStatus.text;
+
   clearTimeout(pollTimer);
   if (subs.some((s) => s.status === 'processing')) {
-    pollTimer = setTimeout(async () => { await loadProjects(); renderProject(); }, 4000);
+    pollTimer = setTimeout(async () => { await loadProjects(); renderProject(); }, 3000);
   }
   if (state.submissionId) openSubmission(state.submissionId);
 }
+
+// SQLite sparar tid i UTC – visa i lokal tid
+const fmtTime = (t) => new Date(t.replace(' ', 'T') + 'Z').toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' });
 
 function statusTag(s) {
   if (s.status === 'processing') return '<span class="spinner"></span> Tolkar…';
@@ -162,17 +166,35 @@ function importSummary(r) {
   if (r.ignored && r.ignored.length) parts.push(`${r.ignored.length} tidigare borttagna hoppades över`);
   return parts.join(' · ');
 }
-function setImportStatus(text) { const el = $('#import-status'); if (el) el.textContent = text; }
+// Statusraden sparas så att den finns kvar när listan ritas om under tolkningen
+function setImportStatus(text) {
+  state.importStatus = { projectId: state.projectId, text };
+  const el = $('#import-status');
+  if (el) el.textContent = text;
+}
 
 async function runSync(url) {
   setImportStatus('Letar efter nya fakturor…');
+  $$('#sync-btn, #sync-all').forEach((b) => { b.disabled = true; });
   try {
     const r = await api(url, { method: 'POST' });
     const list = r.results || [r];
     const msg = list.map((x) => (x.error ? `${x.project || 'Projekt'}: ${x.error}` : `${x.project}: ${importSummary(x)}`)).join('\n');
     await loadProjects(); await renderProject();
-    setImportStatus(msg);
-  } catch (err) { setImportStatus(err.message); }
+    setImportStatus(msg || 'Inga projekt har en mapp vald.');
+  } catch (err) { setImportStatus(err.message); } finally {
+    $$('#sync-btn, #sync-all').forEach((b) => { b.disabled = false; });
+  }
+}
+
+async function pickFolder(p) {
+  try {
+    await api(`/api/projects/${p.id}/folder`, { method: 'POST' });
+    await loadProjects(); await renderProject();
+    runSync(`/api/projects/${p.id}/sync`);
+  } catch (err) {
+    if (err.name !== 'AbortError' && !/avbrut|cancel/i.test(err.message)) setImportStatus(err.message);
+  }
 }
 
 async function onUpload(e) {
@@ -180,151 +202,31 @@ async function onUpload(e) {
   const form = e.target;
   const files = [...form.files.files];
   if (!files.length) return alert('Välj en eller flera filer.');
-  const mode = form.mode.value;
-  const btn = $('button[type=submit], button:not([type])', form);
+  const btn = $('button', form);
   btn.disabled = true;
+  setImportStatus('Läser filerna…');
   try {
-    const items = files.map((f) => ({ file: f, path: f.name }));
-    const r = await uploadItems(items, mode);
+    const r = await api(`/api/projects/${state.projectId}/submissions`, { method: 'POST', body: { files, mode: form.mode.value } });
     form.reset();
     await loadProjects(); await renderProject();
     setImportStatus(importSummary(r));
   } catch (err) { setImportStatus(err.message); } finally { btn.disabled = false; }
 }
 
-// Laddar upp i omgångar. Filer som hör ihop (samma undermapp) skickas alltid i samma omgång.
-async function uploadItems(items, mode) {
-  setImportStatus('Kontrollerar vilka filer som är nya…');
-  const fresh = await filterKnown(items);
-  const total = { submissions: [], imported: 0, skipped: items.filter((i) => !fresh.includes(i)).map((i) => i.path), ignored: [] };
-  const groups = new Map();
-  for (const it of fresh) {
-    const parts = it.path.split('/');
-    const key = mode === 'together' ? '*' : mode === 'folders' && parts.length > 1 ? parts.slice(0, -1).join('/') : it.path;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(it);
-  }
-  const batches = [];
-  let cur = [];
-  let bytes = 0;
-  for (const g of groups.values()) {
-    const gb = g.reduce((s, i) => s + i.file.size, 0);
-    if (cur.length && (cur.length + g.length > 20 || bytes + gb > 40e6)) { batches.push(cur); cur = []; bytes = 0; }
-    cur.push(...g); bytes += gb;
-  }
-  if (cur.length) batches.push(cur);
-  for (let i = 0; i < batches.length; i++) {
-    setImportStatus(`Laddar upp ${i + 1} av ${batches.length}…`);
-    const fd = new FormData();
-    fd.append('mode', mode);
-    fd.append('paths', JSON.stringify(batches[i].map((x) => x.path)));
-    for (const x of batches[i]) fd.append('files', x.file, x.file.name);
-    const r = await api(`/api/projects/${state.projectId}/submissions`, { method: 'POST', body: fd });
-    total.submissions.push(...r.submissions); total.imported += r.imported;
-    total.skipped.push(...r.skipped); total.ignored.push(...r.ignored);
-  }
-  return total;
-}
-
-// Hoppar över kända filer innan uppladdning, om webbläsaren kan räkna SHA-256 (kräver https/localhost).
-async function filterKnown(items) {
-  if (!(window.crypto && crypto.subtle) || !items.length) return items;
-  try {
-    const hashes = await Promise.all(items.map(async (i) => {
-      const buf = await crypto.subtle.digest('SHA-256', await i.file.arrayBuffer());
-      return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
-    }));
-    const { known } = await api(`/api/projects/${state.projectId}/known`, { method: 'POST', body: JSON.stringify({ hashes }) });
-    const k = new Set(known);
-    return items.filter((_, idx) => !k.has(hashes[idx]));
-  } catch { return items; }
-}
-
-// ---------- Mapp på servern (iCloud Drive m.m.)
-let folderPath = '';
-let folderProject = null;
-async function openFolderPicker(p) {
-  folderProject = p;
-  folderPath = p.folder_path || '';
-  await showFolder(folderPath).catch(() => showFolder(''));
-  $('#folder-dialog').showModal();
-}
-async function showFolder(rel) {
-  const d = await api(`/api/folders?path=${encodeURIComponent(rel)}`);
-  folderPath = d.path;
-  $('#folder-crumb').textContent = `${d.root}/${d.path}`;
-  $('#folder-info').textContent = `${d.files} fakturafiler direkt i mappen`;
-  $('#folder-list').innerHTML = (d.parent != null ? '<li data-up="1">⬆︎ Upp en nivå</li>' : '') +
-    d.folders.map((f) => `<li data-f="${esc(f)}">📁 ${esc(f)}</li>`).join('') ||
-    '<li class="muted">Inga undermappar</li>';
-  $$('#folder-list li[data-f]').forEach((li) => li.addEventListener('click', () => showFolder(d.path ? `${d.path}/${li.dataset.f}` : li.dataset.f)));
-  const up = $('#folder-list li[data-up]');
-  if (up) up.addEventListener('click', () => showFolder(d.parent));
-}
-$('#folder-cancel').addEventListener('click', () => $('#folder-dialog').close());
-$('#folder-choose').addEventListener('click', async () => {
-  await api(`/api/projects/${folderProject.id}/folder`, { method: 'PUT', body: JSON.stringify({ path: folderPath }) });
-  $('#folder-dialog').close();
-  await loadProjects();
-  await renderProject();
-  if (confirm('Läsa in fakturorna i mappen nu?')) runSync(`/api/projects/${folderProject.id}/sync`);
-});
 $('#sync-all').addEventListener('click', () => runSync('/api/sync'));
 
-// ---------- Mapp på den här datorn (Chrome/Edge: webbläsaren kommer ihåg mappen)
-const canPickDir = 'showDirectoryPicker' in window;
-function idb() {
-  return new Promise((resolve, reject) => {
-    const r = indexedDB.open('fakturaanalys', 1);
-    r.onupgradeneeded = () => r.result.createObjectStore('kv');
-    r.onsuccess = () => resolve(r.result);
-    r.onerror = () => reject(r.error);
-  });
+// Originalfil visas i appen
+async function showFile(id) {
+  const { name, blob } = await api(`/api/files/${id}`);
+  const url = URL.createObjectURL(blob);
+  const dlg = $('#file-dialog');
+  $('#file-title').textContent = name;
+  $('#file-frame').innerHTML = blob.type.startsWith('image/')
+    ? `<img src="${url}" alt="">` : `<iframe src="${url}" title="${esc(name)}"></iframe>`;
+  dlg.onclose = () => { URL.revokeObjectURL(url); $('#file-frame').innerHTML = ''; };
+  dlg.showModal();
 }
-async function idbGet(key) {
-  try {
-    const db = await idb();
-    return await new Promise((res) => { const q = db.transaction('kv').objectStore('kv').get(key); q.onsuccess = () => res(q.result); q.onerror = () => res(null); });
-  } catch { return null; }
-}
-async function idbSet(key, val) {
-  try {
-    const db = await idb();
-    await new Promise((res) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(val, key); t.oncomplete = res; t.onerror = res; });
-  } catch { /* ignoreras */ }
-}
-async function pickLocalFolder(p) {
-  try {
-    const handle = await window.showDirectoryPicker({ id: `fakturor-${p.id}`, mode: 'read' });
-    await idbSet(`dir-${p.id}`, handle);
-    await renderProject();
-    syncLocalFolder(p);
-  } catch (err) { if (err.name !== 'AbortError') setImportStatus(err.message); }
-}
-async function syncLocalFolder(p) {
-  const handle = await idbGet(`dir-${p.id}`);
-  if (!handle) return;
-  if ((await handle.queryPermission({ mode: 'read' })) !== 'granted' &&
-      (await handle.requestPermission({ mode: 'read' })) !== 'granted') return setImportStatus('Åtkomst till mappen nekades.');
-  setImportStatus('Läser mappen…');
-  const items = [];
-  const ok = /\.(pdf|jpe?g|png|webp|txt|csv)$/i;
-  async function walk(dir, prefix, depth) {
-    if (depth > 6) return;
-    for await (const entry of dir.values()) {
-      if (entry.name.startsWith('.')) continue;
-      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
-      if (entry.kind === 'directory') await walk(entry, rel, depth + 1);
-      else if (ok.test(entry.name)) items.push({ file: await entry.getFile(), path: rel });
-    }
-  }
-  try {
-    await walk(handle, '', 0);
-    const r = await uploadItems(items, 'folders');
-    await loadProjects(); await renderProject();
-    setImportStatus(`${handle.name}: ${importSummary(r)}`);
-  } catch (err) { setImportStatus(err.message); }
-}
+$('#file-close').addEventListener('click', () => $('#file-dialog').close());
 
 async function openSubmission(id) {
   state.submissionId = id;
@@ -365,7 +267,7 @@ async function openSubmission(id) {
       <div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(d.submission.label || 'Underlag')}</h2>
         <button class="small" id="close-sub">Stäng</button></div>
       <p>${esc(d.submission.summary || '')}</p>
-      <div class="row">${d.files.map((f) => `<a href="/api/files/${f.id}" target="_blank">📄 ${esc(f.original_name)}</a>`).join(' ')}</div>
+      <div class="row">${d.files.map((f) => `<a href="#" data-file="${f.id}">📄 ${esc(f.original_name)}</a>`).join(' ')}</div>
       ${d.findings.map((f) => `<div class="finding ${f.severity}">${f.severity === 'varning' ? '⚠️' : 'ℹ️'} ${esc(f.message)}</div>`).join('')}
       ${roots.map((r) => renderInv(r, false)).join('')}
       ${d.supporting.length ? `<h3>Bilagor utan belopp</h3>${d.supporting.map((s) => `
@@ -374,6 +276,7 @@ async function openSubmission(id) {
     </div>`;
   $('#close-sub').addEventListener('click', () => { state.submissionId = null; $('#submission-detail').innerHTML = ''; });
   $$('[data-edit]').forEach((b) => b.addEventListener('click', () => editLine(JSON.parse(b.dataset.edit))));
+  $$('[data-file]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); showFile(Number(a.dataset.file)).catch((err) => alert(err.message)); }));
 }
 
 const kindName = (k) => ({ huvudfaktura: 'Faktura', underleverantorsfaktura: 'Bilaga (UE/leverantör)', kvitto: 'Kvitto', kreditfaktura: 'Kreditfaktura' }[k] || k);
@@ -507,7 +410,6 @@ async function initAsk() {
   await filterControls($('#ask-filters'), () => {});
   $('#ask-examples').innerHTML = EXAMPLES.map((e) => `<button class="ghost" type="button">${esc(e)}</button>`).join('');
   $$('#ask-examples button').forEach((b) => b.addEventListener('click', () => { $('#ask-q').value = b.textContent; }));
-  if (!state.meta.aiEnabled) { $('#ask-btn').disabled = true; }
 }
 $('#ask-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -553,26 +455,69 @@ function markdown(md) {
   return out.join('');
 }
 
-// ---------- Inloggning
-function showLogin() {
-  $('#login').hidden = false;
-  $('#app').hidden = true;
-  $('#tabs').hidden = true;
-}
-$('#login-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
+// ---------- Inställningar
+async function renderSettings() {
+  const st = await api('/api/settings');
+  let usage = '';
   try {
-    await api('/api/login', { method: 'POST', body: JSON.stringify({ password: e.target.password.value }) });
-    location.reload();
-  } catch (err) { $('#login-error').textContent = err.message; }
-});
+    const est = await navigator.storage.estimate();
+    usage = `Appen använder ${(est.usage / 1e6).toFixed(1)} MB på enheten.`;
+  } catch { /* okänt */ }
+  $('#settings-out').innerHTML = `
+    <div class="panel stack">
+      <h2>API-nyckel för Claude</h2>
+      <p class="muted">Behövs för att tolka fakturor och ställa frågor. Nyckeln sparas bara på den här enheten.
+        Fakturorna skickas till Claude för tolkning – allt annat stannar på enheten.</p>
+      <p>${st.hasApiKey ? `Sparad nyckel: <b>${esc(st.apiKeyHint)}</b>` : '<span class="tag warn">Ingen nyckel sparad</span>'}</p>
+      <form id="key-form" class="row">
+        <input name="apiKey" type="password" placeholder="sk-ant-…" autocomplete="off" style="flex:1 1 240px">
+        <button>Spara</button>
+        ${st.hasApiKey ? '<button type="button" class="ghost" id="key-clear">Ta bort</button>' : ''}
+      </form>
+    </div>
+    <div class="panel stack">
+      <h2>Data på enheten</h2>
+      <p class="muted">${esc(usage)} Om appen raderas försvinner datan – gör en säkerhetskopia ibland.
+        Originalfilerna finns kvar i din mapp och kan läsas in igen.</p>
+      <div class="row">
+        <button type="button" id="backup">Spara säkerhetskopia…</button>
+        <label class="ghost-btn">Återställ från säkerhetskopia<input type="file" id="restore" accept=".sqlite,.db,application/octet-stream" hidden></label>
+        <button type="button" class="ghost" id="demo">Läs in exempel (Karlavägen 71)</button>
+      </div>
+      <p id="settings-status" class="muted"></p>
+    </div>`;
+  $('#key-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await api('/api/settings', { method: 'PUT', body: { apiKey: e.target.apiKey.value } });
+    state.meta = await api('/api/meta'); renderSettings();
+  });
+  const clear = $('#key-clear');
+  if (clear) clear.addEventListener('click', async () => { await api('/api/settings', { method: 'PUT', body: { apiKey: '' } }); state.meta = await api('/api/meta'); renderSettings(); });
+  $('#backup').addEventListener('click', async () => {
+    try { $('#settings-status').textContent = await api('/api/backup'); } catch (err) { $('#settings-status').textContent = err.message; }
+  });
+  $('#restore').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    if (!f || !confirm('Ersätta all data i appen med säkerhetskopian?')) return;
+    try {
+      await api('/api/restore', { method: 'POST', body: { bytes: new Uint8Array(await f.arrayBuffer()) } });
+      location.reload();
+    } catch (err) { $('#settings-status').textContent = err.message; }
+  });
+  $('#demo').addEventListener('click', async () => {
+    const r = await api('/api/demo', { method: 'POST' });
+    analysisInit = false; askInit = false;
+    await selectProject(r.id); showTab('projekt');
+  });
+}
 
 // ---------- Start
-(async function init() {
-  const session = await api('/api/session');
-  if (!session.authed) return showLogin();
+async function start(localApi) {
+  setApi(localApi);
   state.meta = await api('/api/meta');
-  $('#ai-banner').hidden = state.meta.aiEnabled;
   await loadProjects();
   if (state.projects[0]) selectProject(state.projects[0].id);
-})();
+  else if (!state.meta.aiEnabled) showTab('installningar');
+}
+
+module.exports = { start };

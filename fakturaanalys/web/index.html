@@ -23,21 +23,9 @@
       <button data-tab="analys">Analys</button>
       <button data-tab="jamfor">Jämför</button>
       <button data-tab="fraga">Fråga</button>
+      <button data-tab="installningar" aria-label="Inställningar">⚙︎</button>
     </nav>
   </header>
-  <div id="ai-banner" class="banner" hidden>
-    Ingen API-nyckel hittades (ANTHROPIC_API_KEY). Uppladdning/tolkning och fritextfrågor är avstängda –
-    analys och jämförelser fungerar på redan inläst data.
-  </div>
-
-  <section id="login" class="login" hidden>
-    <form id="login-form" class="panel stack">
-      <h2>Fakturaanalys Bygg</h2>
-      <input type="password" name="password" placeholder="Lösenord" autocomplete="current-password" required>
-      <button>Logga in</button>
-      <p id="login-error" class="muted"></p>
-    </form>
-  </section>
 
   <main id="app">
     <!-- PROJEKT & UNDERLAG -->
@@ -100,7 +88,17 @@
       </div>
       <div id="ask-log"></div>
     </section>
+    <!-- INSTÄLLNINGAR -->
+    <section id="tab-installningar" class="tab">
+      <div id="settings-out"></div>
+    </section>
   </main>
+
+  <dialog id="file-dialog" class="file-dialog">
+    <div class="row" style="justify-content:space-between"><b id="file-title"></b><button id="file-close" type="button" class="small">Stäng</button></div>
+    <div id="file-frame"></div>
+  </dialog>
+  <div id="boot" class="boot"><span class="spinner"></span> Startar…</div>
 
   <dialog id="line-dialog">
     <form method="dialog" id="line-form" class="stack">
@@ -112,19 +110,6 @@
       <label>Enhet <input name="unit" placeholder="h, st, m2, m3 ..."></label>
       <div class="row"><button value="save">Spara</button><button value="cancel" class="ghost">Avbryt</button></div>
     </form>
-  </dialog>
-
-  <dialog id="folder-dialog">
-    <div class="stack">
-      <h3>Välj fakturamapp</h3>
-      <p class="muted" id="folder-crumb"></p>
-      <ul id="folder-list" class="list folders"></ul>
-      <p class="muted" id="folder-info"></p>
-      <div class="row">
-        <button id="folder-choose" type="button">Välj den här mappen</button>
-        <button id="folder-cancel" type="button" class="ghost">Avbryt</button>
-      </div>
-    </div>
   </dialog>
 
   <script src="app.js"></script>

@@ -1,0 +1,12 @@
+{
+  "name": "capacitor-folder-access",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bestående åtkomst till en vald mapp i appen Filer (iOS) för Fakturaanalys",
+  "main": "index.js",
+  "files": ["index.js", "ios/", "Package.swift", "CapacitorFolderAccess.podspec"],
+  "capacitor": {
+    "ios": { "src": "ios" }
+  },
+  "peerDependencies": { "@capacitor/core": ">=8.0.0" }
+}

@@ -1,12 +1,15 @@
 'use strict';
 // Tolkar ett fakturaunderlag (en eller flera filer, PDF inkl. skannade sidor, bilder eller text)
 // till strukturerad JSON med Claude och structured outputs.
-const fs = require('fs');
 const Anthropic = require('@anthropic-ai/sdk');
+
+// Miljövariabler finns bara i Node (tester); i appen används standardvärdena.
+const env = (name) => (typeof process !== 'undefined' && process.env ? process.env[name] : undefined);
 const { COST_CATEGORIES, TRADES, UNITS, INVOICE_KINDS, SUPPORT_TYPES } = require('./taxonomy');
 
-const MODEL = process.env.CLAUDE_MODEL || 'claude-opus-5-5';
+const MODEL = env('CLAUDE_MODEL') || 'claude-opus-5-5';
 const MAX_REQUEST_BYTES = 30 * 1024 * 1024; // API-gräns 32 MB per anrop, base64 inräknat
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 const str = { type: 'string' };
 const nstr = { type: ['string', 'null'] };
@@ -128,32 +131,37 @@ Regler:
   annat som beställaren bör kontrollera.
 - summary: 2-4 meningar om vad underlaget avser.`;
 
+// file: { original_name, mime_type, data } där data är filens innehåll som base64.
 function fileToBlocks(file) {
-  const data = fs.readFileSync(file.stored_path);
   const header = { type: 'text', text: `Fil: ${file.original_name}` };
   if (file.mime_type === 'application/pdf') {
     return [header, {
       type: 'document',
       title: file.original_name,
-      source: { type: 'base64', media_type: 'application/pdf', data: data.toString('base64') },
+      source: { type: 'base64', media_type: 'application/pdf', data: file.data },
     }];
   }
-  if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.mime_type)) {
-    return [header, {
-      type: 'image',
-      source: { type: 'base64', media_type: file.mime_type, data: data.toString('base64') },
-    }];
+  if (IMAGE_TYPES.includes(file.mime_type)) {
+    return [header, { type: 'image', source: { type: 'base64', media_type: file.mime_type, data: file.data } }];
   }
   // text/csv/plain m.m.
-  return [header, { type: 'text', text: data.toString('utf8') }];
+  return [header, { type: 'text', text: decodeBase64Text(file.data) }];
 }
 
-function createClient() {
-  return new Anthropic();
+function decodeBase64Text(b64) {
+  const bin = atob(b64);
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+// API-nyckeln sparas bara på enheten. Anropen går direkt från appen till Claude.
+function createClient(apiKey) {
+  if (!apiKey) throw new Error('Ange din API-nyckel under Inställningar.');
+  return new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
 }
 
 function useFallbacks() {
-  return process.env.CLAUDE_DISABLE_FALLBACKS !== '1';
+  return env('CLAUDE_DISABLE_FALLBACKS') !== '1';
 }
 
 // Gemensamma parametrar för Claude-anrop. Server-side fallback är påslaget:
@@ -162,10 +170,10 @@ function baseParams() {
   return useFallbacks() ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' } : {};
 }
 
-async function extractSubmission(files, { client = createClient(), projectName } = {}) {
-  const total = files.reduce((s, f) => s + f.size_bytes, 0);
-  if (total * 1.37 > MAX_REQUEST_BYTES) {
-    throw new Error(`Underlaget är för stort för ett anrop (${(total / 1e6).toFixed(1)} MB). ` +
+async function extractSubmission(files, { client, projectName } = {}) {
+  const total = files.reduce((s, f) => s + f.data.length, 0);
+  if (total * 1.02 > MAX_REQUEST_BYTES) {
+    throw new Error(`Underlaget är för stort för ett anrop (${(total * 0.75 / 1e6).toFixed(1)} MB). ` +
       'Dela upp det i flera uppladdningar (max ca 20 MB per uppladdning).');
   }
   const content = [];
@@ -181,7 +189,7 @@ async function extractSubmission(files, { client = createClient(), projectName }
     max_tokens: 64000,
     system: SYSTEM_PROMPT,
     output_config: {
-      effort: process.env.EXTRACT_EFFORT || 'high',
+      effort: env('EXTRACT_EFFORT') || 'high',
       format: { type: 'json_schema', schema: EXTRACTION_SCHEMA },
     },
     messages: [{ role: 'user', content }],
@@ -200,9 +208,9 @@ function friendlyError(e) {
   if (e instanceof Anthropic.AuthenticationError) return 'Ogiltig API-nyckel (ANTHROPIC_API_KEY).';
   if (e instanceof Anthropic.RateLimitError) return 'För många anrop just nu – försök igen om en stund.';
   if (e instanceof Anthropic.BadRequestError) return `Claude kunde inte ta emot underlaget: ${e.message}`;
-  if (e instanceof Anthropic.APIConnectionError) return 'Kunde inte nå Claude (nätverksfel).';
+  if (e instanceof Anthropic.APIConnectionError) return 'Kunde inte nå Claude – kontrollera internetanslutningen.';
   if (e instanceof Anthropic.APIError) return `Fel från Claude (${e.status}).`;
   return e.message;
 }
 
-module.exports = { extractSubmission, friendlyError, EXTRACTION_SCHEMA, SYSTEM_PROMPT, createClient, baseParams, MODEL };
+module.exports = { extractSubmission, friendlyError, env, EXTRACTION_SCHEMA, SYSTEM_PROMPT, createClient, baseParams, MODEL };

@@ -1,0 +1,9 @@
+{
+  "appId": "se.fakturaanalys.bygg",
+  "appName": "Fakturaanalys",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#f5f4f0"
+  }
+}
