@@ -15,7 +15,7 @@ async function jsonFromStream(client, params) {
 }
 const { ask, runReadOnlySql, describeScope, SYSTEM_PROMPT: ASK_PROMPT, RUN_SQL_TOOL } = require('./ask');
 const { normalizeExtraction } = require('./normalize');
-const { coveredPages, linkAttachments, mergeExtraction } = require('./coverage');
+const { coveredPages, linkAttachments, mergeExtraction, openReinvoiceLines } = require('./coverage');
 
 function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
@@ -42,8 +42,28 @@ function createSdkLlm({ getApiKey, makeClient = createClient, toBase64 = blobToB
     async extract(files, { projectName }) {
       const withData = [];
       for (const f of files) withData.push({ original_name: f.original_name, mime_type: f.mime_type, data: await toBase64(f.blob) });
-      const ex = await extractSubmission(withData, { client: await client(), projectName });
+      const c = await client();
+      const ex = await extractSubmission(withData, { client: c, projectName });
       linkAttachments(ex);
+      let passes = 1;
+      const open = openReinvoiceLines(ex);
+      if (open.length) {
+        // Riktad omgång: leta upp de vidarefakturerade leverantörsfakturorna bland bilagorna.
+        const extra = await extractSubmission(withData, { client: c, projectName, instruction: [
+          'KOMPLETTERANDE tolkning. Huvudfakturan vidarefakturerar följande leverantörsfakturor, men de kom inte med i första tolkningen:',
+          ...open.map(({ inv, line }) => `- ${inv.ref}: "${line.description}" ${line.amount_excl_vat} kr`),
+          'Leta upp var och en bland bilagorna (ofta skannade sidor) och tolka ENBART dessa som "underleverantorsfaktura" med alla rader,',
+          `parent_ref = "${open[0].inv.ref}" och rätt invoice_number, samt tillhörande arbetsbeskrivningar. Ta inte med huvudfakturan igen.`,
+        ].join('\n') });
+        passes++;
+        mergeExtraction(ex, { ...extra, invoices: extra.invoices.filter((i) => i.kind !== 'huvudfaktura'), ignored_pages: [] }, 'R1');
+        linkAttachments(ex);
+      }
+      const unlinked = openReinvoiceLines(ex);
+      for (const { line } of unlinked) {
+        ex.warnings.push(`Leverantörsfakturan för raden "${line.description}" (${line.amount_excl_vat} kr) hittades inte bland bilagorna. Beloppet räknas på leverantören men utan detaljrader.`);
+      }
+      ex.read_log = { passes, missing: [], unlinked: unlinked.map(({ line }) => line.description) };
       return ex;
     },
     async ask(db, args) { return ask(db, args, { client: await client() }); },
@@ -175,34 +195,57 @@ function createSampleLlm({ sample, pdfToPages }) {
       const ex = first.ex;
       let passes = 1;
 
-      // 3. Kompletterande omgångar för sidor som inte blev tolkade.
+      // 3. Kompletterande omgångar. Två skäl att läsa igen:
+      //    a) sidor som ingen faktura/bilaga täcker (skannade sidor räknas bara om en BILAGA hör dit)
+      //    b) rader på huvudfakturan som vidarefakturerar en leverantör (t.ex. "HARD WORKERS OF SWEDEN AB, 33849")
+      //       men där leverantörens faktura inte hittades.
+      const relevant = (list) => list.filter((p) => p.image || (p.text && p.text.length > 40));
       const uncovered = () => {
-        const cov = coveredPages(ex, fileNames);
-        return pages.filter((p) => !(cov.get(p.file) || new Set()).has(p.n));
+        const all = coveredPages(ex, fileNames);
+        const att = coveredPages(ex, fileNames, { attachmentsOnly: true });
+        const open = openReinvoiceLines(ex).length > 0;
+        return pages.filter((p) => {
+          if (!p.image) return !(all.get(p.file) || new Set()).has(p.n);
+          // En skannad sida som bara huvudfakturan gör anspråk på räknas som tolkad först när inga bilagor saknas.
+          return !(att.get(p.file) || new Set()).has(p.n) && (open || !(all.get(p.file) || new Set()).has(p.n));
+        });
       };
+      let targeted = false;
       for (let round = 1; round <= 4; round++) {
-        const missing = uncovered().filter((p) => p.image || (p.text && p.text.length > 40));
-        if (!missing.length) break;
         linkAttachments(ex);
+        const open = openReinvoiceLines(ex);
+        let missing = relevant(uncovered());
+        if (!missing.length) {
+          if (!open.length || targeted) break;
+          // Alla sidor ser tolkade ut, men bilagor saknas: läs de skannade sidorna (eller allt) igen, riktat.
+          missing = pages.some((p) => p.image) ? pages.filter((p) => p.image) : pages;
+          targeted = true;
+        }
         const known = ex.invoices.map((i) => `${i.ref}: ${i.kind}, ${i.supplier_name}, nr ${i.invoice_number || '?'}, sidor ${i.pages}`).join('\n');
-        const openLines = ex.invoices.filter((i) => i.kind === 'huvudfaktura').flatMap((i) => i.lines
-          .filter((l) => !l.attachment_ref && l.amount_excl_vat != null).map((l) => `${i.ref}: "${l.description}" ${l.amount_excl_vat} kr`)).join('\n');
+        const openText = open.map(({ inv, line }) => `${inv.ref}: "${line.description}" ${line.amount_excl_vat} kr`).join('\n');
         const intro = [
-          'Detta är en KOMPLETTERANDE tolkning. Följande sidor ur underlaget kom inte med i första tolkningen.',
-          'Tolka ENBART sidorna nedan. Skapa nya poster med egna ref (t.ex. B1, B2).',
-          'Redan tolkade fakturor (använd deras ref i parent_ref om en bilaga hör till dem):', known || '(inga)',
-          'Rader på huvudfakturan som vidarefakturerar något men saknar bilaga:', openLines || '(inga)',
-        ].join('\n');
+          'Detta är en KOMPLETTERANDE tolkning av samma underlag. Första tolkningen missade innehåll.',
+          open.length ? 'Huvudfakturan vidarefakturerar följande leverantörsfakturor, men de har inte tolkats. Leta upp VAR OCH EN bland sidorna nedan och tolka den som "underleverantorsfaktura" (eller kvitto) med alla rader, parent_ref = huvudfakturans ref och rätt invoice_number:' : '',
+          openText,
+          'Tolka ENBART sidorna nedan. Skapa nya poster med egna ref (t.ex. B1, B2). Ta också med arbetsbeskrivningar/tidrapporter i supporting_documents.',
+          'Redan tolkade fakturor:', known || '(inga)',
+        ].filter(Boolean).join('\n');
+        const before = missing.length + open.length;
         const r = await pass(missing, intro);
         passes++;
-        const before = missing.length;
         mergeExtraction(ex, r.ex, `R${round}`);
-        if (uncovered().filter((p) => p.image || (p.text && p.text.length > 40)).length >= before) break; // ingen framgång
+        linkAttachments(ex);
+        const after = relevant(uncovered()).length + openReinvoiceLines(ex).length;
+        if (after >= before) break; // ingen framgång
       }
       linkAttachments(ex);
 
       // 4. Läslogg och varning för sidor som fortfarande saknas.
-      const still = uncovered().filter((p) => p.image || (p.text && p.text.length > 40));
+      const still = relevant(uncovered());
+      const unlinked = openReinvoiceLines(ex);
+      for (const { line } of unlinked) {
+        ex.warnings.push(`Leverantörsfakturan för raden "${line.description}" (${line.amount_excl_vat} kr) hittades inte bland bilagorna. Beloppet räknas på leverantören men utan detaljrader. Tryck "Kör om" eller ladda upp bilagan separat.`);
+      }
       if (still.length) ex.warnings.push(`Dessa sidor kunde inte tolkas: ${still.map(label).join(', ')}. Tryck "Kör om", eller ladda upp sidorna som en separat fil.`);
       ex.read_log = {
         pages: pages.length,
@@ -210,6 +253,7 @@ function createSampleLlm({ sample, pdfToPages }) {
         scanned_pages: pages.filter((p) => p.image).length,
         passes,
         missing: still.map(label),
+        unlinked: unlinked.map(({ line }) => line.description),
       };
       return ex;
     },

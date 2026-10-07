@@ -31,7 +31,7 @@ test('avstämning: total kostnad = summan av huvudfakturorna, påslag 12 % hitta
   const { db } = tmpDb();
   const pid = loadFixture(db, fixture);
   const total = db.prepare('SELECT SUM(effective_amount) t FROM cost_lines WHERE project_id = ?').get(pid).t;
-  assert.ok(Math.abs(total - (44058.91 + 55988.80)) < 0.5, `total ${total}`);
+  assert.ok(Math.abs(total - (44058.91 + 55988.80 + 167883.20)) < 0.5, `total ${total}`);
 
   const inv = (no) => db.prepare('SELECT * FROM invoices WHERE invoice_number = ?').get(no);
   assert.equal(inv('33869').markup_status, 'ok');
@@ -50,13 +50,17 @@ test('avstämning: total kostnad = summan av huvudfakturorna, påslag 12 % hitta
   assert.ok(warn.some((w) => /Beijer/.test(w.message)));
 });
 
-test('analys: rivning 105 h à 481,60 kr för beställaren (430 kr + 12 %)', () => {
+test('analys: rivning 369 h à 481,60 kr för beställaren (430 kr + 12 %)', () => {
   const { db } = tmpDb();
   loadFixture(db, fixture);
   const r = compareUnitPrices(db, { dimension: 'trade', value: 'rivning', unit: 'h' });
-  assert.equal(r.overall.quantity, 105);
+  assert.equal(r.overall.quantity, 369); // 19 + 86 + 160 + 104 h
   assert.equal(r.overall.avg_price, 481.6);
   assert.equal(r.overall.avg_supplier_price, 430);
+  // Hard Workers redovisas som egen leverantör, inte som Thessén & Ek
+  const sup = Object.fromEntries(overview(db, {}).bySupplier.map((x) => [x.key, x.amount]));
+  assert.equal(sup['Hard Workers of Sweden AB'], 235844); // 22 960 + 55 988,80 + 103 045,60 + 53 849,60
+  assert.equal(sup['Thessén & Ek Byggentreprenad AB'], 21588); // bara arbetsledning och parkering
   const o = overview(db, { from: '2026-09', to: '2026-09' });
   assert.ok(o.byMonth.every((m) => m.key === '2026-09'));
 });
@@ -132,7 +136,7 @@ test('ask: verktygsloop med fejkad klient kör SQL och returnerar svar + frågor
     return { stop_reason: 'end_turn', content: [{ type: 'text', text: `Totalt: ${JSON.parse(result.content).rows[0].s}` }] };
   } } } };
   const r = await ask(db, { question: 'Total?', scope: {} }, { client });
-  assert.match(r.answer, /Totalt: 1000/);
+  assert.match(r.answer, /Totalt: 26793/);
   assert.equal(r.queries.length, 1);
   assert.equal(seen[0].model, 'claude-opus-5-5');
   assert.equal(seen[0].tools[0].name, 'run_sql');

@@ -41,9 +41,9 @@ const byType = (db, t) => db.prepare('SELECT * FROM review_findings WHERE check_
 test('fel timpris: rivning 481,60 kr/h mot avtalade 450 kr/h', () => {
   const { db } = setup();
   const f = byType(db, 'fel_pris');
-  assert.equal(f.length, 2); // två fakturor med rivningstimmar (19 h och 86 h)
+  assert.equal(f.length, 4); // fyra fakturor med rivningstimmar (19, 86, 160 och 104 h)
   const total = f.reduce((s, x) => s + x.amount, 0);
-  assert.ok(Math.abs(total - 31.6 * 105) < 0.05, `total ${total}`);
+  assert.ok(Math.abs(total - 31.6 * 369) < 0.05, `total ${total}`);
   assert.match(f[0].contract_ref, /Rivningsarbete 450 kr\/tim/);
   // arbetsledning 680 kr/h stämmer med avtalet och flaggas inte
   assert.ok(!f.some((x) => /Arbetsledning/.test(x.title)));
@@ -60,6 +60,8 @@ test('för högt påslag: 12 % mot avtalade 10 %', () => {
   assert.equal(amounts['33864'], 260.2);
   assert.ok(Math.abs(amounts['183677491'] - 81.44) < 0.01);
   assert.equal(amounts['260980851828'], undefined); // Beijer avviker redan och bedöms inte här
+  assert.equal(amounts['33849'], 306.8);  // bara förbrukningsmaterialet 15 340 × 2 % (övriga rader flaggade)
+  assert.equal(amounts['33857'], undefined); // alla rader redan flaggade -> inget kvar att räkna
 });
 
 test('poster som ingår enligt avtalet: parkering och servicebil', () => {
@@ -79,8 +81,8 @@ test('ÄTA utan skriftlig beställning och för kort betalningstid', () => {
   assert.equal(ata.length, 1);
   assert.match(ata[0].title, /132370/);
   const pay = byType(db, 'betalningsvillkor');
-  assert.equal(pay.length, 1);
-  assert.match(pay[0].detail, /10 dagars betalningstid mot avtalade 30/);
+  assert.deepEqual(pay.map((x) => x.title.match(/\d+$/)[0]).sort(), ['132354', '132387']);
+  assert.ok(pay.every((x) => /10 dagars betalningstid mot avtalade 30/.test(x.detail)));
 });
 
 test('ingen dubbelräkning: summan av fynd = faktisk överdebitering', () => {
@@ -90,7 +92,10 @@ test('ingen dubbelräkning: summan av fynd = faktisk överdebitering', () => {
   // 33869: (20 500 − 8 170 − 950 − 245) × 2 % = 222,70; 33864: (49 990 − 36 980) × 2 % = 260,20; Big Bag 81,44.
   // Servicebil + parkering (33869) som ingår i avtalet: 1 064 + 274,40.
   const total = sum('fel_pris') + sum('fel_paslag') + sum('ingar_i_avtal');
-  assert.ok(Math.abs(total - (3318 + 222.7 + 260.2 + 81.44 + 1064 + 274.4)) < 0.1, `total ${total}`);
+  // Plus augusti (132354): rivning 264 h × 31,60; förbrukningsmaterial 15 340 × 2 %; servicebil/parkering
+  // 5 225 + 2 640 + 2 375 + 985 kr × 1,12.
+  const expected = 31.6 * 369 + (222.7 + 260.2 + 81.44 + 306.8) + (1064 + 274.4) + (5225 + 2640 + 2375 + 985) * 1.12;
+  assert.ok(Math.abs(total - expected) < 0.1, `total ${total} mot ${expected}`);
 });
 
 test('godkänd avvikelse visas inte igen efter ny kontroll', () => {
@@ -98,7 +103,7 @@ test('godkänd avvikelse visas inte igen efter ny kontroll', () => {
   const f = byType(db, 'betalningsvillkor')[0];
   db.prepare('INSERT INTO review_dismissed (project_id, dedupe_key) VALUES (?, ?)').run(pid, f.dedupe_key);
   runContractChecks(db, pid);
-  assert.equal(byType(db, 'betalningsvillkor').length, 0);
+  assert.equal(byType(db, 'betalningsvillkor').length, 1); // den andra fakturan finns kvar
 });
 
 test('utan avtal: inga avtalsfynd', () => {

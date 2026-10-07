@@ -111,6 +111,7 @@ async function boot() {
   // I länk-versionen kan sidan inte komma ihåg mappar – man väljer filerna i mappen.
   const deviceFolders = ARTIFACT ? { ...folders, folderMode: () => 'none' } : folders;
   const local = createLocalApi({ db, store, folders: deviceFolders, fixture, exportDb, importDb, llm });
+  local.refreshAll();
   await ui.start(local.api);
   // Länk-versionen använder ditt Claude-konto – starta bara anrop när du själv trycker.
   if (ARTIFACT) local.markInterrupted(); else local.resumeInterrupted();

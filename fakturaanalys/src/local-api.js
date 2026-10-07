@@ -409,7 +409,14 @@ function createLocalApi(deps) {
     db.prepare("UPDATE submissions SET status = 'error', error = 'Avbröts när appen stängdes – tryck Kör om.' WHERE status = 'processing'").run();
   }
 
-  return { api, queue, resumeInterrupted, markInterrupted, syncProject, processSubmission };
+  // Räknar om alla projekt (vid start), så att rättningar i avstämningen gäller även redan inläst data.
+  function refreshAll() {
+    for (const { id } of db.prepare('SELECT id FROM projects').all()) {
+      try { refresh(id); } catch (e) { console.error('refresh', id, e); }
+    }
+  }
+
+  return { api, queue, resumeInterrupted, markInterrupted, refreshAll, syncProject, processSubmission };
 }
 
 module.exports = { createLocalApi };

@@ -3,6 +3,21 @@
 // varje krona räknas exakt en gång och påslag synliggörs.
 const { tx } = require('./schema');
 const { COST_CATEGORIES, TRADES } = require('./taxonomy');
+const { isReinvoiceLine, vendorFromDescription } = require('./coverage');
+
+// Leverantören på en vidarefakturerad klumprad ("HARD WORKERS OF SWEDEN AB, 33849") när bilagan saknas.
+// Matchas mot leverantörer som redan finns i projektet så att namnet blir detsamma ("Hard Workers of Sweden AB").
+const nameWords = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/)
+  .filter((w) => w.length >= 4 && !['sweden', 'sverige', 'bygg', 'byggmaterial', 'aktiebolag'].includes(w));
+function vendorForLine(l, inv, knownSuppliers) {
+  if (inv.parent_invoice_id || l.attachment_invoice_id) return null;
+  if (!isReinvoiceLine({ ...l, attachment_ref: null })) return null;
+  const parsed = vendorFromDescription(l.description);
+  if (!parsed) return null;
+  const pw = nameWords(parsed);
+  const known = knownSuppliers.find((k) => k !== inv.supplier_name && nameWords(k).some((w) => pw.includes(w)));
+  return known || parsed;
+}
 
 const round2 = (n) => (n == null ? null : Math.round(n * 100) / 100);
 const month = (d) => (typeof d === 'string' && /^\d{4}-\d{2}/.test(d) ? d.slice(0, 7) : null);
@@ -158,6 +173,7 @@ function reconcile(db, projectId) {
     }
 
     // 2. Härledda fält per rad
+    const knownSuppliers = [...new Set(invoices.map((i) => i.supplier_name).filter(Boolean))];
     const updLine = db.prepare(`UPDATE line_items SET counted = ?, alloc_factor = ?, markup_factor = ?,
       markup_assumed = ?, effective_amount = ?, effective_unit_price = ?, work_month = ?, invoice_month = ?,
       supplier_name = ?, billed_by = ? WHERE id = ?`);
@@ -183,10 +199,11 @@ function reconcile(db, projectId) {
       if (l.unit_price != null) effUnit = round2(l.unit_price * markup);
       else if (l.amount_excl_vat != null && l.quantity) effUnit = round2((l.amount_excl_vat / l.quantity) * markup);
 
+      const vendor = counted ? vendorForLine(l, inv, knownSuppliers) : null;
       const workMonth = month(l.line_date) || month(inv.period_start) || month(inv.invoice_date) ||
         month(top.period_start) || month(top.invoice_date);
       updLine.run(counted, alloc, markup, assumed, effAmount, effUnit, workMonth, month(top.invoice_date),
-        inv.supplier_name, top.supplier_name, l.id);
+        vendor || inv.supplier_name, top.supplier_name, l.id);
     }
   });
 }

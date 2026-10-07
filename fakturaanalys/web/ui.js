@@ -139,7 +139,12 @@ async function renderProject() {
   });
 
   $$('[data-open]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); openSubmission(Number(a.dataset.open)); }));
-  $$('[data-retry]').forEach((b) => b.addEventListener('click', async () => { await api(`/api/submissions/${b.dataset.retry}/retry`, { method: 'POST' }); renderProject(); }));
+  $$('[data-retry]').forEach((b) => b.addEventListener('click', async () => {
+    const sub = subs.find((x) => x.id === Number(b.dataset.retry));
+    if (sub && sub.status === 'done' && !await confirmBox('Tolka underlaget igen? Ändringar du gjort på raderna i underlaget försvinner.', 'Kör om')) return;
+    await api(`/api/submissions/${b.dataset.retry}/retry`, { method: 'POST' });
+    renderProject();
+  }));
   $$('[data-del]').forEach((b) => b.addEventListener('click', async () => {
     if (!await confirmBox('Ta bort underlaget och all tolkad data? Filen läses inte in igen vid nästa uppdatering.')) return;
     await api(`/api/submissions/${b.dataset.del}`, { method: 'DELETE' });
@@ -172,7 +177,7 @@ function subsTable(rows, ai, empty) {
             ${s.error ? `<div class="tag warn">${esc(s.error)}</div>` : ''}</td>
           <td data-label="Status">${statusTag(s)}</td>
           <td data-label="Kostnad" class="num">${s.kind === 'avtal' ? '' : kr(s.total)}</td>
-          <td class="row">${s.status === 'error' && ai ? `<button class="small" data-retry="${s.id}">Kör om</button>` : ''}
+          <td class="row">${(s.status === 'error' || s.status === 'done') && ai ? `<button class="small ${s.status === 'done' ? 'ghost' : ''}" data-retry="${s.id}" title="Tolka underlaget igen">Kör om</button>` : ''}
             <button class="small" data-del="${s.id}" title="Ta bort" aria-label="Ta bort">✕</button></td>
         </tr>`).join('') || `<tr><td colspan="5" class="muted">${empty}</td></tr>`}
       </tbody></table></div>`;
@@ -460,10 +465,13 @@ function readLog(json) {
   if (!json) return '';
   let l;
   try { l = JSON.parse(json); } catch { return ''; }
-  const ok = !l.missing || !l.missing.length;
-  return `<p class="small ${ok ? 'muted' : ''}">${ok ? '✓' : '⚠️'} ${l.pages} sidor lästa: ${l.text_pages} med text, ${l.scanned_pages} skannade
+  const unlinked = l.unlinked || [];
+  const ok = (!l.missing || !l.missing.length) && !unlinked.length;
+  const pagesText = l.pages != null ? `${l.pages} sidor lästa: ${l.text_pages} med text, ${l.scanned_pages} skannade` : 'Underlaget lästes';
+  return `<p class="small ${ok ? 'muted' : ''}">${ok ? '✓' : '⚠️'} ${pagesText}
     ${l.passes > 1 ? ` · ${l.passes - 1} kompletterande tolkning${l.passes > 2 ? 'ar' : ''} för missade sidor` : ''}
-    ${ok ? ' · alla sidor tolkade' : ` · ej tolkade: ${esc(l.missing.join(', '))}`}</p>`;
+    ${ok ? ' · alla sidor och bilagor tolkade' : ''}${l.missing && l.missing.length ? ` · ej tolkade: ${esc(l.missing.join(', '))}` : ''}
+    ${unlinked.length ? ` · leverantörsfaktura saknas för: ${esc(unlinked.join('; '))} – tryck Kör om` : ''}</p>`;
 }
 
 const kindName = (k) => ({ huvudfaktura: 'Faktura', underleverantorsfaktura: 'Bilaga (UE/leverantör)', kvitto: 'Kvitto', kreditfaktura: 'Kreditfaktura' }[k] || k);

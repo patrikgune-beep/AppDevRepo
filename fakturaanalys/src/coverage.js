@@ -16,7 +16,10 @@ function parsePages(s) {
 const base = (name) => String(name || '').split('/').pop().toLowerCase().trim();
 
 // Vilka sidor (per fil) som någon faktura, bilaga eller medvetet överhoppad sida täcker.
-function coveredPages(ex, fileNames) {
+// Med { attachmentsOnly: true } räknas inte huvudfakturans sidangivelse: en skannad sida
+// räknas bara som tolkad om en bilaga (underleverantörsfaktura, kvitto, arbetsbeskrivning …)
+// hör till den. Annars kan "huvudfakturan, sida 1–5" dölja att bilagorna aldrig lästes.
+function coveredPages(ex, fileNames, { attachmentsOnly = false } = {}) {
   const covered = new Map(fileNames.map((f) => [f, new Set()]));
   const resolveFile = (src) => {
     if (fileNames.length === 1) return fileNames[0];
@@ -27,7 +30,7 @@ function coveredPages(ex, fileNames) {
     const f = resolveFile(src);
     if (f) for (const n of parsePages(pages)) covered.get(f).add(n);
   };
-  for (const inv of ex.invoices || []) mark(inv.source_file, inv.pages);
+  for (const inv of ex.invoices || []) if (!attachmentsOnly || inv.kind !== 'huvudfaktura') mark(inv.source_file, inv.pages);
   for (const d of ex.supporting_documents || []) mark(d.source_file, d.pages);
   for (const p of ex.ignored_pages || []) mark(p.source_file, String(p.page));
   return covered;
@@ -73,14 +76,25 @@ function linkAttachments(ex) {
 function mergeExtraction(target, extra, prefix) {
   const existing = new Set((target.invoices || []).map((i) => i.ref));
   const map = new Map();
+  // Fakturor som redan finns (samma nummer och leverantör, eller en andra huvudfaktura) läggs inte till
+  // igen – annars räknas de dubbelt. Referenser till dem pekas om till den befintliga.
+  const key = (i) => `${digits(i.invoice_number)}|${words(i.supplier_name).slice(0, 2).join(' ')}`;
+  const already = new Map((target.invoices || []).filter((i) => digits(i.invoice_number)).map((i) => [key(i), i.ref]));
+  const hasMain = (target.invoices || []).find((i) => i.kind === 'huvudfaktura');
+  const fresh = [];
   for (const inv of extra.invoices || []) {
+    const dup = (digits(inv.invoice_number) && already.get(key(inv))) || (inv.kind === 'huvudfaktura' && hasMain && hasMain.ref);
+    if (dup) { map.set(inv.ref, dup); continue; }
+    fresh.push(inv);
+  }
+  for (const inv of fresh) {
     let ref = `${prefix}${inv.ref}`;
     while (existing.has(ref)) ref += '_';
     map.set(inv.ref, ref);
     existing.add(ref);
   }
   const remap = (r) => (r == null ? r : map.get(r) || r);
-  for (const inv of extra.invoices || []) {
+  for (const inv of fresh) {
     target.invoices.push({
       ...inv, ref: map.get(inv.ref), parent_ref: remap(inv.parent_ref),
       lines: inv.lines.map((l) => ({ ...l, attachment_ref: remap(l.attachment_ref) })),
@@ -94,4 +108,26 @@ function mergeExtraction(target, extra, prefix) {
   return target;
 }
 
-module.exports = { parsePages, coveredPages, linkAttachments, mergeExtraction };
+// Rad på huvudfakturan som vidarefakturerar en annan leverantörs faktura, t.ex.
+// "HARD WORKERS OF SWEDEN AB, 33849  103 045,60" eller "Beijer Byggmaterial AB, 097, 260980851828".
+const COMPANY = /\b(ab|aktiebolag|hb|kb|as|oy|ab\)|gmbh|ltd|a\/s|aps)\b/i;
+function isReinvoiceLine(l) {
+  if (!l || l.attachment_ref || l.amount_excl_vat == null) return false;
+  const lump = l.quantity == null || l.unit_price == null || (l.quantity === 1 && Math.abs((l.unit_price || 0) - l.amount_excl_vat) < 0.01);
+  if (!lump) return false;
+  return COMPANY.test(l.description || '') || (['underentreprenad', 'material', 'avfall'].includes(l.cost_category) && /\d{5,}/.test(l.description || ''));
+}
+const openReinvoiceLines = (ex) => (ex.invoices || []).filter((i) => i.kind === 'huvudfaktura')
+  .flatMap((i) => i.lines.filter(isReinvoiceLine).map((l) => ({ inv: i, line: l })));
+
+// Leverantörens namn ur radtexten: allt fram till bolagsformen. "HARD WORKERS OF SWEDEN AB, 33849"
+// -> "Hard Workers Of Sweden AB". Används när bilagan saknas, så att beloppet ändå hamnar på rätt leverantör.
+function vendorFromDescription(desc) {
+  const m = String(desc || '').match(/^\s*([^,;:]+?\b(?:AB|Aktiebolag|HB|KB|AS|Oy|GmbH|Ltd|A\/S|ApS))\b/i);
+  if (!m) return null;
+  const name = m[1].trim();
+  const caps = name === name.toUpperCase();
+  return caps ? name.toLowerCase().replace(/(^|\s)\p{L}/gu, (c) => c.toUpperCase()).replace(/\b(Ab|Hb|Kb|As|Oy|Gmbh|Ltd|A\/s|Aps)$/i, (x) => x.toUpperCase().replace('GMBH', 'GmbH').replace('APS', 'ApS')) : name;
+}
+
+module.exports = { parsePages, coveredPages, linkAttachments, mergeExtraction, isReinvoiceLine, openReinvoiceLines, vendorFromDescription };

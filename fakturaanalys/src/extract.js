@@ -170,7 +170,7 @@ function baseParams() {
   return useFallbacks() ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' } : {};
 }
 
-async function extractSubmission(files, { client, projectName } = {}) {
+async function extractSubmission(files, { client, projectName, instruction = null } = {}) {
   const total = files.reduce((s, f) => s + f.data.length, 0);
   if (total * 1.02 > MAX_REQUEST_BYTES) {
     throw new Error(`Underlaget är för stort för ett anrop (${(total * 0.75 / 1e6).toFixed(1)} MB). ` +
@@ -180,7 +180,7 @@ async function extractSubmission(files, { client, projectName } = {}) {
   for (const f of files) content.push(...fileToBlocks(f));
   content.push({
     type: 'text',
-    text: `Projekt: ${projectName || 'okänt'}. Tolka hela underlaget ovan enligt instruktionerna.`,
+    text: instruction ? `Projekt: ${projectName || 'okänt'}.\n${instruction}` : `Projekt: ${projectName || 'okänt'}. Tolka hela underlaget ovan enligt instruktionerna.`,
   });
 
   const stream = client.beta.messages.stream({
