@@ -60,6 +60,43 @@ Hur filerna i mappen grupperas:
 - **Originalen orörda:** appen ändrar eller raderar aldrig något i din mapp.
 - **Begränsad tolkning:** högst två underlag tolkas samtidigt.
 
+## Avtal: kontrakt, offert och kontraktsbilagor
+
+Lägg till avtalsunderlaget under **Projekt → Välj filer → Avtal**. Du kan också lägga det i en
+undermapp som heter t.ex. `Avtal`, `Kontrakt` eller `Offert` i projektets fakturamapp. Appen läser
+ut följande ur avtalet:
+
+- prisform (fast pris, löpande räkning, riktpris)
+- avtalade à-priser och timpriser
+- påslag på underentreprenörer och material
+- betalningsvillkor och ÄTA-regler
+- vad som ingår och inte ingår i priset
+
+Allt anges med sidhänvisning. Felaktigt utlästa priser kan rättas (✎).
+
+**Avtalskontroll** (vanlig uträkning, körs om automatiskt när fakturor eller avtal ändras):
+
+| Kontroll | Exempel |
+|---|---|
+| Fel pris | Rivning fakturerad 481,60 kr/h mot avtalade 450 kr/h → skillnad × timmar |
+| Fel påslag | 12 % på underentreprenör mot avtalade 10 % |
+| Ingår i avtalet | "Parkering och servicebil ingår i timpriserna" men fakturerat separat |
+| Över fast pris | Fakturerat exkl. ÄTA över avtalat fast pris |
+| ÄTA | ÄTA-faktura när avtalet kräver skriftlig beställning och ingen sådan finns |
+| Betalningsvillkor | 10 dagars betalningstid mot avtalade 30 |
+| Pris saknas | Timmar för ett yrke som saknar avtalat pris (löpande räkning) |
+
+**Ingen dubbelräkning:** en rad som redan flaggats för fel pris eller för att ingå i avtalet räknas
+inte med igen i påslagskontrollen.
+
+**Granska med Claude:** Claude läser avtalstexten mot fakturaraderna och letar efter det som inte
+går att räkna fram, t.ex. arbete utanför åtagandet, sophantering före arbetsstart eller saknade
+underlag. Varje fynd har en hänvisning till avtalet och märks *Bedömning*. Den kontrollerar du
+själv innan du agerar.
+
+Avvikelser du har gått igenom markerar du med **OK, stämmer**, så visas de inte igen. Det går
+att visa dem igen.
+
 **Säkerhetskopia** (⚙︎ Inställningar): om appen raderas försvinner datan. Spara därför en
 säkerhetskopia av databasen i Filer ibland. Originalfilerna ingår inte, men de finns kvar i din
 mapp och kan läsas in igen.

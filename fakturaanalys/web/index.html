@@ -98,6 +98,22 @@
     <div class="row" style="justify-content:space-between"><b id="file-title"></b><button id="file-close" type="button" class="small">Stäng</button></div>
     <div id="file-frame"></div>
   </dialog>
+  <dialog id="rate-dialog">
+    <form method="dialog" id="rate-form" class="stack">
+      <h3>Rätta avtalspris</h3>
+      <p id="rate-quote" class="muted small"></p>
+      <label>Beskrivning <input name="description"></label>
+      <div class="row">
+        <label style="flex:1">Pris exkl. moms <input name="unit_price" inputmode="decimal"></label>
+        <label style="flex:1">Enhet <input name="unit" placeholder="h, st, m2, m3 …"></label>
+      </div>
+      <label>Yrke <select name="trade"></select></label>
+      <label>Material <input name="material_type" placeholder="t.ex. betong"></label>
+      <div class="row"><button value="save">Spara</button><button value="cancel" class="ghost">Avbryt</button>
+        <button value="delete" class="ghost">Ta bort priset</button></div>
+    </form>
+  </dialog>
+
   <dialog id="confirm-dialog">
     <form method="dialog" class="stack">
       <p id="confirm-text"></p>

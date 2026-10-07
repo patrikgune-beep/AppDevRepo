@@ -7,6 +7,8 @@ const { saveExtraction, reconcile } = require('./store');
 const { overview, compareUnitPrices, dimensions, buildWhere } = require('./analytics');
 const { friendlyError } = require('./extract');
 const { createSdkLlm } = require('./llm');
+const { saveContract } = require('./contract-extract');
+const { runContractChecks, contractFor, buildReviewPrompt, storeReview } = require('./contract-check');
 const { importFiles, mimeFromName, isSupported, sha256, createQueue } = require('./importer');
 const { loadFixture } = require('./demo');
 
@@ -41,6 +43,12 @@ function createLocalApi(deps) {
     return p;
   };
 
+  // Räknar om avstämning och avtalskontroll för ett projekt
+  function refresh(projectId) {
+    reconcile(db, projectId);
+    runContractChecks(db, projectId);
+  }
+
   // ---- Tolkning (kö)
   async function processSubmission(sid) {
     const s = db.prepare('SELECT s.*, p.name AS project_name FROM submissions s JOIN projects p ON p.id = s.project_id WHERE s.id = ?').get(sid);
@@ -53,9 +61,13 @@ function createLocalApi(deps) {
         if (!blob) throw new Error(`Originalfilen ${f.original_name} saknas på enheten – lägg till den igen.`);
         files.push({ original_name: f.original_name, mime_type: f.mime_type, blob });
       }
-      const ex = await llm.extract(files, { projectName: s.project_name });
-      saveExtraction(db, sid, s.project_id, ex);
-      reconcile(db, s.project_id);
+      if (s.kind === 'avtal') {
+        if (!llm.extractContract) throw new Error('Avtalstolkning stöds inte här.');
+        saveContract(db, sid, s.project_id, await llm.extractContract(files, { projectName: s.project_name }));
+      } else {
+        saveExtraction(db, sid, s.project_id, await llm.extract(files, { projectName: s.project_name }));
+      }
+      refresh(s.project_id);
     } catch (e) {
       db.prepare("UPDATE submissions SET status = 'error', error = ? WHERE id = ?").run(friendlyError(e), sid);
     }
@@ -69,7 +81,7 @@ function createLocalApi(deps) {
   }
 
   // ---- Import från valda filer (File/Blob med name)
-  async function importUploaded(projectId, fileList, mode) {
+  async function importUploaded(projectId, fileList, mode, kind = 'faktura') {
     project(projectId);
     await requireKey();
     const files = [];
@@ -80,7 +92,7 @@ function createLocalApi(deps) {
       files.push({ name: f.name, relPath: f.relPath || f.name, size: f.size, hash, blob: f });
     }
     const r = await importFiles(db, {
-      projectId: Number(projectId), files, mode,
+      projectId: Number(projectId), files, mode, kind,
       saveFile: (hash, file) => store.blobPut(hash, file.blob),
     });
     r.skipped.push(...skipped);
@@ -172,7 +184,8 @@ function createLocalApi(deps) {
       FROM submissions s WHERE s.project_id = ? ORDER BY s.uploaded_at DESC, s.id DESC`).all(Number(id))],
 
     ['POST', /^\/api\/projects\/(\d+)\/submissions$/, ([, id], body) =>
-      importUploaded(id, body.files || [], ['together', 'separate', 'folders'].includes(body.mode) ? body.mode : 'separate')],
+      importUploaded(id, body.files || [], ['together', 'separate', 'folders'].includes(body.mode) ? body.mode : 'separate',
+        body.kind === 'avtal' ? 'avtal' : 'faktura')],
 
     ['POST', /^\/api\/projects\/(\d+)\/folder$/, async ([, id]) => {
       project(id);
@@ -203,6 +216,7 @@ function createLocalApi(deps) {
       db.prepare('DELETE FROM invoices WHERE submission_id = ?').run(Number(sid));
       db.prepare('DELETE FROM supporting_docs WHERE submission_id = ?').run(Number(sid));
       db.prepare('DELETE FROM findings WHERE submission_id = ?').run(Number(sid));
+      db.prepare('DELETE FROM contract_terms WHERE submission_id = ?').run(Number(sid));
       db.prepare("UPDATE submissions SET status = 'processing', error = NULL WHERE id = ?").run(Number(sid));
       queue.push(Number(sid));
       return { ok: true };
@@ -216,7 +230,7 @@ function createLocalApi(deps) {
       for (const h of hashes) db.prepare('INSERT OR IGNORE INTO ignored_files (project_id, sha256) VALUES (?, ?)').run(s.project_id, h);
       db.prepare('DELETE FROM submissions WHERE id = ?').run(s.id);
       for (const h of hashes) await deleteBlobIfUnused(h);
-      reconcile(db, s.project_id);
+      refresh(s.project_id);
       return { ok: true };
     }],
 
@@ -233,6 +247,13 @@ function createLocalApi(deps) {
         invoices,
         supporting: db.prepare('SELECT * FROM supporting_docs WHERE submission_id = ?').all(submission.id),
         findings: db.prepare('SELECT * FROM findings WHERE submission_id = ? ORDER BY severity DESC, id').all(submission.id),
+        contractDocs: db.prepare('SELECT * FROM contract_terms WHERE submission_id = ?').all(submission.id).map((t) => ({
+          ...t,
+          rates: db.prepare('SELECT * FROM contract_rates WHERE terms_id = ? ORDER BY id').all(t.id),
+          clauses: db.prepare('SELECT * FROM contract_clauses WHERE terms_id = ? ORDER BY id').all(t.id),
+        })),
+        lineFindings: db.prepare(`SELECT f.line_id, f.check_type, f.title, f.amount, f.source FROM review_findings f
+          JOIN line_items li ON li.id = f.line_id JOIN invoices i ON i.id = li.invoice_id WHERE i.submission_id = ?`).all(submission.id),
       };
     }],
 
@@ -255,8 +276,66 @@ function createLocalApi(deps) {
         'trade' in b ? b.trade || null : line.trade,
         'material_type' in b ? (b.material_type || '').toLowerCase().trim() || null : line.material_type,
         b.unit || null, line.id);
-      reconcile(db, line.project_id);
+      refresh(line.project_id);
       return db.prepare('SELECT * FROM line_items WHERE id = ?').get(line.id);
+    }],
+
+    // ---- Avtal och avtalskontroll
+    ['GET', /^\/api\/projects\/(\d+)\/contract$/, ([, id]) => {
+      const pid = Number(project(id).id);
+      const c = contractFor(db, pid);
+      const findings = db.prepare(`SELECT f.*, i.invoice_number, li.description AS line_description FROM review_findings f
+        LEFT JOIN invoices i ON i.id = f.invoice_id LEFT JOIN line_items li ON li.id = f.line_id
+        WHERE f.project_id = ? ORDER BY f.severity DESC, f.amount DESC NULLS LAST, f.id`).all(pid);
+      const reviewAt = db.prepare('SELECT value FROM settings WHERE key = ?').get(`review_at:${pid}`);
+      return {
+        docs: c ? c.docs : [], rates: c ? c.rates : [], clauses: c ? c.clauses : [],
+        summary: c ? { counterparty: c.counterparty, contract_form: c.contract_form, fixed_price: c.fixed_price.value,
+          markup_ue_pct: c.markup_ue_pct.value, markup_material_pct: c.markup_material_pct.value, payment_days: c.payment_days.value,
+          ata_requires_written_order: c.ata_requires_written_order } : null,
+        findings, review_at: reviewAt ? reviewAt.value : null,
+        dismissed: db.prepare('SELECT COUNT(*) n FROM review_dismissed WHERE project_id = ?').get(pid).n,
+      };
+    }],
+    ['POST', /^\/api\/projects\/(\d+)\/review$/, async ([, id]) => {
+      const pid = Number(project(id).id);
+      await requireKey();
+      if (!llm.review) throw httpError(400, 'Granskning stöds inte här.');
+      runContractChecks(db, pid);
+      const prompt = buildReviewPrompt(db, pid);
+      if (!prompt) throw httpError(400, 'Lägg till kontrakt, offert eller bilagor först.');
+      const n = storeReview(db, pid, await llm.review(prompt));
+      return { findings: n };
+    }],
+    ['POST', /^\/api\/review-findings\/(\d+)\/dismiss$/, ([, id]) => {
+      const f = db.prepare('SELECT * FROM review_findings WHERE id = ?').get(Number(id));
+      if (!f) throw httpError(404, 'Saknas');
+      db.prepare('INSERT OR IGNORE INTO review_dismissed (project_id, dedupe_key) VALUES (?, ?)').run(f.project_id, f.dedupe_key);
+      db.prepare('DELETE FROM review_findings WHERE id = ?').run(f.id);
+      return { ok: true };
+    }],
+    ['POST', /^\/api\/projects\/(\d+)\/review\/restore$/, ([, id]) => {
+      db.prepare('DELETE FROM review_dismissed WHERE project_id = ?').run(Number(id));
+      runContractChecks(db, Number(id));
+      return { ok: true };
+    }],
+    ['PATCH', /^\/api\/contract-rates\/(\d+)$/, ([, id], b) => {
+      const r = db.prepare('SELECT * FROM contract_rates WHERE id = ?').get(Number(id));
+      if (!r) throw httpError(404, 'Saknas');
+      if (b.trade && !TRADES[b.trade]) throw httpError(400, 'Ogiltigt yrke');
+      const price = b.unit_price === '' || b.unit_price == null ? null : Number(String(b.unit_price).replace(/\s/g, '').replace(',', '.'));
+      if (price != null && !Number.isFinite(price)) throw httpError(400, 'Ogiltigt pris');
+      db.prepare(`UPDATE contract_rates SET description = ?, unit = ?, unit_price = ?, trade = ?, material_type = ?, edited = 1 WHERE id = ?`)
+        .run(String(b.description || r.description), b.unit || null, price, b.trade || null, (b.material_type || '').toLowerCase().trim() || null, r.id);
+      runContractChecks(db, r.project_id);
+      return { ok: true };
+    }],
+    ['DELETE', /^\/api\/contract-rates\/(\d+)$/, ([, id]) => {
+      const r = db.prepare('SELECT * FROM contract_rates WHERE id = ?').get(Number(id));
+      if (!r) throw httpError(404, 'Saknas');
+      db.prepare('DELETE FROM contract_rates WHERE id = ?').run(r.id);
+      runContractChecks(db, r.project_id);
+      return { ok: true };
     }],
 
     ['GET', /^\/api\/analysis\/overview$/, (m, b, q) => overview(db, filtersFrom(q))],

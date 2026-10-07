@@ -39,7 +39,11 @@ function isIgnored(db, projectId, hash) {
  * saveFile(hash, file): sparar originalet på enheten (anropas bara för nya filer).
  * Returnerar { submissions: [id], imported, skipped: [namn], ignored: [namn] }.
  */
-async function importFiles(db, { projectId, files, mode = 'separate', label = null, force = false, saveFile }) {
+// En undermapp som heter t.ex. "Avtal", "Kontrakt" eller "Offert" innehåller avtalsunderlag.
+const CONTRACT_FOLDER = /(^|\/)[^/]*(avtal|kontrakt|offert|ue-?avtal|prislista)[^/]*\//i;
+const kindFromPath = (relPath) => (CONTRACT_FOLDER.test(String(relPath || '')) ? 'avtal' : 'faktura');
+
+async function importFiles(db, { projectId, files, mode = 'separate', label = null, force = false, saveFile, kind = null }) {
   const result = { submissions: [], imported: 0, skipped: [], ignored: [] };
   const seen = new Set();
   const groups = new Map();
@@ -53,19 +57,21 @@ async function importFiles(db, { projectId, files, mode = 'separate', label = nu
     }
     seen.add(f.hash);
     if (saveFile) await saveFile(f.hash, f);
-    const key = groupKey(f.relPath || f.name, mode);
+    const fileKind = kind || (mode === 'folders' ? kindFromPath(f.relPath) : 'faktura');
+    const key = `${fileKind}|${groupKey(f.relPath || f.name, mode)}`;
     if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push({ ...f, mime });
+    groups.get(key).push({ ...f, mime, kind: fileKind });
   }
 
-  const insSub = db.prepare("INSERT INTO submissions (project_id, label, status) VALUES (?, ?, 'processing')");
+  const insSub = db.prepare("INSERT INTO submissions (project_id, label, status, kind) VALUES (?, ?, 'processing', ?)");
   const insFile = db.prepare(`INSERT INTO files (submission_id, original_name, stored_path, mime_type, size_bytes,
     sha256, rel_path) VALUES (?,?,?,?,?,?,?)`);
-  for (const [key, group] of groups) {
+  for (const [fullKey, group] of groups) {
+    const key = fullKey.slice(fullKey.indexOf('|') + 1);
     const groupLabel = label && mode === 'together' ? label
       : key.startsWith('dir:') ? `${key.slice(4)} (${group.length} ${group.length === 1 ? 'fil' : 'filer'})`
         : group.map((g) => g.relPath || g.name).join(', ');
-    const sid = Number(insSub.run(projectId, groupLabel).lastInsertRowid);
+    const sid = Number(insSub.run(projectId, groupLabel, group[0].kind).lastInsertRowid);
     for (const g of group) insFile.run(sid, g.name, `blob:${g.hash}`, g.mime, g.size, g.hash, g.relPath || null);
     result.submissions.push(sid);
     result.imported += group.length;
@@ -91,4 +97,4 @@ function createQueue(worker, concurrency = 2) {
   };
 }
 
-module.exports = { importFiles, groupKey, mimeFromName, isSupported, sha256, createQueue, MAX_FILE_BYTES };
+module.exports = { kindFromPath, importFiles, groupKey, mimeFromName, isSupported, sha256, createQueue, MAX_FILE_BYTES };

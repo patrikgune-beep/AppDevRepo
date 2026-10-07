@@ -145,12 +145,12 @@ function reconcile(db, projectId) {
       const name = `${inv.supplier_name} ${inv.invoice_number || ''}`.trim();
       if (r.status === 'ok' && r.ratio > 1.0005) {
         addFinding.run(inv.submission_id, projectId, inv.id, 'info',
-          `${name}: ${fmt(r.base)} kr vidarefakturerat som ${fmt(r.billed)} kr = påslag ${((r.ratio - 1) * 100).toFixed(1)} %.`);
+          `${name}: ${fmt(r.base)} kr vidarefakturerat som ${fmt(r.billed)} kr = påslag ${((r.ratio - 1) * 100).toFixed(1).replace('.', ',')} %.`);
       } else if (r.status === 'avvikelse') {
         addFinding.run(inv.submission_id, projectId, inv.id, 'varning',
           `${name}: bilagan är ${fmt(r.base)} kr exkl. moms men vidarefakturerat belopp är ${fmt(r.billed)} kr ` +
-          `(${r.ratio == null ? '?' : (r.ratio * 100).toFixed(1)} %). Kontrollera om fakturan delats mellan ` +
-          `projekt eller om något saknas. À-priser räknas med antaget påslag ${((defaultMarkup - 1) * 100).toFixed(1)} %.`);
+          `(${r.ratio == null ? '?' : (r.ratio * 100).toFixed(1).replace('.', ',')} %). Kontrollera om fakturan delats mellan ` +
+          `projekt eller om något saknas. À-priser räknas med antaget påslag ${((defaultMarkup - 1) * 100).toFixed(1).replace('.', ',')} %.`);
       } else if (r.status === 'saknar_rad' && !inv.is_duplicate) {
         addFinding.run(inv.submission_id, projectId, inv.id, 'varning',
           `${name}: bilagan hittades inte som rad på huvudfakturan och räknas därför inte som kostnad.`);

@@ -101,14 +101,18 @@ async function renderProject() {
       <div class="source">
         <h3>📁 Fakturamapp</h3>
         ${folderBox}
-        <p class="muted small">Filer i en undermapp tolkas tillsammans (faktura + bilagor). Filer direkt i mappen tolkas var för sig. Redan inlästa filer hoppas över.</p>
+        <p class="muted small">Filer i en undermapp tolkas tillsammans (faktura + bilagor). Filer direkt i mappen tolkas var för sig. Lägg kontrakt, offert och kontraktsbilagor i en undermapp som heter t.ex. "Avtal". Redan inlästa filer hoppas över.</p>
       </div>
       <form id="upload-form" class="source">
         <h3>📄 Välj filer</h3>
         <input type="file" name="files" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.csv,application/pdf,image/*">
+        <div class="seg" role="radiogroup" aria-label="Typ av underlag">
+          <label><input type="radio" name="kind" value="faktura" checked><span>Fakturor</span></label>
+          <label><input type="radio" name="kind" value="avtal"><span>Avtal: kontrakt, offert, bilagor</span></label>
+        </div>
         <div class="row radios">
-          <label><input type="radio" name="mode" value="separate" checked> Varje fil är en egen faktura</label>
-          <label><input type="radio" name="mode" value="together"> Filerna hör ihop (faktura + bilagor)</label>
+          <label><input type="radio" name="mode" value="separate" checked> Varje fil är ett eget dokument</label>
+          <label><input type="radio" name="mode" value="together"> Filerna hör ihop (t.ex. faktura + bilagor)</label>
         </div>
         <button>Läs in &amp; tolka</button>
         <p class="muted small">Tips: i Filer, tryck "Välj" och markera alla filer i mappen. Bara nya filer läses in.</p>
@@ -116,24 +120,14 @@ async function renderProject() {
     </div>
     <p id="import-status" class="muted"></p>
 
-    <h3>Underlag</h3>
-    <div class="table-wrap"><table class="subs">
-      <thead><tr><th>Inläst</th><th>Underlag</th><th>Status</th><th class="num">Kostnad</th><th></th></tr></thead>
-      <tbody>${subs.map((s) => `
-        <tr data-id="${s.id}">
-          <td data-label="Inläst">${esc(s.uploaded_at.slice(0, 10))}</td>
-          <td data-label="Underlag"><a href="#" data-open="${s.id}">${esc(s.label || s.files || 'Underlag ' + s.id)}</a>
-            ${s.summary ? `<div class="muted">${esc(s.summary)}</div>` : ''}
-            ${s.error ? `<div class="tag warn">${esc(s.error)}</div>` : ''}</td>
-          <td data-label="Status">${statusTag(s)}</td>
-          <td data-label="Kostnad" class="num">${kr(s.total)}</td>
-          <td class="row">${s.status === 'error' && ai ? `<button class="small" data-retry="${s.id}">Kör om</button>` : ''}
-            <button class="small" data-del="${s.id}" title="Ta bort" aria-label="Ta bort">✕</button></td>
-        </tr>`).join('') || '<tr><td colspan="5" class="muted">Inga underlag ännu.</td></tr>'}
-      </tbody></table></div>
+    <div id="contract-section"></div>
+
+    <h3>Fakturor</h3>
+    ${subsTable(subs.filter((s) => s.kind !== 'avtal'), ai, 'Inga fakturor ännu.')}
     <div id="submission-detail"></div>
     <p><button class="ghost small" id="del-project">Ta bort projektet</button></p>`;
 
+  await renderContract(p, subs.filter((s) => s.kind === 'avtal'), ai);
   $('#upload-form').addEventListener('submit', onUpload);
   const on = (sel, fn) => { const el = $(sel); if (el) el.addEventListener('click', fn); };
   on('#pick-folder', () => pickFolder(p));
@@ -165,6 +159,152 @@ async function renderProject() {
     pollTimer = setTimeout(async () => { await loadProjects(); renderProject(); }, 3000);
   }
   if (state.submissionId) openSubmission(state.submissionId);
+}
+
+function subsTable(rows, ai, empty) {
+  return `<div class="table-wrap"><table class="subs">
+      <thead><tr><th>Inläst</th><th>Underlag</th><th>Status</th><th class="num">Kostnad</th><th></th></tr></thead>
+      <tbody>${rows.map((s) => `
+        <tr data-id="${s.id}">
+          <td data-label="Inläst">${esc(s.uploaded_at.slice(0, 10))}</td>
+          <td data-label="Underlag"><a href="#" data-open="${s.id}">${esc(s.label || s.files || 'Underlag ' + s.id)}</a>
+            ${s.summary ? `<div class="muted">${esc(s.summary)}</div>` : ''}
+            ${s.error ? `<div class="tag warn">${esc(s.error)}</div>` : ''}</td>
+          <td data-label="Status">${statusTag(s)}</td>
+          <td data-label="Kostnad" class="num">${s.kind === 'avtal' ? '' : kr(s.total)}</td>
+          <td class="row">${s.status === 'error' && ai ? `<button class="small" data-retry="${s.id}">Kör om</button>` : ''}
+            <button class="small" data-del="${s.id}" title="Ta bort" aria-label="Ta bort">✕</button></td>
+        </tr>`).join('') || `<tr><td colspan="5" class="muted">${empty}</td></tr>`}
+      </tbody></table></div>`;
+}
+
+// ---------- Avtal och avtalskontroll
+const FORM_NAME = { fast_pris: 'Fast pris', lopande_rakning: 'Löpande räkning', riktpris: 'Riktpris', blandat: 'Blandat', okand: 'Okänd' };
+const DOC_NAME = { kontrakt: 'Kontrakt', offert: 'Offert', kontraktsbilaga: 'Kontraktsbilaga', prislista: 'Prislista', ata_bestallning: 'ÄTA-beställning', ovrigt: 'Övrigt' };
+const CLAUSE_NAME = { ingar: 'Ingår i priset', ingar_ej: 'Ingår inte / faktureras separat', ata: 'ÄTA', fakturering: 'Fakturering', ovrigt: 'Övrigt' };
+const CHECK_NAME = { fel_pris: 'Fel pris', fel_paslag: 'Fel påslag', ingar_i_avtal: 'Ingår i avtalet', ej_debiterbar: 'Ej debiterbar', saknar_avtalspris: 'Pris saknas i avtalet', over_fast_pris: 'Över fast pris', betalningsvillkor: 'Betalningsvillkor', ata: 'ÄTA', saknar_underlag: 'Underlag saknas', ovrigt: 'Övrigt' };
+
+async function renderContract(p, contractSubs, ai) {
+  const c = await api(`/api/projects/${p.id}/contract`);
+  const el = $('#contract-section');
+  const sum = c.summary;
+  const warn = c.findings.filter((f) => f.severity === 'varning');
+  const total = (src) => c.findings.filter((f) => f.source === src && f.amount > 0).reduce((s2, f) => s2 + f.amount, 0);
+  const finding = (f) => `
+    <li class="finding-row ${f.severity}">
+      <div class="f-head">
+        <span class="tag ${f.severity === 'varning' ? 'warn' : ''}">${esc(CHECK_NAME[f.check_type] || f.check_type)}</span>
+        <span class="tag">${f.source === 'kontroll' ? 'Kontroll' : 'Bedömning (Claude)'}</span>
+        ${f.amount ? `<b class="num">${kr(f.amount)} kr</b>` : ''}
+      </div>
+      <div class="f-title">${esc(f.title)}</div>
+      ${f.detail ? `<div class="small">${esc(f.detail)}</div>` : ''}
+      ${f.contract_ref ? `<div class="f-ref small">Avtalet: ${esc(f.contract_ref)}</div>` : ''}
+      <div class="row" style="margin-top:6px">
+        ${f.invoice_id ? `<button type="button" class="small" data-goto-inv="${f.invoice_id}">Visa fakturan</button>` : ''}
+        <button type="button" class="small ghost" data-dismiss="${f.id}">OK, stämmer</button>
+      </div>
+    </li>`;
+  el.innerHTML = `
+    <h3>Avtal</h3>
+    ${contractSubs.length ? subsTable(contractSubs, ai, '') : `<p class="muted">Lägg till kontrakt, offert och kontraktsbilagor (t.ex. à-prislista) ovan under <b>Avtal</b>, eller i en undermapp som heter "Avtal". Fakturorna kontrolleras sedan mot avtalet.</p>`}
+    ${sum ? `
+    <div class="contract-card">
+      <dl class="terms">
+        <div><dt>Motpart</dt><dd>${esc(sum.counterparty || '–')}</dd></div>
+        <div><dt>Prisform</dt><dd>${esc(FORM_NAME[sum.contract_form] || sum.contract_form)}${sum.fixed_price ? ` · ${kr(sum.fixed_price)} kr` : ''}</dd></div>
+        <div><dt>Påslag UE / material</dt><dd>${sum.markup_ue_pct ?? '–'} % / ${sum.markup_material_pct ?? '–'} %</dd></div>
+        <div><dt>Betalningsvillkor</dt><dd>${sum.payment_days ? sum.payment_days + ' dagar' : '–'}</dd></div>
+        <div><dt>ÄTA</dt><dd>${sum.ata_requires_written_order ? 'Skriftlig beställning krävs' : '–'}</dd></div>
+      </dl>
+      <details><summary>Avtalade priser (${c.rates.length})</summary>
+        <div class="table-wrap"><table class="lines rates">
+          <thead><tr><th>Beskrivning</th><th class="num">Pris</th><th>Yrke/material</th><th>Källa</th><th></th></tr></thead>
+          <tbody>${c.rates.map((r) => `<tr>
+            <td data-label="Beskrivning">${esc(r.description)}${r.edited ? ' <span class="tag">ändrad</span>' : ''}</td>
+            <td data-label="Pris" class="num">${r.unit_price == null ? '–' : kr2(r.unit_price)} kr/${esc(r.unit || '?')}</td>
+            <td data-label="Yrke/material">${esc(r.trade ? tradeName(r.trade) : r.material_type || '')}</td>
+            <td data-label="Källa" class="small">${esc(r.doc_title || '')}${r.page ? ' s. ' + esc(r.page) : ''}</td>
+            <td><button class="small" aria-label="Ändra pris" data-rate='${esc(JSON.stringify(r))}'>✎</button></td></tr>`).join('') || '<tr><td colspan="5" class="muted">Inga priser hittades i avtalet.</td></tr>'}</tbody>
+        </table></div></details>
+      <details><summary>Villkor (${c.clauses.length})</summary>
+        ${Object.keys(CLAUSE_NAME).map((k) => { const list = c.clauses.filter((x) => x.kind === k); return list.length ? `<h4>${CLAUSE_NAME[k]}</h4><ul>${list.map((x) => `<li>${esc(x.text)} <span class="muted small">${esc(x.doc_title || '')}${x.page ? ' s. ' + esc(x.page) : ''}</span></li>`).join('')}</ul>` : ''; }).join('')}
+      </details>
+    </div>
+
+    <div class="review">
+      <div class="row" style="justify-content:space-between; align-items:flex-end">
+        <div>
+          <h3 style="margin:0">Avtalskontroll</h3>
+          <div class="muted small">${warn.length} att kontrollera · möjlig överdebitering ${kr(total('kontroll'))} kr enligt kontroll${c.review_at ? `, ${kr(total('bedomning'))} kr enligt Claudes bedömning (${esc(fmtTime(c.review_at))})` : ''}</div>
+        </div>
+        ${ai ? `<button type="button" id="run-review">${c.review_at ? 'Granska igen med Claude' : 'Granska med Claude'}</button>` : ''}
+      </div>
+      <p class="muted small">Kontroll = beräknat mot avtalade priser, påslag och villkor. Bedömning = Claude läser avtalstexten mot fakturaraderna; kontrollera alltid hänvisningen innan du agerar.</p>
+      <p id="review-status" class="muted"></p>
+      ${c.findings.length ? `<ul class="list findings-list">${c.findings.map(finding).join('')}</ul>` : '<p class="ok-line">✓ Inga avvikelser mot avtalet hittades.</p>'}
+      ${c.dismissed ? `<button type="button" class="small ghost" id="restore-dismissed">Visa ${c.dismissed} godkända avvikelser igen</button>` : ''}
+    </div>` : ''}`;
+
+  $$('[data-rate]', el).forEach((b) => b.addEventListener('click', () => editRate(JSON.parse(b.dataset.rate))));
+  $$('[data-dismiss]', el).forEach((b) => b.addEventListener('click', async () => {
+    await api(`/api/review-findings/${b.dataset.dismiss}/dismiss`, { method: 'POST' });
+    await renderProject();
+  }));
+  $$('[data-goto-inv]', el).forEach((b) => b.addEventListener('click', async () => {
+    const subsList = await api(`/api/projects/${p.id}/submissions`);
+    for (const s2 of subsList) {
+      const d = await api(`/api/submissions/${s2.id}`);
+      if (d.invoices.some((i) => i.id === Number(b.dataset.gotoInv))) {
+        await openSubmission(s2.id);
+        $('#submission-detail').scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+    }
+  }));
+  const restore = $('#restore-dismissed');
+  if (restore) restore.addEventListener('click', async () => { await api(`/api/projects/${p.id}/review/restore`, { method: 'POST' }); await renderProject(); });
+  const run = $('#run-review');
+  if (run) run.addEventListener('click', async () => {
+    run.disabled = true;
+    $('#review-status').innerHTML = '<span class="spinner"></span> Claude granskar fakturorna mot avtalet … (kan ta en minut)';
+    try {
+      const r = await api(`/api/projects/${p.id}/review`, { method: 'POST' });
+      await renderProject();
+      $('#review-status').textContent = r.findings ? `Claude hittade ${r.findings} ${r.findings === 1 ? 'sak' : 'saker'} att kontrollera.` : 'Claude hittade inget ytterligare.';
+    } catch (err) { $('#review-status').textContent = err.message; run.disabled = false; }
+  });
+}
+
+function renderContractDoc(t) {
+  return `<div class="inv">
+    <div class="inv-head"><div><b>${esc(t.title)}</b> · ${esc(DOC_NAME[t.doc_type] || t.doc_type)} <span class="muted">${t.doc_date ? '· ' + esc(t.doc_date) : ''} · sid ${esc(t.pages || '')}</span></div>
+      <div>${esc(FORM_NAME[t.contract_form] || '')}${t.fixed_price ? ' · ' + kr(t.fixed_price) + ' kr' : ''}</div></div>
+    <p class="small">${t.counterparty ? 'Motpart: ' + esc(t.counterparty) + ' · ' : ''}${t.markup_ue_pct != null ? 'Påslag UE ' + t.markup_ue_pct + ' % · ' : ''}${t.markup_material_pct != null ? 'material ' + t.markup_material_pct + ' % · ' : ''}${t.payment_days ? 'betalning ' + t.payment_days + ' dagar' : ''}</p>
+    ${t.rates.length ? `<div class="table-wrap"><table class="lines"><thead><tr><th>Pris</th><th class="num">Belopp</th><th>Sida</th></tr></thead><tbody>${t.rates.map((r) => `<tr><td data-label="Pris">${esc(r.description)}</td><td data-label="Belopp" class="num">${r.unit_price == null ? '–' : kr2(r.unit_price)} kr/${esc(r.unit || '?')}</td><td data-label="Sida">${esc(r.page || '')}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    ${t.clauses.length ? `<ul class="small">${t.clauses.map((x) => `<li><b>${esc(CLAUSE_NAME[x.kind] || x.kind)}:</b> ${esc(x.text)}</li>`).join('')}</ul>` : ''}
+  </div>`;
+}
+
+function editRate(r) {
+  const dlg = $('#rate-dialog');
+  const f = $('#rate-form');
+  f.trade.innerHTML = '<option value="">–</option>' + Object.entries(state.meta.trades).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
+  f.description.value = r.description; f.unit_price.value = r.unit_price ?? ''; f.unit.value = r.unit || '';
+  f.trade.value = r.trade || ''; f.material_type.value = r.material_type || '';
+  $('#rate-quote').textContent = r.quote ? `Avtalet: "${r.quote}"` : '';
+  dlg.returnValue = '';
+  dlg.showModal();
+  dlg.onclose = async () => {
+    try {
+      if (dlg.returnValue === 'save') {
+        await api(`/api/contract-rates/${r.id}`, { method: 'PATCH', body: { description: f.description.value, unit_price: f.unit_price.value, unit: f.unit.value, trade: f.trade.value, material_type: f.material_type.value } });
+      } else if (dlg.returnValue === 'delete') {
+        await api(`/api/contract-rates/${r.id}`, { method: 'DELETE' });
+      } else return;
+      renderProject();
+    } catch (err) { notify(err.message); }
+  };
 }
 
 // SQLite sparar tid i UTC – visa i lokal tid
@@ -224,7 +364,7 @@ async function onUpload(e) {
   btn.disabled = true;
   setImportStatus('Läser filerna…');
   try {
-    const r = await api(`/api/projects/${state.projectId}/submissions`, { method: 'POST', body: { files, mode: form.mode.value } });
+    const r = await api(`/api/projects/${state.projectId}/submissions`, { method: 'POST', body: { files, mode: form.mode.value, kind: form.kind.value } });
     form.reset();
     await loadProjects(); await renderProject();
     setImportStatus(importSummary(r));
@@ -265,6 +405,10 @@ async function openSubmission(id) {
   d.invoices.forEach((i) => { const k = i.parent_invoice_id || 0; if (!byParent.has(k)) byParent.set(k, []); byParent.get(k).push(i); });
   const ids = new Set(d.invoices.map((i) => i.id));
   const roots = d.invoices.filter((i) => !i.parent_invoice_id || !ids.has(i.parent_invoice_id));
+  const lineFind = new Map();
+  for (const f of d.lineFindings || []) { if (!lineFind.has(f.line_id)) lineFind.set(f.line_id, []); lineFind.get(f.line_id).push(f); }
+  const FIND_LABEL = { fel_pris: 'Över avtalspris', fel_paslag: 'Fel påslag', ingar_i_avtal: 'Kan ingå i avtalet', ej_debiterbar: 'Ej debiterbar?', ata: 'ÄTA', saknar_underlag: 'Underlag saknas' };
+  const findTags = (l) => (lineFind.get(l.id) || []).map((f) => `<span class="tag warn" title="${esc(f.title)}">⚖︎ ${esc(FIND_LABEL[f.check_type] || 'Avtal')}${f.amount ? ' ' + kr(f.amount) + ' kr' : ''}</span>`).join('');
   const renderInv = (inv, child) => `
     <div class="inv ${child ? 'child' : ''}">
       <div class="inv-head">
@@ -285,7 +429,7 @@ async function openSubmission(id) {
             <td data-label="Belopp" class="num">${kr2(l.amount_excl_vat)}</td>
             <td data-label="Typ"><span class="tag">${esc(catName(l.cost_category))}</span>
               ${l.trade ? `<span class="tag">${esc(tradeName(l.trade))}</span>` : ''}
-              ${l.material_type ? `<span class="tag">${esc(l.material_type)}</span>` : ''}</td>
+              ${l.material_type ? `<span class="tag">${esc(l.material_type)}</span>` : ''}${findTags(l)}</td>
             <td data-label="Kostnad beställare" class="num">${l.counted ? kr2(l.effective_amount) : 'räknas via bilaga'}</td>
             <td><button class="small" aria-label="Ändra" data-edit='${esc(JSON.stringify(l))}'>✎</button></td>
           </tr>`).join('')}</tbody></table></div>
@@ -301,6 +445,7 @@ async function openSubmission(id) {
       <div class="row">${d.files.map((f) => `<a href="#" data-file="${f.id}">📄 ${esc(f.original_name)}</a>`).join(' ')}</div>
       ${d.findings.map((f) => `<div class="finding ${f.severity}">${f.severity === 'varning' ? '⚠️' : 'ℹ️'} ${esc(f.message)}</div>`).join('')}
       ${roots.map((r) => renderInv(r, false)).join('')}
+      ${(d.contractDocs || []).map(renderContractDoc).join('')}
       ${d.supporting.length ? `<h3>Bilagor utan belopp</h3>${d.supporting.map((s) => `
         <div class="inv"><b>${esc(s.title)}</b> <span class="muted">· ${esc(s.doc_type)} · sid ${esc(s.pages)}</span>
         <div>${esc(s.text_summary)}</div></div>`).join('')}` : ''}
@@ -323,7 +468,7 @@ function readLog(json) {
 
 const kindName = (k) => ({ huvudfaktura: 'Faktura', underleverantorsfaktura: 'Bilaga (UE/leverantör)', kvitto: 'Kvitto', kreditfaktura: 'Kreditfaktura' }[k] || k);
 function markupTag(inv) {
-  if (inv.markup_status === 'ok') return `<span class="tag ok">vidarefakturerat ${kr2(inv.billed_amount)} (påslag ${((inv.billed_ratio - 1) * 100).toFixed(1)} %)</span>`;
+  if (inv.markup_status === 'ok') return `<span class="tag ok">vidarefakturerat ${kr2(inv.billed_amount)} (påslag ${((inv.billed_ratio - 1) * 100).toFixed(1).replace('.', ',')} %)</span>`;
   if (inv.markup_status === 'avvikelse') return `<span class="tag warn">vidarefakturerat ${kr2(inv.billed_amount)} – avviker</span>`;
   if (inv.markup_status === 'saknar_rad') return '<span class="tag warn">ej vidarefakturerad</span>';
   return '';

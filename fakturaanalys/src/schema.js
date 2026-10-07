@@ -138,6 +138,72 @@ WHERE li.counted = 1;
 // filen inte läsas igen för att räkna ut hashen.
 const EXTRA = `
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
+
+-- Avtalsunderlag: kontrakt, offert, kontraktsbilagor och ÄTA-beställningar (ett per dokument)
+CREATE TABLE IF NOT EXISTS contract_terms (
+  id INTEGER PRIMARY KEY,
+  submission_id INTEGER NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  doc_type TEXT NOT NULL,              -- kontrakt | offert | kontraktsbilaga | prislista | ata_bestallning | ovrigt
+  title TEXT,
+  source_file TEXT,
+  pages TEXT,
+  doc_date TEXT,
+  counterparty TEXT,                   -- entreprenören/leverantören
+  counterparty_orgnr TEXT,
+  contract_form TEXT,                  -- fast_pris | lopande_rakning | riktpris | blandat | okand
+  fixed_price REAL,                    -- avtalat fast pris exkl. moms
+  agreement_standard TEXT,             -- t.ex. AB 04, ABT 06, ABS 18, konsumenttjänstlagen
+  markup_ue_pct REAL,                  -- avtalat påslag på underentreprenörer, %
+  markup_material_pct REAL,            -- avtalat påslag på material, %
+  payment_days INTEGER,
+  ata_requires_written_order INTEGER,  -- 1 = ÄTA ska beställas skriftligt
+  summary TEXT
+);
+CREATE TABLE IF NOT EXISTS contract_rates (
+  id INTEGER PRIMARY KEY,
+  terms_id INTEGER NOT NULL REFERENCES contract_terms(id) ON DELETE CASCADE,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  description TEXT NOT NULL,
+  cost_category TEXT,
+  trade TEXT,
+  material_type TEXT,
+  unit TEXT,
+  unit_price REAL,                     -- avtalat à-pris exkl. moms (det beställaren ska betala)
+  page TEXT,
+  quote TEXT,                          -- ordagrann text ur avtalet
+  edited INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS contract_clauses (
+  id INTEGER PRIMARY KEY,
+  terms_id INTEGER NOT NULL REFERENCES contract_terms(id) ON DELETE CASCADE,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,                  -- ingar | ingar_ej | ata | fakturering | ovrigt
+  text TEXT NOT NULL,
+  page TEXT
+);
+-- Resultat av avtalskontrollen. source: kontroll (beräknad) | bedomning (Claude)
+CREATE TABLE IF NOT EXISTS review_findings (
+  id INTEGER PRIMARY KEY,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  source TEXT NOT NULL,
+  check_type TEXT NOT NULL,            -- fel_pris | fel_paslag | ingar_i_avtal | saknar_avtalspris | over_fast_pris | betalningsvillkor | ata | ovrigt
+  severity TEXT NOT NULL,              -- varning | info
+  invoice_id INTEGER REFERENCES invoices(id) ON DELETE CASCADE,
+  line_id INTEGER REFERENCES line_items(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  detail TEXT,
+  contract_ref TEXT,
+  amount REAL,                         -- möjlig överdebitering exkl. moms
+  dedupe_key TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- Avvikelser som användaren har godkänt ("OK") visas inte igen
+CREATE TABLE IF NOT EXISTS review_dismissed (
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  dedupe_key TEXT NOT NULL,
+  PRIMARY KEY (project_id, dedupe_key)
+);
 -- Frågor som användaren ställt (sparas automatiskt) och favoriter
 CREATE TABLE IF NOT EXISTS saved_questions (
   id INTEGER PRIMARY KEY,
@@ -175,6 +241,7 @@ function migrate(db) {
   add('projects', 'folder_path', 'TEXT');         // projektets fakturamapp, relativt FAKTURA_ROOT
   add('projects', 'last_synced_at', 'TEXT');
   add('submissions', 'read_log', 'TEXT');          // JSON: sidor, text/skannat, omgångar, ej tolkade sidor
+  add('submissions', 'kind', "TEXT NOT NULL DEFAULT 'faktura'"); // faktura | avtal
   db.exec(`CREATE INDEX IF NOT EXISTS ix_files_sha ON files(sha256);
     -- Filer som användaren tagit bort ska inte läsas in igen vid nästa synk.
     CREATE TABLE IF NOT EXISTS ignored_files (

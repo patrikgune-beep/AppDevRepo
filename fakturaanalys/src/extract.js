@@ -213,4 +213,4 @@ function friendlyError(e) {
   return e.message;
 }
 
-module.exports = { extractSubmission, friendlyError, env, EXTRACTION_SCHEMA, SYSTEM_PROMPT, createClient, baseParams, MODEL };
+module.exports = { extractSubmission, friendlyError, env, EXTRACTION_SCHEMA, SYSTEM_PROMPT, createClient, baseParams, MODEL, fileToBlocks };
