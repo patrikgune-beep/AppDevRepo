@@ -140,7 +140,25 @@ function open(dbPath) {
   const db = new DatabaseSync(dbPath);
   db.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
   db.exec(SCHEMA);
+  migrate(db);
   return db;
+}
+
+// Lägger till kolumner/tabeller i databaser som skapades av en tidigare version.
+function migrate(db) {
+  const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name);
+  const add = (t, col, def) => { if (!cols(t).includes(col)) db.exec(`ALTER TABLE ${t} ADD COLUMN ${col} ${def}`); };
+  add('files', 'sha256', 'TEXT');
+  add('files', 'rel_path', 'TEXT');               // sökväg i den synkade mappen
+  add('projects', 'folder_path', 'TEXT');         // projektets fakturamapp, relativt FAKTURA_ROOT
+  add('projects', 'last_synced_at', 'TEXT');
+  db.exec(`CREATE INDEX IF NOT EXISTS ix_files_sha ON files(sha256);
+    -- Filer som användaren tagit bort ska inte läsas in igen vid nästa synk.
+    CREATE TABLE IF NOT EXISTS ignored_files (
+      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      sha256 TEXT NOT NULL,
+      PRIMARY KEY (project_id, sha256)
+    );`);
 }
 
 function openReadOnly(dbPath) {

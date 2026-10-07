@@ -13,6 +13,7 @@ async function api(path, opts = {}) {
     headers: opts.body && !(opts.body instanceof FormData) ? { 'Content-Type': 'application/json' } : undefined,
   });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && path !== '/api/login') showLogin();
   if (!res.ok) throw new Error(data.error || res.statusText);
   return data;
 }
@@ -34,9 +35,10 @@ async function loadProjects() {
   state.projects = await api('/api/projects');
   $('#project-list').innerHTML = state.projects.map((p) => `
     <li data-id="${p.id}" class="${p.id === state.projectId ? 'active' : ''}">
-      <span>${esc(p.name)}</span><span class="muted">${p.total ? kr(p.total) + ' kr' : ''}</span></li>`).join('')
+      <span>${p.folder_path != null ? '📁 ' : ''}${esc(p.name)}</span><span class="muted">${p.total ? kr(p.total) + ' kr' : ''}</span></li>`).join('')
     || '<li class="muted">Inga projekt ännu</li>';
   $$('#project-list li[data-id]').forEach((li) => li.addEventListener('click', () => selectProject(Number(li.dataset.id))));
+  $('#sync-all').hidden = !state.meta.aiEnabled || !state.projects.some((p) => p.folder_path != null);
 }
 
 $('#project-form').addEventListener('submit', async (e) => {
@@ -55,7 +57,8 @@ async function selectProject(id) {
   state.projectId = id;
   state.submissionId = null;
   await loadProjects();
-  renderProject();
+  await renderProject();
+  if (window.innerWidth < 700) $('#project-detail').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function renderProject() {
@@ -63,48 +66,71 @@ async function renderProject() {
   if (!p) return;
   const subs = await api(`/api/projects/${p.id}/submissions`);
   const ai = state.meta.aiEnabled;
+  const localHandle = canPickDir ? await idbGet(`dir-${p.id}`) : null;
   $('#project-detail').innerHTML = `
     <div class="row" style="justify-content:space-between">
       <div><h2 style="margin:0">${esc(p.name)}</h2><div class="muted">${esc(p.description || '')}</div></div>
       <div style="text-align:right"><div class="muted">Kostnad exkl. moms</div><div class="kpi">${kr(p.total)} kr</div></div>
     </div>
-    <form id="upload-form" class="drop" ${ai ? '' : 'hidden'}>
-      <p><b>Ladda upp fakturaunderlag</b> – en stor PDF eller flera filer (faktura + bilagor) som hör ihop.</p>
-      <div class="row" style="justify-content:center">
-        <input type="file" name="files" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.csv" required>
-        <input name="label" placeholder="Etikett (valfri), t.ex. Faktura sept">
-        <button>Ladda upp &amp; tolka</button>
+
+    <div class="sources" ${ai ? '' : 'hidden'}>
+      <div class="source">
+        <h3>📁 Fakturamapp</h3>
+        ${p.folder_path != null
+    ? `<p><b>${esc(state.meta.folderRoot)}/${esc(p.folder_path)}</b><br>
+           <span class="muted">${p.last_synced_at ? 'Senast uppdaterad ' + esc(p.last_synced_at) + ' (UTC)' : 'Inte uppdaterad ännu'}</span></p>
+           <div class="row"><button id="sync-btn" type="button">⟳ Uppdatera</button>
+             <button id="pick-folder" type="button" class="ghost">Byt mapp</button></div>`
+    : `<p class="muted">Välj en mapp (t.ex. i iCloud Drive). Lägg nya fakturor där – i Filer på iPad/iPhone eller på datorn – och tryck Uppdatera.</p>
+           <button id="pick-folder" type="button">Välj mapp…</button>`}
+        <p class="muted small">Filer i en undermapp tolkas tillsammans (faktura + bilagor). Filer direkt i mappen tolkas var för sig. Redan inlästa filer hoppas över.</p>
       </div>
-      <p class="muted" style="margin:6px 0 0">Filer som laddas upp samtidigt tolkas tillsammans så att bilagor kopplas till rätt fakturarad.</p>
-    </form>
+
+      <form id="upload-form" class="source">
+        <h3>📄 Filer från den här enheten</h3>
+        <input type="file" name="files" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.csv,application/pdf,image/*">
+        <div class="row radios">
+          <label><input type="radio" name="mode" value="separate" checked> Varje fil är en egen faktura</label>
+          <label><input type="radio" name="mode" value="together"> Filerna hör ihop (faktura + bilagor)</label>
+        </div>
+        <button>Ladda upp &amp; tolka</button>
+        <p class="muted small">På iPad/iPhone: tryck "Välj" i Filer och markera alla filer i mappen. Bara nya filer läses in.</p>
+        ${canPickDir ? `<div class="row" style="margin-top:8px">
+          <button type="button" class="ghost" id="pick-local">${localHandle ? 'Byt mapp på datorn' : 'Välj mapp på datorn…'}</button>
+          ${localHandle ? `<button type="button" id="sync-local">⟳ Uppdatera från ${esc(localHandle.name)}</button>` : ''}</div>` : ''}
+      </form>
+    </div>
+    <p id="import-status" class="muted"></p>
+
     <h3>Underlag</h3>
-    <div class="table-wrap"><table>
+    <div class="table-wrap"><table class="subs">
       <thead><tr><th>Uppladdat</th><th>Underlag</th><th>Status</th><th class="num">Kostnad</th><th></th></tr></thead>
       <tbody>${subs.map((s) => `
         <tr data-id="${s.id}">
-          <td>${esc(s.uploaded_at.slice(0, 10))}</td>
-          <td><a href="#" data-open="${s.id}">${esc(s.label || s.files || 'Underlag ' + s.id)}</a>
+          <td data-label="Uppladdat">${esc(s.uploaded_at.slice(0, 10))}</td>
+          <td data-label="Underlag"><a href="#" data-open="${s.id}">${esc(s.label || s.files || 'Underlag ' + s.id)}</a>
             ${s.summary ? `<div class="muted">${esc(s.summary)}</div>` : ''}
             ${s.error ? `<div class="tag warn">${esc(s.error)}</div>` : ''}</td>
-          <td>${statusTag(s)}</td>
-          <td class="num">${kr(s.total)}</td>
+          <td data-label="Status">${statusTag(s)}</td>
+          <td data-label="Kostnad" class="num">${kr(s.total)}</td>
           <td class="row">${s.status === 'error' && ai ? `<button class="small" data-retry="${s.id}">Kör om</button>` : ''}
-            <button class="small" data-del="${s.id}" title="Ta bort">✕</button></td>
+            <button class="small" data-del="${s.id}" title="Ta bort" aria-label="Ta bort">✕</button></td>
         </tr>`).join('') || '<tr><td colspan="5" class="muted">Inga underlag ännu.</td></tr>'}
       </tbody></table></div>
     <div id="submission-detail"></div>
     <p><button class="ghost small" id="del-project">Ta bort projektet</button></p>`;
 
-  const form = $('#upload-form');
-  form.addEventListener('submit', onUpload);
-  ['dragover', 'dragenter'].forEach((ev) => form.addEventListener(ev, (e) => { e.preventDefault(); form.classList.add('over'); }));
-  ['dragleave', 'drop'].forEach((ev) => form.addEventListener(ev, () => form.classList.remove('over')));
-  form.addEventListener('drop', (e) => { e.preventDefault(); form.files.files = e.dataTransfer.files; });
+  $('#upload-form').addEventListener('submit', onUpload);
+  const on = (sel, fn) => { const el = $(sel); if (el) el.addEventListener('click', fn); };
+  on('#pick-folder', () => openFolderPicker(p));
+  on('#sync-btn', () => runSync(`/api/projects/${p.id}/sync`));
+  on('#pick-local', () => pickLocalFolder(p));
+  on('#sync-local', () => syncLocalFolder(p));
 
   $$('[data-open]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); openSubmission(Number(a.dataset.open)); }));
   $$('[data-retry]').forEach((b) => b.addEventListener('click', async () => { await api(`/api/submissions/${b.dataset.retry}/retry`, { method: 'POST' }); renderProject(); }));
   $$('[data-del]').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('Ta bort underlaget och all tolkad data?')) return;
+    if (!confirm('Ta bort underlaget och all tolkad data? Filen läses inte in igen vid nästa uppdatering.')) return;
     await api(`/api/submissions/${b.dataset.del}`, { method: 'DELETE' });
     await loadProjects(); renderProject();
   }));
@@ -129,15 +155,175 @@ function statusTag(s) {
   return esc(s.status);
 }
 
+function importSummary(r) {
+  const parts = [];
+  parts.push(r.imported ? `${r.imported} nya filer läses in (${r.submissions.length} underlag)` : 'Inga nya filer');
+  if (r.skipped && r.skipped.length) parts.push(`${r.skipped.length} redan inlästa`);
+  if (r.ignored && r.ignored.length) parts.push(`${r.ignored.length} tidigare borttagna hoppades över`);
+  return parts.join(' · ');
+}
+function setImportStatus(text) { const el = $('#import-status'); if (el) el.textContent = text; }
+
+async function runSync(url) {
+  setImportStatus('Letar efter nya fakturor…');
+  try {
+    const r = await api(url, { method: 'POST' });
+    const list = r.results || [r];
+    const msg = list.map((x) => (x.error ? `${x.project || 'Projekt'}: ${x.error}` : `${x.project}: ${importSummary(x)}`)).join('\n');
+    await loadProjects(); await renderProject();
+    setImportStatus(msg);
+  } catch (err) { setImportStatus(err.message); }
+}
+
 async function onUpload(e) {
   e.preventDefault();
-  const fd = new FormData(e.target);
-  const btn = $('button', e.target);
+  const form = e.target;
+  const files = [...form.files.files];
+  if (!files.length) return alert('Välj en eller flera filer.');
+  const mode = form.mode.value;
+  const btn = $('button[type=submit], button:not([type])', form);
   btn.disabled = true;
   try {
-    await api(`/api/projects/${state.projectId}/submissions`, { method: 'POST', body: fd });
+    const items = files.map((f) => ({ file: f, path: f.name }));
+    const r = await uploadItems(items, mode);
+    form.reset();
+    await loadProjects(); await renderProject();
+    setImportStatus(importSummary(r));
+  } catch (err) { setImportStatus(err.message); } finally { btn.disabled = false; }
+}
+
+// Laddar upp i omgångar. Filer som hör ihop (samma undermapp) skickas alltid i samma omgång.
+async function uploadItems(items, mode) {
+  setImportStatus('Kontrollerar vilka filer som är nya…');
+  const fresh = await filterKnown(items);
+  const total = { submissions: [], imported: 0, skipped: items.filter((i) => !fresh.includes(i)).map((i) => i.path), ignored: [] };
+  const groups = new Map();
+  for (const it of fresh) {
+    const parts = it.path.split('/');
+    const key = mode === 'together' ? '*' : mode === 'folders' && parts.length > 1 ? parts.slice(0, -1).join('/') : it.path;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(it);
+  }
+  const batches = [];
+  let cur = [];
+  let bytes = 0;
+  for (const g of groups.values()) {
+    const gb = g.reduce((s, i) => s + i.file.size, 0);
+    if (cur.length && (cur.length + g.length > 20 || bytes + gb > 40e6)) { batches.push(cur); cur = []; bytes = 0; }
+    cur.push(...g); bytes += gb;
+  }
+  if (cur.length) batches.push(cur);
+  for (let i = 0; i < batches.length; i++) {
+    setImportStatus(`Laddar upp ${i + 1} av ${batches.length}…`);
+    const fd = new FormData();
+    fd.append('mode', mode);
+    fd.append('paths', JSON.stringify(batches[i].map((x) => x.path)));
+    for (const x of batches[i]) fd.append('files', x.file, x.file.name);
+    const r = await api(`/api/projects/${state.projectId}/submissions`, { method: 'POST', body: fd });
+    total.submissions.push(...r.submissions); total.imported += r.imported;
+    total.skipped.push(...r.skipped); total.ignored.push(...r.ignored);
+  }
+  return total;
+}
+
+// Hoppar över kända filer innan uppladdning, om webbläsaren kan räkna SHA-256 (kräver https/localhost).
+async function filterKnown(items) {
+  if (!(window.crypto && crypto.subtle) || !items.length) return items;
+  try {
+    const hashes = await Promise.all(items.map(async (i) => {
+      const buf = await crypto.subtle.digest('SHA-256', await i.file.arrayBuffer());
+      return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    }));
+    const { known } = await api(`/api/projects/${state.projectId}/known`, { method: 'POST', body: JSON.stringify({ hashes }) });
+    const k = new Set(known);
+    return items.filter((_, idx) => !k.has(hashes[idx]));
+  } catch { return items; }
+}
+
+// ---------- Mapp på servern (iCloud Drive m.m.)
+let folderPath = '';
+let folderProject = null;
+async function openFolderPicker(p) {
+  folderProject = p;
+  folderPath = p.folder_path || '';
+  await showFolder(folderPath).catch(() => showFolder(''));
+  $('#folder-dialog').showModal();
+}
+async function showFolder(rel) {
+  const d = await api(`/api/folders?path=${encodeURIComponent(rel)}`);
+  folderPath = d.path;
+  $('#folder-crumb').textContent = `${d.root}/${d.path}`;
+  $('#folder-info').textContent = `${d.files} fakturafiler direkt i mappen`;
+  $('#folder-list').innerHTML = (d.parent != null ? '<li data-up="1">⬆︎ Upp en nivå</li>' : '') +
+    d.folders.map((f) => `<li data-f="${esc(f)}">📁 ${esc(f)}</li>`).join('') ||
+    '<li class="muted">Inga undermappar</li>';
+  $$('#folder-list li[data-f]').forEach((li) => li.addEventListener('click', () => showFolder(d.path ? `${d.path}/${li.dataset.f}` : li.dataset.f)));
+  const up = $('#folder-list li[data-up]');
+  if (up) up.addEventListener('click', () => showFolder(d.parent));
+}
+$('#folder-cancel').addEventListener('click', () => $('#folder-dialog').close());
+$('#folder-choose').addEventListener('click', async () => {
+  await api(`/api/projects/${folderProject.id}/folder`, { method: 'PUT', body: JSON.stringify({ path: folderPath }) });
+  $('#folder-dialog').close();
+  await loadProjects();
+  await renderProject();
+  if (confirm('Läsa in fakturorna i mappen nu?')) runSync(`/api/projects/${folderProject.id}/sync`);
+});
+$('#sync-all').addEventListener('click', () => runSync('/api/sync'));
+
+// ---------- Mapp på den här datorn (Chrome/Edge: webbläsaren kommer ihåg mappen)
+const canPickDir = 'showDirectoryPicker' in window;
+function idb() {
+  return new Promise((resolve, reject) => {
+    const r = indexedDB.open('fakturaanalys', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+async function idbGet(key) {
+  try {
+    const db = await idb();
+    return await new Promise((res) => { const q = db.transaction('kv').objectStore('kv').get(key); q.onsuccess = () => res(q.result); q.onerror = () => res(null); });
+  } catch { return null; }
+}
+async function idbSet(key, val) {
+  try {
+    const db = await idb();
+    await new Promise((res) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(val, key); t.oncomplete = res; t.onerror = res; });
+  } catch { /* ignoreras */ }
+}
+async function pickLocalFolder(p) {
+  try {
+    const handle = await window.showDirectoryPicker({ id: `fakturor-${p.id}`, mode: 'read' });
+    await idbSet(`dir-${p.id}`, handle);
     await renderProject();
-  } catch (err) { alert(err.message); } finally { btn.disabled = false; }
+    syncLocalFolder(p);
+  } catch (err) { if (err.name !== 'AbortError') setImportStatus(err.message); }
+}
+async function syncLocalFolder(p) {
+  const handle = await idbGet(`dir-${p.id}`);
+  if (!handle) return;
+  if ((await handle.queryPermission({ mode: 'read' })) !== 'granted' &&
+      (await handle.requestPermission({ mode: 'read' })) !== 'granted') return setImportStatus('Åtkomst till mappen nekades.');
+  setImportStatus('Läser mappen…');
+  const items = [];
+  const ok = /\.(pdf|jpe?g|png|webp|txt|csv)$/i;
+  async function walk(dir, prefix, depth) {
+    if (depth > 6) return;
+    for await (const entry of dir.values()) {
+      if (entry.name.startsWith('.')) continue;
+      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.kind === 'directory') await walk(entry, rel, depth + 1);
+      else if (ok.test(entry.name)) items.push({ file: await entry.getFile(), path: rel });
+    }
+  }
+  try {
+    await walk(handle, '', 0);
+    const r = await uploadItems(items, 'folders');
+    await loadProjects(); await renderProject();
+    setImportStatus(`${handle.name}: ${importSummary(r)}`);
+  } catch (err) { setImportStatus(err.message); }
 }
 
 async function openSubmission(id) {
@@ -155,22 +341,21 @@ async function openSubmission(id) {
           ${inv.is_duplicate ? '<span class="tag warn">Dubblett – räknas ej</span>' : ''}</div>
         <div>${kr2(inv.amount_excl_vat)} kr exkl. moms ${markupTag(inv)}</div>
       </div>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Beskrivning</th><th>Datum</th><th class="num">Antal</th><th>Enh</th><th class="num">À-pris</th>
+      <div class="table-wrap"><table class="lines">
+        <thead><tr><th>Beskrivning</th><th>Datum</th><th class="num">Antal</th><th class="num">À-pris</th>
           <th class="num">Belopp</th><th>Typ</th><th class="num">Kostnad beställare</th><th></th></tr></thead>
         <tbody>${inv.lines.map((l) => `
           <tr class="${l.counted ? '' : 'not-counted'}" title="${l.counted ? '' : 'Räknas via bilagans rader / dubblett'}">
-            <td>${esc(l.description)}${l.resource_name ? ` <span class="muted">(${esc(l.resource_name)})</span>` : ''}</td>
-            <td>${esc(l.line_date || '')}</td>
-            <td class="num">${l.quantity == null ? '' : kr(l.quantity, 2)}</td>
-            <td>${esc(l.unit || l.unit_raw || '')}</td>
-            <td class="num">${kr2(l.unit_price)}</td>
-            <td class="num">${kr2(l.amount_excl_vat)}</td>
-            <td><span class="tag">${esc(catName(l.cost_category))}</span>
+            <td data-label="Beskrivning">${esc(l.description)}${l.resource_name ? ` <span class="muted">(${esc(l.resource_name)})</span>` : ''}</td>
+            <td data-label="Datum">${esc(l.line_date || '')}</td>
+            <td data-label="Antal" class="num">${l.quantity == null ? '' : kr(l.quantity, 2)} ${esc(l.unit || l.unit_raw || '')}</td>
+            <td data-label="À-pris" class="num">${kr2(l.unit_price)}</td>
+            <td data-label="Belopp" class="num">${kr2(l.amount_excl_vat)}</td>
+            <td data-label="Typ"><span class="tag">${esc(catName(l.cost_category))}</span>
               ${l.trade ? `<span class="tag">${esc(tradeName(l.trade))}</span>` : ''}
               ${l.material_type ? `<span class="tag">${esc(l.material_type)}</span>` : ''}</td>
-            <td class="num">${l.counted ? kr2(l.effective_amount) : ''}</td>
-            <td><button class="small" data-edit='${esc(JSON.stringify(l))}'>✎</button></td>
+            <td data-label="Kostnad beställare" class="num">${l.counted ? kr2(l.effective_amount) : 'räknas via bilaga'}</td>
+            <td><button class="small" aria-label="Ändra" data-edit='${esc(JSON.stringify(l))}'>✎</button></td>
           </tr>`).join('')}</tbody></table></div>
     </div>
     ${(byParent.get(inv.id) || []).map((c) => renderInv(c, true)).join('')}`;
@@ -220,22 +405,25 @@ function editLine(l) {
 }
 
 // ---------- Gemensamma filter (analys + fråga)
+function projectChips(selectedId) {
+  return `<div class="chips">${state.projects.map((p) => `<label class="chip"><input type="checkbox" name="projects" value="${p.id}" ${p.id === selectedId ? 'checked' : ''}><span>${esc(p.name)}</span></label>`).join('')}</div>`;
+}
 async function filterControls(container, onChange) {
   const dims = await api('/api/analysis/dimensions');
   container.innerHTML = `
-    <label>Projekt <select name="projects" multiple size="3">${state.projects.map((p) => `<option value="${p.id}" ${p.id === state.projectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+    <div class="field">Projekt ${projectChips(state.projectId)}</div>
     <label>Från månad <select name="from"><option value="">–</option>${dims.months.map((m) => `<option>${m}</option>`).join('')}</select></label>
     <label>Till månad <select name="to"><option value="">–</option>${dims.months.map((m) => `<option>${m}</option>`).join('')}</select></label>
     <label>Månad avser <select name="monthBasis"><option value="work">När arbetet utfördes</option><option value="invoice">Fakturadatum</option></select></label>
     <label>Leverantör <select name="supplier"><option value="">Alla</option>${dims.suppliers.map((s) => `<option>${esc(s)}</option>`).join('')}</select></label>
     <label>Kostnadstyp <select name="category"><option value="">Alla</option>${Object.entries(state.meta.categories).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}</select></label>
-    <span class="muted" style="font-size:12px">Inga projekt markerade = alla projekt</span>`;
-  $$('select', container).forEach((s) => s.addEventListener('change', onChange));
+    <span class="muted small">Inga projekt markerade = alla projekt</span>`;
+  $$('select, input', container).forEach((s) => s.addEventListener('change', onChange));
 }
 function readFilters(container) {
   const g = (n) => $(`[name=${n}]`, container);
   return {
-    projectIds: [...g('projects').selectedOptions].map((o) => Number(o.value)),
+    projectIds: $$('input[name=projects]:checked', container).map((o) => Number(o.value)),
     from: g('from').value, to: g('to').value, monthBasis: g('monthBasis').value,
     supplier: g('supplier').value, category: g('category').value,
   };
@@ -279,7 +467,7 @@ async function renderAnalysis() {
 let cmpDims = null;
 async function initCompare() {
   cmpDims = await api('/api/analysis/dimensions');
-  $('#cmp-projects').innerHTML = state.projects.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  $('#cmp-projects').innerHTML = projectChips(null).replace(/^<div class="chips">|<\/div>$/g, '');
   fillCmpValues();
 }
 function fillCmpValues() {
@@ -292,7 +480,7 @@ $('#cmp-dim').addEventListener('change', fillCmpValues);
 $('#cmp-run').addEventListener('click', async () => {
   const [value, unit] = $('#cmp-value').value.split('|');
   if (!value) return;
-  const projects = [...$('#cmp-projects').selectedOptions].map((o) => o.value).join(',');
+  const projects = $$('#cmp-projects input:checked').map((o) => o.value).join(',');
   const r = await api(`/api/analysis/compare?${new URLSearchParams({ dimension: $('#cmp-dim').value, value, unit, projects })}`);
   const label = $('#cmp-dim').value === 'trade' ? tradeName(value) : value;
   const row = (name, x) => `<tr><td>${esc(name)}</td><td class="num">${kr2(x.avg_price)}</td><td class="num">${kr2(x.min_price)}</td><td class="num">${kr2(x.max_price)}</td><td class="num">${kr2(x.avg_supplier_price)}</td><td class="num">${kr(x.quantity, 1)}</td><td class="num">${x.lines}</td><td>${esc(x.suppliers || '')}${x.has_assumed_markup ? ' <span class="tag warn">antaget påslag</span>' : ''}</td></tr>`;
@@ -365,8 +553,24 @@ function markdown(md) {
   return out.join('');
 }
 
+// ---------- Inloggning
+function showLogin() {
+  $('#login').hidden = false;
+  $('#app').hidden = true;
+  $('#tabs').hidden = true;
+}
+$('#login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    await api('/api/login', { method: 'POST', body: JSON.stringify({ password: e.target.password.value }) });
+    location.reload();
+  } catch (err) { $('#login-error').textContent = err.message; }
+});
+
 // ---------- Start
 (async function init() {
+  const session = await api('/api/session');
+  if (!session.authed) return showLogin();
   state.meta = await api('/api/meta');
   $('#ai-banner').hidden = state.meta.aiEnabled;
   await loadProjects();

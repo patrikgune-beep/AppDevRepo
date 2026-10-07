@@ -2,17 +2,26 @@
 <html lang="sv">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Fakturaanalys Bygg</title>
+  <meta name="theme-color" content="#f5f4f0" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#17181a" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Fakturor">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="top">
     <div class="brand">Fakturaanalys <span>Bygg</span></div>
     <nav id="tabs">
-      <button data-tab="projekt" class="active">Projekt &amp; underlag</button>
+      <button data-tab="projekt" class="active">Projekt</button>
       <button data-tab="analys">Analys</button>
-      <button data-tab="jamfor">Jämför projekt</button>
+      <button data-tab="jamfor">Jämför</button>
       <button data-tab="fraga">Fråga</button>
     </nav>
   </header>
@@ -21,13 +30,23 @@
     analys och jämförelser fungerar på redan inläst data.
   </div>
 
-  <main>
+  <section id="login" class="login" hidden>
+    <form id="login-form" class="panel stack">
+      <h2>Fakturaanalys Bygg</h2>
+      <input type="password" name="password" placeholder="Lösenord" autocomplete="current-password" required>
+      <button>Logga in</button>
+      <p id="login-error" class="muted"></p>
+    </form>
+  </section>
+
+  <main id="app">
     <!-- PROJEKT & UNDERLAG -->
     <section id="tab-projekt" class="tab active">
       <div class="cols">
         <aside class="panel">
           <h2>Projekt</h2>
           <ul id="project-list" class="list"></ul>
+          <button id="sync-all" class="ghost full" type="button" hidden>⟳ Uppdatera alla projekt</button>
           <form id="project-form" class="stack">
             <input name="name" placeholder="Nytt projekt, t.ex. Karlavägen 71" required>
             <input name="description" placeholder="Beskrivning (valfri)">
@@ -61,7 +80,7 @@
             </select>
           </label>
           <label>Värde <select id="cmp-value"></select></label>
-          <label>Projekt <select id="cmp-projects" multiple size="3"></select></label>
+          <div class="field">Projekt <div id="cmp-projects" class="chips"></div></div>
           <button id="cmp-run">Jämför</button>
         </div>
       </div>
@@ -93,6 +112,19 @@
       <label>Enhet <input name="unit" placeholder="h, st, m2, m3 ..."></label>
       <div class="row"><button value="save">Spara</button><button value="cancel" class="ghost">Avbryt</button></div>
     </form>
+  </dialog>
+
+  <dialog id="folder-dialog">
+    <div class="stack">
+      <h3>Välj fakturamapp</h3>
+      <p class="muted" id="folder-crumb"></p>
+      <ul id="folder-list" class="list folders"></ul>
+      <p class="muted" id="folder-info"></p>
+      <div class="row">
+        <button id="folder-choose" type="button">Välj den här mappen</button>
+        <button id="folder-cancel" type="button" class="ghost">Avbryt</button>
+      </div>
+    </div>
   </dialog>
 
   <script src="app.js"></script>

@@ -18,6 +18,52 @@ npm test
 Kräver Node 22.13 eller senare (använder inbyggda `node:sqlite`). Data sparas i `data/`
 (`DATA_DIR` styr var). Utan API-nyckel fungerar analys och jämförelse på redan inläst data.
 
+## Använda appen på mobil och iPad
+
+Appen körs på en dator (helst en Mac som är inloggad på samma iCloud som din iPad/iPhone). Mobilen
+och iPaden öppnar den i Safari och kan lägga den på hemskärmen som en app.
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+export APP_PASSWORD='ett-bra-lösenord'   # krävs för att appen ska nås från andra enheter
+npm start
+```
+
+Vid start skrivs adressen ut, t.ex. `http://192.168.1.20:3100`. Öppna den i Safari på iPad eller
+iPhone, logga in och välj **Dela → Lägg till på hemskärmen**.
+
+- Utan `APP_PASSWORD` lyssnar appen bara på den egna datorn (`127.0.0.1`).
+- Utanför hemmanätverket: använd t.ex. Tailscale (`tailscale serve 3100` ger även https).
+  Exponera inte appen direkt mot internet.
+
+## Fakturamapp och Uppdatera-knappen
+
+Varje projekt kan kopplas till en mapp. Lägg nya fakturor i mappen och tryck **Uppdatera** (eller
+**Uppdatera alla projekt**). Bara filer som inte redan finns läses in.
+
+- **Mapp i iCloud Drive (rekommenderas, fungerar från alla enheter).** Servern letar efter mappar
+  inom `FAKTURA_ROOT`. Standard är iCloud Drive på Macen
+  (`~/Library/Mobile Documents/com~apple~CloudDocs`), annars hemkatalogen. Det du sparar i
+  appen **Filer → iCloud Drive** på iPad/iPhone syns därmed för servern.
+- **Mapp på datorn (Chrome/Edge).** Webbläsaren kommer ihåg mappen, och Uppdatera laddar upp nya
+  filer därifrån.
+- **Filer från enheten (alla enheter).** Markera alla filer i en mapp i Filer. Redan inlästa
+  filer hoppas över.
+
+Hur filerna grupperas:
+
+| Plats i mappen | Tolkas som |
+|---|---|
+| `Projekt/faktura.pdf` | ett eget underlag |
+| `Projekt/Faktura 132387/huvud.pdf` + `bilaga1.jpg` | ett underlag (faktura och bilagor tillsammans) |
+
+Varje fil känns igen på sitt innehåll (SHA-256), inte på filnamnet. En omdöpt kopia räknas alltså
+inte två gånger. Ett underlag som tas bort i appen läses inte in igen vid nästa uppdatering.
+Originalfilerna i mappen ändras eller raderas aldrig.
+
+Valfritt: `SYNC_INTERVAL_MIN=30` får servern att söka efter nya fakturor automatiskt var 30:e
+minut. `EXTRACT_CONCURRENCY=2` styr hur många underlag som tolkas samtidigt.
+
 ## Så fungerar det
 
 1. **Uppladdning.** Ett underlag är en eller flera filer (PDF, även skannad, bild, txt/csv). Filer som
@@ -58,6 +104,7 @@ src/db.js            SQLite-schema och vyn cost_lines
 src/taxonomy.js      Kostnadstyper, yrken och enheter (gemensamma för alla projekt)
 src/extract.js       Claude-tolkning med structured outputs
 src/store.js         Sparar tolkning, avstämning, påslag och dubbletter
+src/importer.js      Import från mapp/uppladdning, dubblettskydd (SHA-256), kö
 src/analytics.js     Översikt och jämförelse mellan projekt (ren SQL)
 src/ask.js           Fritextfrågor: Claude och ett skrivskyddat SQL-verktyg
 public/              Gränssnitt (vanilla JS)
@@ -71,4 +118,8 @@ fixtures/            Färdigtolkat exempel för demo och tester
 - Jämförelser mellan projekt blir bara så bra som klassificeringen (yrke, materialtyp, enhet).
   Kontrollera och rätta raderna i början. Betong i "m3" och betong i "st" (säck) jämförs inte med
   varandra.
-- Ingen inloggning. Appen är byggd för att köras lokalt eller bakom en egen åtkomstkontroll.
+- Inloggningen är ett enkelt delat lösenord, gjort för hemmanätverk eller Tailscale.
+  Appen är inte gjord för att ligga öppen på internet.
+- Safari på iPad och iPhone kan inte ge en webbsida bestående åtkomst till en mapp i Filer. Därför
+  läser servern mappen (iCloud Drive), och mobilen trycker bara Uppdatera.
+- Mappsynken kräver att servern ser mappen. En server i molnet ser inte din iCloud Drive.

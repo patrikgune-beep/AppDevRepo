@@ -71,3 +71,54 @@ dialog { border: 1px solid var(--line); border-radius: 10px; background: var(--p
   border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -2px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 700px) { .cols aside { width: 100%; } .inv.child { margin-left: 8px; } }
+
+/* ---------- Mobil & iPad ---------- */
+body { -webkit-text-size-adjust: 100%; padding-bottom: env(safe-area-inset-bottom); }
+.top { padding-top: max(12px, env(safe-area-inset-top)); padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right)); }
+button { min-height: 44px; touch-action: manipulation; }
+button.small { min-height: 34px; min-width: 34px; }
+input, select, textarea { font-size: 16px; min-height: 44px; } /* 16px hindrar iOS från att zooma in */
+input[type=checkbox], input[type=radio] { min-height: 0; width: 20px; height: 20px; accent-color: var(--accent); }
+.list li { min-height: 44px; align-items: center; }
+.full { width: 100%; margin-top: 8px; }
+.small { font-size: 13px; }
+.field { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; min-height: 40px; border: 1px solid var(--line);
+  border-radius: 20px; background: var(--bg); color: var(--text); font-size: 14px; cursor: pointer; }
+.chip:has(input:checked) { border-color: var(--accent); }
+.sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 16px; }
+.source { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.source h3 { margin-top: 0; }
+.source input[type=file] { width: 100%; min-height: 0; padding: 10px; }
+.radios { flex-direction: column; align-items: flex-start; gap: 6px; margin: 10px 0; }
+.radios label { display: flex; gap: 8px; align-items: center; min-height: 32px; }
+#import-status { white-space: pre-line; }
+.folders { max-height: 50vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; }
+.login { display: flex; justify-content: center; padding: 15vh 16px; }
+.login form { width: 100%; max-width: 360px; }
+dialog::backdrop { background: rgb(0 0 0 / 0.4); }
+
+@media (max-width: 700px) {
+  main { padding: 12px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+  .top { gap: 8px; }
+  nav { flex-wrap: nowrap; overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  nav button { white-space: nowrap; flex: 0 0 auto; }
+  .panel { padding: 12px; }
+  .kpi { font-size: 24px; }
+  .filters label, .filters .field { flex: 1 1 140px; }
+  .filters select { width: 100%; }
+  /* Tabeller med fakturarader och underlag visas som kort */
+  table.lines thead, table.subs thead { display: none; }
+  table.lines tr, table.subs tr { display: block; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  table.lines td, table.subs td { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 3px 0; text-align: right; }
+  table.lines td::before, table.subs td::before { content: attr(data-label); color: var(--muted); font-size: 13px; text-align: left; flex: 0 0 auto; }
+  table.lines td:first-child, table.subs td:nth-child(2) { display: block; text-align: left; font-weight: 600; }
+  table.lines td:first-child::before, table.subs td:nth-child(2)::before { content: none; }
+  table.lines td:empty, table.subs td:empty { display: none; }
+  td:first-child { min-width: 0; }
+  .inv { padding: 8px 10px; }
+}
+[hidden] { display: none !important; }
+.filters .chip { flex-direction: row; color: var(--text); font-size: 14px; }
