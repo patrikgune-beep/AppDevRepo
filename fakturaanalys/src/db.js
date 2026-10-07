@@ -1,0 +1,162 @@
+'use strict';
+const { DatabaseSync } = require('node:sqlite');
+const fs = require('fs');
+const path = require('path');
+
+const SCHEMA = `
+CREATE TABLE IF NOT EXISTS projects (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Ett "underlag" = en uppladdning (en eller flera filer som hör ihop).
+CREATE TABLE IF NOT EXISTS submissions (
+  id INTEGER PRIMARY KEY,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  label TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',      -- pending | processing | done | error
+  error TEXT,
+  summary TEXT,
+  uploaded_at TEXT NOT NULL DEFAULT (datetime('now')),
+  processed_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS files (
+  id INTEGER PRIMARY KEY,
+  submission_id INTEGER NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  original_name TEXT NOT NULL,
+  stored_path TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS invoices (
+  id INTEGER PRIMARY KEY,
+  submission_id INTEGER NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  parent_invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
+  ref TEXT NOT NULL,
+  kind TEXT NOT NULL,                 -- huvudfaktura | underleverantorsfaktura | kvitto | kreditfaktura | ovrigt
+  source_file TEXT,
+  pages TEXT,
+  supplier_name TEXT,
+  supplier_orgnr TEXT,
+  invoice_number TEXT,
+  invoice_date TEXT,
+  due_date TEXT,
+  period_start TEXT,
+  period_end TEXT,
+  project_label TEXT,
+  currency TEXT,
+  amount_excl_vat REAL,
+  vat_amount REAL,
+  amount_incl_vat REAL,
+  reverse_charge_vat INTEGER NOT NULL DEFAULT 0,
+  -- Avstämning mot raden på huvudfakturan som vidarefakturerar denna bilaga
+  billed_amount REAL,                 -- belopp på huvudfakturans rad
+  billed_ratio REAL,                  -- billed_amount / amount_excl_vat
+  markup_status TEXT,                 -- ok | avvikelse | saknar_rad | ej_tillampligt
+  is_duplicate INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS line_items (
+  id INTEGER PRIMARY KEY,
+  invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  line_no INTEGER NOT NULL,
+  description TEXT NOT NULL,
+  line_date TEXT,
+  article_no TEXT,
+  quantity REAL,
+  unit TEXT,                          -- normaliserad enhet: h, st, m, m2, m3, kg, ton ...
+  unit_raw TEXT,
+  unit_price REAL,                    -- leverantörens à-pris exkl moms
+  amount_excl_vat REAL,               -- leverantörens radbelopp exkl moms
+  cost_category TEXT NOT NULL,
+  trade TEXT,                         -- yrkeskategori för arbetstid
+  resource_name TEXT,
+  material_type TEXT,
+  attachment_invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
+  -- Härledda fält (beräknas av reconcile())
+  counted INTEGER NOT NULL DEFAULT 1, -- 1 = ingår i projektets kostnad (inga dubbletter)
+  alloc_factor REAL,                  -- faktor som gör att summan stämmer mot det som fakturerats beställaren
+  markup_factor REAL,                 -- påslag från huvudentreprenören (1.12 = 12 %)
+  markup_assumed INTEGER NOT NULL DEFAULT 0,
+  effective_amount REAL,              -- kostnad för beställaren exkl moms
+  effective_unit_price REAL,          -- à-pris för beställaren exkl moms (inkl påslag)
+  work_month TEXT,                    -- YYYY-MM då arbetet/leveransen skedde
+  invoice_month TEXT,                 -- YYYY-MM enligt huvudfakturans datum
+  supplier_name TEXT,                 -- den leverantör som utförde/levererade
+  billed_by TEXT,                     -- den som fakturerade beställaren
+  edited INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS supporting_docs (
+  id INTEGER PRIMARY KEY,
+  submission_id INTEGER NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
+  doc_type TEXT,
+  title TEXT,
+  source_file TEXT,
+  pages TEXT,
+  period_start TEXT,
+  period_end TEXT,
+  text_summary TEXT
+);
+
+CREATE TABLE IF NOT EXISTS findings (
+  id INTEGER PRIMARY KEY,
+  submission_id INTEGER NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  invoice_id INTEGER REFERENCES invoices(id) ON DELETE CASCADE,
+  severity TEXT NOT NULL,             -- info | varning
+  source TEXT NOT NULL DEFAULT 'tolkning', -- tolkning | avstamning
+  message TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_lines_project ON line_items(project_id, counted);
+CREATE INDEX IF NOT EXISTS ix_inv_project ON invoices(project_id);
+
+-- Analysvy: en rad per kostnadsrad som ingår i projektets kostnad.
+CREATE VIEW IF NOT EXISTS cost_lines AS
+SELECT li.id AS line_id, li.project_id, p.name AS project_name,
+       li.invoice_id, i.invoice_number, i.kind AS invoice_kind,
+       li.supplier_name, li.billed_by,
+       li.line_date, li.work_month, li.invoice_month,
+       li.description, li.cost_category, li.trade, li.resource_name, li.material_type,
+       li.quantity, li.unit, li.unit_price, li.amount_excl_vat,
+       li.markup_factor, li.markup_assumed, li.effective_unit_price, li.effective_amount
+FROM line_items li
+JOIN invoices i ON i.id = li.invoice_id
+JOIN projects p ON p.id = li.project_id
+WHERE li.counted = 1;
+`;
+
+function open(dbPath) {
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  const db = new DatabaseSync(dbPath);
+  db.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
+  db.exec(SCHEMA);
+  return db;
+}
+
+function openReadOnly(dbPath) {
+  return new DatabaseSync(dbPath, { readOnly: true });
+}
+
+function tx(db, fn) {
+  db.exec('BEGIN');
+  try {
+    const r = fn();
+    db.exec('COMMIT');
+    return r;
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+}
+
+module.exports = { open, openReadOnly, tx, SCHEMA };

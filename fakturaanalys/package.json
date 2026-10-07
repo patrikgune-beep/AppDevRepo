@@ -1,0 +1,20 @@
+{
+  "name": "fakturaanalys",
+  "version": "1.0.0",
+  "description": "Fakturaanalys för byggprojekt – tolkar fakturaunderlag med bilagor och gör analyser och jämförelser mellan projekt",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --no-warnings server.js",
+    "demo": "node --no-warnings scripts/demo.js",
+    "test": "node --no-warnings --test test/*.test.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "express": "^5.2.1",
+    "multer": "^2.4.0"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=22.13"
+  }
+}
