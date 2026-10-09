@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bemanningsanalys</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#fff; --ink:#1b2430; --muted:#667085; --line:#e3e7ee;
+  --accent:#1f5fbf; --accent-ink:#fff; --neg:#b42318; --pos:#17794d; --chip:#eaf1fc; --hl:#fff7d6;
+  --bar-neg:#d9534f; --bar-pos:#3d8b6e; --shade:#f0f3f8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10151c; --panel:#18202a; --ink:#e7ebf1; --muted:#97a3b4; --line:#2a3544;
+    --accent:#6ea2f0; --accent-ink:#0c1118; --neg:#ff8a80; --pos:#6fd1a2; --chip:#1f2f47; --hl:#3a3414;
+    --bar-neg:#d9645f; --bar-pos:#4aa384; --shade:#1f2a37;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10151c; --panel:#18202a; --ink:#e7ebf1; --muted:#97a3b4; --line:#2a3544;
+  --accent:#6ea2f0; --accent-ink:#0c1118; --neg:#ff8a80; --pos:#6fd1a2; --chip:#1f2f47; --hl:#3a3414;
+  --bar-neg:#d9645f; --bar-pos:#4aa384; --shade:#1f2a37;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:5}
+header h1{font-size:17px;margin:0;font-weight:650}
+header .sub{color:var(--muted);font-size:12.5px}
+header .sp{flex:1}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--panel);padding:6px 11px;border-radius:7px}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+button.ghost:hover{color:var(--ink)}
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;padding:16px 20px;max-width:1500px;margin:0 auto}
+@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}}
+aside,main{min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.card h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0;padding:12px 14px 6px;font-weight:650}
+aside .card{margin-bottom:14px}
+.ds{padding:8px 14px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+.ds:hover{background:var(--shade)}
+.ds.active{background:var(--chip)}
+.ds>div:first-child{min-width:0}
+.ds .n{font-weight:600;font-size:13px;overflow-wrap:anywhere}
+.ds .m{color:var(--muted);font-size:12px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ds .x{margin-left:auto}
+.drop{margin:10px 14px 14px;padding:16px;border:1.5px dashed var(--line);border-radius:9px;text-align:center;color:var(--muted)}
+.drop.over{border-color:var(--accent);background:var(--chip)}
+.ask{padding:14px}
+.ask textarea{width:100%;min-height:62px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);resize:vertical;font-size:15px}
+.ask textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ex{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.ex button{font-size:12.5px;border-radius:99px;background:var(--chip);border-color:transparent;padding:4px 11px}
+.interp{padding:10px 14px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+.interp b{color:var(--ink)}
+.builder{padding:12px 14px;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.builder label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.builder select,.builder input[type=text]{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
+.builder select[multiple]{height:104px}
+.filters{grid-column:1/-1}
+.fchip{display:inline-flex;gap:6px;align-items:center;background:var(--chip);border-radius:99px;padding:3px 6px 3px 11px;margin:0 6px 6px 0;font-size:12.5px}
+.fchip button{border:0;background:transparent;padding:0 5px;color:var(--muted)}
+.res{margin-top:16px}
+.res .head{display:flex;gap:10px;align-items:center;padding:12px 14px;flex-wrap:wrap}
+.res .head h3{margin:0;font-size:15px;flex:1}
+.note{padding:8px 14px;background:var(--hl);font-size:12.5px;border-top:1px solid var(--line)}
+.warn{color:var(--neg)}
+table{border-collapse:collapse;width:100%}
+.tw{overflow:auto;max-height:560px}
+th,td{padding:6px 12px;border-top:1px solid var(--line);text-align:left;vertical-align:top}
+th{position:sticky;top:0;background:var(--panel);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;cursor:pointer;white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.neg{color:var(--neg)} td.pos{color:var(--pos)}
+tr.tot td{font-weight:650;background:var(--shade)}
+td.txt{max-width:560px;white-space:pre-wrap}
+.bars{padding:6px 14px 14px}
+.bar{display:grid;grid-template-columns:minmax(120px,260px) 1fr 70px;gap:10px;align-items:center;padding:3px 0}
+.bar .l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .t{position:relative;height:16px;background:var(--shade);border-radius:4px}
+.bar .t i{position:absolute;top:0;bottom:0;border-radius:3px}
+.bar .t u{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--muted)}
+.bar .v{text-align:right;font-variant-numeric:tabular-nums}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.tabs{display:flex;gap:4px;padding:0 14px;border-bottom:1px solid var(--line)}
+.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 10px;color:var(--muted)}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);padding:0;max-width:860px;width:calc(100% - 32px)}
+dialog::backdrop{background:#0008}
+.dlg-h{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:650}
+.dlg-b{padding:14px 18px;max-height:62vh;overflow:auto}
+.dlg-f{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+.sheet{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px}
+.sheet .sh{display:flex;gap:8px;align-items:center;font-weight:600}
+.sheet .sh input[type=text]{flex:1;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+.sheet .opts{display:flex;gap:16px;flex-wrap:wrap;margin:6px 0;color:var(--muted);font-size:12.5px}
+.sheet .pv{overflow:auto;font-size:12px}
+.sheet .pv table td,.sheet .pv table th{padding:2px 8px;white-space:nowrap}
+.muted{color:var(--muted)}
+.cols{font-size:12px;color:var(--muted);padding:2px 14px 12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Bemanningsanalys</h1>
+  <span class="sub">Fråga ditt underlag – allt körs lokalt i webbläsaren</span>
+  <span class="sp"></span>
+  <button class="ghost" id="btnTheme" title="Växla ljust/mörkt">◐</button>
+  <button id="btnUpload" class="primary">+ Läs in Excel</button>
+  <input type="file" id="file" accept=".xlsx,.xlsm,.xls,.csv" multiple hidden>
+</header>
+
+<div class="layout">
+  <aside>
+    <div class="card">
+      <h2>Datakällor</h2>
+      <div id="dsList"></div>
+      <div class="drop" id="drop">Släpp Excel-filer här<br><span style="font-size:12px">bemanningsprognoser, åtgärdsplaner m.m.</span></div>
+    </div>
+    <div class="card" id="dsInfo" style="display:none"></div>
+  </aside>
+
+  <main>
+    <div class="card">
+      <h2>Ställ en fråga</h2>
+      <div class="ask">
+        <textarea id="q" placeholder="T.ex. Hur många ÅA minskar vi med per befattningskategori, fördelat per avdelning?"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="primary" id="btnAsk">Fråga</button>
+          <button id="btnBuilder" class="ghost">Justera frågan ▾</button>
+        </div>
+        <div class="ex" id="examples"></div>
+      </div>
+      <div class="interp" id="interp" style="display:none"></div>
+      <div class="builder" id="builder" style="display:none"></div>
+    </div>
+    <div id="result"></div>
+  </main>
+</div>
+
+<dialog id="dlg">
+  <div class="dlg-h" id="dlgH">Läs in Excel</div>
+  <div class="dlg-b" id="dlgB"></div>
+  <div class="dlg-f"><button id="dlgCancel">Avbryt</button><button class="primary" id="dlgOk">Läs in valda blad</button></div>
+</dialog>
+
+<script src="xlsx.full.min.js"></script>
+<script src="data/preloaded.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
