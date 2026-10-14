@@ -65,7 +65,13 @@ function createLocalApi(deps) {
         if (!llm.extractContract) throw new Error('Avtalstolkning stöds inte här.');
         saveContract(db, sid, s.project_id, await llm.extractContract(files, { projectName: s.project_name }));
       } else {
-        saveExtraction(db, sid, s.project_id, await llm.extract(files, { projectName: s.project_name }));
+        // Finns fakturan redan i projektet (t.ex. en ny version efter beslut om skattereduktion)?
+        const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9åäö]/g, '');
+        const known = db.prepare(`SELECT supplier_name, supplier_orgnr FROM invoices
+          WHERE project_id = ? AND submission_id <> ? AND invoice_number = ? AND is_duplicate = 0`);
+        const isKnownInvoice = (inv) => Boolean(inv.invoice_number) && known.all(s.project_id, sid, inv.invoice_number).some((e) =>
+          (inv.supplier_orgnr && norm(e.supplier_orgnr) === norm(inv.supplier_orgnr)) || norm(e.supplier_name) === norm(inv.supplier_name));
+        saveExtraction(db, sid, s.project_id, await llm.extract(files, { projectName: s.project_name, isKnownInvoice }));
       }
       refresh(s.project_id);
     } catch (e) {

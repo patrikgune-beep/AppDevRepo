@@ -5,6 +5,7 @@
 const COST_CATEGORIES = {
   arbete: 'Arbete (timmar)',
   arbetsledning: 'Arbetsledning / projektledning',
+  projektering: 'Projektering / konsulter',
   material: 'Material',
   forbrukningsmaterial: 'Förbrukningsmaterial',
   maskin_hyra: 'Maskin- & verktygshyra',
@@ -33,6 +34,8 @@ const TRADES = {
   grovarbetare: 'Grovarbetare / hantlangare',
   arbetsledare: 'Arbetsledare',
   projektledare: 'Projektledare',
+  arkitekt: 'Arkitekt / projektör',
+  konsult: 'Konsult (konstruktör, besiktning m.m.)',
   ovrigt: 'Övrigt',
 };
 

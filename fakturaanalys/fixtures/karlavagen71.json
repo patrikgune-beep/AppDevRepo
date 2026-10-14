@@ -47,7 +47,10 @@
         "material_type": null,
         "attachment_ref": "F2"
        }
-      ]
+      ],
+      "rot_preliminary": null,
+      "rot_decided": null,
+      "amount_to_pay": null
      },
      {
       "ref": "F2",
@@ -159,7 +162,10 @@
         "material_type": "avfall blandat",
         "attachment_ref": null
        }
-      ]
+      ],
+      "rot_preliminary": null,
+      "rot_decided": null,
+      "amount_to_pay": null
      }
     ],
     "supporting_documents": [
@@ -460,7 +466,10 @@
         "material_type": null,
         "attachment_ref": "F4"
        }
-      ]
+      ],
+      "rot_preliminary": null,
+      "rot_decided": null,
+      "amount_to_pay": null
      },
      {
       "ref": "F2",
@@ -572,7 +581,10 @@
         "material_type": "avfall blandat",
         "attachment_ref": null
        }
-      ]
+      ],
+      "rot_preliminary": null,
+      "rot_decided": null,
+      "amount_to_pay": null
      },
      {
       "ref": "F3",
@@ -834,7 +846,10 @@
         "material_type": null,
         "attachment_ref": null
        }
-      ]
+      ],
+      "rot_preliminary": null,
+      "rot_decided": null,
+      "amount_to_pay": null
      },
      {
       "ref": "F4",
@@ -961,7 +976,10 @@
         "material_type": null,
         "attachment_ref": null
        }
-      ]
+      ],
+      "rot_preliminary": null,
+      "rot_decided": null,
+      "amount_to_pay": null
      }
     ],
     "supporting_documents": [
@@ -1232,7 +1250,10 @@
         "material_type": null,
         "attachment_ref": "F3"
        }
-      ]
+      ],
+      "rot_preliminary": 50000.0,
+      "rot_decided": null,
+      "amount_to_pay": 159854.0
      },
      {
       "ref": "F2",
@@ -1314,7 +1335,10 @@
         "material_type": null,
         "attachment_ref": null
        }
-      ]
+      ],
+      "rot_preliminary": null,
+      "rot_decided": null,
+      "amount_to_pay": null
      },
      {
       "ref": "F3",
@@ -1381,7 +1405,10 @@
         "material_type": null,
         "attachment_ref": null
        }
-      ]
+      ],
+      "rot_preliminary": null,
+      "rot_decided": null,
+      "amount_to_pay": null
      }
     ],
     "supporting_documents": [
@@ -1409,6 +1436,322 @@
     "warnings": [
      "Fakturan har ROT-avdrag på 50 000 kr (att betala 159 854 kr). Kostnaderna redovisas exkl. moms och före ROT-avdrag."
     ]
+   }
+  },
+  {
+   "label": "Faktura_132354.pdf",
+   "files": [
+    "Faktura_132354.pdf"
+   ],
+   "extraction": {
+    "summary": "Ny version av faktura 132354 från Thessén & Ek (augusti 2026) med beslutad skattereduktion 27 666 kr i stället för preliminära 50 000 kr. Att betala 22 334 kr.",
+    "invoices": [
+     {
+      "ref": "F1",
+      "kind": "huvudfaktura",
+      "parent_ref": null,
+      "source_file": "Faktura_132354.pdf",
+      "pages": "1-2",
+      "supplier_name": "Thessén & Ek byggentreprenad AB",
+      "supplier_orgnr": "556818-1092",
+      "invoice_number": "132354",
+      "invoice_date": "2026-08-31",
+      "due_date": "2026-09-10",
+      "period_start": null,
+      "period_end": null,
+      "project_label": "P2079",
+      "currency": "SEK",
+      "amount_excl_vat": 167883.2,
+      "vat_amount": 41970.8,
+      "amount_incl_vat": 209854.0,
+      "reverse_charge_vat": false,
+      "lines": [
+       {
+        "description": "6/8 Arbetsledning. Alexander Thessén",
+        "line_date": "2026-08-06",
+        "article_no": null,
+        "quantity": 2.5,
+        "unit_raw": "h",
+        "unit": "h",
+        "unit_price": 680.0,
+        "amount_excl_vat": 1700.0,
+        "cost_category": "arbetsledning",
+        "trade": "arbetsledare",
+        "resource_name": "Alexander Thessén",
+        "material_type": null,
+        "attachment_ref": null
+       },
+       {
+        "description": "7/8 Arbetsledning. Alexander Thessén",
+        "line_date": "2026-08-07",
+        "article_no": null,
+        "quantity": 1.5,
+        "unit_raw": "h",
+        "unit": "h",
+        "unit_price": 680.0,
+        "amount_excl_vat": 1020.0,
+        "cost_category": "arbetsledning",
+        "trade": "arbetsledare",
+        "resource_name": "Alexander Thessén",
+        "material_type": null,
+        "attachment_ref": null
+       },
+       {
+        "description": "10/8 Arbetsledning. Alexander Thessén",
+        "line_date": "2026-08-10",
+        "article_no": null,
+        "quantity": 1.5,
+        "unit_raw": "h",
+        "unit": "h",
+        "unit_price": 680.0,
+        "amount_excl_vat": 1020.0,
+        "cost_category": "arbetsledning",
+        "trade": "arbetsledare",
+        "resource_name": "Alexander Thessén",
+        "material_type": null,
+        "attachment_ref": null
+       },
+       {
+        "description": "11/8 Arbetsledning. Alexander Thessén",
+        "line_date": "2026-08-11",
+        "article_no": null,
+        "quantity": 1.5,
+        "unit_raw": "h",
+        "unit": "h",
+        "unit_price": 680.0,
+        "amount_excl_vat": 1020.0,
+        "cost_category": "arbetsledning",
+        "trade": "arbetsledare",
+        "resource_name": "Alexander Thessén",
+        "material_type": null,
+        "attachment_ref": null
+       },
+       {
+        "description": "12/8 Arbetsledning. Alexander Thessén",
+        "line_date": "2026-08-12",
+        "article_no": null,
+        "quantity": 0.5,
+        "unit_raw": "h",
+        "unit": "h",
+        "unit_price": 680.0,
+        "amount_excl_vat": 340.0,
+        "cost_category": "arbetsledning",
+        "trade": "arbetsledare",
+        "resource_name": "Alexander Thessén",
+        "material_type": null,
+        "attachment_ref": null
+       },
+       {
+        "description": "17/8 Arbetsledning. Alexander Thessén",
+        "line_date": "2026-08-17",
+        "article_no": null,
+        "quantity": 2,
+        "unit_raw": "h",
+        "unit": "h",
+        "unit_price": 680.0,
+        "amount_excl_vat": 1360,
+        "cost_category": "arbetsledning",
+        "trade": "arbetsledare",
+        "resource_name": "Alexander Thessén",
+        "material_type": null,
+        "attachment_ref": null
+       },
+       {
+        "description": "24/8 Arbetsledning. Alexander Thessén",
+        "line_date": "2026-08-24",
+        "article_no": null,
+        "quantity": 1,
+        "unit_raw": "h",
+        "unit": "h",
+        "unit_price": 680.0,
+        "amount_excl_vat": 680,
+        "cost_category": "arbetsledning",
+        "trade": "arbetsledare",
+        "resource_name": "Alexander Thessén",
+        "material_type": null,
+        "attachment_ref": null
+       },
+       {
+        "description": "25/8 Arbetsledning. Alexander Thessén",
+        "line_date": "2026-08-25",
+        "article_no": null,
+        "quantity": 1.5,
+        "unit_raw": "h",
+        "unit": "h",
+        "unit_price": 680.0,
+        "amount_excl_vat": 1020.0,
+        "cost_category": "arbetsledning",
+        "trade": "arbetsledare",
+        "resource_name": "Alexander Thessén",
+        "material_type": null,
+        "attachment_ref": null
+       },
+       {
+        "description": "26/8 Arbetsledning. Alexander Thessén",
+        "line_date": "2026-08-26",
+        "article_no": null,
+        "quantity": 0.5,
+        "unit_raw": "h",
+        "unit": "h",
+        "unit_price": 680.0,
+        "amount_excl_vat": 340.0,
+        "cost_category": "arbetsledning",
+        "trade": "arbetsledare",
+        "resource_name": "Alexander Thessén",
+        "material_type": null,
+        "attachment_ref": null
+       },
+       {
+        "description": "27/8 Arbetsledning. Alexander Thessén",
+        "line_date": "2026-08-27",
+        "article_no": null,
+        "quantity": 0.5,
+        "unit_raw": "h",
+        "unit": "h",
+        "unit_price": 680.0,
+        "amount_excl_vat": 340.0,
+        "cost_category": "arbetsledning",
+        "trade": "arbetsledare",
+        "resource_name": "Alexander Thessén",
+        "material_type": null,
+        "attachment_ref": null
+       },
+       {
+        "description": "28/8 Arbetsledning. Alexander Thessén",
+        "line_date": "2026-08-28",
+        "article_no": null,
+        "quantity": 1,
+        "unit_raw": "h",
+        "unit": "h",
+        "unit_price": 680.0,
+        "amount_excl_vat": 680,
+        "cost_category": "arbetsledning",
+        "trade": "arbetsledare",
+        "resource_name": "Alexander Thessén",
+        "material_type": null,
+        "attachment_ref": null
+       },
+       {
+        "description": "31/8 Arbetsledning. Alexander Thessén",
+        "line_date": "2026-08-31",
+        "article_no": null,
+        "quantity": 1.5,
+        "unit_raw": "h",
+        "unit": "h",
+        "unit_price": 680.0,
+        "amount_excl_vat": 1020.0,
+        "cost_category": "arbetsledning",
+        "trade": "arbetsledare",
+        "resource_name": "Alexander Thessén",
+        "material_type": null,
+        "attachment_ref": null
+       },
+       {
+        "description": "P avgift röd",
+        "line_date": null,
+        "article_no": null,
+        "quantity": 16,
+        "unit_raw": "h",
+        "unit": "h",
+        "unit_price": 28.0,
+        "amount_excl_vat": 448.0,
+        "cost_category": "fordon_parkering",
+        "trade": null,
+        "resource_name": null,
+        "material_type": null,
+        "attachment_ref": null
+       },
+       {
+        "description": "HARD WORKERS OF SWEDEN AB, 33849",
+        "line_date": null,
+        "article_no": null,
+        "quantity": 1.0,
+        "unit_raw": null,
+        "unit": null,
+        "unit_price": 103045.6,
+        "amount_excl_vat": 103045.6,
+        "cost_category": "underentreprenad",
+        "trade": null,
+        "resource_name": null,
+        "material_type": null,
+        "attachment_ref": null
+       },
+       {
+        "description": "HARD WORKERS OF SWEDEN AB, 33857",
+        "line_date": null,
+        "article_no": null,
+        "quantity": 1.0,
+        "unit_raw": null,
+        "unit": null,
+        "unit_price": 53849.6,
+        "amount_excl_vat": 53849.6,
+        "cost_category": "underentreprenad",
+        "trade": null,
+        "resource_name": null,
+        "material_type": null,
+        "attachment_ref": null
+       }
+      ],
+      "rot_preliminary": 50000.0,
+      "rot_decided": 27666.0,
+      "amount_to_pay": 22334.0
+     }
+    ],
+    "supporting_documents": [],
+    "warnings": []
+   }
+  },
+  {
+   "label": "Faktura-9260.pdf",
+   "files": [
+    "Faktura-9260.pdf"
+   ],
+   "extraction": {
+    "summary": "Arkitektarvode för september 2026 från Viktor Erlandsson & Artefacts AB: 60 timmar à 1 512 kr med 40 % rabatt.",
+    "invoices": [
+     {
+      "ref": "F1",
+      "kind": "huvudfaktura",
+      "parent_ref": null,
+      "source_file": "Faktura-9260.pdf",
+      "pages": "1",
+      "supplier_name": "Viktor Erlandsson & Artefacts AB",
+      "supplier_orgnr": "559014-3391",
+      "invoice_number": "9260",
+      "invoice_date": "2026-10-07",
+      "due_date": "2026-10-22",
+      "period_start": "2026-09-01",
+      "period_end": "2026-09-30",
+      "project_label": null,
+      "currency": "SEK",
+      "amount_excl_vat": 54432.0,
+      "vat_amount": 13608.0,
+      "amount_incl_vat": 68040.0,
+      "reverse_charge_vat": false,
+      "rot_preliminary": null,
+      "rot_decided": null,
+      "amount_to_pay": 68040.0,
+      "lines": [
+       {
+        "description": "Arkitektarvode - september",
+        "line_date": null,
+        "article_no": null,
+        "quantity": 60.0,
+        "unit_raw": "Tim",
+        "unit": "h",
+        "unit_price": 1512.0,
+        "amount_excl_vat": 54432.0,
+        "cost_category": "projektering",
+        "trade": "arkitekt",
+        "resource_name": "Viktor Erlandsson",
+        "material_type": null,
+        "attachment_ref": null
+       }
+      ]
+     }
+    ],
+    "supporting_documents": [],
+    "warnings": []
    }
   }
  ]

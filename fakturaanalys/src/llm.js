@@ -39,14 +39,14 @@ function createSdkLlm({ getApiKey, makeClient = createClient, toBase64 = blobToB
   return {
     mode: 'sdk',
     async available() { return Boolean(await getApiKey()); },
-    async extract(files, { projectName }) {
+    async extract(files, { projectName, isKnownInvoice = () => false }) {
       const withData = [];
       for (const f of files) withData.push({ original_name: f.original_name, mime_type: f.mime_type, data: await toBase64(f.blob) });
       const c = await client();
       const ex = await extractSubmission(withData, { client: c, projectName });
       linkAttachments(ex);
       let passes = 1;
-      const open = openReinvoiceLines(ex);
+      const open = openReinvoiceLines(ex).filter(({ inv }) => !isKnownInvoice(inv));
       if (open.length) {
         // Riktad omgång: leta upp de vidarefakturerade leverantörsfakturorna bland bilagorna.
         const extra = await extractSubmission(withData, { client: c, projectName, instruction: [
@@ -59,7 +59,7 @@ function createSdkLlm({ getApiKey, makeClient = createClient, toBase64 = blobToB
         mergeExtraction(ex, { ...extra, invoices: extra.invoices.filter((i) => i.kind !== 'huvudfaktura'), ignored_pages: [] }, 'R1');
         linkAttachments(ex);
       }
-      const unlinked = openReinvoiceLines(ex);
+      const unlinked = openReinvoiceLines(ex).filter(({ inv }) => !isKnownInvoice(inv));
       for (const { line } of unlinked) {
         ex.warnings.push(`Leverantörsfakturan för raden "${line.description}" (${line.amount_excl_vat} kr) hittades inte bland bilagorna. Beloppet räknas på leverantören men utan detaljrader.`);
       }
@@ -151,7 +151,7 @@ function createSampleLlm({ sample, pdfToPages }) {
     async available() { return true; },
     ensureReady: async () => true,
 
-    async extract(files, { projectName }) {
+    async extract(files, { projectName, isKnownInvoice = () => false }) {
       const lim = await getLimits();
       const maxImages = lim.images ? lim.images.maxCount : 0;
 
@@ -211,9 +211,12 @@ function createSampleLlm({ sample, pdfToPages }) {
         });
       };
       let targeted = false;
+      // Rader på en huvudfaktura som redan finns i projektet (ny version av samma faktura) letas inte
+      // upp igen – bilagorna finns i den första versionen.
+      const openLines = () => openReinvoiceLines(ex).filter(({ inv }) => !isKnownInvoice(inv));
       for (let round = 1; round <= 4; round++) {
         linkAttachments(ex);
-        const open = openReinvoiceLines(ex);
+        const open = openLines();
         let missing = relevant(uncovered());
         if (!missing.length) {
           if (!open.length || targeted) break;
@@ -235,14 +238,14 @@ function createSampleLlm({ sample, pdfToPages }) {
         passes++;
         mergeExtraction(ex, r.ex, `R${round}`);
         linkAttachments(ex);
-        const after = relevant(uncovered()).length + openReinvoiceLines(ex).length;
+        const after = relevant(uncovered()).length + openLines().length;
         if (after >= before) break; // ingen framgång
       }
       linkAttachments(ex);
 
       // 4. Läslogg och varning för sidor som fortfarande saknas.
       const still = relevant(uncovered());
-      const unlinked = openReinvoiceLines(ex);
+      const unlinked = openLines();
       for (const { line } of unlinked) {
         ex.warnings.push(`Leverantörsfakturan för raden "${line.description}" (${line.amount_excl_vat} kr) hittades inte bland bilagorna. Beloppet räknas på leverantören men utan detaljrader. Tryck "Kör om" eller ladda upp bilagan separat.`);
       }

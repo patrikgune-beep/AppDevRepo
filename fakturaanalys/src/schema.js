@@ -242,6 +242,10 @@ function migrate(db) {
   add('projects', 'last_synced_at', 'TEXT');
   add('submissions', 'read_log', 'TEXT');          // JSON: sidor, text/skannat, omgångar, ej tolkade sidor
   add('submissions', 'kind', "TEXT NOT NULL DEFAULT 'faktura'"); // faktura | avtal
+  add('invoices', 'rot_preliminary', 'REAL');     // preliminär skattereduktion (ROT/RUT) på fakturan
+  add('invoices', 'rot_decided', 'REAL');         // beslutad skattereduktion (från ny version av fakturan)
+  add('invoices', 'amount_to_pay', 'REAL');       // "Att betala" enligt fakturan
+  add('invoices', 'revision_of', 'INTEGER');      // ny version av en faktura som redan finns (räknas inte igen)
   db.exec(`CREATE INDEX IF NOT EXISTS ix_files_sha ON files(sha256);
     -- Filer som användaren tagit bort ska inte läsas in igen vid nästa synk.
     CREATE TABLE IF NOT EXISTS ignored_files (

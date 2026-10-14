@@ -38,6 +38,9 @@ function normalizeExtraction(raw) {
       vat_amount: num(inv.vat_amount),
       amount_incl_vat: num(inv.amount_incl_vat),
       reverse_charge_vat: Boolean(inv.reverse_charge_vat),
+      rot_preliminary: num(inv.rot_preliminary),
+      rot_decided: num(inv.rot_decided),
+      amount_to_pay: num(inv.amount_to_pay),
       lines: (Array.isArray(inv.lines) ? inv.lines : []).filter((l) => l && (l.description || l.amount_excl_vat != null)).map((l) => ({
         description: str(l.description) || '(utan beskrivning)',
         line_date: date(l.line_date),

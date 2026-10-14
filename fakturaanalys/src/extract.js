@@ -60,11 +60,15 @@ const INVOICE_SCHEMA = {
     vat_amount: nnum,
     amount_incl_vat: nnum,
     reverse_charge_vat: { type: 'boolean' },
+    rot_preliminary: nnum,
+    rot_decided: nnum,
+    amount_to_pay: nnum,
     lines: { type: 'array', items: LINE_SCHEMA },
   },
   required: ['ref', 'kind', 'parent_ref', 'source_file', 'pages', 'supplier_name', 'supplier_orgnr',
     'invoice_number', 'invoice_date', 'due_date', 'period_start', 'period_end', 'project_label', 'currency',
-    'amount_excl_vat', 'vat_amount', 'amount_incl_vat', 'reverse_charge_vat', 'lines'],
+    'amount_excl_vat', 'vat_amount', 'amount_incl_vat', 'reverse_charge_vat', 'rot_preliminary', 'rot_decided',
+    'amount_to_pay', 'lines'],
 };
 
 const EXTRACTION_SCHEMA = {
@@ -110,18 +114,28 @@ Regler:
   eller en leverantör + fakturanummer), sätt attachment_ref på den raden till bilagans ref.
   Matcha på fakturanummer/OCR i första hand, leverantörsnamn i andra hand (bolag kan ha olika
   handelsnamn, t.ex. ett varumärke som ingår i en koncern).
-- Ta med ALLA rader exakt som de står. Belopp exkl. moms, som tal med punkt som decimaltecken.
-  Hitta inte på värden: okänt = null.
+- Ta med ALLA rader exakt som de står. Belopp exkl. moms, som tal med punkt som decimaltecken
+  (både "1 512,00" och "1,512.00" betyder 1512). Hitta inte på värden: okänt = null.
+- Rabatt på en rad: unit_price = à-pris FÖRE rabatt, amount_excl_vat = radbelopp EFTER rabatt
+  (t.ex. 60 tim à 1 512 kr med 40 % rabatt -> unit_price 1512, amount_excl_vat 54432).
+- Skattereduktion (ROT/RUT): rot_preliminary = preliminär skattereduktion som dragits på fakturan,
+  rot_decided = av Skatteverket beslutad skattereduktion om den anges, amount_to_pay = "Att betala"
+  på fakturan. Beloppen exkl./inkl. moms ska vara FÖRE skattereduktion. Utan ROT/RUT: null.
+- En faktura kan komma igen i en ny version med samma fakturanummer (t.ex. efter beslut om
+  skattereduktion). Tolka den ändå fullt ut med alla rader.
 - Datum som YYYY-MM-DD. Korta datum som "2/9" tolkas med hjälp av fakturadatum/period (dag/månad).
 - unit normaliseras: tim/h/timmar -> h, st/styck -> st, lpm/m -> m, m²/kvm/M2 -> m2, m³/kbm -> m3,
   säck -> sack, paket/pkt/FRP/HNK (förpackning/hink) -> pkt, okänd -> ovrigt. unit_raw = originalet.
 - cost_category: arbete = utfört arbete i timmar/ackord; arbetsledning = arbetsledare/projektledare;
   material = byggmaterial; forbrukningsmaterial = klingor, säckar, skydd mm; maskin_hyra = hyrd
   maskin/verktyg; avfall = sophantering/containrar/deponi; transport_frakt = frakt, leverans,
-  emballage, pall; fordon_parkering = servicebil, parkering, resor; underentreprenad = en klumpsumma
+  emballage, pall; fordon_parkering = servicebil, parkering, resor; projektering = arvoden för arkitekt,
+  konstruktör, besiktning och andra konsulter; underentreprenad = en klumpsumma
   från en UE utan specifikation; avgift = tillägg och avgifter (t.ex. trängselavgift, tidspass).
-- trade anges för arbete och arbetsledning (vilket yrke utför arbetet, härlett ur beskrivning och
-  bilagor; rivningsarbete = rivning). Annars null.
+- trade anges för arbete, arbetsledning och projektering (vilket yrke utför arbetet, härlett ur
+  beskrivning och bilagor; rivningsarbete = rivning, arkitektarvode = arkitekt). Annars null.
+- En faktura direkt från en leverantör/konsult till beställaren (utan entreprenör emellan) är också
+  "huvudfaktura".
 - material_type: kort normaliserad materialbenämning på svenska i gemener för material (t.ex.
   "betong", "regel", "gips", "isolering", "lim", "skruv", "golv", "avfall blandat"). Annars null.
 - resource_name: namngiven person eller maskin om den anges.

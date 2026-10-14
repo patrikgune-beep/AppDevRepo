@@ -419,9 +419,10 @@ async function openSubmission(id) {
       <div class="inv-head">
         <div><b>${esc(inv.supplier_name)}</b> · ${esc(kindName(inv.kind))} ${esc(inv.invoice_number || '')}
           <span class="muted">· ${esc(inv.invoice_date || '')} · sid ${esc(inv.pages || '')}</span>
-          ${inv.is_duplicate ? '<span class="tag warn">Dubblett – räknas ej</span>' : ''}</div>
+          ${inv.is_duplicate ? `<span class="tag ${inv.revision_of ? '' : 'warn'}">${inv.revision_of ? 'Ny version – räknas inte igen' : 'Dubblett – räknas ej'}</span>` : ''}</div>
         <div>${kr2(inv.amount_excl_vat)} kr exkl. moms ${markupTag(inv)}</div>
       </div>
+      ${rotLine(inv)}
       <div class="table-wrap"><table class="lines">
         <thead><tr><th>Beskrivning</th><th>Datum</th><th class="num">Antal</th><th class="num">À-pris</th>
           <th class="num">Belopp</th><th>Typ</th><th class="num">Kostnad beställare</th><th></th></tr></thead>
@@ -430,7 +431,7 @@ async function openSubmission(id) {
             <td data-label="Beskrivning">${esc(l.description)}${l.resource_name ? ` <span class="muted">(${esc(l.resource_name)})</span>` : ''}</td>
             <td data-label="Datum">${esc(l.line_date || '')}</td>
             <td data-label="Antal" class="num">${l.quantity == null ? '' : kr(l.quantity, 2)} ${esc(l.unit || l.unit_raw || '')}</td>
-            <td data-label="À-pris" class="num">${kr2(l.unit_price)}</td>
+            <td data-label="À-pris" class="num">${kr2(l.unit_price)}${discountTag(l)}</td>
             <td data-label="Belopp" class="num">${kr2(l.amount_excl_vat)}</td>
             <td data-label="Typ"><span class="tag">${esc(catName(l.cost_category))}</span>
               ${l.trade ? `<span class="tag">${esc(tradeName(l.trade))}</span>` : ''}
@@ -472,6 +473,20 @@ function readLog(json) {
     ${l.passes > 1 ? ` · ${l.passes - 1} kompletterande tolkning${l.passes > 2 ? 'ar' : ''} för missade sidor` : ''}
     ${ok ? ' · alla sidor och bilagor tolkade' : ''}${l.missing && l.missing.length ? ` · ej tolkade: ${esc(l.missing.join(', '))}` : ''}
     ${unlinked.length ? ` · leverantörsfaktura saknas för: ${esc(unlinked.join('; '))} – tryck Kör om` : ''}</p>`;
+}
+
+// Skattereduktion (ROT/RUT) på fakturan
+function rotLine(inv) {
+  if (inv.rot_preliminary == null && inv.rot_decided == null) return '';
+  const denied = inv.rot_decided != null && inv.rot_preliminary != null ? inv.rot_preliminary - inv.rot_decided : 0;
+  return `<p class="small">Skattereduktion: ${inv.rot_decided != null ? `beslutad <b>${kr2(inv.rot_decided)} kr</b>` : ''}${inv.rot_decided != null && inv.rot_preliminary != null ? ' · ' : ''}${inv.rot_preliminary != null ? `preliminär ${kr2(inv.rot_preliminary)} kr` : ''}${denied > 0.5 ? ` · <span class="tag warn">nekat ${kr2(denied)} kr – betalas av beställaren</span>` : ''}${inv.amount_to_pay != null ? ` · att betala enligt fakturan ${kr2(inv.amount_to_pay)} kr` : ''}</p>`;
+}
+// Rabatt syns när à-pris × antal är större än radbeloppet
+function discountTag(l) {
+  if (l.unit_price == null || !(l.quantity > 0) || l.amount_excl_vat == null) return '';
+  const gross = l.unit_price * l.quantity;
+  if (gross <= 0 || l.amount_excl_vat >= gross * 0.99) return '';
+  return `<div class="small muted">rabatt ${Math.round((1 - l.amount_excl_vat / gross) * 100)} % → ${kr2(l.amount_excl_vat / l.quantity)}</div>`;
 }
 
 const kindName = (k) => ({ huvudfaktura: 'Faktura', underleverantorsfaktura: 'Bilaga (UE/leverantör)', kvitto: 'Kvitto', kreditfaktura: 'Kreditfaktura' }[k] || k);
@@ -546,6 +561,12 @@ async function renderAnalysis() {
   $('#analys-out').innerHTML = `
     <div class="grid">
       <div class="panel"><div class="muted">Kostnad exkl. moms (inkl. påslag)</div><div class="kpi">${kr(o.total.total)} kr</div>
+        ${o.payment && o.payment.invoices ? `<dl class="pay">
+          <div><dt>Fakturerat inkl. moms</dt><dd>${kr(o.payment.incl_vat)} kr</dd></div>
+          ${o.payment.tax_reduction ? `<div><dt>Skattereduktion (ROT/RUT)</dt><dd>−${kr(o.payment.tax_reduction)} kr</dd></div>` : ''}
+          ${o.payment.tax_reduction_denied ? `<div><dt>varav nekad, betalas av dig</dt><dd>${kr(o.payment.tax_reduction_denied)} kr</dd></div>` : ''}
+          <div><dt>Att betala</dt><dd><b>${kr(o.payment.to_pay)} kr</b></dd></div>
+        </dl>` : ''}
         <div class="muted">${o.total.lines} kostnadsrader</div></div>
       <div class="panel"><h3 style="margin-top:0">Per kostnadstyp</h3>${bars(o.byCategory, (r) => esc(catName(r.key)))}</div>
       <div class="panel"><h3 style="margin-top:0">Per leverantör (utförare)</h3>${bars(o.bySupplier)}</div>

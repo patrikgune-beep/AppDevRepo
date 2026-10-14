@@ -15,7 +15,12 @@ Databas (SQLite):
 - projects(id, name, description)
 - invoices(id, project_id, parent_invoice_id, kind, supplier_name, supplier_orgnr, invoice_number,
   invoice_date, due_date, period_start, period_end, amount_excl_vat, vat_amount, amount_incl_vat,
-  reverse_charge_vat, billed_amount, billed_ratio, markup_status, is_duplicate)
+  reverse_charge_vat, billed_amount, billed_ratio, markup_status, is_duplicate, rot_preliminary, rot_decided,
+  amount_to_pay, revision_of)
+  rot_preliminary/rot_decided = preliminär/beslutad skattereduktion (ROT/RUT); beslutad gäller. amount_to_pay =
+  "Att betala" på fakturan. revision_of = ny version av en faktura som redan finns (is_duplicate = 1, räknas inte).
+  Beställarens betalning = amount_incl_vat − COALESCE(rot_decided, rot_preliminary, 0) för fakturor utan
+  parent_invoice_id och med is_duplicate = 0.
   kind: huvudfaktura (entreprenörens faktura till beställaren) | underleverantorsfaktura (bilaga som
   vidarefaktureras) | kvitto | kreditfaktura | ovrigt. billed_ratio = vidarefakturerat belopp /
   bilagans belopp, dvs 1.12 = 12 % påslag. markup_status: ok | avvikelse | saknar_rad | ej_tillampligt.

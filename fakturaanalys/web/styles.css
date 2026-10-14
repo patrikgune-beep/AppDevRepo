@@ -164,3 +164,8 @@ dialog::backdrop { background: rgb(0 0 0 / 0.4); }
 .f-ref { color: var(--muted); margin-top: 4px; font-style: italic; }
 .ok-line { color: var(--ok); }
 #rate-form label { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--muted); }
+
+.pay { display: grid; gap: 4px; margin: 10px 0 0; font-size: 14px; }
+.pay div { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 4px; }
+.pay dt { color: var(--muted); }
+.pay dd { margin: 0; font-variant-numeric: tabular-nums; }

@@ -34,29 +34,40 @@ function saveExtraction(db, submissionId, projectId, ex) {
       'INSERT INTO findings (submission_id, project_id, invoice_id, severity, source, message) VALUES (?,?,?,?,?,?)');
     const insInv = db.prepare(`INSERT INTO invoices (submission_id, project_id, ref, kind, source_file, pages,
       supplier_name, supplier_orgnr, invoice_number, invoice_date, due_date, period_start, period_end, project_label,
-      currency, amount_excl_vat, vat_amount, amount_incl_vat, reverse_charge_vat, is_duplicate)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
-    const existing = db.prepare(`SELECT id, supplier_name, supplier_orgnr FROM invoices
+      currency, amount_excl_vat, vat_amount, amount_incl_vat, reverse_charge_vat, is_duplicate,
+      rot_preliminary, rot_decided, amount_to_pay, revision_of)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+    const existing = db.prepare(`SELECT * FROM invoices
       WHERE project_id = ? AND submission_id <> ? AND invoice_number = ? AND is_duplicate = 0`);
 
     const idByRef = new Map();
+    let revisedMain = false;
     for (const inv of ex.invoices || []) {
-      let dup = 0;
-      if (inv.invoice_number) {
-        dup = existing.all(projectId, submissionId, inv.invoice_number).some((e) =>
-          (inv.supplier_orgnr && norm(e.supplier_orgnr) === norm(inv.supplier_orgnr)) ||
-          norm(e.supplier_name) === norm(inv.supplier_name)) ? 1 : 0;
-      }
+      // Samma fakturanummer och leverantör finns redan: en kopia eller en ny version av fakturan
+      // (t.ex. efter beslut om skattereduktion). Den räknas aldrig igen som kostnad.
+      const original = inv.invoice_number ? existing.all(projectId, submissionId, inv.invoice_number).find((e) =>
+        (inv.supplier_orgnr && norm(e.supplier_orgnr) === norm(inv.supplier_orgnr)) ||
+        norm(e.supplier_name) === norm(inv.supplier_name)) : null;
+      const dup = original ? 1 : 0;
       const r = insInv.run(submissionId, projectId, inv.ref, inv.kind, inv.source_file, inv.pages,
         inv.supplier_name, inv.supplier_orgnr, inv.invoice_number, inv.invoice_date, inv.due_date,
         inv.period_start, inv.period_end, inv.project_label, inv.currency || 'SEK',
-        inv.amount_excl_vat, inv.vat_amount, inv.amount_incl_vat, inv.reverse_charge_vat ? 1 : 0, dup);
+        inv.amount_excl_vat, inv.vat_amount, inv.amount_incl_vat, inv.reverse_charge_vat ? 1 : 0, dup,
+        inv.rot_preliminary ?? null, inv.rot_decided ?? null, inv.amount_to_pay ?? null, original ? original.id : null);
       const id = Number(r.lastInsertRowid);
       idByRef.set(inv.ref, id);
-      if (dup) {
-        addFinding.run(submissionId, projectId, id, 'varning', 'tolkning',
-          `Faktura ${inv.invoice_number} från ${inv.supplier_name} finns redan i projektet. ` +
-          'Den räknas inte igen (dubblett).');
+      if (original) {
+        if (inv.kind === 'huvudfaktura') revisedMain = true;
+        const amountsDiffer = original.amount_excl_vat != null && inv.amount_excl_vat != null &&
+          Math.abs(original.amount_excl_vat - inv.amount_excl_vat) > 1;
+        const rotDenied = inv.rot_decided != null && (inv.rot_preliminary ?? original.rot_preliminary ?? 0) > inv.rot_decided + 0.5;
+        addFinding.run(submissionId, projectId, id, amountsDiffer || rotDenied ? 'varning' : 'info', 'tolkning',
+          revisionMessage(original, inv));
+        // Beslutad skattereduktion från den nya versionen gäller fakturan
+        if (inv.rot_decided != null) {
+          db.prepare('UPDATE invoices SET rot_decided = ?, rot_preliminary = COALESCE(rot_preliminary, ?) WHERE id = ?')
+            .run(inv.rot_decided, inv.rot_preliminary ?? null, original.id);
+        }
       }
     }
 
@@ -92,11 +103,34 @@ function saveExtraction(db, submissionId, projectId, ex) {
       insDoc.run(submissionId, projectId, idByRef.get(d.related_invoice_ref) ?? null, d.doc_type, d.title,
         d.source_file, d.pages, d.period_start, d.period_end, d.text_summary);
     }
-    for (const w of ex.warnings || []) addFinding.run(submissionId, projectId, null, 'varning', 'tolkning', w);
+    for (const w of ex.warnings || []) {
+      // En ny version av en faktura saknar ofta bilagorna – de finns redan i den första versionen.
+      if (revisedMain && /Leverantörsfakturan för raden|bilagorna|skattereduktion|ROT/i.test(w)) continue;
+      addFinding.run(submissionId, projectId, null, 'varning', 'tolkning', w);
+    }
+    if (revisedMain && ex.read_log) ex.read_log = { ...ex.read_log, unlinked: [] };
 
     db.prepare("UPDATE submissions SET summary = ?, read_log = ?, status = 'done', processed_at = datetime('now'), error = NULL WHERE id = ?")
       .run(ex.summary || null, ex.read_log ? JSON.stringify(ex.read_log) : null, submissionId);
   });
+}
+
+function revisionMessage(original, inv) {
+  const no = `Faktura ${inv.invoice_number} från ${inv.supplier_name}`;
+  const excl = (x) => x.amount_excl_vat;
+  if (excl(original) != null && excl(inv) != null && Math.abs(excl(original) - excl(inv)) > 1) {
+    return `${no} finns i två versioner med olika belopp: ${fmt(excl(original))} kr och ${fmt(excl(inv))} kr exkl. moms. ` +
+      'Den första versionen räknas – kontrollera vilken som gäller.';
+  }
+  const prelim = inv.rot_preliminary ?? original.rot_preliminary;
+  if (inv.rot_decided != null && prelim != null && inv.rot_decided < prelim - 0.5) {
+    const extra = prelim - inv.rot_decided;
+    return `${no} har kommit i en ny version: Skatteverket har beslutat skattereduktion ${fmt(inv.rot_decided)} kr ` +
+      `i stället för preliminära ${fmt(prelim)} kr. Du ska betala ${fmt(extra)} kr till` +
+      `${inv.amount_to_pay != null ? ` (att betala enligt fakturan: ${fmt(inv.amount_to_pay)} kr)` : ''}. ` +
+      `Kostnaden ${fmt(excl(inv))} kr exkl. moms är oförändrad och räknas inte dubbelt.`;
+  }
+  return `${no} finns redan i projektet med samma belopp. Den räknas inte igen.`;
 }
 
 function median(xs) {
@@ -196,8 +230,9 @@ function reconcile(db, projectId) {
 
       const effAmount = l.amount_excl_vat == null ? null : round2(l.amount_excl_vat * alloc);
       let effUnit = null;
-      if (l.unit_price != null) effUnit = round2(l.unit_price * markup);
-      else if (l.amount_excl_vat != null && l.quantity) effUnit = round2((l.amount_excl_vat / l.quantity) * markup);
+      // À-pris efter rabatt: radbeloppet / antal när båda finns, annars à-priset.
+      if (l.amount_excl_vat != null && l.quantity > 0) effUnit = round2((l.amount_excl_vat / l.quantity) * markup);
+      else if (l.unit_price != null) effUnit = round2(l.unit_price * markup);
 
       const vendor = counted ? vendorForLine(l, inv, knownSuppliers) : null;
       const workMonth = month(l.line_date) || month(inv.period_start) || month(inv.invoice_date) ||

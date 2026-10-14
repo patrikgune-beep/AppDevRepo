@@ -17,6 +17,25 @@ function buildWhere(f = {}, alias = '') {
   return { sql: where.length ? `WHERE ${where.join(' AND ')}` : '', params, monthCol };
 }
 
+// Vad beställaren betalar: fakturor till beställaren (inte bilagor), inkl. moms och efter
+// skattereduktion (ROT/RUT). Beslutad skattereduktion gäller före preliminär.
+function payments(db, f = {}) {
+  const where = ['parent_invoice_id IS NULL', 'is_duplicate = 0'];
+  const params = [];
+  if (f.projectIds && f.projectIds.length) { where.push(`project_id IN (${f.projectIds.map(() => '?').join(',')})`); params.push(...f.projectIds.map(Number)); }
+  if (f.from) { where.push('substr(invoice_date, 1, 7) >= ?'); params.push(f.from); }
+  if (f.to) { where.push('substr(invoice_date, 1, 7) <= ?'); params.push(f.to); }
+  if (f.supplier) { where.push('supplier_name = ?'); params.push(f.supplier); }
+  return db.prepare(`SELECT COUNT(*) AS invoices,
+      ROUND(SUM(amount_excl_vat), 2) AS excl_vat,
+      ROUND(SUM(COALESCE(vat_amount, amount_incl_vat - amount_excl_vat, 0)), 2) AS vat,
+      ROUND(SUM(COALESCE(amount_incl_vat, amount_excl_vat)), 2) AS incl_vat,
+      ROUND(SUM(COALESCE(rot_decided, rot_preliminary, 0)), 2) AS tax_reduction,
+      ROUND(SUM(CASE WHEN rot_decided IS NOT NULL AND rot_preliminary > rot_decided THEN rot_preliminary - rot_decided ELSE 0 END), 2) AS tax_reduction_denied,
+      ROUND(SUM(COALESCE(amount_incl_vat, amount_excl_vat) - COALESCE(rot_decided, rot_preliminary, 0)), 2) AS to_pay
+    FROM invoices WHERE ${where.join(' AND ')}`).get(...params);
+}
+
 function overview(db, f) {
   const w = buildWhere(f);
   const q = (select, group, order) => db.prepare(
@@ -25,6 +44,7 @@ function overview(db, f) {
     FROM cost_lines ${w.sql}`).get(...w.params);
   return {
     total,
+    payment: payments(db, f),
     byCategory: q('cost_category AS key, ROUND(SUM(effective_amount),2) AS amount, COUNT(*) AS lines',
       'cost_category', 'amount DESC'),
     bySupplier: q('supplier_name AS key, ROUND(SUM(effective_amount),2) AS amount, COUNT(*) AS lines',
@@ -49,7 +69,7 @@ function compareUnitPrices(db, { dimension, value, unit, ...f }) {
   const agg = `COUNT(*) AS lines, ROUND(SUM(quantity),2) AS quantity,
     ROUND(SUM(quantity*effective_unit_price)/SUM(quantity),2) AS avg_price,
     ROUND(MIN(effective_unit_price),2) AS min_price, ROUND(MAX(effective_unit_price),2) AS max_price,
-    ROUND(SUM(quantity*unit_price)/SUM(quantity),2) AS avg_supplier_price,
+    ROUND(SUM(COALESCE(amount_excl_vat, quantity*unit_price))/SUM(quantity),2) AS avg_supplier_price,
     GROUP_CONCAT(DISTINCT supplier_name) AS suppliers, GROUP_CONCAT(DISTINCT unit) AS units,
     MAX(markup_assumed) AS has_assumed_markup`;
   const perProject = db.prepare(`SELECT project_id, project_name, ${agg} FROM cost_lines ${whereSql}
@@ -73,4 +93,4 @@ function dimensions(db) {
   };
 }
 
-module.exports = { overview, compareUnitPrices, dimensions, buildWhere };
+module.exports = { payments, overview, compareUnitPrices, dimensions, buildWhere };

@@ -194,3 +194,18 @@ test('API-nyckel: riktad omgång när vidarefakturerade leverantörsfakturor sak
   assert.deepEqual(ex.read_log.unlinked, []);
   assert.equal(ex.invoices.filter((i) => i.supplier_name === 'Hard Workers of Sweden AB').length, 2);
 });
+
+test('ny version av en faktura som redan finns: inget extra anrop för att leta bilagor', async () => {
+  const calls = [];
+  const sample = {
+    limits: async () => ({ maxPromptBytes: 262144, images: { maxCount: 20 } }),
+    json: async () => { calls.push(1); return clone(fixture.submissions[3].extraction); },
+  };
+  const pages = async () => [1, 2].map((n) => ({ n, text: 'Beslutad skattereduktion ' + 'x'.repeat(300), image: null }));
+  const ex = await createSampleLlm({ sample, pdfToPages: pages }).extract(
+    [{ original_name: 'Faktura_132354.pdf', mime_type: 'application/pdf', blob: new Blob(['%PDF']) }],
+    { isKnownInvoice: (inv) => inv.invoice_number === '132354' });
+  assert.equal(calls.length, 1);
+  assert.deepEqual(ex.read_log.unlinked, []);
+  assert.ok(!ex.warnings.some((w) => /hittades inte/.test(w)));
+});

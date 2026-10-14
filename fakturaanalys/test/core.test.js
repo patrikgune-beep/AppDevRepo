@@ -31,7 +31,7 @@ test('avstämning: total kostnad = summan av huvudfakturorna, påslag 12 % hitta
   const { db } = tmpDb();
   const pid = loadFixture(db, fixture);
   const total = db.prepare('SELECT SUM(effective_amount) t FROM cost_lines WHERE project_id = ?').get(pid).t;
-  assert.ok(Math.abs(total - (44058.91 + 55988.80 + 167883.20)) < 0.5, `total ${total}`);
+  assert.ok(Math.abs(total - (44058.91 + 55988.80 + 167883.20 + 54432)) < 0.5, `total ${total}`); // ny version av 132354 räknas inte
 
   const inv = (no) => db.prepare('SELECT * FROM invoices WHERE invoice_number = ?').get(no);
   assert.equal(inv('33869').markup_status, 'ok');
@@ -74,7 +74,7 @@ test('dubblett: samma faktura uppladdad igen räknas inte två gånger', () => {
   reconcile(db, pid);
   const after = db.prepare('SELECT SUM(effective_amount) t FROM cost_lines').get().t;
   assert.ok(Math.abs(after - before) < 0.01);
-  assert.ok(db.prepare("SELECT COUNT(*) c FROM findings WHERE message LIKE '%dubblett%'").get().c >= 1);
+  assert.ok(db.prepare("SELECT COUNT(*) c FROM findings WHERE message LIKE '%räknas inte igen%'").get().c >= 1);
 });
 
 test('jämförelse mellan projekt: elektriker per timme, medel/min/max', () => {
@@ -136,7 +136,7 @@ test('ask: verktygsloop med fejkad klient kör SQL och returnerar svar + frågor
     return { stop_reason: 'end_turn', content: [{ type: 'text', text: `Totalt: ${JSON.parse(result.content).rows[0].s}` }] };
   } } } };
   const r = await ask(db, { question: 'Total?', scope: {} }, { client });
-  assert.match(r.answer, /Totalt: 26793/);
+  assert.match(r.answer, /Totalt: 32236/);
   assert.equal(r.queries.length, 1);
   assert.equal(seen[0].model, 'claude-opus-5-5');
   assert.equal(seen[0].tools[0].name, 'run_sql');
@@ -154,4 +154,30 @@ test('extract: skickar PDF som dokument och tolkar JSON-svaret', async () => {
   assert.equal(ex.invoices.length, 2);
   assert.equal(params.output_config.format.type, 'json_schema');
   assert.equal(params.messages[0].content[1].type, 'document');
+});
+
+test('ny version av faktura 132354: räknas inte dubbelt, nekad skattereduktion ska betalas', () => {
+  const { db } = tmpDb();
+  loadFixture(db, fixture);
+  const inv = db.prepare("SELECT * FROM invoices WHERE invoice_number = '132354' ORDER BY id").all();
+  assert.equal(inv.length, 2);
+  assert.deepEqual([inv[0].is_duplicate, inv[1].is_duplicate, inv[1].revision_of], [0, 1, inv[0].id]);
+  assert.equal(inv[0].rot_decided, 27666); // beslutet från nya versionen gäller fakturan
+  const f = db.prepare("SELECT * FROM findings WHERE invoice_id = ?").get(inv[1].id);
+  assert.equal(f.severity, 'varning');
+  assert.match(f.message.replace(/[\u00a0\u202f]/g, ' '), /beslutat skattereduktion 27 666,00 kr i stället för preliminära 50 000,00 kr\. Du ska betala 22 334,00 kr till/);
+  // Inga varningar om saknade bilagor för den nya versionen
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM findings WHERE submission_id = ? AND message LIKE '%bilagorna%'").get(inv[1].submission_id).n, 0);
+  const { payments } = require('../src/analytics');
+  const p = payments(db, {});
+  assert.deepEqual([p.invoices, p.incl_vat, p.tax_reduction, p.tax_reduction_denied, p.to_pay], [4, 402954, 27666, 22334, 375288]);
+});
+
+test('rabatt: arkitekt 60 h à 1 512 kr med 40 % rabatt jämförs som 907,20 kr/h', () => {
+  const { db } = tmpDb();
+  loadFixture(db, fixture);
+  const r = compareUnitPrices(db, { dimension: 'trade', value: 'arkitekt', unit: 'h' });
+  assert.deepEqual([r.overall.quantity, r.overall.avg_price, r.overall.avg_supplier_price], [60, 907.2, 907.2]);
+  const sup = Object.fromEntries(overview(db, {}).bySupplier.map((x) => [x.key, x.amount]));
+  assert.equal(sup['Viktor Erlandsson & Artefacts AB'], 54432);
 });
