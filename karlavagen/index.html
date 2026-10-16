@@ -132,6 +132,14 @@ details.ue>summary::-webkit-details-marker{display:none}
 .group>h3{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
 .foot{font-size:12.5px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:14px}
 code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+input.nbin{width:7.5em;max-width:100%;font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
+input.nbin:hover{border-color:var(--ink-3)}
+input.nbin:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+input.nbin.changed{background:var(--accent-soft);border-color:var(--accent)}
+.nbreset{font:inherit;background:none;border:0;color:var(--accent);cursor:pointer;padding:2px 4px;margin-left:2px}
+table.nbt td{vertical-align:middle}
+table.nbt td:first-child{min-width:220px}
+table.nbt td,table.nbt th{padding-inline:8px}
 @media (max-width:560px){
   .wrap{padding-inline:16px}
   td,th{padding:8px 8px}
@@ -490,6 +498,172 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     ]
   },
 
+  "newBudget": {
+    "source": "Offert D2058 rev 1 (2026-05-08) samt ÄTA 2–6 (2026-10-16). Alla belopp inkl. moms.",
+    "rows": [
+      {
+        "id": "riv",
+        "name": "Rivningsarbeten",
+        "orig": 198750,
+        "nu": 198750,
+        "post": "Rivningsarbeten",
+        "note": "Grundrivningen har förbrukat 99 %. Rivningen av undergolvet ligger under ÄTA 1. Spårning för el kan finnas kvar."
+      },
+      {
+        "id": "bygg",
+        "name": "Byggnadsarbeten",
+        "orig": 387500,
+        "nu": 387500,
+        "post": "Byggnadsarbeten",
+        "note": "Undergolvet räknas nu under ÄTA 1."
+      },
+      {
+        "id": "mal",
+        "name": "Målningsarbeten",
+        "orig": 365000,
+        "nu": 365000,
+        "post": "Målningsarbeten"
+      },
+      {
+        "id": "platt",
+        "name": "Plattarbeten",
+        "orig": 202500,
+        "nu": 202500,
+        "post": "Plattarbeten",
+        "note": "ÄTA 6 har 211 900 kr för flytspackel, EPS och sättning av sten. Kontrollera att det inte överlappar den här posten."
+      },
+      {
+        "id": "ror",
+        "name": "Rörarbeten",
+        "orig": 140000,
+        "nu": 140000,
+        "post": "Rörarbeten"
+      },
+      {
+        "id": "el",
+        "name": "Elarbeten",
+        "orig": 314250,
+        "nu": 314250,
+        "post": "Elarbeten",
+        "note": "ÄTA 3 lägger till 494 480 kr för el utan specifikation. Det är 157 % av hela elposten."
+      },
+      {
+        "id": "parkett",
+        "name": "Parkettarbeten",
+        "orig": 200000,
+        "nu": 85875,
+        "post": "Parkettarbeten",
+        "note": "D2058: bara fiskben i vardagsrummet. Matta och fris finns i ÄTA 4."
+      },
+      {
+        "id": "puts",
+        "name": "Putsarbeten",
+        "orig": 70000,
+        "nu": 70000,
+        "post": "Putsarbeten"
+      },
+      {
+        "id": "vent",
+        "name": "Ventilationsarbeten",
+        "orig": 28750,
+        "nu": 28750,
+        "post": "Ventilationsarbeten"
+      },
+      {
+        "id": "allm",
+        "name": "Allmänna kostnader",
+        "orig": 209250,
+        "nu": 209250,
+        "post": "Allmänna kostnader",
+        "note": "Tidsplanen löper till 30/4 2027, cirka 28 veckor till. Med samma takt som 6/8–16/10 (cirka 10 800 kr/vecka) behövs runt 300 000 kr till, inte 98 386 kr."
+      },
+      {
+        "id": "sop",
+        "name": "Sophantering",
+        "orig": 76250,
+        "nu": 76250,
+        "post": "Sophantering"
+      },
+      {
+        "id": "schab-bad",
+        "name": "Schablon badrum, bastu & sten",
+        "orig": 200000,
+        "nu": 0,
+        "note": "Struken i D2058. Ersätts av ÄTA 2 och ÄTA 6."
+      },
+      {
+        "id": "schab-kok",
+        "name": "Schablon kök, vitvaror & stenskivor",
+        "orig": 750000,
+        "nu": 0,
+        "note": "Struken i D2058. Ersätts av ÄTA 4 och ÄTA 5."
+      },
+      {
+        "id": "ata1",
+        "name": "ÄTA 1 – Diverse tillkommande arbeten",
+        "orig": 0,
+        "nu": null,
+        "actual": "ata",
+        "note": "Undergolv, rivning av undergolv, luftrenare och konstruktör. Löpande räkning utan uppskattning."
+      },
+      {
+        "id": "ata2",
+        "name": "ÄTA 2 – VVS-produkter",
+        "orig": 0,
+        "nu": 173851,
+        "note": "Summan räknar in alla alternativ. Alt 1 (Dornbracht) blir 121 711 kr. Billigaste alternativen (Scandtap, kök alt 3) blir 98 433 kr."
+      },
+      {
+        "id": "ata3",
+        "name": "ÄTA 3 – Belysning, el och tak",
+        "orig": 0,
+        "nu": 569543,
+        "note": "Elektriker 494 480 kr utan specifikation, armaturer ingår inte. Snickare och gips i taket 75 063 kr."
+      },
+      {
+        "id": "ata4",
+        "name": "ÄTA 4 – Snickerier & inredning",
+        "orig": 0,
+        "nu": 1997523,
+        "note": "Montering 240 h à 812,50 kr, men avtalat pris är 650 kr inkl. moms. 812,50 = 650 × 1,25 ser ut som dubbel moms: 39 000 kr. Kök, skåp och garderober 1 525 623 kr utan specifikation."
+      },
+      {
+        "id": "ata5",
+        "name": "ÄTA 5 – Vitvaror",
+        "orig": 0,
+        "nu": 194573,
+        "note": "Om priset innehåller Thesséns 12 % påslag sparar du cirka 20 800 kr på att köpa själv."
+      },
+      {
+        "id": "ata6",
+        "name": "ÄTA 6 – Sten & glas",
+        "orig": 0,
+        "nu": 1590300,
+        "note": "Summan räknar in tre stenalternativ. Med Brännlycka blir den 1 155 050 kr, med Verde Italia 933 050 kr, med klinker 612 300 kr. Glasblocksmontering 144 h à 812,50 kr, samma dubbla moms: 23 400 kr. Konstruktion för glasblock och transporter är inte prissatta."
+      },
+      {
+        "id": "ark",
+        "name": "Arkitekt (utanför offerten)",
+        "orig": 0,
+        "nu": null,
+        "actual": "arkitekt",
+        "note": "126 h hittills. Inget avtal i underlaget."
+      }
+    ],
+    "rot": {
+      "orig": -200000,
+      "nu": -200000,
+      "note": "Beviljat hittills 27 666 kr. Offerten förutsätter 200 000 kr."
+    },
+    "insights": [
+      "Fakturorna sedan augusti gäller projektet ”Karlavägen 71 – rev 1”, och det är D2058 som heter rev 1. D2058 är alltså troligen det gällande avtalet.",
+      "ÄTA 2 och ÄTA 6 summerar alternativ som utesluter varandra. Välj alternativ innan beloppen används som budget.",
+      "ÄTA 4 och ÄTA 6 debiterar montering med 812,50 kr/h. Avtalat pris är 650 kr/h inkl. moms. Skillnaden är exakt 25 %, totalt 62 400 kr.",
+      "ÄTA 3 (el 494 480 kr) och kök, skåp och garderober i ÄTA 4 (1 525 623 kr) saknar specifikation. Begär den innan du godkänner.",
+      "Tidsplanen slutar 30/4 2027, ungefär 9 månader efter start. Offerten räknade med 5–6 månader. Allmänna kostnader och arbetsledning växer med tiden."
+    ]
+  },
+
   "checks": [
     {"level": "warn", "title": "ROT: Skatteverket beviljade bara 27 666 kr av 50 000 kr", "text": "Thessén kräver nu 22 334 kr extra på faktura 132354. Skälet framgår inte. Troligen räckte Katarinas skatt eller ROT-utrymme för 2026 inte till, men kontrollera det med henne eller Skatteverket. Totalt är 172 334 kr av offertens 200 000 kr i ROT outnyttjat."},
     {"level": "warn", "title": "Inget ROT-avdrag på 132395 trots cirka 152 000 kr arbetskostnad", "text": "Fakturan innehåller arbete för 151 870 kr exkl. moms: elektriker, rivning och arbetsledning inklusive påslag. 30 % av det inkl. moms är 56 951 kr, alltså över taket på 50 000 kr. Be Thessén att lägga ROT för en andra ägare på 132395 innan du betalar, om ni har rätt till det."},
@@ -566,7 +740,11 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     var s = r.baseSlag || r.slag;
     return (B.slagToPost && B.slagToPost[s]) || (B.momentToPost && B.momentToPost[r.moment]) || 'Ej kopplad';
   }
-  rows.forEach(function(r){ r.post = postFor(r); });
+  rows.forEach(function(r){
+    r.post = postFor(r);
+    if(r.ue){ var u = ueById[r.ue]; r.ataShare = u.billed ? u.billedIn.filter(function(b){return b.kind==='ÄTA';}).reduce(function(a,b){return a+b.amount;},0)/u.billed : 0; }
+    else r.ataShare = r.kind==='ÄTA' ? 1 : 0;
+  });
 
   function sum(list){ return list.reduce(function(a,r){return a+r.amount;},0); }
   function groupSum(list,key){ var m={}; list.forEach(function(r){ m[r[key]]=(m[r[key]]||0)+r.amount; }); return m; }
@@ -592,6 +770,7 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
   });
   tabs.push({id:'detaljer', label:'Detaljer'});
   tabs.push({id:'avtal', label:'Avtalskontroll'});
+  tabs.push({id:'nybudget', label:'Ny budget'});
   tabs.push({id:'uppdatera', label:'Lägg till faktura'});
 
   var nav = document.getElementById('tabs');
@@ -611,6 +790,7 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     else if(id==='detaljer') view.innerHTML = renderDetails();
     else if(id==='uppdatera') view.innerHTML = renderHowTo();
     else if(id==='avtal') view.innerHTML = renderContract();
+    else if(id==='nybudget'){ view.innerHTML = renderNewBudget(); bindNewBudget(); }
     else view.innerHTML = renderSupplier(id.slice(4));
     try{ localStorage.setItem('kv71-tab', id); }catch(e){}
     if(id==='detaljer') bindDetails();
@@ -842,6 +1022,128 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     view.querySelectorAll('.chip').forEach(function(c){
       c.addEventListener('click',function(){ detailFilter=c.dataset.moment; show('detaljer'); });
     });
+  }
+
+  /* ---------- Ny budget ---------- */
+  var NB = D.newBudget, NB_KEY = 'kv71-nybudget';
+  var nbOv = {}, nbStatus = 'local', nbDoc = null, nbSaving = false, nbDirty = false, nbTimer = null;
+  try{ nbOv = JSON.parse(localStorage.getItem(NB_KEY)||'{}') || {}; }catch(e){ nbOv = {}; }
+
+  function nbSpent(row){
+    var v = 0;
+    rows.forEach(function(r){
+      if(row.actual==='arkitekt'){ if(r.supplier==='arkitekt') v += r.amount; }
+      else if(row.actual==='ata'){ if(r.supplier!=='arkitekt') v += r.amount*r.ataShare; }
+      else if(row.post){ if(r.supplier!=='arkitekt' && r.post===row.post) v += r.amount*(1-r.ataShare); }
+    });
+    return v*1.25;
+  }
+  function nbCalc(){
+    var out = NB.rows.map(function(row){
+      var spent = nbSpent(row), base = row.nu==null ? 0 : row.nu, ov = nbOv[row.id] || {};
+      var o = {row:row, spent:spent, hasSpent: spent>0.5};
+      if(o.hasSpent){ o.remDefault = Math.max(0, base-spent); o.rem = ov.rem!=null ? ov.rem : o.remDefault; o.adj = spent + o.rem; o.changed = ov.rem!=null; }
+      else { o.adjDefault = base; o.adj = ov.adj!=null ? ov.adj : base; o.rem = o.adj; o.changed = ov.adj!=null; }
+      return o;
+    });
+    var assigned = out.reduce(function(a,o){return a+o.spent;},0);
+    var leftover = totEx*1.25 - assigned;
+    return {rows:out, leftover:leftover};
+  }
+  function nbNum(v){ return fmt0.format(Math.round(v)); }
+  function nbInput(id, val, changed){
+    return '<input class="nbin'+(changed?' changed':'')+'" id="nb-'+id+'" data-k="'+id+'" inputmode="numeric" autocomplete="off" value="'+nbNum(val)+'" aria-label="Belopp">';
+  }
+  function renderNewBudget(){
+    var C = nbCalc(), R = C.rows;
+    var sOrig=0,sNu=0,sSpent=0,sRem=0,sAdj=0;
+    R.forEach(function(o){ sOrig+=o.row.orig||0; sNu+=o.row.nu||0; sSpent+=o.spent; sRem+=o.rem; sAdj+=o.adj; });
+    var rotOv = nbOv.rot && nbOv.rot.adj!=null ? nbOv.rot.adj : NB.rot.nu;
+    var st = {db:['ok','Sparas i appen'], local:['','Sparas bara i den här webbläsaren'], readonly:['warn','Endast läsning, ändringar sparas inte'], error:['bad','Kunde inte spara'], saving:['','Sparar…']}[nbStatus] || ['',''];
+
+    var h = '<section class="panel">';
+    h += '<div class="block"><div class="head"><div><div class="eyebrow">'+esc(NB.source)+'</div><h2 style="font-size:24px;margin-top:4px">Ny budget</h2></div><span class="tag '+st[0]+'" id="nb-status">'+st[1]+'</span></div>';
+    h += '<div class="kpis">'+
+      kpi('Ursprunglig offert', kr(sOrig), 'D2053-1, före ROT') +
+      kpi('Ny offert + ÄTA', kr(sNu), 'D2058 + ÄTA 2–6, ÄTA 1 och arkitekt ej uppskattade') +
+      kpi('Nedlagt', kr(sSpent+Math.max(0,C.leftover)), 'fakturerat inkl. moms') +
+      kpi('Justerad budget', kr(sAdj), 'nedlagt + återstående, före ROT') +
+      kpi('Justerad efter ROT', kr(sAdj+rotOv), 'ROT '+kr(rotOv)) +
+      '</div>';
+    h += '<p class="muted" style="margin:0;max-width:80ch;font-size:13.5px">Ändra i de inramade fälten. Där kostnader redan är nedlagda ändrar du <b>Återstående</b>, och Justerad budget blir nedlagt + återstående. Återstående är från början ny offert minus nedlagt, men aldrig under 0. Övriga poster ändrar du direkt i Justerad budget. ↺ återställer en rad.</p></div>';
+
+    h += '<div class="card scroll"><table class="nbt"><thead><tr><th>Post</th><th class="n">Ursprunglig offert</th><th class="n">Ny offert / ÄTA</th><th class="n">Nedlagt</th><th class="n">Återstående</th><th class="n">Justerad budget</th><th class="n">Mot ny offert</th></tr></thead><tbody>';
+    var group = '';
+    R.forEach(function(o){
+      var r = o.row, g = /^ÄTA/.test(r.name) ? 'Ändrings- och tilläggsarbeten' : (r.actual==='arkitekt' ? 'Utanför offerten' : 'Offertposter');
+      if(g!==group){ group=g; h += '<tr class="sub"><td colspan="7">'+g+'</td></tr>'; }
+      var diff = o.adj - (r.nu||0);
+      h += '<tr><td><b>'+esc(r.name)+'</b>'+(r.note?'<span class="desc">'+esc(r.note)+'</span>':'')+'</td>'+
+        '<td class="n">'+(r.orig?kr(r.orig):'<span class="faint">—</span>')+'</td>'+
+        '<td class="n">'+(r.nu==null?'<span class="faint">löpande</span>':kr(r.nu))+(r.nu!=null&&r.orig&&r.nu!==r.orig?'<span class="desc '+(r.nu>r.orig?'diff-pos':'diff-neg')+'">'+(r.nu>r.orig?'+':'−')+kr(Math.abs(r.nu-r.orig))+'</span>':'')+'</td>'+
+        '<td class="n">'+(o.hasSpent?kr(o.spent):'<span class="faint">0</span>')+'</td>'+
+        '<td class="n">'+(o.hasSpent ? nbInput(r.id, o.rem, o.changed)+(o.changed?'<button class="nbreset" data-reset="'+r.id+'" title="Återställ till '+nbNum(o.remDefault)+'" aria-label="Återställ">↺</button>':'') : '<span class="faint">'+kr(o.rem)+'</span>')+'</td>'+
+        '<td class="n">'+(o.hasSpent ? '<b>'+kr(o.adj)+'</b>' : nbInput(r.id, o.adj, o.changed)+(o.changed?'<button class="nbreset" data-reset="'+r.id+'" title="Återställ till '+nbNum(o.adjDefault)+'" aria-label="Återställ">↺</button>':''))+'</td>'+
+        '<td class="n">'+(Math.abs(diff)<0.5?'<span class="faint">0</span>':'<span class="'+(diff>0?'diff-pos':'diff-neg')+'">'+(diff>0?'+':'−')+kr(Math.abs(diff))+'</span>')+'</td></tr>';
+    });
+    if(Math.abs(C.leftover)>1) h += '<tr><td>Ej kopplat till post</td><td></td><td></td><td class="n">'+kr(C.leftover)+'</td><td></td><td class="n">'+kr(C.leftover)+'</td><td></td></tr>';
+    h += '<tr class="total"><td>Totalt före ROT</td><td class="n">'+kr(sOrig)+'</td><td class="n">'+kr(sNu)+'</td><td class="n">'+kr(sSpent)+'</td><td class="n">'+kr(sRem)+'</td><td class="n">'+kr(sAdj)+'</td><td class="n"><span class="'+(sAdj>sNu?'diff-pos':'diff-neg')+'">'+(sAdj>sNu?'+':'−')+kr(Math.abs(sAdj-sNu))+'</span></td></tr>';
+    var rotChanged = nbOv.rot && nbOv.rot.adj!=null;
+    h += '<tr><td><b>ROT-avdrag</b><span class="desc">'+esc(NB.rot.note)+'</span></td><td class="n">'+kr(NB.rot.orig)+'</td><td class="n">'+kr(NB.rot.nu)+'</td><td class="n">−'+kr(totRot)+'</td><td></td><td class="n">'+nbInput('rot', rotOv, rotChanged)+(rotChanged?'<button class="nbreset" data-reset="rot" aria-label="Återställ">↺</button>':'')+'</td><td></td></tr>';
+    h += '<tr class="total"><td>Totalt efter ROT</td><td class="n">'+kr(sOrig+NB.rot.orig)+'</td><td class="n">'+kr(sNu+NB.rot.nu)+'</td><td class="n">'+kr(sSpent-totRot)+'</td><td></td><td class="n">'+kr(sAdj+rotOv)+'</td><td></td></tr>';
+    h += '</tbody></table></div>';
+
+    h += '<div class="block"><div class="head"><h2>Att tänka på innan budgeten låses</h2></div><div class="card checks">';
+    NB.insights.forEach(function(t){ h += '<div class="check" style="grid-template-columns:1fr"><p>'+esc(t)+'</p></div>'; });
+    h += '</div></div>';
+    h += '<p class="foot">Nedlagt delas upp på offertpost för grundfakturor och på ÄTA 1 för ÄTA-fakturor. En underleverantörsfaktura som fakturerats både som grund och ÄTA delas i samma proportion. Arkitekten ligger utanför offerten.</p>';
+    return h + '</section>';
+  }
+  function nbParse(v){ var n = parseFloat(String(v).replace(/\s| |kr/g,'').replace(',', '.')); return isFinite(n) ? Math.round(n) : null; }
+  function bindNewBudget(){
+    view.querySelectorAll('input.nbin').forEach(function(inp){
+      inp.addEventListener('focus', function(){ inp.select(); });
+      inp.addEventListener('keydown', function(e){ if(e.key==='Enter') inp.blur(); });
+      inp.addEventListener('change', function(){
+        var k = inp.dataset.k, n = nbParse(inp.value);
+        if(n==null){ nbRender(); return; }
+        var row = NB.rows.filter(function(r){return r.id===k;})[0];
+        var spent = row ? nbSpent(row) : 0;
+        nbOv[k] = (row && spent>0.5) ? {rem:n} : {adj:n};
+        nbChanged();
+      });
+    });
+    view.querySelectorAll('[data-reset]').forEach(function(b){
+      b.addEventListener('click', function(){ delete nbOv[b.dataset.reset]; nbChanged(); });
+    });
+  }
+  function nbRender(){
+    if(current!=='nybudget') return;
+    var y = window.scrollY; view.innerHTML = renderNewBudget(); bindNewBudget(); window.scrollTo(0,y);
+  }
+  function nbChanged(){
+    try{ localStorage.setItem(NB_KEY, JSON.stringify(nbOv)); }catch(e){}
+    nbRender();
+    if(nbDoc){ nbDirty = true; clearTimeout(nbTimer); nbTimer = setTimeout(nbSave, 600); }
+  }
+  function nbSetStatus(s){ nbStatus = s; var el = document.getElementById('nb-status'); if(el){ var m={db:['ok','Sparas i appen'],saving:['','Sparar…'],readonly:['warn','Endast läsning, ändringar sparas inte'],error:['bad','Kunde inte spara']}[s]; if(m){ el.className='tag '+m[0]; el.textContent=m[1]; } } }
+  function nbSave(){
+    if(!nbDoc || nbSaving || !nbDirty) return;
+    nbSaving = true; nbDirty = false; nbSetStatus('saving');
+    nbDoc.set({ values: nbOv }).then(function(){ nbSaving=false; nbSetStatus('db'); if(nbDirty) nbSave(); },
+      function(e){ nbSaving=false; nbSetStatus(e && e.code==='invalid_argument' ? 'readonly' : 'error'); });
+  }
+  if(window.claude && typeof window.claude.use==='function'){
+    window.claude.use('db').then(function(db){
+      if(!db) return;
+      try{ nbDoc = db.doc('budget/justeringar'); }catch(e){ return; }
+      nbStatus = 'db';
+      nbDoc.onSnapshot(function(snap){
+        if(snap.metadata && snap.metadata.hasPendingWrites) return;
+        if(snap.exists){ var d = snap.data(); var v = d && d.values; if(v && typeof v==='object' && !nbDirty && !nbSaving){ nbOv = JSON.parse(JSON.stringify(v)); try{ localStorage.setItem(NB_KEY, JSON.stringify(nbOv)); }catch(e){} } }
+        var a = document.activeElement; if(!(a && a.classList && a.classList.contains('nbin'))) nbRender(); else nbSetStatus(nbStatus);
+      }, function(){ nbSetStatus('error'); });
+    }, function(){});
   }
 
   /* ---------- Avtalskontroll ---------- */
