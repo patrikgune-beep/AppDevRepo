@@ -426,6 +426,70 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     }
   ],
 
+  "contract": {
+    "source": "Offert D2053-1, avsnittet Förutsättningar",
+    "rates": {
+      "hantverkare": 520,
+      "arbetsledare": 700,
+      "bilDag": 500,
+      "markup": 0.12,
+      "paymentDays": 10,
+      "invoiceIntervalDays": 14
+    },
+    "quotes": [
+      "Ordinarie tid och vid ÄTA debiteras 650 kr inkl. moms/tim för snickare och målare, 875 kr inkl. moms/tim för arbetsledare, 625 kr inkl. moms bilersättning dag/bil. P-avgifter enligt gällande zon.",
+      "Påslag på material, hjälpmedel och UE debiteras med 12 % vid ordinarie och ÄTA-arbeten.",
+      "Fakturering sker mot uppvisande av timmar samt kopior på material/underentreprenörer med tillhörande påslag.",
+      "Fakturering sker tidigast var 14:e dag. Betalningsvillkor 10 dagar netto.",
+      "Sopor tas om hand av BIG BAG som sorterar.",
+      "Dubbla ROT-avdrag förutsätts, beställaren har fullt att dra 2026 och 2027."
+    ],
+    "manual": [
+      {
+        "status": "check",
+        "title": "Servicebil och P-avgift 9–10/9 finns på två fakturor",
+        "where": "132388 + 132396",
+        "amount": 1448,
+        "text": "132388 debiterar 4 dagar servicebil och 28 h P-avgift för undergolvsarbetet 8–11/9. 132396 debiterar 6 dagar servicebil och 48 h P-avgift för 9–17/9. Dagarna 9/9 och 10/9 finns på båda fakturorna. Två lag kan ha haft två bilar, men fråga. Beloppet är 2 dagar bil och 16 h parkering."
+      },
+      {
+        "status": "check",
+        "title": "Genchel: 25 servicebilar på 20 arbetsdagar",
+        "where": "132395 / Genchel 6472",
+        "amount": 2520,
+        "text": "Tidboken visar arbete 20 olika dagar, men fakturan har 25 servicebilar à 450 kr plus påslag. Fem extra bilar à 504 kr exkl. moms. Flera elektriker samma dag kan förklara det, men det behöver framgå."
+      },
+      {
+        "status": "check",
+        "title": "Genchel: cirka 42 h planering, möten, mejl och material",
+        "where": "132395 / Genchel 6472",
+        "amount": 24461,
+        "text": "David Genchel har 42 h med anteckningar som ”Planering”, ”Planering, mail m.m.” och ”Material”. Offerten säger att arbetsledning ingår i Allmänna kostnader. Fråga om elfirmans planeringstid ska debiteras ovanpå Thesséns arbetsledning. Beloppet är 42 h × 582,40 kr."
+      },
+      {
+        "status": "dev",
+        "title": "Sophantering via Hard Workers, inte bara Big Bag",
+        "where": "132354, 132370, 132387, 132395",
+        "amount": 26277,
+        "text": "Offerten säger att Big Bag tar hand om soporna. Hard Workers har ändå debiterat sophantering 8 400 + 7 500 + 7 562 kr, totalt 26 277 kr med påslag, utöver Big Bags 4 552 kr. Fråga vad som ingår och om det överlappar."
+      },
+      {
+        "status": "dev",
+        "title": "ROT-avdraget följer inte offertens förutsättning",
+        "where": "132354 och senare",
+        "amount": 172334,
+        "text": "Offerten räknar med −200 000 kr i ROT. Hittills är 27 666 kr beviljat, och Thessén kräver tillbaka 22 334 kr. Ingen senare faktura har något avdrag. Beloppet är inkl. moms och gäller kassaflödet, det är inget krav mot Thessén."
+      },
+      {
+        "status": "check",
+        "title": "Arkitekt: juli på två fakturor",
+        "where": "9248 + 9256",
+        "amount": 17237,
+        "text": "9248 gäller juni och juli (22 h) och 9256 gäller juli (19 h). Det finns inget avtal med arkitekten i underlaget. Beloppet är fakturan 9256, om timmarna visar sig vara dubbla."
+      }
+    ]
+  },
+
   "checks": [
     {"level": "warn", "title": "ROT: Skatteverket beviljade bara 27 666 kr av 50 000 kr", "text": "Thessén kräver nu 22 334 kr extra på faktura 132354. Skälet framgår inte. Troligen räckte Katarinas skatt eller ROT-utrymme för 2026 inte till, men kontrollera det med henne eller Skatteverket. Totalt är 172 334 kr av offertens 200 000 kr i ROT outnyttjat."},
     {"level": "warn", "title": "Inget ROT-avdrag på 132395 trots cirka 152 000 kr arbetskostnad", "text": "Fakturan innehåller arbete för 151 870 kr exkl. moms: elektriker, rivning och arbetsledning inklusive påslag. 30 % av det inkl. moms är 56 951 kr, alltså över taket på 50 000 kr. Be Thessén att lägga ROT för en andra ägare på 132395 innan du betalar, om ni har rätt till det."},
@@ -527,6 +591,7 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     tabs.push({id:'lev-'+s.id, label:s.short, sub:n+' fakt.'});
   });
   tabs.push({id:'detaljer', label:'Detaljer'});
+  tabs.push({id:'avtal', label:'Avtalskontroll'});
   tabs.push({id:'uppdatera', label:'Lägg till faktura'});
 
   var nav = document.getElementById('tabs');
@@ -545,6 +610,7 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     if(id==='sammanstallning') view.innerHTML = renderSummary();
     else if(id==='detaljer') view.innerHTML = renderDetails();
     else if(id==='uppdatera') view.innerHTML = renderHowTo();
+    else if(id==='avtal') view.innerHTML = renderContract();
     else view.innerHTML = renderSupplier(id.slice(4));
     try{ localStorage.setItem('kv71-tab', id); }catch(e){}
     if(id==='detaljer') bindDetails();
@@ -776,6 +842,156 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     view.querySelectorAll('.chip').forEach(function(c){
       c.addEventListener('click',function(){ detailFilter=c.dataset.moment; show('detaljer'); });
     });
+  }
+
+  /* ---------- Avtalskontroll ---------- */
+  function renderContract(){
+    var C = D.contract, R = C.rates, VAT = 1.25;
+    var own = [];   // own lines on Thessén invoices
+    D.invoices.forEach(function(i){ if(i.supplier!=='thessen') return;
+      i.lines.forEach(function(l){ if(!l.ue) own.push({inv:i.nr, l:l}); }); });
+    function invList(a){ return a.filter(function(v,i,x){return x.indexOf(v)===i;}).join(', '); }
+    var terms = [];   // {term, offer, billed, status, diff (exkl.), where}
+
+    // 1. Timpris egen personal
+    var lab = own.filter(function(o){ return o.l.slag==='Arbete' && o.l.unit==='h'; });
+    var labBad = lab.filter(function(o){ return Math.abs(o.l.price-R.hantverkare)>0.005; });
+    var labH = lab.reduce(function(a,o){return a+o.l.qty;},0);
+    terms.push({term:'Timpris snickare/hantverkare', offer:kr(R.hantverkare*VAT)+'/h inkl. ('+kr(R.hantverkare)+' exkl.)',
+      billed: labBad.length ? labBad.map(function(o){return o.l.price+' kr';}).join(', ') : kr(R.hantverkare)+'/h exkl. på alla '+lab.length+' rader ('+fmt2.format(labH).replace(/,00$/,'')+' h)',
+      status: labBad.length?'dev':'ok', diff: labBad.reduce(function(a,o){return a+(o.l.price-R.hantverkare)*o.l.qty;},0), where: invList(lab.map(function(o){return o.inv;}))});
+
+    // 2. Arbetsledning
+    var al = own.filter(function(o){ return o.l.slag==='Arbetsledning'; });
+    var alH = al.reduce(function(a,o){return a+o.l.qty;},0);
+    var alDiff = al.reduce(function(a,o){return a+(o.l.price-R.arbetsledare)*o.l.qty;},0);
+    terms.push({term:'Timpris arbetsledare', offer:kr(R.arbetsledare*VAT)+'/h inkl. ('+kr(R.arbetsledare)+' exkl.)',
+      billed: kr(680)+'/h exkl. på '+fmt2.format(alH).replace(/,00$/,'')+' h', status: alDiff>0?'dev':(alDiff<0?'fav':'ok'), diff: alDiff, where: invList(al.map(function(o){return o.inv;}))});
+
+    // 3. Bil per dag, egen
+    var car = own.filter(function(o){ return /Servicebil/.test(o.l.text) && o.l.unit==='dag'; });
+    var carDays = car.reduce(function(a,o){return a+o.l.qty;},0);
+    var carBad = car.filter(function(o){ return Math.abs(o.l.price-R.bilDag)>0.005; });
+    terms.push({term:'Bilersättning Thessén', offer:kr(R.bilDag*VAT)+'/dag inkl. ('+kr(R.bilDag)+' exkl.)',
+      billed: carBad.length? 'avvikande pris på '+carBad.length+' rader' : kr(R.bilDag)+'/dag på '+carDays+' dagar', status: carBad.length?'dev':'ok',
+      diff: carBad.reduce(function(a,o){return a+(o.l.price-R.bilDag)*o.l.qty;},0), where: invList(car.map(function(o){return o.inv;}))});
+
+    // 4. P-avgift
+    var pa = own.filter(function(o){ return /^P[- ]avgift/i.test(o.l.text); });
+    var paMin = Math.min.apply(null, pa.map(function(o){return o.l.price;}));
+    var paHigh = pa.filter(function(o){ return o.l.price>paMin; });
+    var byRate = {}; pa.forEach(function(o){ (byRate[o.l.price]=byRate[o.l.price]||[]).push(o.inv); });
+    terms.push({term:'P-avgift', offer:'Enligt gällande zon',
+      billed: Object.keys(byRate).map(function(r){return r+' kr/h ('+invList(byRate[r])+')';}).join(' · '),
+      status: paHigh.length?'check':'ok', diff: paHigh.reduce(function(a,o){return a+(o.l.price-paMin)*o.l.qty;},0), where:'Skillnad mot lägsta taxan '+paMin+' kr/h'});
+
+    // 5. Påslag UE/material
+    var mk = D.ue.map(function(u){ return {u:u, ok: Math.abs(u.rate-R.markup)<0.0005}; });
+    var mkBad = mk.filter(function(m){return !m.ok;});
+    var mkSum = D.ue.reduce(function(a,u){return a+u.markup;},0);
+    terms.push({term:'Påslag på UE och material', offer: fmt0.format(R.markup*100)+' %',
+      billed: mkBad.length ? mkBad.map(function(m){return m.u.nr+': '+fmt2.format(m.u.rate*100)+' %';}).join(', ') : '12,00 % på alla '+D.ue.length+' underlag, totalt '+kr(mkSum)+' exkl.',
+      status: mkBad.length?'dev':'ok', diff: mkBad.reduce(function(a,m){return a+(m.u.rate-R.markup)*m.u.cost;},0), where: 'Alla vidarefakturerade underlag'});
+
+    // 6. UE-bil med påslag mot avtalad bilersättning
+    var ueCar = []; D.ue.forEach(function(u){ u.lines.forEach(function(l){ if(/Servicebil/.test(l.text)) ueCar.push({u:u,l:l,eff:l.price*(1+u.rate)}); }); });
+    var ueCarN = ueCar.reduce(function(a,c){return a+c.l.qty;},0);
+    var ueCarDiff = ueCar.reduce(function(a,c){return a+Math.max(0,c.eff-R.bilDag)*c.l.qty;},0);
+    terms.push({term:'Servicebil hos underleverantörer', offer:'Ej reglerat. Thesséns egen bil '+kr(R.bilDag)+' exkl.',
+      billed: ueCarN+' bilar: Hard Workers 475 + 12 % = 532 kr, Genchel 450 + 12 % = 504 kr', status:'gap', diff: ueCarDiff, where:'Merkostnad mot 500 kr/dag'});
+
+    // 7. Underlag
+    var noDoc = own.filter(function(o){ return /underlag|inte beskrivet/i.test(o.l.desc||''); });
+    terms.push({term:'Timmar och material ska styrkas', offer:'Timmar och kopior på material/UE',
+      billed: noDoc.length ? noDoc.map(function(o){return o.inv+': '+o.l.text+' ('+kr(o.l.amount)+')';}).join(' · ') : 'Alla rader har underlag',
+      status: noDoc.length?'dev':'ok', diff: noDoc.reduce(function(a,o){return a+o.l.amount;},0), where: invList(noDoc.map(function(o){return o.inv;})), claim:true});
+
+    // 8. Fakturaintervall och betalningsvillkor
+    var dates = D.invoices.filter(function(i){return i.supplier==='thessen';}).map(function(i){return i.date;}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort();
+    var gaps = []; for(var k=1;k<dates.length;k++) gaps.push((new Date(dates[k])-new Date(dates[k-1]))/864e5);
+    var minGap = gaps.length?Math.min.apply(null,gaps):null;
+    terms.push({term:'Fakturering tidigast var 14:e dag', offer: R.invoiceIntervalDays+' dagar',
+      billed: dates.map(fmtDate).join(', ')+' · kortast '+minGap+' dagar', status: minGap!=null&&minGap<R.invoiceIntervalDays?'dev':'ok', diff:0, where:'Fakturadatum'});
+    var pd = D.invoices.filter(function(i){return i.supplier==='thessen';}).map(function(i){return {nr:i.nr, d:(new Date(i.due)-new Date(i.date))/864e5};});
+    var pdShort = pd.filter(function(x){return x.d<R.paymentDays;});
+    terms.push({term:'Betalningsvillkor', offer: R.paymentDays+' dagar netto',
+      billed: pdShort.length? pdShort.map(function(x){return x.nr+': '+x.d+' dagar';}).join(', ') : 'Alla minst '+R.paymentDays+' dagar (132370: 30)', status: pdShort.length?'dev':'ok', diff:0, where:'Förfallodatum'});
+
+    // Effektiva timpriser
+    var groups = [];
+    function grp(name, who, hours, cost, ref, note){ if(hours>0) groups.push({name:name, who:who, h:hours, cost:cost, ref:ref, note:note}); }
+    var ownLab = lab; grp('Snickare / hantverkare','Thessén & Ek', labH, ownLab.reduce(function(a,o){return a+o.l.amount;},0), R.hantverkare, 'Avtalat');
+    grp('Arbetsledare','Thessén & Ek', alH, al.reduce(function(a,o){return a+o.l.amount;},0), R.arbetsledare, 'Avtalat');
+    function ueHours(re, slag){ var h=0,c=0; D.ue.forEach(function(u){ if(!re.test(u.vendor)) return; u.lines.forEach(function(l){ if(l.slag===slag && /tim/.test(l.unit)){ h+=l.qty; c+=l.amount*(1+u.rate);} }); }); return [h,c]; }
+    var hw = ueHours(/Hard Workers/,'Arbete'); grp('Rivare','Hard Workers (UE)', hw[0], hw[1], R.hantverkare, 'UE-pris ej reglerat');
+    var ge = ueHours(/Genchel/,'Arbete'); grp('Elektriker','Genchel (UE)', ge[0], ge[1], R.hantverkare, 'UE-pris ej reglerat');
+    var en = ueHours(/Engblom/,'Arvode'); grp('Konstruktör','Engblom (UE)', en[0], en[1], null, 'Ingår ej i offerten');
+    var ark = D.invoices.filter(function(i){return i.supplier==='arkitekt';}); 
+    grp('Arkitekt','Viktor Erlandsson', ark.reduce(function(a,i){return a+i.lines.reduce(function(b,l){return b+l.qty;},0);},0), ark.reduce(function(a,i){return a+i.exMoms;},0), null, 'Eget uppdrag, utanför offerten');
+
+    // Summering
+    var fav = terms.filter(function(t){return t.status==='fav';}).reduce(function(a,t){return a-t.diff;},0);
+    var devPrice = terms.filter(function(t){return t.status==='dev'||t.status==='check'||t.status==='gap';}).reduce(function(a,t){return a+Math.max(0,t.diff);},0);
+    var man = C.manual||[];
+    var manCheck = man.filter(function(m){return m.status==='check';}).reduce(function(a,m){return a+m.amount;},0);
+    var nDev = terms.filter(function(t){return t.status!=='ok'&&t.status!=='fav';}).length + man.length;
+
+    var ST = {ok:['ok','Enligt avtal'], fav:['ok','Till din fördel'], dev:['bad','Avviker'], check:['warn','Kontrollera'], gap:['','Ej reglerat']};
+    var h = '<section class="panel">';
+    h += '<div class="block"><div class="head"><div><div class="eyebrow">'+esc(C.source)+'</div><h2 style="font-size:24px;margin-top:4px">Fakturerat mot offertens villkor</h2></div></div>';
+    h += '<div class="kpis">'+
+      kpi('Avvikelser mot villkoren', kr(devPrice*VAT), 'inkl. moms: taxor, UE-bilar, rader utan underlag') +
+      kpi('Att kontrollera', kr(manCheck*VAT), 'inkl. moms: bilar, planeringstid, dubbla dagar, arkitekt') +
+      kpi('Till din fördel', kr(fav*VAT), 'arbetsledning 680 kr/h i stället för 700') +
+      kpi('Punkter att ta upp', String(nDev), 'avvikelser och frågor nedan') +
+      '</div>';
+    h += '<p class="muted" style="margin:0;max-width:75ch">Thessén följer avtalade timpriser och påslag. Prisavvikelserna är små. Merkostnaderna kommer främst av antal timmar och av poster som offerten inte reglerar, framför allt underleverantörernas timpriser och bilar.</p></div>';
+
+    // Villkorstabell
+    h += '<div class="block"><div class="head"><h2>Villkor för villkor</h2><span class="muted">avvikelse exkl. moms</span></div><div class="card scroll"><table><thead><tr><th>Villkor</th><th>Offert</th><th>Fakturerat</th><th>Status</th><th class="n">Avvikelse</th></tr></thead><tbody>';
+    terms.forEach(function(t){
+      var st = ST[t.status];
+      h += '<tr><td><b>'+esc(t.term)+'</b><span class="desc">'+esc(t.where)+'</span></td><td>'+esc(t.offer)+'</td><td>'+esc(t.billed)+'</td><td><span class="tag '+st[0]+'">'+st[1]+'</span></td>'+
+        '<td class="n">'+(Math.abs(t.diff)<0.5?'<span class="faint">0</span>':'<span class="'+(t.diff>0?'diff-pos':'diff-neg')+'">'+(t.diff>0?'+':'−')+k2(Math.abs(t.diff))+'</span>')+'</td></tr>';
+    });
+    h += '</tbody></table></div></div>';
+
+    // Effektiva timpriser
+    h += '<div class="block"><div class="head"><div><h2>Effektivt timpris per yrkesgrupp</h2><p class="muted" style="margin:4px 0 0;font-size:13px">Inklusive Thesséns påslag. Jämfört med offertens snickarpris 520 kr/h exkl. (650 inkl.) där inget annat är avtalat.</p></div></div>';
+    h += '<div class="card scroll"><table><thead><tr><th>Yrkesgrupp</th><th class="n">Timmar</th><th class="n">Kostnad exkl.</th><th class="n">Kr/h exkl.</th><th class="n">Kr/h inkl.</th><th class="n">Offert kr/h inkl.</th><th class="n">Skillnad totalt</th><th>Avtal</th></tr></thead><tbody>';
+    var gh=0, gc=0;
+    groups.forEach(function(g){
+      var per = g.cost/g.h, d = g.ref!=null ? (per-g.ref)*g.h : null; gh+=g.h; gc+=g.cost;
+      h += '<tr><td><b>'+esc(g.name)+'</b><span class="desc">'+esc(g.who)+'</span></td><td class="n">'+fmt2.format(g.h).replace(/,00$/,'')+'</td><td class="n">'+kr(g.cost)+'</td><td class="n">'+k2(per)+'</td><td class="n"><b>'+kr(per*VAT)+'</b></td>'+
+        '<td class="n">'+(g.ref!=null?kr(g.ref*VAT):'<span class="faint">—</span>')+'</td>'+
+        '<td class="n">'+(d==null?'<span class="faint">—</span>':(Math.abs(d)<1?'<span class="faint">0</span>':'<span class="'+(d>0?'diff-pos':'diff-neg')+'">'+(d>0?'+':'−')+kr(Math.abs(d)*VAT)+'</span>'))+'</td>'+
+        '<td><span class="tag '+(g.note==='Avtalat'?'ok':'')+'">'+esc(g.note)+'</span></td></tr>';
+    });
+    h += '<tr class="total"><td>Totalt</td><td class="n">'+fmt0.format(gh)+'</td><td class="n">'+kr(gc)+'</td><td class="n">'+k2(gc/gh)+'</td><td class="n">'+kr(gc/gh*VAT)+'</td><td></td><td></td><td></td></tr>';
+    h += '</tbody></table></div><p class="faint" style="margin:0;font-size:12.5px">Skillnad totalt är inkl. moms. Rivare via Hard Workers är billigare än Thesséns egen personal. Elektrikern kostar 78 kr/h mer än offertens snickarpris, men offerten sätter inget pris för el.</p></div>';
+
+    // Manuella fynd
+    h += '<div class="block"><div class="head"><h2>Poster att reklamera eller fråga om</h2><span class="muted">belopp exkl. moms om inget annat anges</span></div><div class="card checks">';
+    man.forEach(function(m){
+      var st = ST[m.status];
+      h += '<div class="check"><span class="tag '+st[0]+'">'+st[1]+'</span><div><p class="t">'+esc(m.title)+' <span class="muted" style="font-weight:500">· '+esc(m.where)+' · '+kr(m.amount)+'</span></p><p class="muted">'+esc(m.text)+'</p></div></div>';
+    });
+    noDoc.forEach(function(o){
+      h += '<div class="check"><span class="tag bad">Avviker</span><div><p class="t">'+esc(o.inv)+': '+esc(o.l.text)+' <span class="muted" style="font-weight:500">· '+kr(o.l.amount)+'</span></p><p class="muted">'+esc(o.l.desc)+'. Offerten kräver att timmar redovisas och att material styrks med kopior. Begär underlag innan du betalar raden.</p></div></div>';
+    });
+    h += '</div></div>';
+
+    // Vad offerten inte reglerar
+    h += '<div class="block"><div class="head"><h2>Det offerten inte reglerar</h2></div><div class="card" style="padding:14px 16px;display:grid;gap:8px;max-width:80ch">'+
+      '<p style="margin:0"><b>Timpris för underleverantörer.</b> Bara snickare, målare och arbetsledare har avtalat pris. El, rör, ventilation och rivning via underleverantör debiteras till självkostnad plus 12 %. Begär att Genchel och kommande rörfirma redovisar timpris i förväg.</p>'+
+      '<p style="margin:0"><b>Antal bilar och parkering per dag.</b> Bara priset per bil är avtalat, inte hur många bilar som får debiteras per dag.</p>'+
+      '<p style="margin:0"><b>Takpris.</b> Arbetet går på löpande räkning och offerten är en uppskattning. Det finns inget tak för överskridanden.</p>'+
+      '</div></div>';
+
+    h += '<div class="block"><div class="head"><h2>Offertens villkor, ordagrant</h2></div><div class="card checks">';
+    C.quotes.forEach(function(q){ h += '<div class="check" style="grid-template-columns:1fr"><p class="muted">”'+esc(q)+'”</p></div>'; });
+    h += '</div></div>';
+    return h + '</section>';
   }
 
   /* ---------- Så uppdaterar du ---------- */
