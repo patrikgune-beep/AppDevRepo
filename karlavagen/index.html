@@ -170,6 +170,17 @@ table.nbl tr.subrow td:nth-child(2){padding-left:22px}
 input[type=checkbox],input[type=radio]{accent-color:var(--accent);width:16px;height:16px}
 table.nbt td:first-child{min-width:200px}
 table.nbt td,table.nbt th{padding-inline:8px}
+.askthread{display:grid;gap:12px}
+.askq{justify-self:end;max-width:85%;background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:14px 14px 4px 14px;font-weight:500}
+.aska{padding:12px 16px;max-width:100%}
+.aska p{margin:0 0 8px} .aska p:last-child{margin-bottom:0}
+.aska ul{margin:0 0 8px;padding-left:20px;display:grid;gap:3px}
+.askform{display:grid;gap:8px}
+.askform textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);resize:vertical}
+.askform textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.askbtns{display:flex;gap:8px}
+.askgo{background:var(--accent);color:#fff;border-color:var(--accent)}
+.askgo[disabled]{opacity:.5}
 @media (max-width:560px){
   .wrap{padding-inline:16px}
   td,th{padding:8px 8px}
@@ -545,15 +556,20 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "amount": 20800,
             "qty": 32,
             "unit": "h",
-            "price": 650
+            "price": 650,
+            "typ": "arbete",
+            "paslag": false
           },
           {
             "id": "ovr",
             "text": "Rivning kök, wc, innerväggar runt wc/pentry och förråd, matta och parkett. Upptag för 2 nya dörrhål.",
             "amount": 177950,
-            "desc": "Resten av posten, inte uppdelat i offerten"
+            "desc": "Resten av posten, inte uppdelat i offerten",
+            "typ": "blandat",
+            "paslag": true
           }
-        ]
+        ],
+        "utforare": "Hard Workers (UE) och Thessén"
       },
       {
         "id": "bygg",
@@ -567,7 +583,9 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "id": "bygg",
             "text": "Byggnadsarbeten enligt offert",
             "amount": 387500,
-            "desc": "Täckning av golv. Nya väggar runt badrum och hall, igensättning av 2 dörrhål. Nya socklar. Montering av 6 befintliga innerdörrar med omfattningar och foder. Panel och lavar i bastu. Komplettering badrum. Montering av kök och glaspartier."
+            "desc": "Täckning av golv. Nya väggar runt badrum och hall, igensättning av 2 dörrhål. Nya socklar. Montering av 6 befintliga innerdörrar med omfattningar och foder. Panel och lavar i bastu. Komplettering badrum. Montering av kök och glaspartier.",
+            "typ": "blandat",
+            "paslag": "delvis"
           }
         ]
       },
@@ -584,13 +602,17 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "amount": 20800,
             "qty": 32,
             "unit": "h",
-            "price": 650
+            "price": 650,
+            "typ": "arbete",
+            "paslag": false
           },
           {
             "id": "ovr",
             "text": "Spackling och målning 2–3 ggr av tak, väggar, fönster (insida) och snickerier. Jotun ingår.",
             "amount": 344200,
-            "desc": "Resten av posten, inte uppdelat i offerten"
+            "desc": "Resten av posten, inte uppdelat i offerten",
+            "typ": "blandat",
+            "paslag": "delvis"
           }
         ]
       },
@@ -606,9 +628,12 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "id": "platt",
             "text": "Plattarbeten enligt offert",
             "amount": 202500,
-            "desc": "Hall: tunnspackling, natursten. Badrum: flytspackling, tätskikt, sättning och fogning, kuvertskärning, inbyggnad av wc-fixtur. Bastu: flytspackling, tätskikt, sättning, sockel, kuvertskärning."
+            "desc": "Hall: tunnspackling, natursten. Badrum: flytspackling, tätskikt, sättning och fogning, kuvertskärning, inbyggnad av wc-fixtur. Bastu: flytspackling, tätskikt, sättning, sockel, kuvertskärning.",
+            "typ": "blandat",
+            "paslag": true
           }
-        ]
+        ],
+        "utforare": "Ekens Rot (UE)"
       },
       {
         "id": "ror",
@@ -621,9 +646,12 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "id": "ror",
             "text": "Rörarbeten enligt offert",
             "amount": 140000,
-            "desc": "Demontering badrum och kök. Flytt av avlopp. 2 standardbrunnar. Tappvatten kök och badrum. Komplettering."
+            "desc": "Demontering badrum och kök. Flytt av avlopp. 2 standardbrunnar. Tappvatten kök och badrum. Komplettering.",
+            "typ": "blandat",
+            "paslag": true
           }
-        ]
+        ],
+        "utforare": "Holmans VVS (UE)"
       },
       {
         "id": "el",
@@ -637,9 +665,12 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "id": "el",
             "text": "Elarbeten enligt offert",
             "amount": 314250,
-            "desc": "Demontering. Omdragning för kök, badrum och flyttade väggar och dörrhål. Badrum: golvvärme, bastuaggregat, uttag i kommod, 4 LED-spotlights. Plejd-dimrar. Serie Renova. Inkoppling och avprovning."
+            "desc": "Demontering. Omdragning för kök, badrum och flyttade väggar och dörrhål. Badrum: golvvärme, bastuaggregat, uttag i kommod, 4 LED-spotlights. Plejd-dimrar. Serie Renova. Inkoppling och avprovning.",
+            "typ": "blandat",
+            "paslag": true
           }
-        ]
+        ],
+        "utforare": "Genchel (UE)"
       },
       {
         "id": "parkett",
@@ -653,9 +684,12 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "id": "parkett",
             "text": "Fiskbensparkett i vardagsrum",
             "amount": 85875,
-            "desc": "Läggning, slipning och hårdvaxolja. Slipning och behandling av 6 trösklar. D2053-1 hade samtliga rum för 200 000 kr."
+            "desc": "Läggning, slipning och hårdvaxolja. Slipning och behandling av 6 trösklar. D2053-1 hade samtliga rum för 200 000 kr.",
+            "typ": "blandat",
+            "paslag": true
           }
-        ]
+        ],
+        "utforare": "Nockeby Parkett (UE)"
       },
       {
         "id": "puts",
@@ -668,9 +702,12 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "id": "puts",
             "text": "Putslagningar efter rivning",
             "amount": 70000,
-            "desc": "Schablon"
+            "desc": "Schablon",
+            "typ": "blandat",
+            "paslag": true
           }
-        ]
+        ],
+        "utforare": "Globen mur & puts (UE)"
       },
       {
         "id": "vent",
@@ -683,9 +720,12 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "id": "vent",
             "text": "Ventilation kök och badrum",
             "amount": 28750,
-            "desc": "Schablon"
+            "desc": "Schablon",
+            "typ": "blandat",
+            "paslag": true
           }
-        ]
+        ],
+        "utforare": "Hemkomfort (UE)"
       },
       {
         "id": "allm",
@@ -699,7 +739,9 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "id": "allm",
             "text": "Allmänna kostnader enligt offert",
             "amount": 209250,
-            "desc": "Transporter, 1 kranlyft, arbetsledning, materialhantering, förbrukningsmaterial, etablering och avetablering."
+            "desc": "Transporter, 1 kranlyft, arbetsledning, materialhantering, förbrukningsmaterial, etablering och avetablering.",
+            "typ": "blandat",
+            "paslag": "delvis"
           }
         ]
       },
@@ -714,9 +756,12 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "id": "sop",
             "text": "Sophantering via Big Bag",
             "amount": 76250,
-            "desc": "Sorterat"
+            "desc": "Sorterat",
+            "typ": "övrigt",
+            "paslag": true
           }
-        ]
+        ],
+        "utforare": "Big Bag / Hard Workers"
       },
       {
         "id": "schab-bad",
@@ -753,123 +798,161 @@ table.nbt td,table.nbt th{padding-inline:8px}
           {
             "id": "b-fix",
             "text": "Badrum: fixtur Geberit med inbyggd påse",
-            "amount": 9800
+            "amount": 9800,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "b-wc",
             "text": "Badrum: wc Laufen Kartell, vägghängd",
-            "amount": 8013.75
+            "amount": 8013.75,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "b-ts",
             "text": "Badrum: tvättställ Laufen Val med tvål-ö",
-            "amount": 8371.25
+            "amount": 8371.25,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "b-tsb1",
             "text": "Badrum: tvättställsblandare Dornbracht Meta",
             "amount": 5715,
             "group": "b-tsb",
-            "alt": "Alt 1"
+            "alt": "Alt 1",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "b-tsb2",
             "text": "Badrum: tvättställsblandare Scandtap Equip Classic",
             "amount": 4556.25,
             "group": "b-tsb",
-            "alt": "Alt 2"
+            "alt": "Alt 2",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "b-du1",
             "text": "Badrum: duschblandare Dornbracht Tara Showerpipe + handdusch",
             "amount": 31817.5,
             "group": "b-du",
-            "alt": "Alt 1"
+            "alt": "Alt 1",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "b-du2",
             "text": "Badrum: duschblandare Scandtap Steel Pleasure 2 Classic",
             "amount": 18811.25,
             "group": "b-du",
-            "alt": "Alt 2"
+            "alt": "Alt 2",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "b-sp1",
             "text": "Badrum: spolplatta Dornbracht Angular",
             "amount": 4750,
             "group": "b-sp",
-            "alt": "Alt 1"
+            "alt": "Alt 1",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "b-sp2",
             "text": "Badrum: spolplatta Scandtap Style Classic",
             "amount": 4188.75,
             "group": "b-sp",
-            "alt": "Alt 2"
+            "alt": "Alt 2",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "b-uni",
             "text": "Badrum: extra arbete Uni-drain",
-            "amount": 12250
+            "amount": 12250,
+            "typ": "arbete",
+            "paslag": true
           },
           {
             "id": "w-fix",
             "text": "Wc: fixtur Geberit med inbyggd påse",
-            "amount": 9800
+            "amount": 9800,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "w-wc",
             "text": "Wc: wc Laufen Kartell, vägghängd",
-            "amount": 8013.75
+            "amount": 8013.75,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "w-tsb1",
             "text": "Wc: tvättställsblandare Dornbracht Meta",
             "amount": 5715,
             "group": "w-tsb",
-            "alt": "Alt 1"
+            "alt": "Alt 1",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "w-tsb2",
             "text": "Wc: tvättställsblandare Scandtap Equip Classic",
             "amount": 4556.25,
             "group": "w-tsb",
-            "alt": "Alt 2"
+            "alt": "Alt 2",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "w-sp1",
             "text": "Wc: spolplatta Dornbracht Angular",
             "amount": 4750,
             "group": "w-sp",
-            "alt": "Alt 1"
+            "alt": "Alt 1",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "w-sp2",
             "text": "Wc: spolplatta Scandtap Style Classic",
             "amount": 4188.75,
             "group": "w-sp",
-            "alt": "Alt 2"
+            "alt": "Alt 2",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "k-bl1",
             "text": "Kök: blandare Dornbracht Tara Ultra Pivot",
             "amount": 12715,
             "group": "k-bl",
-            "alt": "Alt 1"
+            "alt": "Alt 1",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "k-bl2",
             "text": "Kök: blandare Dornbracht Tara pull-down med dusch",
             "amount": 9956.25,
             "group": "k-bl",
-            "alt": "Alt 2"
+            "alt": "Alt 2",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "k-bl3",
             "text": "Kök: blandare Scandtap Equip D Classic",
             "amount": 5882.5,
             "group": "k-bl",
-            "alt": "Alt 3"
+            "alt": "Alt 3",
+            "typ": "material",
+            "paslag": true
           }
         ],
         "groups": {
@@ -892,7 +975,9 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "id": "el",
             "text": "Elektriker: tillkommande arbete och material",
             "amount": 494480,
-            "desc": "Slang, fästmaterial, inkopplingsmaterial, brytare och uttag. Ingen specifikation. Armaturer ingår inte."
+            "desc": "Slang, fästmaterial, inkopplingsmaterial, brytare och uttag. Ingen specifikation. Armaturer ingår inte.",
+            "typ": "blandat",
+            "paslag": true
           },
           {
             "id": "gips",
@@ -900,17 +985,23 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "amount": 6562.5,
             "qty": 50,
             "unit": "st",
-            "price": 131.25
+            "price": 131.25,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "skruv",
             "text": "Skruv",
-            "amount": 5625
+            "amount": 5625,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "gles",
             "text": "Glespanel och kranbil",
-            "amount": 10875
+            "amount": 10875,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "arb",
@@ -918,7 +1009,9 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "amount": 52000,
             "qty": 80,
             "unit": "h",
-            "price": 650
+            "price": 650,
+            "typ": "arbete",
+            "paslag": false
           }
         ]
       },
@@ -933,13 +1026,17 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "id": "matta",
             "text": "Mattläggning",
             "amount": 126000,
-            "desc": "Object Carpet Moody 2000, kulör 2003 Greige, cirka 33 m². Två våder, montering med 6 mm filt och spiklist."
+            "desc": "Object Carpet Moody 2000, kulör 2003 Greige, cirka 33 m². Två våder, montering med 6 mm filt och spiklist.",
+            "typ": "blandat",
+            "paslag": true
           },
           {
             "id": "fris",
             "text": "Fris i trä runt sten i korridor",
             "amount": 43750,
-            "desc": "Fiskbensparkett i stället för sten kostar 2 240 kr/m² inkl. moms"
+            "desc": "Fiskbensparkett i stället för sten kostar 2 240 kr/m² inkl. moms",
+            "typ": "blandat",
+            "paslag": true
           },
           {
             "id": "mont",
@@ -948,7 +1045,9 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "qty": 240,
             "unit": "h",
             "price": 812.5,
-            "desc": "Avtalat pris är 650 kr/h inkl. moms. 812,50 = 650 × 1,25."
+            "desc": "Avtalat pris är 650 kr/h inkl. moms. 812,50 = 650 × 1,25.",
+            "typ": "arbete",
+            "paslag": false
           },
           {
             "id": "sockel-arb",
@@ -956,7 +1055,9 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "amount": 41600,
             "qty": 64,
             "unit": "h",
-            "price": 650
+            "price": 650,
+            "typ": "arbete",
+            "paslag": false
           },
           {
             "id": "sockel-mat",
@@ -964,7 +1065,9 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "amount": 27500,
             "qty": 220,
             "unit": "lm",
-            "price": 125
+            "price": 125,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "gardin-arb",
@@ -972,19 +1075,25 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "amount": 20800,
             "qty": 32,
             "unit": "h",
-            "price": 650
+            "price": 650,
+            "typ": "arbete",
+            "paslag": false
           },
           {
             "id": "gardin",
             "text": "Gardinskenor tak",
             "amount": 0,
-            "desc": "Inte prissatt"
+            "desc": "Inte prissatt",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "kok",
             "text": "Kök, skåp och garderober enligt projektplan",
             "amount": 1525622.5,
-            "desc": "Kök: synligt rostfritt, stommar i melamin. Garderober, kommoder och sängstomme i körsbärsfanérad MDF. Ingen specifikation."
+            "desc": "Kök: synligt rostfritt, stommar i melamin. Garderober, kommoder och sängstomme i körsbärsfanérad MDF. Ingen specifikation.",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "dorrar",
@@ -992,7 +1101,9 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "amount": 17250,
             "qty": 6,
             "unit": "st",
-            "price": 2875
+            "price": 2875,
+            "typ": "material",
+            "paslag": true
           }
         ]
       },
@@ -1006,32 +1117,44 @@ table.nbt td,table.nbt th{padding-inline:8px}
           {
             "id": "tvatt",
             "text": "Tvätt-/torkmaskin Miele WTI370 WPM",
-            "amount": 31360
+            "amount": 31360,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "disk",
             "text": "Diskmaskin Miele G 7288 SCVi XXL, integrerad",
-            "amount": 22260
+            "amount": 22260,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "spis",
             "text": "Spis Bertazzoni PRO95I2EXT2, 90 cm induktion, dubbelugn",
-            "amount": 65520
+            "amount": 65520,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "flakt",
             "text": "Köksfläkt Fjäråskupan Aura",
-            "amount": 33600
+            "amount": 33600,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "kyl",
             "text": "Kyl/frys Bertazzoni REF604BBNPTC-S",
-            "amount": 19572.5
+            "amount": 19572.5,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "vin",
             "text": "Vinkyl Vigneron XP, integrerad",
-            "amount": 22260
+            "amount": 22260,
+            "typ": "material",
+            "paslag": true
           }
         ]
       },
@@ -1046,12 +1169,16 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "id": "spackel",
             "text": "Tillkommande flytspackel, EPS och sättning av sten",
             "amount": 211900,
-            "desc": "Kontrollera överlapp med Plattarbeten"
+            "desc": "Kontrollera överlapp med Plattarbeten",
+            "typ": "blandat",
+            "paslag": true
           },
           {
             "id": "kakel",
             "text": "Kakel Höganäs Arkitekt 2.0, 96×96 blank, cirka 20 m²",
-            "amount": 15400
+            "amount": 15400,
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "sten-bl",
@@ -1059,14 +1186,18 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "amount": 600000,
             "group": "sten",
             "alt": "Alt 1",
-            "desc": "Inget pris. Stenfirman bedömer 60–80 % dyrare än Verde Italia, 550 000–600 000 kr"
+            "desc": "Inget pris. Stenfirman bedömer 60–80 % dyrare än Verde Italia, 550 000–600 000 kr",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "sten-vi",
             "text": "Sten: Verde Italia finslipad, inkl. stendetaljer och 1 tvättställ",
             "amount": 378000,
             "group": "sten",
-            "alt": "Alt 2"
+            "alt": "Alt 2",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "sten-kl",
@@ -1074,7 +1205,9 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "amount": 57250,
             "group": "sten",
             "alt": "Alt 3",
-            "desc": "Utan stendetaljer. Kräver ytterligare tvättställ och bänkskivor i båda badrummen"
+            "desc": "Utan stendetaljer. Kräver ytterligare tvättställ och bänkskivor i båda badrummen",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "glas",
@@ -1083,17 +1216,23 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "qty": 700,
             "unit": "st",
             "price": 150,
-            "desc": "Kräver konstruktionsarbete under, som inte ingår"
+            "desc": "Kräver konstruktionsarbete under, som inte ingår",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "smide-dorr",
             "text": "Smidesdörr med texturglas, dusch",
-            "amount": 77000
+            "amount": 77000,
+            "typ": "blandat",
+            "paslag": true
           },
           {
             "id": "smide-omf",
             "text": "Smidesomfattningar kök, serveringshål och gånghål, rostfritt",
-            "amount": 28750
+            "amount": 28750,
+            "typ": "blandat",
+            "paslag": true
           },
           {
             "id": "mont",
@@ -1102,25 +1241,33 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "qty": 144,
             "unit": "h",
             "price": 812.5,
-            "desc": "Avtalat pris är 650 kr/h inkl. moms. 812,50 = 650 × 1,25."
+            "desc": "Avtalat pris är 650 kr/h inkl. moms. 812,50 = 650 × 1,25.",
+            "typ": "arbete",
+            "paslag": false
           },
           {
             "id": "mat",
             "text": "Material för montering av glasblock, lim och impregnering",
             "amount": 0,
-            "desc": "Inte prissatt"
+            "desc": "Inte prissatt",
+            "typ": "material",
+            "paslag": true
           },
           {
             "id": "transp",
             "text": "Transporter och uppbärning",
             "amount": 0,
-            "desc": "Tillkommer, inte prissatt"
+            "desc": "Tillkommer, inte prissatt",
+            "typ": "övrigt",
+            "paslag": true
           },
           {
             "id": "konstr",
             "text": "Konstruktionsarbete för glasblock",
             "amount": 0,
-            "desc": "Krävs enligt tillverkaren, inte prissatt"
+            "desc": "Krävs enligt tillverkaren, inte prissatt",
+            "typ": "arbete",
+            "paslag": "delvis"
           }
         ],
         "groups": {
@@ -1258,6 +1405,7 @@ table.nbt td,table.nbt th{padding-inline:8px}
   tabs.push({id:'detaljer', label:'Detaljer'});
   tabs.push({id:'avtal', label:'Avtalskontroll'});
   tabs.push({id:'nybudget', label:'Ny budget'});
+  tabs.push({id:'fraga', label:'Fråga budgeten'});
   tabs.push({id:'uppdatera', label:'Lägg till faktura'});
 
   var nav = document.getElementById('tabs');
@@ -1278,6 +1426,7 @@ table.nbt td,table.nbt th{padding-inline:8px}
     else if(id==='uppdatera') view.innerHTML = renderHowTo();
     else if(id==='avtal') view.innerHTML = renderContract();
     else if(id==='nybudget'){ view.innerHTML = renderNewBudget(); bindNewBudget(); }
+    else if(id==='fraga'){ view.innerHTML = renderAsk(); bindAsk(); }
     else view.innerHTML = renderSupplier(id.slice(4));
     try{ localStorage.setItem('kv71-tab', id); }catch(e){}
     if(id==='detaljer') bindDetails();
@@ -1510,6 +1659,142 @@ table.nbt td,table.nbt th{padding-inline:8px}
       c.addEventListener('click',function(){ detailFilter=c.dataset.moment; show('detaljer'); });
     });
   }
+
+  /* ---------- Fråga budgeten ---------- */
+  var askTurns = [], askBusy = false, askCtl = null, askSample, askToolsOk = false, askState = 'loading', askLive = '';
+  var ASK_EX = ['Hur stor är arbetskostnaden?', 'Hur mycket kostar påslaget på 12 %?', 'Hur stora är kostnaderna för armaturer?',
+    'Vad är kvar att betala enligt justerad budget?', 'Vilka poster saknar pris eller specifikation?', 'Vad skulle jag spara på att välja de billigaste alternativen?'];
+  function r0(v){ return Math.round(v); }
+  function nbAllLines(){
+    var out = [], C = nbCalc();
+    C.rows.forEach(function(o){
+      var row = o.row, seen = {};
+      (row.items||[]).forEach(function(it){
+        var l = nbLine(row, it);
+        out.push({post:row.id, postnamn:row.name, rad:it.id, text:it.text, beskrivning:it.desc, typ:it.typ||'okänd', paslag:it.paslag, belopp:Math.round(l.a*100)/100, dokument:it.amount, medraknad:l.on,
+          alternativ: it.group ? ((row.groups||{})[it.group]||it.group)+' / '+(it.alt||'') : undefined,
+          antal:l.q, enhet:it.unit, apris:l.p, delrader: l.subs.length ? l.subs.map(function(x){return {text:x.text, belopp:Math.round(nbSubAmt(x))};}) : undefined});
+        if(it.group && !seen[it.group]){ seen[it.group]=1; var sel = nbAlt(row, it.group);
+          nbCAlts(row.id, it.group).forEach(function(c){ var sb = nbSubs(row.id,c.id); out.push({post:row.id, postnamn:row.name, rad:c.id, text:c.text+' (eget alternativ)', typ:'okänd', paslag:'okänt', belopp: sb.length ? r0(sb.reduce(function(a,x){return a+nbSubAmt(x);},0)) : (c.amount||0), medraknad: sel===c.id, alternativ:((row.groups||{})[it.group]||it.group)+' / eget'}); }); }
+      });
+      nbCustom(row.id).forEach(function(c){ out.push({post:row.id, postnamn:row.name, rad:c.id, text:c.text+' (egen rad)', typ:'okänd', paslag:'okänt', belopp:c.amount||0, medraknad:true}); });
+    });
+    return out;
+  }
+  function askContext(){
+    var C = nbCalc(), rotOv = nbOv.rot && nbOv.rot.adj!=null ? nbOv.rot.adj : NB.rot.nu;
+    var poster = C.rows.map(function(o){ var r=o.row; return {id:r.id, namn:r.name, utforare:r.utforare, ursprungligOffert:r.orig||0, nyOffertEllerAta:r.nu, kalkyl:r0(o.kal), nedlagt:r0(o.spent), aterstaende:r0(o.rem), justeradBudget:r0(o.adj), manuelltJusterad:!!o.changed, notering:r.note}; });
+    var bySlag = {}, bySource = {}, paslagFakt = 0;
+    rows.forEach(function(r){ var k = r.paslag ? 'Påslag 12 %' : r.slag; bySlag[k]=(bySlag[k]||0)+r.amount*1.25; bySource[r.source]=(bySource[r.source]||0)+r.amount*1.25; if(r.paslag) paslagFakt += r.amount*1.25; });
+    Object.keys(bySlag).forEach(function(k){ bySlag[k]=r0(bySlag[k]); }); Object.keys(bySource).forEach(function(k){ bySource[k]=r0(bySource[k]); });
+    var hours = {}; rows.forEach(function(r){ if(!r.paslag && (r.slag==='Arbete'||r.slag==='Arbetsledning'||r.slag==='Arvode') && /^(h|tim)/.test(r.unit||'')){ var k=r.source+' · '+r.slag; hours[k]=(hours[k]||0)+(r.qty||0); } });
+    return {
+      enhet: 'SEK inkl. 25 % moms om inget annat anges',
+      kalla: NB.source,
+      avtal: {timprisSnickareMalareInklMoms:650, timprisArbetsledareInklMoms:875, bilPerDagInklMoms:625, paslagMaterialOchUE:'12 %', lopandeRakning:true},
+      budgetTotal: {ursprungligOffert: r0(C.rows.reduce(function(a,o){return a+(o.row.orig||0);},0)), nyOffertOchAta: r0(C.rows.reduce(function(a,o){return a+(o.row.nu||0);},0)), kalkyl: r0(C.rows.reduce(function(a,o){return a+o.kal;},0)), nedlagt: r0(C.rows.reduce(function(a,o){return a+o.spent;},0)), justeradBudget: r0(C.rows.reduce(function(a,o){return a+o.adj;},0)), rotJusterat: rotOv, rotBeviljatHittills: -totRot},
+      poster: poster,
+      fakturerat: {totaltInklMoms: r0(totInkl), totaltExklMoms: r0(totEx), attBetalaEfterRot: r0(totPay), perKostnadsslag: bySlag, perUtforare: bySource, paslagFaktureratHittills: r0(paslagFakt), timmarHittills: hours, antalFakturor: D.invoices.length},
+      observationer: NB.insights
+    };
+  }
+  var ASK_RULES = [
+    'Du är en noggrann byggekonom som svarar på frågor om renoveringen av Karlavägen 71 (huvudentreprenör Thessén & Ek, löpande räkning).',
+    'Svara på svenska, kort och konkret. Börja med svaret och siffran. Ange alltid om siffran gäller FAKTURERAT (exakt) eller BUDGET/KALKYL (uppskattning) eller båda.',
+    'Belopp är i kronor inkl. moms om inget annat sägs. Skriv belopp som "123 456 kr".',
+    'Använd verktyget summera_rader för alla summor över budgetrader och verktyget summera för annan addition. Räkna aldrig i huvudet.',
+    'Budgetrader har typ: arbete, material, blandat (arbete och material i samma belopp) eller övrigt. paslag=true betyder att beloppet troligen innehåller Thesséns 12 % påslag (påslaget = belopp × 12/112), false att det inte gör det, "delvis" att det är okänt. Säg tydligt när en del är en uppskattning och vilket antagande du gör, t.ex. för blandade rader.',
+    'Om något inte finns i underlaget, säg det rakt ut och vad det betyder för budgeten. Exempel: armaturer är inte prissatta i ÄTA 3.',
+    'Räkna bara rader med medraknad=true om inte frågan gäller alternativ.',
+    'Formatera med korta stycken och punktlistor som börjar med "- ". Fetstil med **. Inga tabeller, inga rubriker. Högst cirka 200 ord.',
+  ].join('\n');
+  function askPrompt(){ return ASK_RULES + '\n\nAKTUELLA DATA (JSON). Budgetradernas detaljer hämtas med verktyget summera_rader:\n' + JSON.stringify(askContext()) + (askToolsOk ? '' : '\n\nBUDGETRADER (JSON):\n' + JSON.stringify(nbAllLines())); }
+  var askTools = [
+    { name:'summera_rader',
+      description:'Summerar budgetrader i Ny budget (inkl. moms) efter filter och returnerar {summa, antal, rader}. Rader har post, text, typ, paslag, belopp, medraknad, alternativ. Utan filter: alla medräknade rader.',
+      inputSchema:{type:'object', properties:{
+        poster:{type:'array', items:{type:'string'}, description:'Post-id, t.ex. ata3, ata4, el, riv. Tomt = alla.'},
+        typ:{type:'array', items:{type:'string', enum:['arbete','material','blandat','övrigt','okänd']}},
+        paslag:{type:'array', items:{}, description:'Filtrera på paslag: true, false, "delvis", "okänt".'},
+        sok:{type:'string', description:'Delsträng i radtext, beskrivning eller postnamn, skiftlägesokänsligt.'},
+        endastMedraknade:{type:'boolean', description:'Standard true.'}}},
+      execute:function(inp){
+        var L = nbAllLines(), P = inp.poster, Ty = inp.typ, Pa = inp.paslag, q = inp.sok ? String(inp.sok).toLowerCase() : '', only = inp.endastMedraknade!==false;
+        var f = L.filter(function(x){ return (!only || x.medraknad) && (!P||!P.length||P.indexOf(x.post)>=0) && (!Ty||!Ty.length||Ty.indexOf(x.typ)>=0) && (!Pa||!Pa.length||Pa.some(function(v){return String(v)===String(x.paslag);})) && (!q || (x.text+' '+(x.beskrivning||'')+' '+x.postnamn).toLowerCase().indexOf(q)>=0); });
+        askNote('Summerar '+f.length+' rader…');
+        return {summa: r0(f.reduce(function(a,x){return a+x.belopp;},0)), antal:f.length, rader: f.slice(0,60).map(function(x){ return {post:x.post, text:x.text, beskrivning:x.beskrivning, typ:x.typ, paslag:x.paslag, belopp:r0(x.belopp), medraknad:x.medraknad, alternativ:x.alternativ}; })};
+      }},
+    { name:'summera', description:'Adderar en lista tal exakt och returnerar summan. Använd för all aritmetik.',
+      inputSchema:{type:'object', properties:{tal:{type:'array', items:{type:'number'}}, faktor:{type:'number', description:'Valfri faktor som summan multipliceras med, t.ex. 0.12/1.12'}}, required:['tal']},
+      execute:function(inp){ var t = (inp.tal||[]).map(Number).filter(isFinite); var s0 = t.reduce(function(a,b){return a+b;},0); var f = Number(inp.faktor); return {summa: Math.round(s0*100)/100, medFaktor: isFinite(f)&&inp.faktor!=null ? Math.round(s0*f*100)/100 : undefined}; }}
+  ];
+  function askMd(t){
+    var lines = esc(t).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').split('\n'), h = '', inList = false;
+    lines.forEach(function(ln){
+      var m = ln.match(/^\s*[-•]\s+(.*)$/);
+      if(m){ if(!inList){ h += '<ul>'; inList = true; } h += '<li>'+m[1]+'</li>'; return; }
+      if(inList){ h += '</ul>'; inList = false; }
+      if(ln.trim()) h += '<p>'+ln+'</p>';
+    });
+    if(inList) h += '</ul>';
+    return h;
+  }
+  function askNote(t){ var el = document.getElementById('ask-note'); if(el) el.textContent = t; }
+  function renderAsk(){
+    var h = '<section class="panel"><div class="block" style="max-width:820px"><div><div class="eyebrow">Svaren bygger på Ny budget som den ser ut nu, med dina justeringar, och på alla inlästa fakturor</div><h2 style="font-size:24px;margin-top:4px">Fråga budgeten</h2></div>';
+    if(askState==='off'){
+      h += '<div class="banner"><p>Frågor fungerar bara när appen är öppen i Claude. I den här vyn går det inte att fråga.</p></div></div></section>';
+      return h;
+    }
+    h += '<div class="filters" role="group" aria-label="Exempelfrågor">'+ASK_EX.map(function(q){return '<button class="chip" data-askex="'+esc(q)+'">'+esc(q)+'</button>';}).join('')+'</div>';
+    h += '<div class="askthread">';
+    askTurns.forEach(function(t, i){
+      if(t.role==='user') h += '<div class="askq">'+esc(t.content)+'</div>';
+      else h += '<div class="aska card">'+askMd(t.content)+(t.err?'<p class="faint">'+esc(t.err)+'</p>':'')+'</div>';
+    });
+    if(askBusy) h += '<div class="aska card" id="ask-live">'+(askLive?askMd(askLive):'<p class="faint">Tänker…</p>')+'<p class="faint" id="ask-note"></p></div>';
+    h += '</div>';
+    h += '<form class="askform" id="ask-form"><textarea id="ask-q" rows="2" placeholder="Till exempel: Hur mycket av ÄTA 4 är arbete?" aria-label="Fråga"'+(askBusy?' disabled':'')+'></textarea>'+
+      '<div class="askbtns"><button type="submit" class="chip askgo" '+(askBusy?'disabled':'')+'>Fråga</button>'+(askBusy?'<button type="button" class="chip" id="ask-stop">Stoppa</button>':'')+
+      (askTurns.length&&!askBusy?'<button type="button" class="chip" id="ask-clear">Rensa</button>':'')+'</div></form>';
+    h += '<p class="faint" style="font-size:12.5px;margin:0">Frågor använder din egen Claude-användning. Första gången får du godkänna det. Arbete och påslag är exakta för fakturerade kostnader. I budgeten blir de uppskattningar, eftersom arbete och material ofta står på samma rad.</p>';
+    return h + '</div></section>';
+  }
+  function askRender(){ if(current!=='fraga') return; var y = window.scrollY; view.innerHTML = renderAsk(); bindAsk(); window.scrollTo(0,y); }
+  function bindAsk(){
+    var f = document.getElementById('ask-form'); if(!f) return;
+    var ta = document.getElementById('ask-q');
+    f.addEventListener('submit', function(e){ e.preventDefault(); askSend(ta.value); });
+    ta.addEventListener('keydown', function(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); askSend(ta.value); } });
+    view.querySelectorAll('[data-askex]').forEach(function(b){ b.addEventListener('click', function(){ askSend(b.dataset.askex); }); });
+    var st = document.getElementById('ask-stop'); if(st) st.addEventListener('click', function(){ if(askCtl) askCtl.abort(); });
+    var cl = document.getElementById('ask-clear'); if(cl) cl.addEventListener('click', function(){ askTurns = []; askRender(); });
+  }
+  function askSend(q){
+    q = String(q||'').trim(); if(!q || askBusy) return;
+    if(!askSample){ askState = 'off'; askRender(); return; }
+    askTurns.push({role:'user', content:q}); askBusy = true; askLive = ''; askRender();
+    var hist = askTurns.filter(function(t){return !t.err;}).slice(-7);
+    var msgs = [{role:'user', content: askPrompt()}].concat(hist.map(function(t){return {role:t.role, content:t.content};}));
+    askCtl = new AbortController();
+    var opts = { signal: askCtl.signal, cache:false, onText:function(u){ askLive = u.text; var el = document.getElementById('ask-live'); if(el) el.innerHTML = askMd(u.text)+'<p class="faint" id="ask-note"></p>'; } };
+    if(askToolsOk){ opts.tools = askTools; delete opts.cache; }
+    askSample(msgs, opts).then(function(res){
+      askTurns.push({role:'assistant', content: res.text + (res.truncated ? '\n\n(Svaret blev avkortat. Ställ en smalare fråga.)' : '')});
+    }, function(e){
+      var code = e && e.code, msg = {cancelled:'Stoppad.', rate_limited:'För många frågor just nu. Försök igen om en stund.', not_granted:'Frågor är inte tillåtna för den här appen.', sampling_disabled:'Claude är inte tillgängligt för kontot.', session_expired:'Logga in igen och försök på nytt.', refused:'Claude kunde inte svara på den frågan. Formulera om den.', prompt_too_large:'Underlaget blev för stort.'}[code] || 'Något gick fel. Försök igen.';
+      if(code==='not_granted' || code==='sampling_disabled' || code==='not_declared' || code==='capability_disabled' || code==='capability_removed'){ askState = 'off'; }
+      askTurns.push({role:'assistant', content: (e && e.text && code!=='refused') ? e.text : '', err: msg});
+      if(!askTurns[askTurns.length-1].content) askTurns[askTurns.length-1].content = ' ';
+    }).then(function(){ askBusy = false; askLive = ''; askCtl = null; askRender(); var ta = document.getElementById('ask-q'); if(ta) ta.focus(); });
+  }
+  if(window.claude && typeof window.claude.use==='function'){
+    window.claude.use('sample').then(function(fn){
+      askSample = fn || null; askState = fn ? 'on' : 'off';
+      if(fn && fn.limits) fn.limits().then(function(l){ askToolsOk = !!(l && l.tools); }, function(){});
+      askRender();
+    }, function(){ askState = 'off'; askRender(); });
+  } else { askState = 'off'; }
 
   /* ---------- Ny budget ---------- */
   var NB = D.newBudget, NB_KEY = 'kv71-nybudget', NB_OPEN = 'kv71-nb-open';
