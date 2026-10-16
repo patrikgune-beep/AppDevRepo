@@ -154,7 +154,7 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
 
 <script id="kv-data" type="application/json">
 {
-  "updated": "2026-09-27",
+  "updated": "2026-10-16",
   "project": { "name": "Karlavägen 71", "projnr": "P2079", "apartment": "1502" },
 
   "budget": {
@@ -194,7 +194,8 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
       "Avfall & bortforsling": "Sophantering",
       "Arbetsledning": "Allmänna kostnader",
       "Projektering (arkitekt)": "Utanför offerten",
-      "Konstruktion": "Utanför offerten"
+      "Konstruktion": "Utanför offerten",
+      "Elarbeten": "Elarbeten"
     },
     "rates": [
       { "what": "Snickare / målare", "offer": 650, "billed": 650, "note": "520 kr/h exkl. moms" },
@@ -210,6 +211,7 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     "Undergolv – regling & skivor",
     "Avfall & bortforsling",
     "Arbetsledning",
+    "Elarbeten",
     "Projektering (arkitekt)",
     "Konstruktion"
   ],
@@ -228,7 +230,8 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     {
       "id": "132354", "supplier": "thessen", "nr": "132354", "date": "2026-08-31", "due": "2026-09-10",
       "kind": "Grund", "project": "Karlavägen 71 – rev 1",
-      "exMoms": 167883.20, "moms": 41970.80, "rounding": 0, "rot": 50000, "toPay": 159854,
+      "exMoms": 167883.20, "moms": 41970.80, "rounding": 0, "rot": 27666, "rotPreliminary": 50000, "toPay": 182188,
+      "note": "Skatteverket beviljade 27 666 kr av preliminärt 50 000 kr ROT (Katarina S). Thessén fakturerar mellanskillnaden 22 334 kr. Ursprungligen att betala 159 854 kr.",
       "lines": [
         { "text": "Arbetsledning Alexander Thessén", "desc": "12 tillfällen 6/8–31/8", "qty": 15.5, "unit": "h", "price": 680, "amount": 10540, "moment": "Arbetsledning", "slag": "Arbetsledning" },
         { "text": "P-avgift röd zon", "qty": 16, "unit": "h", "price": 28, "amount": 448, "moment": "Arbetsledning", "slag": "Servicebil & parkering" },
@@ -304,10 +307,17 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
       "lines": [
         { "text": "Arkitektarvode augusti", "desc": "Listpris 1 512 kr/h, rabatt 40 % → 907,20 kr/h", "qty": 25, "unit": "h", "price": 907.20, "amount": 22680, "moment": "Projektering (arkitekt)", "slag": "Arvode" }
       ]
-    }
+    },
+    {"id": "132395", "supplier": "thessen", "nr": "132395", "date": "2026-10-15", "due": "2026-10-25", "kind": "Grund", "project": "Karlavägen 71 – rev 1", "exMoms": 240279.93, "moms": 60069.98, "rounding": 0.09, "rot": 0, "toPay": 300350, "lines": [{"text": "Sammy Ntanda, Edward Newton – kompletteringsrivning", "desc": "17/9: väggar, lister, foder, murad vägg enligt genomgång", "qty": 16, "unit": "h", "price": 520, "amount": 8320, "moment": "Rivning", "slag": "Arbete"}, {"text": "Sammy Ntanda, Edward Newton – riva fyllning, fylla bigbags", "desc": "18/9: fyllning, trä, gips, isolering", "qty": 16, "unit": "h", "price": 520, "amount": 8320, "moment": "Rivning", "slag": "Arbete"}, {"text": "Servicebil", "qty": 2, "unit": "dag", "price": 500, "amount": 1000, "moment": "Rivning", "slag": "Servicebil & parkering"}, {"text": "P-avgift", "qty": 9, "unit": "h", "price": 28, "amount": 252, "moment": "Rivning", "slag": "Servicebil & parkering"}, {"text": "Arbetsledning Alexander Thessén", "desc": "7 tillfällen 1/10–14/10", "qty": 8.5, "unit": "h", "price": 680, "amount": 5780, "moment": "Arbetsledning", "slag": "Arbetsledning"}, {"ue": "HW-33906", "text": "Hard Workers of Sweden AB, 33906", "amount": 14887.04}, {"ue": "GE-6472", "text": "Genchel AB (el), 6472", "amount": 197066.24}, {"ue": "HLL-110522441", "text": "HLL Hyreslandslaget, 110522441 – luftrenare", "amount": 4654.65}]},
+    {"id": "132396", "supplier": "thessen", "nr": "132396", "date": "2026-10-15", "due": "2026-10-25", "kind": "ÄTA", "project": "Karlavägen 71, ÄTA 1 – Diverse tillkommande arbeten", "exMoms": 52736.44, "moms": 13184.11, "rounding": 0.45, "rot": 0, "toPay": 65921, "lines": [{"text": "Edward Newton, Sammy Ntanda – bära upp plywood och reglar till undergolv", "desc": "9/9–10/9", "qty": 23, "unit": "h", "price": 520, "amount": 11960, "moment": "Undergolv – regling & skivor", "slag": "Arbete"}, {"text": "Alejandro Boragina – leverans av maskiner och material", "desc": "14/9", "qty": 4, "unit": "h", "price": 520, "amount": 2080, "moment": "Undergolv – regling & skivor", "slag": "Arbete"}, {"text": "Carlos Alberto Castedo Anes – undergolv", "desc": "14/9–16/9, 3 × 8 h", "qty": 24, "unit": "h", "price": 520, "amount": 12480, "moment": "Undergolv – regling & skivor", "slag": "Arbete"}, {"text": "Dubal Jeovany Calero Arregui – undergolv", "desc": "14/9–16/9, 3 × 8 h", "qty": 24, "unit": "h", "price": 520, "amount": 12480, "moment": "Undergolv – regling & skivor", "slag": "Arbete"}, {"text": "Micael Airaksinen – ordinarie tid", "desc": "15/9–17/9, arbetet är inte beskrivet", "qty": 3.5, "unit": "h", "price": 520, "amount": 1820, "moment": "Undergolv – regling & skivor", "slag": "Arbete"}, {"text": "Material", "desc": "15/9, inget underlag bifogat", "qty": 1, "unit": "st", "price": 2253, "amount": 2253, "moment": "Undergolv – regling & skivor", "slag": "Material"}, {"text": "Servicebil", "qty": 6, "unit": "dag", "price": 500, "amount": 3000, "moment": "Undergolv – regling & skivor", "slag": "Servicebil & parkering"}, {"text": "P-avgift", "qty": 48, "unit": "h", "price": 28, "amount": 1344, "moment": "Undergolv – regling & skivor", "slag": "Servicebil & parkering"}, {"ue": "HLL-110516570", "text": "HLL Hyreslandslaget, 110516570 – luftrenare, rivning undergolv", "amount": 5319.44}]},
+    {"id": "9260", "supplier": "arkitekt", "nr": "9260", "date": "2026-10-07", "due": "2026-10-22", "kind": "Grund", "project": "Arkitektarvode – september", "exMoms": 54432, "moms": 13608, "rounding": 0, "rot": 0, "toPay": 68040, "lines": [{"text": "Arkitektarvode september", "desc": "Listpris 1 512 kr/h, rabatt 40 % → 907,20 kr/h", "qty": 60, "unit": "h", "price": 907.2, "amount": 54432, "moment": "Projektering (arkitekt)", "slag": "Arvode"}]}
   ],
 
   "ue": [
+    {"id": "HW-33906", "vendor": "Hard Workers of Sweden AB", "short": "Hard Workers", "nr": "33906", "date": "2026-09-30", "period": "16/9, sophämtning från 1/9", "desc": "Genomgång med elektriker och spårning för ny el. Sophämtning.", "rounding": 0, "lines": [{"text": "Genomgång med elektriker samt spårning för ny el", "desc": "16/9", "qty": 10, "unit": "tim", "price": 430, "amount": 4300, "moment": "Rivning", "slag": "Arbete"}, {"text": "Förbrukningsmaterial", "qty": 1, "unit": "st", "price": 740, "amount": 740, "moment": "Rivning", "slag": "Förbrukningsmaterial"}, {"text": "Servicebil", "qty": 1, "unit": "st", "price": 475, "amount": 475, "moment": "Rivning", "slag": "Servicebil & parkering"}, {"text": "Parkering", "qty": 1, "unit": "st", "price": 215, "amount": 215, "moment": "Rivning", "slag": "Servicebil & parkering"}, {"text": "Sophantering, hämtning från 1/9", "qty": 1, "unit": "st", "price": 7562, "amount": 7562, "moment": "Avfall & bortforsling", "slag": "Avfall"}]},
+    {"id": "GE-6472", "vendor": "Genchel AB", "short": "Genchel (el)", "nr": "6472", "date": "2026-10-09", "period": "6/8–9/10", "desc": "Elarbeten enligt tidbok, 214 h: rivning av el och byggström, planering, spårning, kanalisation, slang och dosor för uttag, belysning och data. Varav cirka 42 h planering, möten, mejl och material (David Genchel).", "rounding": 0.19, "lines": [{"text": "Arbetskostnad elektriker", "desc": "214 h enligt tidbok, 20 arbetsdagar", "qty": 214, "unit": "tim", "price": 520, "amount": 111280, "moment": "Elarbeten", "slag": "Arbete"}, {"text": "Servicebil", "qty": 25, "unit": "st", "price": 450, "amount": 11250, "moment": "Elarbeten", "slag": "Servicebil & parkering"}, {"text": "Parkering", "qty": 155, "unit": "st", "price": 30, "amount": 4650, "moment": "Elarbeten", "slag": "Servicebil & parkering"}, {"text": "Elmaterial", "desc": "Flexrör ca 800 m, RQ-ledare, spår- och apparatdosor, byggcentral, montagelister, skruv och plugg m.m.", "qty": 1, "unit": "post", "price": null, "amount": 47741.18, "moment": "Elarbeten", "slag": "Material"}, {"text": "Förbrukning och verktyg", "desc": "Handskar, sopsäckar, halvmasker, borr", "qty": 1, "unit": "post", "price": null, "amount": 1030.63, "moment": "Elarbeten", "slag": "Förbrukningsmaterial"}]},
+    {"id": "HLL-110516570", "vendor": "HLL Hyreslandslaget Sverige AB", "short": "HLL", "nr": "110516570", "date": "2026-09-30", "period": "Hyra 21/9–30/9", "desc": "Fortsatt hyra av luftrenare och stoftavskiljare. Fakturerad som ÄTA, rivning undergolv. Märkt P1079.", "rounding": -0.34, "lines": [{"text": "Luftrenare mikrofilter (8 dgr, −25 %)", "qty": 1, "unit": "st", "price": 2592, "amount": 2592, "moment": "Rivning undergolv", "slag": "Maskin- & verktygshyra"}, {"text": "Stoftavskiljare < 2 kW (8 dgr, −25 %)", "qty": 1, "unit": "st", "price": 1392, "amount": 1392, "moment": "Rivning undergolv", "slag": "Maskin- & verktygshyra"}, {"text": "Microfilter DC 1800/2000 (hyra)", "qty": 2, "unit": "st", "price": null, "amount": 414, "moment": "Rivning undergolv", "slag": "Maskin- & verktygshyra"}, {"text": "Försäkring", "qty": 1, "unit": "st", "price": 351.84, "amount": 351.84, "moment": "Rivning undergolv", "slag": "Försäkring & avgifter"}]},
+    {"id": "HLL-110522441", "vendor": "HLL Hyreslandslaget Sverige AB", "short": "HLL", "nr": "110522441", "date": "2026-10-10", "period": "Hyra 1/10–10/10", "desc": "Fortsatt hyra av luftrenare och stoftavskiljare. Fakturerad som grund. Märkt P1079.", "rounding": -0.17, "lines": [{"text": "Luftrenare mikrofilter (7 dgr, −25 %)", "qty": 1, "unit": "st", "price": 2268, "amount": 2268, "moment": "Rivning", "slag": "Maskin- & verktygshyra"}, {"text": "Stoftavskiljare < 2 kW (7 dgr, −25 %)", "qty": 1, "unit": "st", "price": 1218, "amount": 1218, "moment": "Rivning", "slag": "Maskin- & verktygshyra"}, {"text": "Microfilter DC 1800/2000 (hyra)", "qty": 2, "unit": "st", "price": null, "amount": 362.25, "moment": "Rivning", "slag": "Maskin- & verktygshyra"}, {"text": "Försäkring", "qty": 1, "unit": "st", "price": 307.86, "amount": 307.86, "moment": "Rivning", "slag": "Försäkring & avgifter"}]},
     {
       "id": "EN-514", "vendor": "Engblom Konstruktion AB", "short": "Engblom (konstruktör)", "nr": "0000514", "date": "2026-08-31",
       "period": "Augusti", "desc": "Platsbesök, relationshandlingar och konstruktionsstöd för bärande väggar.", "rounding": 0.50,
@@ -417,16 +427,20 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
   ],
 
   "checks": [
-    {"level": "warn", "title": "Rivningen ligger på 112 % av offertposten", "text": "222 138 kr inkl. moms mot offertens 198 750 kr. Rivning enligt grundofferten ligger på 170 366 kr (86 %). Det är ÄTA-rivningen av undergolvet, 51 772 kr, som tar posten över. Spårning för el (32 h) och 2 dörrhål ingår i posten. Om de inte är gjorda än ökar överskridandet."},
-    {"level": "warn", "title": "Allmänna kostnader är till 47 % förbrukade", "text": "97 354 kr av 209 250 kr inkl. moms, fast bara rivning och undergolv är gjorda. Ungefär hälften, 50 400 kr, är Hard Workers förbrukningsmaterial, servicebil, parkering och sågar. Resten är främst arbetsledning, frakter och luftrenare. Fortsätter takten räcker posten inte hela projektet. Ta upp det med Thessén."},
-    {"level": "warn", "title": "Juli finns på två arkitektfakturor", "text": "9248 gäller juni och juli (22 h) och 9256 gäller juli (19 h). Det kan vara olika timmar, men be om tidrapporten så att inga timmar är dubbelfakturerade."},
-    {"level": "warn", "title": "150 000 kr ROT-avdrag är inte utnyttjat", "text": "Offerten räknar med −200 000 kr i ROT (två personer, 2026 och 2027). Bara faktura 132354 har ROT-avdrag, 50 000 kr. Fakturorna 132387, 132370 och 132388 innehåller arbetskostnad men har inget avdrag. Kontrollera med Thessén att den andra personens ROT används för 2026."},
-    {"level": "info", "title": "Arkitekt och konstruktör ligger utanför offerten", "text": "80 234 kr inkl. moms hittills: arkitekt 74 844 kr (66 h) och konstruktör Engblom 5 391 kr. Offerten undantar arkitekt och övriga konsulter, så de kostnaderna tillkommer."},
-    {"level": "info", "title": "12 % påslag stämmer med offerten", "text": "Thessén lägger exakt 12 % på varje underleverantör och på material, som avtalat. Totalt 30 849 kr exkl. moms hittills. Timpriserna följer offerten. Arbetsledning faktureras 680 kr/h mot offertens 700 kr/h, alltså till din fördel."},
-    {"level": "warn", "title": "Beijer 260980851828 är delad mellan ÄTA och grund", "text": "Fakturan (18 254 kr exkl. moms) är vidarefakturerad med 14 496,87 kr på ÄTA-fakturan 132388 och 5 947,20 kr på 132387. Summan stämmer på öret, men det framgår inte vilka rader som är grund. Fråga Thessén."},
-    {"level": "warn", "title": "HLL-fakturorna är märkta P1079", "text": "Projektet heter P2079. Troligen ett skrivfel hos HLL, men bekräfta att hyran av luftrenare hör till Karlavägen."},
-    {"level": "info", "title": "Arkitektfaktura 9248 är utställd av STR Design AB", "text": "Det är samma org.nr (559014-3391) som Viktor Erlandsson & Artefacts AB. Troligen har bolaget bytt namn. Fakturan är lagd under samma leverantör."},
-    {"level": "info", "title": "P-avgift 28 kr/h på första fakturan", "text": "132354 debiterar 28 kr/h, senare fakturor 25 kr/h. Skillnad 48 kr."}
+    {"level": "warn", "title": "ROT: Skatteverket beviljade bara 27 666 kr av 50 000 kr", "text": "Thessén kräver nu 22 334 kr extra på faktura 132354. Skälet framgår inte. Troligen räckte Katarinas skatt eller ROT-utrymme för 2026 inte till, men kontrollera det med henne eller Skatteverket. Totalt är 172 334 kr av offertens 200 000 kr i ROT outnyttjat."},
+    {"level": "warn", "title": "Inget ROT-avdrag på 132395 trots cirka 152 000 kr arbetskostnad", "text": "Fakturan innehåller arbete för 151 870 kr exkl. moms: elektriker, rivning och arbetsledning inklusive påslag. 30 % av det inkl. moms är 56 951 kr, alltså över taket på 50 000 kr. Be Thessén att lägga ROT för en andra ägare på 132395 innan du betalar, om ni har rätt till det."},
+    {"level": "warn", "title": "El har förbrukat 71 % men bara grovinstallationen är gjord", "text": "222 630 kr av 314 250 kr inkl. moms. Tidboken visar 214 h rivning, spårning, slang och dosor. Kvar enligt offerten: golvvärme, bastu, spotlights, Plejd, Renova-apparater samt inkoppling och avprovning. Cirka 42 h är planering, möten, mejl och material. 25 servicebilar är debiterade på 20 arbetsdagar."},
+    {"level": "warn", "title": "Rivningen ligger på 125 % av offertposten", "text": "248 958 kr mot 198 750 kr inkl. moms. ÄTA-rivningen av undergolvet står för 51 772 kr. Rivning enligt grundofferten, inklusive kompletteringsrivning 17–18/9 och spårning för el, ligger på 197 186 kr, alltså precis på budget."},
+    {"level": "warn", "title": "Allmänna kostnader är till 72 % förbrukade", "text": "149 747 kr av 209 250 kr inkl. moms. Måleri, plattsättning, rör, parkett och kök återstår. Det räcker inte i den här takten. Luftrenare och stoftavskiljare har hyrts utan uppehåll 9/9–10/10 för 22 060 kr. Två av fakturorna är märkta ”rivning undergolv”, men den rivningen gjordes 25–28/8. Fråga om hyran fortfarande behövs."},
+    {"level": "info", "title": "Undergolvet (ÄTA) tar 32 % av Byggnadsarbeten", "text": "125 479 kr inkl. moms är förbrukat på posten, och allt är regling och skivor till undergolv. Inget av de planerade byggnadsarbetena (väggar, dörrar, socklar, kök) är fakturerat ännu."},
+    {"level": "warn", "title": "Arkitekten fakturerade 60 h i september", "text": "68 040 kr inkl. moms, mer än dubbelt så mycket som i augusti. Totalt 126 h och 142 884 kr, helt utanför offerten. Juli finns fortfarande på två fakturor, 9248 och 9256. Be om tidrapporter."},
+    {"level": "warn", "title": "132396: material och timmar utan underlag", "text": "”Material 2 253 kr” 15/9 saknar kvitto, men offerten säger att material faktureras mot kopior. Micael Airaksinen har 3,5 h ordinarie tid 15–17/9 utan beskrivning av arbetet."},
+    {"level": "info", "title": "Arkitekt och konstruktör ligger utanför offerten", "text": "148 274 kr inkl. moms hittills: arkitekt 142 884 kr och konstruktör 5 391 kr. Offerten undantar arkitekt och övriga konsulter."},
+    {"level": "info", "title": "12 % påslag och timpriser stämmer med offerten", "text": "Alla 14 underlag från underleverantörer har exakt 12 % påslag. Arbetsledning 680 kr/h mot offertens 700 kr/h. Genchels elektriker kostar 520 kr/h före påslag, 582,40 kr/h efter."},
+    {"level": "warn", "title": "Beijer 260980851828 är delad mellan ÄTA och grund", "text": "Fakturan är vidarefakturerad med 14 496,87 kr på ÄTA-fakturan 132388 och 5 947,20 kr på 132387. Summan stämmer, men det framgår inte vilka rader som är grund."},
+    {"level": "info", "title": "P-avgift varierar mellan 25 och 28 kr/h", "text": "28 kr/h på 132354, 132395 och 132396, 25 kr/h på 132387 och 132388. Små belopp, men fråga vilken taxa som gäller."},
+    {"level": "info", "title": "HLL-fakturorna är märkta P1079", "text": "Alla fyra HLL-fakturor har märkningen P1079, inte P2079. Troligen Thesséns interna märkning eller ett skrivfel."},
+    {"level": "info", "title": "Arkitektfaktura 9248 är utställd av STR Design AB", "text": "Samma org.nr (559014-3391) som Viktor Erlandsson & Artefacts AB."}
   ]
 }
 </script>
@@ -560,8 +574,13 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     h += '<div class="kpis">'+
       kpi('Fakturerat inkl. moms', kr(totInkl), 'exkl. moms '+kr(totEx)+' · varav ÄTA '+kr(ata*1.25)+' inkl.') +
       (hasBudget ? kpi('Offert inkl. moms', kr(budgetTot), 'före ROT · '+esc(b.source.split(',')[0])) : kpi('Budget','Saknas','skicka offerten i chatten','missing')) +
-      (hasBudget ? kpi('Förbrukat av offerten', fmt0.format(totInkl/budgetTot*100)+' %', 'kvar '+kr(budgetTot-totInkl)+' inkl. moms') : '') +
-      kpi('ROT-avdrag', '−'+kr(totRot), (hasBudget&&b.rot? 'offerten räknar med −'+kr(b.rot) : 'på faktura 132354')) +
+      (hasBudget ? (function(){
+        var work = b.posts.filter(function(p){ return p.name.indexOf('schablon')<0 && p.amount>0; });
+        var wb = work.reduce(function(a,p){return a+p.amount;},0);
+        var wa = work.reduce(function(a,p){return a+(byPost[p.name]||0);},0)*1.25;
+        return kpi('Förbrukat av entreprenaden', fmt0.format(wa/wb*100)+' %', kr(wa)+' av '+kr(wb)+', utan schabloner och konsulter');
+      })() : '') +
+      kpi('ROT-avdrag', '−'+kr(totRot), (hasBudget&&b.rot? 'beviljat · offerten räknar med −'+kr(b.rot) : 'på faktura 132354')) +
       kpi('Att betala totalt', kr(totPay), 'efter ROT, inkl. moms') +
       '</div>';
 
@@ -665,7 +684,8 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
     var ok = Math.abs(i.calc - i.exMoms) < 0.05;
     var h = '<details class="inv"'+(open?' open':'')+'><summary><div class="l"><span class="chev">▸</span><span class="nr">Faktura '+esc(i.nr)+'</span><span class="tag '+(i.kind==='ÄTA'?'ata':'grund')+'">'+i.kind+'</span><span class="muted">'+fmtDate(i.date)+'</span>'+(ok?'':'<span class="tag bad">Rader ≠ total</span>')+'</div>'+
       '<div class="amt">'+kr(i.toPay)+'<small>exkl. moms '+kr(i.exMoms)+'</small></div></summary><div class="invbody">';
-    h += '<div class="facts"><span>Projekt <b>'+esc(i.project)+'</b></span><span>Förfaller <b>'+fmtDate(i.due)+'</b></span><span>Moms <b>'+k2(i.moms)+'</b></span>'+(i.rot?'<span>ROT-avdrag <b>−'+k2(i.rot)+'</b></span>':'')+(i.rounding?'<span>Öresavrundning <b>'+k2(i.rounding)+'</b></span>':'')+'</div>';
+    h += '<div class="facts"><span>Projekt <b>'+esc(i.project)+'</b></span><span>Förfaller <b>'+fmtDate(i.due)+'</b></span><span>Moms <b>'+k2(i.moms)+'</b></span>'+(i.rot?'<span>ROT-avdrag <b>−'+k2(i.rot)+'</b>'+(i.rotPreliminary&&i.rotPreliminary!==i.rot?' (preliminärt −'+k2(i.rotPreliminary)+')':'')+'</span>':'')+(i.rounding?'<span>Öresavrundning <b>'+k2(i.rounding)+'</b></span>':'')+'</div>';
+    if(i.note) h += '<p class="muted" style="margin:6px 12px 2px;font-size:13px"><span class="tag warn">Obs</span> '+esc(i.note)+'</p>';
     h += '<div class="scroll"><table><thead><tr><th>Rad</th><th class="n">Antal</th><th class="n">À-pris</th><th class="n">Belopp</th><th>Arbetsmoment</th></tr></thead><tbody>';
     i.lines.forEach(function(l){
       if(l.ue){
@@ -699,7 +719,7 @@ code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:
   function renderDetails(){
     var list = detailFilter==='Alla' ? rows : rows.filter(function(r){return r.moment===detailFilter;});
     var tot = sum(list);
-    var sources = [OWN,'Hard Workers','Beijer','HLL','Sortera / Big Bag','Engblom (konstruktör)','Arkitekt V. Erlandsson'];
+    var sources = [OWN,'Hard Workers','Beijer','HLL','Genchel (el)','Sortera / Big Bag','Engblom (konstruktör)','Arkitekt V. Erlandsson'];
     rows.forEach(function(r){ if(sources.indexOf(r.source)<0) sources.push(r.source); });
     sources = sources.filter(function(s){ return list.some(function(r){return r.source===s;}); });
 
