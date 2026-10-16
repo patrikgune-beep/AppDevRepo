@@ -156,6 +156,17 @@ input.nbtext{width:100%;min-width:12em;font:inherit;padding:5px 8px;border:1px s
 .nbspent>div{display:flex;justify-content:space-between;gap:16px}
 .nbspent>div.t{font-weight:700;border-top:1px solid var(--line);padding-top:3px}
 .warnc{color:var(--warn)}
+.nbname{font:700 15px/1.3 var(--body);color:var(--ink);background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.nbname:hover{color:var(--accent)}
+.nbtogtxt{display:inline-block;margin-top:6px;font:600 12px/1 var(--body);color:var(--accent);background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:999px;padding:6px 10px;cursor:pointer}
+.linkbtn{font:600 12px/1.2 var(--body);color:var(--accent);background:none;border:0;padding:3px 0 0;cursor:pointer;display:block}
+.linkbtn:hover{text-decoration:underline}
+table.nbl tr.grp td{background:var(--surface-2);font-size:12.5px;padding-top:8px;padding-bottom:6px}
+table.nbl tr.alt td:nth-child(2){padding-left:14px}
+table.nbl tr.subrow td{background:color-mix(in srgb,var(--accent-soft) 45%,transparent)}
+table.nbl tr.subrow td:nth-child(2){padding-left:22px}
+.subcell{display:flex;align-items:center;gap:6px}
+.subarrow{color:var(--accent)}
 input[type=checkbox],input[type=radio]{accent-color:var(--accent);width:16px;height:16px}
 table.nbt td:first-child{min-width:200px}
 table.nbt td,table.nbt th{padding-inline:8px}
@@ -860,7 +871,15 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "group": "k-bl",
             "alt": "Alt 3"
           }
-        ]
+        ],
+        "groups": {
+          "b-tsb": "Badrum: tvättställsblandare",
+          "b-du": "Badrum: duschblandare",
+          "b-sp": "Badrum: spolplatta",
+          "w-tsb": "Wc: tvättställsblandare",
+          "w-sp": "Wc: spolplatta",
+          "k-bl": "Kök: blandare"
+        }
       },
       {
         "id": "ata3",
@@ -1103,7 +1122,10 @@ table.nbt td,table.nbt th{padding-inline:8px}
             "amount": 0,
             "desc": "Krävs enligt tillverkaren, inte prissatt"
           }
-        ]
+        ],
+        "groups": {
+          "sten": "Sten och klinker i badrum och hall"
+        }
       },
       {
         "id": "ark",
@@ -1509,22 +1531,27 @@ table.nbt td,table.nbt th{padding-inline:8px}
     return Object.keys(m).map(function(k){return {k:k,v:m[k]};}).filter(function(x){return Math.abs(x.v)>=0.5;}).sort(function(x,y){return y.v-x.v;});
   }
   function nbLo(rowId, lineId){ return ((nbOv._l||{})[rowId]||{})[lineId] || {}; }
+  function nbSubs(rowId, lineId){ return ((nbOv._s||{})[rowId]||{})[lineId] || []; }
+  function nbSubAmt(x){ return (x.qty!=null && x.price!=null) ? x.qty*x.price : (x.amount||0); }
+  function nbCAlts(rowId, g){ return ((nbOv._ca||{})[rowId]||{})[g] || []; }
   function nbAlt(row, g){
     var sel = ((nbOv._alt||{})[row.id]||{})[g];
-    if(sel) return sel;
+    if(sel && (row.items.some(function(i){return i.id===sel && i.group===g;}) || nbCAlts(row.id,g).some(function(c){return c.id===sel;}))) return sel;
     for(var i=0;i<row.items.length;i++) if(row.items[i].group===g) return row.items[i].id;
   }
   function nbLine(row, it){
-    var o = nbLo(row.id, it.id);
+    var o = nbLo(row.id, it.id), subs = nbSubs(row.id, it.id);
     var q = o.qty!=null ? o.qty : it.qty, pr = o.price!=null ? o.price : it.price;
     var amt = o.amount!=null ? o.amount : ((o.qty!=null||o.price!=null) && q!=null && pr!=null ? q*pr : it.amount);
+    if(subs.length) amt = subs.reduce(function(a,x){return a+nbSubAmt(x);},0);
     var on = it.group ? nbAlt(row, it.group)===it.id : !o.off;
-    return {q:q, p:pr, a:amt, on:on, changed: o.qty!=null||o.price!=null||o.amount!=null||!!o.off};
+    return {q:q, p:pr, a:amt, on:on, subs:subs, changed: o.qty!=null||o.price!=null||o.amount!=null||!!o.off||subs.length>0};
   }
   function nbCustom(rowId){ return ((nbOv._c||{})[rowId]) || []; }
   function nbKalkyl(row){
-    var t = 0;
-    (row.items||[]).forEach(function(it){ var l = nbLine(row,it); if(l.on) t += l.a; });
+    var t = 0, seen = {};
+    (row.items||[]).forEach(function(it){ var l = nbLine(row,it); if(l.on) t += l.a;
+      if(it.group && !seen[it.group]){ seen[it.group]=1; var sel = nbAlt(row, it.group); nbCAlts(row.id, it.group).forEach(function(c){ if(c.id===sel) t += nbSubs(row.id,c.id).length ? nbSubs(row.id,c.id).reduce(function(a,x){return a+nbSubAmt(x);},0) : (c.amount||0); }); } });
     nbCustom(row.id).forEach(function(c){ t += c.amount||0; });
     return t;
   }
@@ -1546,26 +1573,67 @@ table.nbt td,table.nbt th{padding-inline:8px}
   }
   function diffSpan(d){ return Math.abs(d)<0.5 ? '<span class="faint">0</span>' : '<span class="'+(d>0?'diff-pos':'diff-neg')+'">'+(d>0?'+':'−')+kr(Math.abs(d))+'</span>'; }
 
+  function nbSubRows(row, lineId){
+    var h = '';
+    nbSubs(row.id, lineId).forEach(function(x){
+      var A = 'data-r="'+row.id+'" data-l="'+lineId+'" data-s="'+x.id+'"';
+      h += '<tr class="subrow"><td></td><td><div class="subcell"><span class="subarrow">↳</span><input class="nbtext" '+A+' data-f="stext" value="'+esc(x.text)+'" aria-label="Delrad"></div></td>'+
+        '<td class="n">'+nbIn(A+' data-f="sqty"', nbDec(x.qty), false, 'sm')+'</td><td></td>'+
+        '<td class="n">'+nbIn(A+' data-f="sprice"', nbDec(x.price), false, 'sm')+'</td><td class="n faint">delrad</td>'+
+        '<td class="n">'+(x.qty!=null&&x.price!=null ? '<span class="num">'+kr(nbSubAmt(x))+'</span>' : nbIn(A+' data-f="samount"', nbNum(x.amount), false))+'</td>'+
+        '<td><button class="nbreset" data-sdel="'+row.id+'|'+lineId+'|'+x.id+'" title="Ta bort delraden" aria-label="Ta bort delraden">×</button></td></tr>';
+    });
+    if(nbSubs(row.id, lineId).length) h += '<tr class="subrow"><td></td><td colspan="7"><button class="linkbtn" data-sadd="'+row.id+'|'+lineId+'">+ delrad</button></td></tr>';
+    return h;
+  }
+  function nbLineRow(row, it, l, sel){
+    var A = 'data-r="'+row.id+'" data-l="'+it.id+'"', hasSubs = l.subs.length>0, lo = nbLo(row.id,it.id);
+    var h = '<tr class="'+(l.on?'':'off')+(it.group?' alt':'')+'"><td>'+sel+'</td><td>'+(it.alt?'<span class="tag">'+esc(it.alt)+'</span> ':'')+esc(it.text)+(it.desc?'<span class="desc">'+esc(it.desc)+'</span>':'')+
+      (hasSubs?'':'<button class="linkbtn" data-sadd="'+row.id+'|'+it.id+'">Dela upp</button>')+'</td>'+
+      '<td class="n">'+(!hasSubs && (it.qty!=null||it.price!=null) ? nbIn(A+' data-f="qty"', nbDec(l.q), lo.qty!=null, 'sm') : '')+'</td>'+
+      '<td class="faint">'+esc(it.unit||'')+'</td>'+
+      '<td class="n">'+(!hasSubs && (it.qty!=null||it.price!=null) ? nbIn(A+' data-f="price"', nbDec(l.p), lo.price!=null, 'sm') : '')+'</td>'+
+      '<td class="n faint">'+kr(it.amount)+'</td>'+
+      '<td class="n">'+(hasSubs ? '<b class="num">'+kr(l.a)+'</b>' : nbIn(A+' data-f="amount"', nbNum(l.a), lo.amount!=null))+'</td>'+
+      '<td>'+(l.changed?'<button class="nbreset" data-lreset="'+row.id+'|'+it.id+'" title="Återställ raden och ta bort delrader" aria-label="Återställ raden">↺</button>':'')+'</td></tr>';
+    return h + nbSubRows(row, it.id);
+  }
   function nbDetails(o){
     var row = o.row, h = '<div class="nbdet">';
     if(row.items && row.items.length || nbCustom(row.id).length || row.actual){
       h += '<div class="nblwrap"><table class="nbl"><thead><tr><th style="width:2.2em">Med</th><th>Rad</th><th class="n">Antal</th><th>Enhet</th><th class="n">À-pris</th><th class="n">Enligt dokument</th><th class="n">Justerat belopp</th><th></th></tr></thead><tbody>';
+      var done = {};
       (row.items||[]).forEach(function(it){
-        var l = nbLine(row,it), A = 'data-r="'+row.id+'" data-l="'+it.id+'"';
-        var sel = it.group
-          ? '<input type="radio" name="alt-'+row.id+'-'+it.group+'" data-f="alt" data-g="'+it.group+'" '+A+(l.on?' checked':'')+' aria-label="Välj '+esc(it.alt||'')+'">'
-          : '<input type="checkbox" data-f="on" '+A+(l.on?' checked':'')+' aria-label="Räkna med">';
-        h += '<tr class="'+(l.on?'':'off')+'"><td>'+sel+'</td><td>'+(it.alt?'<span class="tag">'+esc(it.alt)+'</span> ':'')+esc(it.text)+(it.desc?'<span class="desc">'+esc(it.desc)+'</span>':'')+'</td>'+
-          '<td class="n">'+(it.qty!=null||it.price!=null ? nbIn(A+' data-f="qty"', nbDec(l.q), nbLo(row.id,it.id).qty!=null, 'sm') : '')+'</td>'+
-          '<td class="faint">'+esc(it.unit||'')+'</td>'+
-          '<td class="n">'+(it.qty!=null||it.price!=null ? nbIn(A+' data-f="price"', nbDec(l.p), nbLo(row.id,it.id).price!=null, 'sm') : '')+'</td>'+
-          '<td class="n faint">'+kr(it.amount)+'</td>'+
-          '<td class="n">'+nbIn(A+' data-f="amount"', nbNum(l.a), nbLo(row.id,it.id).amount!=null)+'</td>'+
-          '<td>'+(l.changed?'<button class="nbreset" data-lreset="'+row.id+'|'+it.id+'" title="Återställ raden" aria-label="Återställ raden">↺</button>':'')+'</td></tr>';
+        if(it.group){
+          if(done[it.group]) return; done[it.group] = 1;
+          var g = it.group, selId = nbAlt(row, g), members = row.items.filter(function(x){return x.group===g;});
+          var gl = (row.groups||{})[g] || 'Alternativ';
+          h += '<tr class="grp"><td></td><td colspan="7">Välj ett: <b>'+esc(gl)+'</b></td></tr>';
+          members.forEach(function(m){
+            var l = nbLine(row, m);
+            var rb = '<input type="radio" name="alt-'+row.id+'-'+g+'" data-f="alt" data-g="'+g+'" data-r="'+row.id+'" data-l="'+m.id+'"'+(l.on?' checked':'')+' aria-label="Välj '+esc(m.alt||'')+'">';
+            h += nbLineRow(row, m, l, rb);
+          });
+          nbCAlts(row.id, g).forEach(function(c){
+            var on = selId===c.id, A = 'data-r="'+row.id+'" data-g="'+g+'" data-c="'+c.id+'"', subs = nbSubs(row.id, c.id);
+            var amt = subs.length ? subs.reduce(function(a,x){return a+nbSubAmt(x);},0) : (c.amount||0);
+            h += '<tr class="alt custom'+(on?'':' off')+'"><td><input type="radio" name="alt-'+row.id+'-'+g+'" data-f="alt" data-g="'+g+'" data-r="'+row.id+'" data-l="'+c.id+'"'+(on?' checked':'')+' aria-label="Välj eget alternativ"></td>'+
+              '<td><span class="tag ue">Eget</span> <input class="nbtext" '+A+' data-f="catext" value="'+esc(c.text)+'" aria-label="Alternativ">'+(subs.length?'':'<button class="linkbtn" data-sadd="'+row.id+'|'+c.id+'">Dela upp</button>')+'</td>'+
+              '<td></td><td></td><td></td><td class="n faint">eget alternativ</td>'+
+              '<td class="n">'+(subs.length ? '<b class="num">'+kr(amt)+'</b>' : nbIn(A+' data-f="caamount"', nbNum(c.amount), true))+'</td>'+
+              '<td><button class="nbreset" data-cadel="'+row.id+'|'+g+'|'+c.id+'" title="Ta bort alternativet" aria-label="Ta bort alternativet">×</button></td></tr>';
+            h += nbSubRows(row, c.id);
+          });
+          h += '<tr class="alt"><td></td><td colspan="7"><button class="linkbtn" data-caadd="'+row.id+'|'+g+'">+ eget alternativ</button></td></tr>';
+          return;
+        }
+        var l = nbLine(row,it);
+        var cb = '<input type="checkbox" data-f="on" data-r="'+row.id+'" data-l="'+it.id+'"'+(l.on?' checked':'')+' aria-label="Räkna med">';
+        h += nbLineRow(row, it, l, cb);
       });
       nbCustom(row.id).forEach(function(c){
         var A = 'data-r="'+row.id+'" data-c="'+c.id+'"';
-        h += '<tr class="custom"><td></td><td><input class="nbtext" '+A+' data-f="ctext" value="'+esc(c.text)+'" aria-label="Radtext"></td><td></td><td></td><td></td><td class="n faint">egen rad</td>'+
+        h += '<tr class="custom"><td></td><td><span class="tag ue">Egen</span> <input class="nbtext" '+A+' data-f="ctext" value="'+esc(c.text)+'" aria-label="Radtext"></td><td></td><td></td><td></td><td class="n faint">egen rad</td>'+
           '<td class="n">'+nbIn(A+' data-f="camount"', nbNum(c.amount), true)+'</td><td><button class="nbreset" data-cdel="'+row.id+'|'+c.id+'" title="Ta bort raden" aria-label="Ta bort raden">×</button></td></tr>';
       });
       h += '<tr class="sub"><td></td><td>Kalkyl '+esc(row.name.split(' – ')[0])+'</td><td></td><td></td><td></td><td class="n">'+(row.nu!=null?kr(row.nu):'—')+'</td><td class="n">'+kr(o.kal)+'</td><td></td></tr>';
@@ -1612,7 +1680,10 @@ table.nbt td,table.nbt th{padding-inline:8px}
       var A = 'data-r="'+r.id+'"';
       var kalDiff = r.nu!=null ? o.kal - r.nu : null;
       var manual = (o.hasSpent ? o.changed && Math.abs(o.rem - o.remDefault)>0.5 : o.changed && Math.abs(o.adj - o.kal)>0.5);
-      h += '<tbody class="nbrow'+(open?' open':'')+'"><tr><td>'+(hasDet?'<button class="nbtog" data-tog="'+r.id+'" aria-expanded="'+open+'" aria-label="Visa detaljer">'+(open?'▾':'▸')+'</button>':'<span class="nbtog-sp"></span>')+'<b>'+esc(r.name)+'</b>'+(r.note?'<span class="desc">'+esc(r.note)+'</span>':'')+'</td>'+
+      var nLines = (r.items||[]).length + nbCustom(r.id).length;
+      var togLbl = (open?'▾ Dölj detaljer':'▸ Visa detaljer')+(nLines?' · '+nLines+' rader':'');
+      h += '<tbody class="nbrow'+(open?' open':'')+'"><tr><td>'+(hasDet?'<button class="nbname" data-tog="'+r.id+'" aria-expanded="'+open+'">'+esc(r.name)+'</button>':'<b>'+esc(r.name)+'</b>')+(r.note?'<span class="desc">'+esc(r.note)+'</span>':'')+
+        (hasDet?'<button class="nbtogtxt" data-tog="'+r.id+'" aria-expanded="'+open+'">'+togLbl+'</button>':'')+'</td>'+
         '<td class="n">'+(r.orig?kr(r.orig):'<span class="faint">—</span>')+'</td>'+
         '<td class="n">'+(r.nu==null?'<span class="faint">löpande</span>':kr(r.nu))+(r.nu!=null&&r.orig&&r.nu!==r.orig?'<span class="desc '+(r.nu>r.orig?'diff-pos':'diff-neg')+'">'+(r.nu>r.orig?'+':'−')+kr(Math.abs(r.nu-r.orig))+'</span>':'')+'</td>'+
         '<td class="n">'+kr(o.kal)+(kalDiff!=null&&Math.abs(kalDiff)>=1?'<span class="desc '+(kalDiff>0?'diff-pos':'diff-neg')+'">'+(kalDiff>0?'+':'−')+kr(Math.abs(kalDiff))+'</span>':'')+'</td>'+
@@ -1641,6 +1712,7 @@ table.nbt td,table.nbt th{padding-inline:8px}
   function nbParse(v){ var t = String(v).replace(/\s| |kr/g,''); if(/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g,''); t = t.replace(',', '.').replace('−','-'); var n = parseFloat(t); return isFinite(n) ? n : null; }
   function nbL(rowId, lineId){ nbOv._l = nbOv._l||{}; nbOv._l[rowId] = nbOv._l[rowId]||{}; nbOv._l[rowId][lineId] = nbOv._l[rowId][lineId]||{}; return nbOv._l[rowId][lineId]; }
   function nbCleanL(rowId, lineId){ var o = nbOv._l && nbOv._l[rowId]; if(!o) return; if(o[lineId] && !Object.keys(o[lineId]).length) delete o[lineId]; if(!Object.keys(o).length) delete nbOv._l[rowId]; if(nbOv._l && !Object.keys(nbOv._l).length) delete nbOv._l; }
+  function nbDelSubs(r, l){ if(nbOv._s && nbOv._s[r]){ delete nbOv._s[r][l]; if(!Object.keys(nbOv._s[r]).length) delete nbOv._s[r]; if(!Object.keys(nbOv._s).length) delete nbOv._s; } }
   function bindNewBudget(){
     view.querySelectorAll('input.nbin, input.nbtext').forEach(function(inp){
       inp.addEventListener('focus', function(){ if(inp.classList.contains('nbin')) inp.select(); });
@@ -1648,6 +1720,10 @@ table.nbt td,table.nbt th{padding-inline:8px}
       inp.addEventListener('change', function(){
         var f = inp.dataset.f, r = inp.dataset.r, l = inp.dataset.l, c = inp.dataset.c;
         if(f==='ctext'){ var cl = nbCustom(r).filter(function(x){return x.id===c;})[0]; if(cl){ cl.text = inp.value.slice(0,200); nbChanged(); } return; }
+        if(f==='catext'){ var ca = nbCAlts(r, inp.dataset.g).filter(function(x){return x.id===c;})[0]; if(ca){ ca.text = inp.value.slice(0,200); nbChanged(); } return; }
+        var sx = f && f.charAt(0)==='s' && f!=='stext' || f==='stext' ? nbSubs(r, l).filter(function(x){return x.id===inp.dataset.s;})[0] : null;
+        if(f==='stext'){ if(sx){ sx.text = inp.value.slice(0,200); nbChanged(); } return; }
+        if((f==='sqty'||f==='sprice') && inp.value.trim()===''){ if(sx){ delete sx[f.slice(1)]; nbChanged(); } return; }
         var n = nbParse(inp.value);
         if(n==null){ nbRender(); return; }
         if(f==='rem') nbOv[r] = {rem:Math.round(n)};
@@ -1656,6 +1732,9 @@ table.nbt td,table.nbt th{padding-inline:8px}
         else if(f==='qty' || f==='price'){ var o = nbL(r,l); o[f] = n; delete o.amount; }
         else if(f==='amount'){ nbL(r,l).amount = Math.round(n*100)/100; }
         else if(f==='camount'){ var cm = nbCustom(r).filter(function(x){return x.id===c;})[0]; if(cm) cm.amount = Math.round(n); }
+        else if(f==='caamount'){ var cx = nbCAlts(r, inp.dataset.g).filter(function(x){return x.id===c;})[0]; if(cx) cx.amount = Math.round(n); }
+        else if(f==='sqty' || f==='sprice'){ if(sx){ sx[f.slice(1)] = n; if(sx.qty!=null && sx.price!=null) delete sx.amount; } }
+        else if(f==='samount'){ if(sx) sx.amount = Math.round(n*100)/100; }
         nbChanged();
       });
     });
@@ -1666,7 +1745,17 @@ table.nbt td,table.nbt th{padding-inline:8px}
       rb.addEventListener('change', function(){ nbOv._alt = nbOv._alt||{}; nbOv._alt[rb.dataset.r] = nbOv._alt[rb.dataset.r]||{}; nbOv._alt[rb.dataset.r][rb.dataset.g] = rb.dataset.l; nbChanged(); });
     });
     view.querySelectorAll('[data-reset]').forEach(function(b){ b.addEventListener('click', function(){ delete nbOv[b.dataset.reset]; nbChanged(); }); });
-    view.querySelectorAll('[data-lreset]').forEach(function(b){ b.addEventListener('click', function(){ var p = b.dataset.lreset.split('|'); if(nbOv._l && nbOv._l[p[0]]) delete nbOv._l[p[0]][p[1]]; nbCleanL(p[0], p[1]); nbChanged(); }); });
+    view.querySelectorAll('[data-lreset]').forEach(function(b){ b.addEventListener('click', function(){ var p = b.dataset.lreset.split('|'); if(nbOv._l && nbOv._l[p[0]]) delete nbOv._l[p[0]][p[1]]; nbCleanL(p[0], p[1]); nbDelSubs(p[0], p[1]); nbChanged(); }); });
+    view.querySelectorAll('[data-sadd]').forEach(function(b){ b.addEventListener('click', function(){
+      var p = b.dataset.sadd.split('|'), r = p[0], l = p[1], cur = nbSubs(r, l), row = nbRowById[r];
+      var start = 0;
+      if(!cur.length){ var it = row.items.filter(function(x){return x.id===l;})[0]; if(it) start = nbLine(row, it).a; else { var ca = Object.keys((nbOv._ca||{})[r]||{}).reduce(function(acc,g){ return acc.concat(nbCAlts(r,g)); },[]).filter(function(x){return x.id===l;})[0]; start = ca ? (ca.amount||0) : 0; } }
+      nbOv._s = nbOv._s||{}; nbOv._s[r] = nbOv._s[r]||{};
+      nbOv._s[r][l] = cur.concat([{id:'s'+Date.now().toString(36), text: cur.length ? 'Delrad' : 'Del 1', amount: Math.round(start*100)/100}]);
+      nbChanged(); }); });
+    view.querySelectorAll('[data-sdel]').forEach(function(b){ b.addEventListener('click', function(){ var p = b.dataset.sdel.split('|'); nbOv._s[p[0]][p[1]] = nbSubs(p[0],p[1]).filter(function(x){return x.id!==p[2];}); if(!nbOv._s[p[0]][p[1]].length) nbDelSubs(p[0],p[1]); nbChanged(); }); });
+    view.querySelectorAll('[data-caadd]').forEach(function(b){ b.addEventListener('click', function(){ var p = b.dataset.caadd.split('|'); nbOv._ca = nbOv._ca||{}; nbOv._ca[p[0]] = nbOv._ca[p[0]]||{}; nbOv._ca[p[0]][p[1]] = nbCAlts(p[0],p[1]).concat([{id:'a'+Date.now().toString(36), text:'Eget alternativ', amount:0}]); nbChanged(); }); });
+    view.querySelectorAll('[data-cadel]').forEach(function(b){ b.addEventListener('click', function(){ var p = b.dataset.cadel.split('|'); nbOv._ca[p[0]][p[1]] = nbCAlts(p[0],p[1]).filter(function(x){return x.id!==p[2];}); if(!nbOv._ca[p[0]][p[1]].length) delete nbOv._ca[p[0]][p[1]]; if(!Object.keys(nbOv._ca[p[0]]).length) delete nbOv._ca[p[0]]; if(!Object.keys(nbOv._ca).length) delete nbOv._ca; nbDelSubs(p[0],p[2]); nbChanged(); }); });
     view.querySelectorAll('[data-cdel]').forEach(function(b){ b.addEventListener('click', function(){ var p = b.dataset.cdel.split('|'); nbOv._c[p[0]] = nbCustom(p[0]).filter(function(x){return x.id!==p[1];}); if(!nbOv._c[p[0]].length) delete nbOv._c[p[0]]; if(!Object.keys(nbOv._c).length) delete nbOv._c; nbChanged(); }); });
     view.querySelectorAll('[data-cadd]').forEach(function(b){ b.addEventListener('click', function(){ var r = b.dataset.cadd; nbOv._c = nbOv._c||{}; nbOv._c[r] = nbCustom(r).concat([{id:'c'+Date.now().toString(36), text:'Ny rad', amount:0}]); nbChanged(); }); });
     view.querySelectorAll('[data-tog]').forEach(function(b){ b.addEventListener('click', function(){ var r = b.dataset.tog; if(nbOpen[r]) delete nbOpen[r]; else nbOpen[r] = 1; try{ localStorage.setItem(NB_OPEN, JSON.stringify(nbOpen)); }catch(e){} nbRender(); }); });
