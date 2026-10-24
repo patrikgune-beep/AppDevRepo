@@ -181,6 +181,20 @@ table.nbt td,table.nbt th{padding-inline:8px}
 .askbtns{display:flex;gap:8px}
 .askgo{background:var(--accent);color:#fff;border-color:var(--accent)}
 .askgo[disabled]{opacity:.5}
+.addcard{padding:16px;display:grid;gap:12px}
+.addstep{display:flex;gap:12px;align-items:flex-start}
+.addstep .desc{display:block;font-size:13px;color:var(--ink-2);margin-top:2px}
+.addcard .head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.stepn{flex:none;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700}
+.addrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px 14px}
+.fld{display:grid;gap:4px;font-size:12.5px;color:var(--ink-2)}
+.fld input,.fld select,table.addlines select{font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);min-width:0;width:100%}
+.fld input:focus,.fld select:focus{outline:2px solid var(--accent);outline-offset:1px}
+table.addlines input.nbin{width:9em}
+.invpages{display:grid;gap:12px;max-width:900px}
+.invpages canvas{border:1px solid var(--line);border-radius:6px;background:#fff}
+.invimg{max-width:900px;width:100%;border:1px solid var(--line);border-radius:6px}
 @media (max-width:560px){
   .wrap{padding-inline:16px}
   td,th{padding:8px 8px}
@@ -1329,75 +1343,101 @@ table.nbt td,table.nbt th{padding-inline:8px}
   function r2(v){ return Math.round(v*100)/100; }
   function fmtDate(d){ var p=d.split('-'); return +p[2]+'/'+(+p[1])+' '+p[0]; }
 
-  var supById = {}; D.suppliers.forEach(function(s){ supById[s.id]=s; });
-  var ueById = {}; D.ue.forEach(function(u){
-    u.lineSum = u.lines.reduce(function(a,l){return a+l.amount;},0);
-    u.cost = r2(u.lineSum + (u.rounding||0));
-    u.billed = 0; u.billedIn = []; ueById[u.id]=u;
-  });
-  D.invoices.forEach(function(inv){
-    inv.lines.forEach(function(l){
-      if(l.ue){ var u=ueById[l.ue]; u.billed=r2(u.billed+l.amount); u.billedIn.push({inv:inv.id, amount:l.amount, kind:inv.kind}); }
-    });
-    inv.calc = r2(inv.lines.reduce(function(a,l){return a+l.amount;},0));
-    inv.total = r2(inv.exMoms + inv.moms + (inv.rounding||0));
-  });
-  D.ue.forEach(function(u){ u.markup = u.billed - u.cost; u.rate = u.cost ? u.markup/u.cost : 0; });
-
-  /* Flat list of cost rows. Every row carries amount ex moms and origin. */
-  var rows = [];
-  D.invoices.forEach(function(inv){
-    var sup = supById[inv.supplier];
-    inv.lines.forEach(function(l){
-      if(l.ue) return;
-      rows.push({ supplier:inv.supplier, source: inv.supplier==='thessen'? OWN : sup.short, inv:inv.id, kind:inv.kind,
-        text:l.text, desc:l.desc, qty:l.qty, unit:l.unit, price:l.price, amount:l.amount, moment:l.moment, slag:l.slag });
-    });
-  });
-  D.ue.forEach(function(u){
-    var kinds = u.billedIn.map(function(b){return b.kind;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(' + ');
-    var invs = u.billedIn.map(function(b){return b.inv;}).join(', ');
-    u.lines.forEach(function(l){
-      var share = u.lineSum ? l.amount/u.lineSum : 0;
-      rows.push({ supplier:'thessen', source:u.short, ue:u.id, inv:invs, kind:kinds, text:l.text, desc:l.desc, qty:l.qty, unit:l.unit, price:l.price,
-        amount:l.amount, moment:l.moment, slag:l.slag });
-      rows.push({ supplier:'thessen', source:u.short, ue:u.id, inv:invs, kind:kinds, paslag:true, text:'Påslag på '+l.text,
-        amount: u.markup*share, moment:l.moment, slag:'Påslag UE (12 %)', baseSlag:l.slag });
-    });
-    if(u.rounding){
-      rows.push({ supplier:'thessen', source:u.short, ue:u.id, inv:invs, kind:kinds, text:'Öresavrundning', amount:u.rounding, moment:u.lines[0].moment, slag:'Försäkring & avgifter' });
-    }
-  });
-
+  var BASE_INV = D.invoices.slice(), BASE_SUP = D.suppliers.slice(), added = [];
+  var supById, ueById, rows, totEx, totMoms, totInkl, totRot, totPay, totMarkup, rowsTotal, reconciled;
   var B = D.budget;
   function postFor(r){
+    if(r.nbRow){ var nr = (D.newBudget.rows||[]).filter(function(x){return x.id===r.nbRow;})[0]; if(nr) return nr.post || (nr.actual==='arkitekt' ? 'Utanför offerten' : nr.name); }
     var s = r.baseSlag || r.slag;
     return (B.slagToPost && B.slagToPost[s]) || (B.momentToPost && B.momentToPost[r.moment]) || 'Ej kopplad';
   }
-  rows.forEach(function(r){
-    r.post = postFor(r);
-    if(r.ue){ var u = ueById[r.ue]; r.ataShare = u.billed ? u.billedIn.filter(function(b){return b.kind==='ÄTA';}).reduce(function(a,b){return a+b.amount;},0)/u.billed : 0; }
-    else r.ataShare = r.kind==='ÄTA' ? 1 : 0;
-  });
-
   function sum(list){ return list.reduce(function(a,r){return a+r.amount;},0); }
   function groupSum(list,key){ var m={}; list.forEach(function(r){ m[r[key]]=(m[r[key]]||0)+r.amount; }); return m; }
+  function slugify(t){ return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40) || 'lev'; }
+  function addedSupplier(doc){ if(doc.supplierId && doc.supplierId!=='ny') return doc.supplierId; return 'x-'+slugify(doc.supplierName); }
+  function toInv(doc){
+    var lines = (doc.lines||[]).filter(function(l){ return l && (l.text || l.amount); }).map(function(l){
+      return { text:l.text||'Rad', amount:Number(l.amount)||0, qty:l.qty, unit:l.unit, price:l.price, moment:'Tillagd faktura', slag:l.slag||'Ospecificerat', nbRow:l.post||doc.post||null };
+    });
+    var lineSum = lines.reduce(function(a,l){return a+l.amount;},0), ex = Number(doc.exMoms)||0;
+    if(Math.abs(ex - lineSum) >= 0.5) lines.push({ text: lines.length ? 'Ej fördelat på rader' : 'Hela fakturan (ej uppdelad)', amount: r2(ex-lineSum), moment:'Tillagd faktura', slag:'Ospecificerat', nbRow: doc.post||null });
+    var moms = Number(doc.moms)||0, rnd = Number(doc.rounding)||0, rot = Number(doc.rot)||0;
+    return { id:'x-'+doc._id, docId:doc._id, added:true, supplier:addedSupplier(doc), nr:doc.nr||'–', date:doc.date||'', due:doc.due||doc.date||'', kind:doc.kind==='ÄTA'?'ÄTA':'Grund',
+      project:doc.project||'Tillagd faktura', exMoms:ex, moms:moms, rounding:rnd, rot:rot, toPay: doc.toPay!=null && doc.toPay!=='' ? Number(doc.toPay) : r2(ex+moms+rnd-rot),
+      note: doc.note||'', pdf: doc.pdf||null, pdfName: doc.pdfName||'', pdfType: doc.pdfType||'', lines: lines };
+  }
+  function compute(){
+    D.invoices = BASE_INV.concat(added.map(toInv));
+    var sups = BASE_SUP.slice();
+    added.forEach(function(doc){ var id = addedSupplier(doc); if(!sups.some(function(x){return x.id===id;})) sups.push({ id:id, name:doc.supplierName||'Ny leverantör', short:doc.supplierName||'Ny leverantör', role:'Tillagd leverantör', orgnr:'–', contact:'–' }); });
+    D.suppliers = sups;
+    supById = {}; D.suppliers.forEach(function(s){ supById[s.id]=s; });
+    ueById = {}; D.ue.forEach(function(u){
+      u.lineSum = u.lines.reduce(function(a,l){return a+l.amount;},0);
+      u.cost = r2(u.lineSum + (u.rounding||0));
+      u.billed = 0; u.billedIn = []; ueById[u.id]=u;
+    });
+    D.invoices.forEach(function(inv){
+      inv.lines.forEach(function(l){
+        if(l.ue){ var u=ueById[l.ue]; u.billed=r2(u.billed+l.amount); u.billedIn.push({inv:inv.id, amount:l.amount, kind:inv.kind}); }
+      });
+      inv.calc = r2(inv.lines.reduce(function(a,l){return a+l.amount;},0));
+      inv.total = r2(inv.exMoms + inv.moms + (inv.rounding||0));
+    });
+    D.ue.forEach(function(u){ u.markup = u.billed - u.cost; u.rate = u.cost ? u.markup/u.cost : 0; });
 
-  var totEx = D.invoices.reduce(function(a,i){return a+i.exMoms;},0);
-  var totMoms = D.invoices.reduce(function(a,i){return a+i.moms;},0);
-  var totInkl = D.invoices.reduce(function(a,i){return a+i.total;},0);
-  var totRot = D.invoices.reduce(function(a,i){return a+(i.rot||0);},0);
-  var totPay = D.invoices.reduce(function(a,i){return a+i.toPay;},0);
-  var totMarkup = D.ue.reduce(function(a,u){return a+u.markup;},0);
-  var rowsTotal = sum(rows);
-  var reconciled = Math.abs(rowsTotal - totEx) < 0.05 && D.invoices.every(function(i){return Math.abs(i.calc-i.exMoms)<0.05;});
+    /* Flat list of cost rows. Every row carries amount ex moms and origin. */
+    rows = [];
+    D.invoices.forEach(function(inv){
+      var sup = supById[inv.supplier];
+      inv.lines.forEach(function(l){
+        if(l.ue) return;
+        rows.push({ supplier:inv.supplier, source: inv.supplier==='thessen'? OWN : sup.short, inv:inv.id, kind:inv.kind,
+          text:l.text, desc:l.desc, qty:l.qty, unit:l.unit, price:l.price, amount:l.amount, moment:l.moment, slag:l.slag, nbRow:l.nbRow, added:inv.added });
+      });
+    });
+    D.ue.forEach(function(u){
+      var kinds = u.billedIn.map(function(b){return b.kind;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(' + ');
+      var invs = u.billedIn.map(function(b){return b.inv;}).join(', ');
+      u.lines.forEach(function(l){
+        var share = u.lineSum ? l.amount/u.lineSum : 0;
+        rows.push({ supplier:'thessen', source:u.short, ue:u.id, inv:invs, kind:kinds, text:l.text, desc:l.desc, qty:l.qty, unit:l.unit, price:l.price,
+          amount:l.amount, moment:l.moment, slag:l.slag });
+        rows.push({ supplier:'thessen', source:u.short, ue:u.id, inv:invs, kind:kinds, paslag:true, text:'Påslag på '+l.text,
+          amount: u.markup*share, moment:l.moment, slag:'Påslag UE (12 %)', baseSlag:l.slag });
+      });
+      if(u.rounding){
+        rows.push({ supplier:'thessen', source:u.short, ue:u.id, inv:invs, kind:kinds, text:'Öresavrundning', amount:u.rounding, moment:u.lines[0].moment, slag:'Försäkring & avgifter' });
+      }
+    });
 
+
+    totEx = D.invoices.reduce(function(a,i){return a+i.exMoms;},0);
+    totMoms = D.invoices.reduce(function(a,i){return a+i.moms;},0);
+    totInkl = D.invoices.reduce(function(a,i){return a+i.total;},0);
+    totRot = D.invoices.reduce(function(a,i){return a+(i.rot||0);},0);
+    totPay = D.invoices.reduce(function(a,i){return a+i.toPay;},0);
+    totMarkup = D.ue.reduce(function(a,u){return a+u.markup;},0);
+    rowsTotal = sum(rows);
+    reconciled = Math.abs(rowsTotal - totEx) < 0.05 && D.invoices.every(function(i){return Math.abs(i.calc-i.exMoms)<0.05;});
+    rows.forEach(function(r){
+      r.post = postFor(r);
+      if(r.ue){ var u = ueById[r.ue]; r.ataShare = u.billed ? u.billedIn.filter(function(b){return b.kind==='ÄTA';}).reduce(function(a,b){return a+b.amount;},0)/u.billed : 0; }
+      else r.ataShare = r.kind==='ÄTA' ? 1 : 0;
+    });
+    totEx = D.invoices.reduce(function(a,i){return a+i.exMoms;},0);
+  }
+  function updateMeta(){
   document.getElementById('meta').innerHTML =
     '<span>Uppdaterad '+fmtDate(D.updated)+'</span><span>'+D.invoices.length+' fakturor · '+D.ue.length+' underlag</span>'+
     (reconciled ? '<span class="tag ok">Avstämt mot fakturor</span>' : '<span class="tag bad">Avstämning avviker</span>');
+  }
+  compute(); updateMeta();
 
   /* ---------- Tabs ---------- */
-  var tabs = [{id:'sammanstallning', label:'Sammanställning'}];
+  var tabs;
+  function buildTabs(){
+  tabs = [{id:'sammanstallning', label:'Sammanställning'}];
   D.suppliers.forEach(function(s){
     var n = D.invoices.filter(function(i){return i.supplier===s.id;}).length;
     tabs.push({id:'lev-'+s.id, label:s.short, sub:n+' fakt.'});
@@ -1406,16 +1446,18 @@ table.nbt td,table.nbt th{padding-inline:8px}
   tabs.push({id:'avtal', label:'Avtalskontroll'});
   tabs.push({id:'nybudget', label:'Ny budget'});
   tabs.push({id:'fraga', label:'Fråga budgeten'});
-  tabs.push({id:'uppdatera', label:'Lägg till faktura'});
-
+  tabs.push({id:'uppdatera', label:'Lägg till faktura', sub: added.length ? added.length+' nya' : ''});
+  nav.innerHTML = tabs.map(function(t){
+    return '<button role="tab" id="tab-'+t.id+'" data-tab="'+t.id+'" aria-selected="'+(t.id===current)+'">'+esc(t.label)+(t.sub?'<span class="sub">'+t.sub+'</span>':'')+'</button>';
+  }).join('');
+  }
   var nav = document.getElementById('tabs');
   var view = document.getElementById('view');
-  nav.innerHTML = tabs.map(function(t){
-    return '<button role="tab" id="tab-'+t.id+'" data-tab="'+t.id+'" aria-selected="false">'+esc(t.label)+(t.sub?'<span class="sub">'+t.sub+'</span>':'')+'</button>';
-  }).join('');
+  var current;
+  buildTabs();
   nav.addEventListener('click',function(e){ var b=e.target.closest('button[data-tab]'); if(b) show(b.dataset.tab); });
 
-  var current, vatMode = 'inkl';
+  var vatMode = 'inkl';
   try{ vatMode = localStorage.getItem('kv71-vat') || 'inkl'; }catch(e){}
   function show(id){
     if(!tabs.some(function(t){return t.id===id;})) id='sammanstallning';
@@ -1423,7 +1465,7 @@ table.nbt td,table.nbt th{padding-inline:8px}
     Array.prototype.forEach.call(nav.children,function(b){ b.setAttribute('aria-selected', b.dataset.tab===id?'true':'false'); });
     if(id==='sammanstallning') view.innerHTML = renderSummary();
     else if(id==='detaljer') view.innerHTML = renderDetails();
-    else if(id==='uppdatera') view.innerHTML = renderHowTo();
+    else if(id==='uppdatera'){ view.innerHTML = renderAdd(); bindAdd(); }
     else if(id==='avtal') view.innerHTML = renderContract();
     else if(id==='nybudget'){ view.innerHTML = renderNewBudget(); bindNewBudget(); }
     else if(id==='fraga'){ view.innerHTML = renderAsk(); bindAsk(); }
@@ -1522,7 +1564,7 @@ table.nbt td,table.nbt th{padding-inline:8px}
     h += '<div class="block"><div class="head"><h2>Alla fakturor</h2><span class="muted">sorterat på fakturadatum</span></div><div class="card scroll"><table><thead><tr><th>Datum</th><th>Leverantör</th><th>Nr</th><th>Typ</th><th class="n">Exkl. moms</th><th class="n">Inkl. moms</th><th class="n">Att betala</th><th>Förfaller</th></tr></thead><tbody>';
     D.invoices.slice().sort(function(a,b){return a.date<b.date?-1:1;}).forEach(function(i){
       var dueTag = i.due < today ? '<span class="tag">'+fmtDate(i.due)+'</span>' : '<span class="tag warn">'+fmtDate(i.due)+'</span>';
-      h += '<tr><td class="num" style="text-align:left">'+fmtDate(i.date)+'</td><td>'+esc(supById[i.supplier].short)+'</td><td>'+esc(i.nr)+'</td><td><span class="tag '+(i.kind==='ÄTA'?'ata':'grund')+'">'+i.kind+'</span></td><td class="n">'+kr(i.exMoms)+'</td><td class="n">'+kr(i.total)+'</td><td class="n">'+kr(i.toPay)+'</td><td>'+dueTag+'</td></tr>';
+      h += '<tr><td class="num" style="text-align:left">'+fmtDate(i.date)+'</td><td>'+esc(supById[i.supplier].short)+'</td><td>'+esc(i.nr)+(i.added?' <span class="tag ue">Tillagd</span>':'')+'</td><td><span class="tag '+(i.kind==='ÄTA'?'ata':'grund')+'">'+i.kind+'</span></td><td class="n">'+kr(i.exMoms)+'</td><td class="n">'+kr(i.total)+'</td><td class="n">'+kr(i.toPay)+'</td><td>'+dueTag+'</td></tr>';
     });
     h += '</tbody></table></div><p class="faint" style="margin:0;font-size:12.5px">Gul förfallodag = ligger efter '+fmtDate(today)+'. Betalstatus registreras inte i appen.</p></div>';
 
@@ -1564,10 +1606,11 @@ table.nbt td,table.nbt th{padding-inline:8px}
 
   function invoiceCard(i, open){
     var ok = Math.abs(i.calc - i.exMoms) < 0.05;
-    var h = '<details class="inv"'+(open?' open':'')+'><summary><div class="l"><span class="chev">▸</span><span class="nr">Faktura '+esc(i.nr)+'</span><span class="tag '+(i.kind==='ÄTA'?'ata':'grund')+'">'+i.kind+'</span><span class="muted">'+fmtDate(i.date)+'</span>'+(ok?'':'<span class="tag bad">Rader ≠ total</span>')+'</div>'+
+    var h = '<details class="inv"'+(open?' open':'')+'><summary><div class="l"><span class="chev">▸</span><span class="nr">Faktura '+esc(i.nr)+'</span><span class="tag '+(i.kind==='ÄTA'?'ata':'grund')+'">'+i.kind+'</span><span class="muted">'+fmtDate(i.date)+'</span>'+(ok?'':'<span class="tag bad">Rader ≠ total</span>')+(i.added?'<span class="tag ue">Tillagd</span>':'')+'</div>'+
       '<div class="amt">'+kr(i.toPay)+'<small>exkl. moms '+kr(i.exMoms)+'</small></div></summary><div class="invbody">';
     h += '<div class="facts"><span>Projekt <b>'+esc(i.project)+'</b></span><span>Förfaller <b>'+fmtDate(i.due)+'</b></span><span>Moms <b>'+k2(i.moms)+'</b></span>'+(i.rot?'<span>ROT-avdrag <b>−'+k2(i.rot)+'</b>'+(i.rotPreliminary&&i.rotPreliminary!==i.rot?' (preliminärt −'+k2(i.rotPreliminary)+')':'')+'</span>':'')+(i.rounding?'<span>Öresavrundning <b>'+k2(i.rounding)+'</b></span>':'')+'</div>';
     if(i.note) h += '<p class="muted" style="margin:6px 12px 2px;font-size:13px"><span class="tag warn">Obs</span> '+esc(i.note)+'</p>';
+    if(i.added) h += '<p style="margin:6px 12px 2px;font-size:13px"><button class="linkbtn" style="display:inline" data-review="'+esc(i.docId)+'">Granska fakturan'+(i.pdf?' och PDF:en':'')+'</button></p>';
     h += '<div class="scroll"><table><thead><tr><th>Rad</th><th class="n">Antal</th><th class="n">À-pris</th><th class="n">Belopp</th><th>Arbetsmoment</th></tr></thead><tbody>';
     i.lines.forEach(function(l){
       if(l.ue){
@@ -1804,6 +1847,7 @@ table.nbt td,table.nbt th{padding-inline:8px}
   var nbRowById = {}; NB.rows.forEach(function(r){ nbRowById[r.id]=r; });
 
   function nbW(row, r){
+    if(r.nbRow) return r.nbRow===row.id ? 1 : 0;
     if(row.actual==='arkitekt') return r.supplier==='arkitekt' ? 1 : 0;
     if(row.actual==='ata') return r.supplier!=='arkitekt' ? r.ataShare : 0;
     if(row.post) return (r.supplier!=='arkitekt' && r.post===row.post) ? 1-r.ataShare : 0;
@@ -2226,17 +2270,269 @@ table.nbt td,table.nbt th{padding-inline:8px}
     return h + '</section>';
   }
 
-  /* ---------- Så uppdaterar du ---------- */
-  function renderHowTo(){
-    return '<section class="panel"><div class="block" style="max-width:68ch"><h2>Lägga till nya fakturor</h2>'+
-      '<p>Appen uppdateras via chatten med Claude. Ladda upp den nya fakturan som PDF och skriv till exempel <code>Ny faktura från Thessén</code>. Bilagorna från underleverantörerna läses också.</p>'+
-      '<p>Claude lägger in fakturan, delar upp underlagen på arbetsmoment och kostnadsslag, räknar ut påslaget och stämmer av raderna mot fakturans total. Sedan publiceras en ny version på samma länk.</p>'+
-      '<p>Varje rad kopplas till en post i offerten. Arbetsledning, förbrukningsmaterial, transporter, bil, parkering och maskinhyra räknas som Allmänna kostnader, precis som i offerten. Övriga rader kopplas via arbetsmomentet.</p>'+
-      '<p class="muted">Kopplingen till arbetsmoment och offertpost är Claudes bedömning utifrån fakturatexterna. Säg till om något ska ligga på en annan post.</p>'+
-      '<div class="card" style="padding:14px 16px;display:grid;gap:6px"><span class="eyebrow">Senast inlästa</span>'+
-      D.invoices.slice().sort(function(a,b){return a.date<b.date?1:-1;}).map(function(i){return '<div style="display:flex;justify-content:space-between;gap:12px"><span>'+esc(supById[i.supplier].short)+' '+esc(i.nr)+'</span><span class="num muted">'+fmtDate(i.date)+'</span></div>';}).join('')+
-      '</div></div></section>';
+  /* ---------- Lägg till faktura ---------- */
+  var invDb = null, invAssets = null, invSample = null, invImgOk = false, invState = 'loading', invMsg = '', invBusy = false;
+  var invFile = null, invPreviewUrl = null, invEditing = null, invReview = null, invDelArm = null;
+  var PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  function blankForm(){ return { supplierId:'thessen', supplierName:'', nr:'', date:'', due:'', kind:'Grund', project:'', exMoms:'', moms:'', rounding:'', rot:'', toPay:'', note:'', post:'', lines:[], pdf:null, pdfName:'', pdfType:'' }; }
+  var invForm = blankForm();
+  function invPosts(){ return (NB.rows||[]).filter(function(r){ return !/^schab/.test(r.id); }).map(function(r){ return {id:r.id, name:r.name}; }); }
+  function slagOpts(){ return (D.slag||[]).concat(['Ospecificerat']); }
+  function numv(v){ if(v===''||v==null) return ''; var n = nbParse(v); return n==null ? '' : n; }
+  function loadPdfJs(){
+    if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    return new Promise(function(res, rej){
+      var sc = document.createElement('script'); sc.src = PDFJS+'pdf.min.js';
+      sc.onload = function(){ try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS+'pdf.worker.min.js'; }catch(e){} res(window.pdfjsLib); };
+      sc.onerror = function(){ rej(new Error('pdf.js kunde inte laddas')); };
+      document.head.appendChild(sc);
+    });
   }
+  function pdfDoc(buf){ return loadPdfJs().then(function(lib){ return lib.getDocument({data:new Uint8Array(buf)}).promise; }); }
+  function pdfText(doc){
+    var n = Math.min(doc.numPages, 12), ps = [];
+    for(var i=1;i<=n;i++) ps.push(doc.getPage(i).then(function(pg){ return pg.getTextContent().then(function(tc){ return tc.items.map(function(x){return x.str;}).join(' '); }); }));
+    return Promise.all(ps).then(function(t){ return t.map(function(x,i){return '--- Sida '+(i+1)+' ---\n'+x;}).join('\n'); });
+  }
+  function pdfImages(doc, max){
+    var n = Math.min(doc.numPages, max||4), ps = [];
+    for(var i=1;i<=n;i++) ps.push(doc.getPage(i).then(function(pg){
+      var vp = pg.getViewport({scale:1.6}), c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+      return pg.render({canvasContext:c.getContext('2d'), viewport:vp}).promise.then(function(){ return new Promise(function(r){ c.toBlob(r,'image/jpeg',0.85); }); });
+    }));
+    return Promise.all(ps);
+  }
+  function invSetMsg(t, kind){ invMsg = t ? '<p class="'+(kind==='bad'?'diff-pos':kind==='ok'?'diff-neg':'muted')+'" style="margin:0">'+esc(t)+'</p>' : ''; var el = document.getElementById('inv-msg'); if(el) el.innerHTML = invMsg; }
+
+  function renderAdd(){
+    var f = invForm, posts = invPosts(), canWrite = !!invDb;
+    var h = '<section class="panel">';
+    h += '<div class="block"><div><div class="eyebrow">Fakturor som läggs till här sparas i appen och räknas in i alla flikar</div><h2 style="font-size:24px;margin-top:4px">'+(invEditing?'Redigera faktura':'Lägg till faktura')+'</h2></div>';
+    if(!canWrite) h += '<div class="banner"><p>'+(invState==='loading'?'Ansluter till appens lagring…':'Fakturor kan bara sparas när appen är öppen i Claude och du har behörighet att redigera.')+'</p></div>';
+    // step 1 upload
+    h += '<div class="card addcard"><div class="addstep"><span class="stepn">1</span><div><b>Ladda upp fakturan</b><span class="desc">PDF eller bild, högst 20 MB.'+(invAssets?' Filen sparas med fakturan.':' Filen kan inte sparas i den här vyn, men uppgifterna kan läsas ut.')+'</span></div></div>'+
+      '<div class="addrow"><input type="file" id="inv-file" accept="application/pdf,image/png,image/jpeg,image/webp" aria-label="Välj fakturafil">'+
+      (invFile ? '<span class="tag ok">'+esc(invFile.name)+'</span>' : (f.pdf ? '<span class="tag ok">Sparad fil: '+esc(f.pdfName||'faktura')+'</span>' : ''))+
+      '<button class="chip askgo" id="inv-extract" '+((invFile&&invSample&&!invBusy)?'':'disabled')+'>Läs ut uppgifter med Claude</button></div>'+
+      (invSample ? '' : '<p class="faint" style="margin:0;font-size:12.5px">Utläsning med Claude fungerar bara i Claude-appen. Fyll annars i fälten nedan.</p>')+
+      '</div>';
+    // step 2 form
+    var sel = function(id, opts, val){ return '<select id="'+id+'">'+opts.map(function(o){ return '<option value="'+esc(o[0])+'"'+(String(o[0])===String(val)?' selected':'')+'>'+esc(o[1])+'</option>'; }).join('')+'</select>'; };
+    var supOpts = BASE_SUP.map(function(x){return [x.id, x.name];});
+    added.forEach(function(d){ var id = addedSupplier(d); if(d.supplierName && !supOpts.some(function(o){return o[0]===id;})) supOpts.push([id, d.supplierName]); });
+    supOpts.push(['ny','Ny leverantör…']);
+    var fld = function(id,label,val,type,extra){ return '<label class="fld"><span>'+label+'</span><input id="'+id+'" '+(type?'type="'+type+'"':'inputmode="decimal"')+' value="'+esc(val)+'" '+(extra||'')+'></label>'; };
+    var lineSum = f.lines.reduce(function(a,l){return a+(Number(numv(l.amount))||0);},0), ex = Number(numv(f.exMoms))||0;
+    var calcPay = r2((Number(numv(f.exMoms))||0)+(Number(numv(f.moms))||0)+(Number(numv(f.rounding))||0)-(Number(numv(f.rot))||0));
+    h += '<div class="card addcard"><div class="addstep"><span class="stepn">2</span><div><b>Granska uppgifterna</b><span class="desc">Belopp i kronor. Raderna anges exkl. moms och kopplas till en post i Ny budget.</span></div></div>';
+    h += '<div class="fgrid">'+
+      '<label class="fld"><span>Leverantör</span>'+sel('f-supplierId', supOpts, f.supplierId)+'</label>'+
+      (f.supplierId==='ny' ? fld('f-supplierName','Ny leverantör, namn',f.supplierName,'text') : '')+
+      fld('f-nr','Fakturanummer',f.nr,'text')+
+      fld('f-date','Fakturadatum',f.date,'date')+
+      fld('f-due','Förfallodatum',f.due,'date')+
+      '<label class="fld"><span>Typ</span>'+sel('f-kind', [['Grund','Grund'],['ÄTA','ÄTA']], f.kind)+'</label>'+
+      fld('f-project','Projekt / avser',f.project,'text')+
+      fld('f-exMoms','Exkl. moms',f.exMoms)+
+      fld('f-moms','Moms',f.moms)+
+      fld('f-rounding','Öresavrundning',f.rounding)+
+      fld('f-rot','ROT-avdrag (positivt tal)',f.rot)+
+      fld('f-toPay','Att betala',f.toPay,null,'placeholder="'+esc(nbNum(calcPay))+'"')+
+      '<label class="fld"><span>Post för ej fördelat belopp</span>'+sel('f-post', [['','Ej kopplad']].concat(posts.map(function(p){return [p.id,p.name];})), f.post)+'</label>'+
+      '</div>';
+    h += '<label class="fld" style="margin-top:10px"><span>Anteckning</span><input id="f-note" type="text" value="'+esc(f.note)+'"></label>';
+    h += '<div class="nblwrap" style="margin-top:12px"><table class="nbl addlines"><thead><tr><th>Rad</th><th class="n">Belopp exkl. moms</th><th>Post i Ny budget</th><th>Kostnadsslag</th><th></th></tr></thead><tbody>';
+    f.lines.forEach(function(l,i){
+      h += '<tr><td><input class="nbtext" data-li="'+i+'" data-lf="text" value="'+esc(l.text)+'" aria-label="Radtext"></td>'+
+        '<td class="n"><input class="nbin" data-li="'+i+'" data-lf="amount" value="'+esc(l.amount===''?'':nbDec(Number(numv(l.amount))))+'" inputmode="decimal" aria-label="Belopp"></td>'+
+        '<td><select data-li="'+i+'" data-lf="post">'+[['','Ej kopplad']].concat(posts.map(function(p){return [p.id,p.name];})).map(function(o){return '<option value="'+o[0]+'"'+(o[0]===(l.post||'')?' selected':'')+'>'+esc(o[1])+'</option>';}).join('')+'</select></td>'+
+        '<td><select data-li="'+i+'" data-lf="slag">'+slagOpts().map(function(o){return '<option'+(o===(l.slag||'Ospecificerat')?' selected':'')+'>'+esc(o)+'</option>';}).join('')+'</select></td>'+
+        '<td><button class="nbreset" data-ldel="'+i+'" aria-label="Ta bort raden">×</button></td></tr>';
+    });
+    h += '<tr class="sub"><td>Summa rader'+(f.lines.length?'':' (inga rader: hela beloppet läggs på vald post)')+'</td><td class="n">'+kr(lineSum)+'</td><td colspan="3">'+(f.lines.length && Math.abs(lineSum-ex)>=0.5 ? '<span class="tag warn">Avviker från exkl. moms med '+kr(ex-lineSum)+'. Mellanskillnaden läggs på "Post för ej fördelat belopp".</span>' : (f.lines.length?'<span class="tag ok">Stämmer med exkl. moms</span>':''))+'</td></tr>';
+    h += '</tbody></table></div><button class="chip nbadd" id="inv-addline">+ Lägg till rad</button>';
+    h += '<div id="inv-msg">'+invMsg+'</div>';
+    h += '<div class="addrow"><button class="chip askgo" id="inv-save" '+((canWrite&&!invBusy)?'':'disabled')+'>'+(invEditing?'Spara ändringar':'Spara faktura')+'</button><button class="chip" id="inv-reset">'+(invEditing?'Avbryt':'Töm formuläret')+'</button></div>';
+    h += '</div></div>';
+    // step 3 list
+    h += '<div class="block" id="inv-list">'+renderAddedList()+'</div>';
+    if(invReview) h += '<div class="block" id="inv-review">'+renderReview()+'</div>';
+    h += '<p class="foot">Fakturor kan också läggas in via chatten med Claude. Då granskas även bilagorna från underleverantörerna och påslaget räknas fram.</p>';
+    return h + '</section>';
+  }
+  function renderAddedList(){
+    var h = '<div class="head"><h2>Tillagda fakturor</h2><span class="muted">'+added.length+' st</span></div>';
+    if(!added.length) return h + '<p class="muted" style="margin:0">Inga tillagda fakturor än.</p>';
+    h += '<div class="card scroll"><table><thead><tr><th>Datum</th><th>Leverantör</th><th>Nr</th><th>Typ</th><th class="n">Exkl. moms</th><th class="n">Att betala</th><th>Fil</th><th></th></tr></thead><tbody>';
+    added.slice().sort(function(a,b){return (a.date||'')<(b.date||'')?1:-1;}).forEach(function(d){
+      var inv = toInv(d), sup = supById[inv.supplier];
+      h += '<tr><td class="num" style="text-align:left">'+(d.date?fmtDate(d.date):'–')+'</td><td>'+esc(sup?sup.short:d.supplierName)+'</td><td>'+esc(inv.nr)+'</td><td><span class="tag '+(inv.kind==='ÄTA'?'ata':'grund')+'">'+inv.kind+'</span></td><td class="n">'+kr(inv.exMoms)+'</td><td class="n">'+kr(inv.toPay)+'</td>'+
+        '<td>'+(d.pdf?'<span class="tag ok">'+(/pdf/.test(d.pdfType||'pdf')?'PDF':'Bild')+'</span>':'<span class="faint">–</span>')+'</td>'+
+        '<td style="white-space:nowrap"><button class="chip" data-review="'+esc(d._id)+'">Granska</button> '+(invDb?'<button class="chip" data-edit="'+esc(d._id)+'">Redigera</button> <button class="chip" data-del="'+esc(d._id)+'">'+(invDelArm===d._id?'Klicka igen för att ta bort':'Ta bort')+'</button>':'')+'</td></tr>';
+    });
+    return h + '</tbody></table></div>';
+  }
+  function renderReview(){
+    var d = added.filter(function(x){return x._id===invReview;})[0]; if(!d) return '';
+    var inv = toInv(d), sup = supById[inv.supplier];
+    var h = '<div class="card addcard"><div class="head"><h2>'+esc(sup?sup.name:d.supplierName)+', faktura '+esc(inv.nr)+'</h2><button class="chip" id="inv-close">Stäng</button></div>';
+    h += '<div class="facts" style="padding:0"><span>Datum <b>'+(d.date?fmtDate(d.date):'–')+'</b></span><span>Förfaller <b>'+(inv.due?fmtDate(inv.due):'–')+'</b></span><span>Typ <b>'+inv.kind+'</b></span><span>Exkl. moms <b>'+k2(inv.exMoms)+'</b></span><span>Moms <b>'+k2(inv.moms)+'</b></span>'+(inv.rot?'<span>ROT <b>−'+k2(inv.rot)+'</b></span>':'')+'<span>Att betala <b>'+k2(inv.toPay)+'</b></span></div>';
+    if(d.project) h += '<p class="muted" style="margin:0">'+esc(d.project)+'</p>';
+    if(d.note) h += '<p style="margin:0"><span class="tag warn">Anteckning</span> '+esc(d.note)+'</p>';
+    h += '<div class="scroll"><table class="nbl"><thead><tr><th>Rad</th><th>Post i Ny budget</th><th>Kostnadsslag</th><th class="n">Exkl. moms</th></tr></thead><tbody>';
+    inv.lines.forEach(function(l){ var pr = (NB.rows||[]).filter(function(x){return x.id===l.nbRow;})[0];
+      h += '<tr><td>'+esc(l.text)+'</td><td>'+(pr?esc(pr.name):'<span class="faint">Ej kopplad</span>')+'</td><td>'+esc(l.slag)+'</td><td class="n">'+k2(l.amount)+'</td></tr>'; });
+    h += '</tbody></table></div>';
+    if(d.pdf){
+      h += '<div class="addrow"><a class="chip" href="/_blob/'+encodeURIComponent(d.pdf)+'" target="_blank" rel="noopener">Öppna filen i ny flik</a><span class="faint">'+esc(d.pdfName||'')+'</span></div>';
+      h += /^image\//.test(d.pdfType||'') ? '<img src="/_blob/'+encodeURIComponent(d.pdf)+'" alt="Fakturabild" class="invimg">' : '<div id="inv-pages" class="invpages"><p class="faint">Laddar PDF…</p></div>';
+    } else h += '<p class="faint" style="margin:0">Ingen fil sparad med fakturan.</p>';
+    return h + '</div>';
+  }
+  function renderPdfPreview(){
+    var d = added.filter(function(x){return x._id===invReview;})[0], box = document.getElementById('inv-pages');
+    if(!d || !d.pdf || !box) return;
+    fetch('/_blob/'+encodeURIComponent(d.pdf)).then(function(r){ if(!r.ok) throw new Error('status '+r.status); return r.arrayBuffer(); })
+      .then(pdfDoc).then(function(doc){
+        box.innerHTML = '';
+        var n = Math.min(doc.numPages, 20), chain = Promise.resolve();
+        for(var i=1;i<=n;i++)(function(i){ chain = chain.then(function(){ return doc.getPage(i).then(function(pg){
+          var w = Math.min(box.clientWidth||800, 900), vp0 = pg.getViewport({scale:1}), vp = pg.getViewport({scale: (w/vp0.width)*(window.devicePixelRatio||1)});
+          var c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height; c.style.width = '100%'; c.setAttribute('aria-label','Sida '+i);
+          box.appendChild(c); return pg.render({canvasContext:c.getContext('2d'), viewport:vp}).promise; }); }); })(i);
+        if(doc.numPages>n) chain.then(function(){ var p = document.createElement('p'); p.className='faint'; p.textContent='Visar '+n+' av '+doc.numPages+' sidor. Öppna filen för resten.'; box.appendChild(p); });
+      }).catch(function(){ box.innerHTML = '<p class="faint">PDF:en kunde inte visas här. Använd "Öppna filen i ny flik".</p>'; });
+  }
+  function readForm(){
+    var g = function(id){ var el = document.getElementById(id); return el ? el.value : undefined; };
+    ['supplierId','supplierName','nr','date','due','kind','project','exMoms','moms','rounding','rot','toPay','note','post'].forEach(function(k){ var v = g('f-'+k); if(v!==undefined) invForm[k] = v; });
+  }
+  function addRender(){ if(current!=='uppdatera') return; var y = window.scrollY; view.innerHTML = renderAdd(); bindAdd(); window.scrollTo(0,y); }
+  function bindAdd(){
+    var fi = document.getElementById('inv-file');
+    if(fi) fi.addEventListener('change', function(){ readForm(); invFile = fi.files && fi.files[0] || null; if(invFile && invFile.size > 20*1024*1024){ invSetMsg('Filen är större än 20 MB.','bad'); invFile = null; } addRender(); });
+    view.querySelectorAll('.fgrid input, .fgrid select, #f-note').forEach(function(el){
+      el.addEventListener('change', function(){ readForm(); if(el.id==='f-supplierId' || /exMoms|moms|rounding|rot/.test(el.id)) addRender(); });
+    });
+    view.querySelectorAll('[data-li]').forEach(function(el){
+      el.addEventListener('change', function(){ readForm(); var l = invForm.lines[+el.dataset.li]; if(!l) return; l[el.dataset.lf] = el.value; if(el.dataset.lf==='amount' || el.tagName==='SELECT') addRender(); });
+    });
+    view.querySelectorAll('[data-ldel]').forEach(function(b){ b.addEventListener('click', function(){ readForm(); invForm.lines.splice(+b.dataset.ldel,1); addRender(); }); });
+    var al = document.getElementById('inv-addline'); if(al) al.addEventListener('click', function(){ readForm(); invForm.lines.push({text:'', amount:'', post: invForm.post||'', slag:'Ospecificerat'}); addRender(); });
+    var rs = document.getElementById('inv-reset'); if(rs) rs.addEventListener('click', function(){ invForm = blankForm(); invFile = null; invEditing = null; invSetMsg(''); addRender(); });
+    var sv = document.getElementById('inv-save'); if(sv) sv.addEventListener('click', function(){ readForm(); invSave(); });
+    var ex = document.getElementById('inv-extract'); if(ex) ex.addEventListener('click', function(){ readForm(); invExtract(); });
+    view.querySelectorAll('[data-review]').forEach(function(b){ b.addEventListener('click', function(){ invReview = b.dataset.review; addRender(); var r = document.getElementById('inv-review'); if(r) r.scrollIntoView({behavior:'smooth'}); renderPdfPreview(); }); });
+    view.querySelectorAll('[data-edit]').forEach(function(b){ b.addEventListener('click', function(){ var d = added.filter(function(x){return x._id===b.dataset.edit;})[0]; if(!d) return;
+      invEditing = d._id; invFile = null; invForm = Object.assign(blankForm(), JSON.parse(JSON.stringify(d))); delete invForm._id; invForm.lines = (invForm.lines||[]).map(function(l){ return Object.assign({text:'',amount:'',post:'',slag:'Ospecificerat'}, l); });
+      ['exMoms','moms','rounding','rot','toPay'].forEach(function(k){ if(invForm[k]!=null && invForm[k]!=='') invForm[k] = nbDec(Number(invForm[k])); });
+      invSetMsg('Redigerar faktura '+(d.nr||'')+'. Spara när du är klar.'); addRender(); window.scrollTo(0,0); }); });
+    view.querySelectorAll('[data-del]').forEach(function(b){ b.addEventListener('click', function(){ var id = b.dataset.del;
+      if(invDelArm!==id){ invDelArm = id; addRender(); setTimeout(function(){ if(invDelArm===id){ invDelArm=null; addRender(); } }, 4000); return; }
+      invDelArm = null; invDelete(id); }); });
+    var cl = document.getElementById('inv-close'); if(cl) cl.addEventListener('click', function(){ invReview = null; addRender(); });
+    if(invReview) renderPdfPreview();
+  }
+  function invValidate(f){
+    if(f.supplierId==='ny' && !String(f.supplierName||'').trim()) return 'Ange leverantörens namn.';
+    if(!String(f.nr||'').trim()) return 'Ange fakturanummer.';
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(f.date||'')) return 'Ange fakturadatum.';
+    if(numv(f.exMoms)==='') return 'Ange belopp exkl. moms.';
+    return '';
+  }
+  function invSave(){
+    var err = invValidate(invForm); if(err){ invSetMsg(err,'bad'); return; }
+    if(!invDb){ invSetMsg('Kan inte spara i den här vyn.','bad'); return; }
+    invBusy = true; invSetMsg('Sparar…'); var f = invForm;
+    var up = (invFile && invAssets) ? invAssets.upload(invFile, {type: invFile.type || 'application/pdf'}) : Promise.resolve(null);
+    up.then(function(res){
+      var doc = { supplierId:f.supplierId, supplierName: f.supplierId==='ny' ? String(f.supplierName).trim() : ((BASE_SUP.filter(function(x){return x.id===f.supplierId;})[0]||{}).name || f.supplierName || ''),
+        nr:String(f.nr).trim(), date:f.date, due:f.due||'', kind:f.kind, project:f.project||'', note:f.note||'', post:f.post||'',
+        exMoms:numv(f.exMoms), moms:numv(f.moms)===''?0:numv(f.moms), rounding:numv(f.rounding)===''?0:numv(f.rounding), rot:numv(f.rot)===''?0:numv(f.rot), toPay:numv(f.toPay),
+        lines: f.lines.filter(function(l){ return String(l.text||'').trim() || numv(l.amount)!==''; }).map(function(l){ return {text:String(l.text||'').trim().slice(0,200), amount:numv(l.amount)===''?0:numv(l.amount), post:l.post||'', slag:l.slag||'Ospecificerat'}; }),
+        pdf: res ? res.id : (f.pdf||null), pdfName: res ? invFile.name : (f.pdfName||''), pdfType: res ? (invFile.type||'application/pdf') : (f.pdfType||''),
+        updatedAt: new Date().toISOString() };
+      if(doc.supplierId!=='thessen' && doc.supplierId!=='arkitekt' && doc.supplierId!=='ny'){ doc.supplierId = 'ny'; }
+      var ref = invEditing ? invDb.collection('fakturor').doc(invEditing) : invDb.collection('fakturor').doc();
+      if(!invEditing) doc.createdAt = doc.updatedAt;
+      return ref.set(invEditing ? Object.assign({createdAt: (added.filter(function(x){return x._id===invEditing;})[0]||{}).createdAt||doc.updatedAt}, doc) : doc).then(function(){ return ref.id; });
+    }).then(function(id){
+      invBusy = false; var wasEdit = !!invEditing; invEditing = null; invFile = null; invForm = blankForm(); invReview = id;
+      invSetMsg(wasEdit ? 'Ändringarna är sparade.' : 'Fakturan är sparad och räknas nu in i appen.','ok'); addRender();
+    }).catch(function(e){
+      invBusy = false; var c = e && e.code;
+      invSetMsg({too_large:'Filen är för stor (max 20 MB).', unsupported_type:'Filtypen stöds inte. Använd PDF, PNG, JPEG eller WebP.', quota_or_state:'Lagringen är full.', invalid_argument:'Du har inte behörighet att spara i appen.', not_granted:'Uppladdning är inte tillåten i den här vyn.'}[c] || 'Det gick inte att spara. Försök igen.','bad'); addRender();
+    });
+  }
+  function invDelete(id){
+    var d = added.filter(function(x){return x._id===id;})[0]; if(!d || !invDb) return;
+    invDb.collection('fakturor').doc(id).delete().then(function(){
+      if(d.pdf && invAssets) invAssets.delete(d.pdf).catch(function(){});
+      if(invReview===id) invReview = null; invSetMsg('Fakturan är borttagen.','ok');
+    }, function(){ invSetMsg('Det gick inte att ta bort fakturan.','bad'); addRender(); });
+  }
+  function invExtract(){
+    if(!invFile || !invSample) return;
+    invBusy = true; invSetMsg('Läser filen…'); addRender();
+    var isImg = /^image\//.test(invFile.type), posts = invPosts(), slags = slagOpts();
+    var prompt = function(text){ return 'Du läser en faktura för renoveringen av Karlavägen 71. Huvudentreprenör är Thessén & Ek, arkitekt Viktor Erlandsson & Artefacts AB.\n'+
+      'Returnera ENBART ett JSON-objekt: {"leverantor":string,"fakturanummer":string,"fakturadatum":"YYYY-MM-DD","forfallodatum":"YYYY-MM-DD","typ":"Grund"|"ÄTA","projekt":string,"exklMoms":number,"moms":number,"oresavrundning":number,"rotAvdrag":number,"attBetala":number,'+
+      '"rader":[{"text":string,"belopp":number,"post":string,"slag":string}]}.\n'+
+      'Belopp i kronor som tal (punkt som decimaltecken). Radbelopp exkl. moms. rotAvdrag som positivt tal, 0 om inget. typ = "ÄTA" om fakturan avser ÄTA/tilläggsarbeten, annars "Grund".\n'+
+      'Ta med fakturans egna rader (inte bilagornas). Slå ihop rader av samma slag och moment, högst 15 rader. Raderna ska tillsammans bli exklMoms.\n'+
+      'post = id för den post i Ny budget som raden bäst hör till, eller "" om oklart. Poster: '+posts.map(function(p){return p.id+' = '+p.name;}).join('; ')+'.\n'+
+      'Regler: arbetsledning, förbrukningsmaterial, transporter, servicebil, parkering och maskinhyra hör till allm. Arbeten i en ÄTA hör till respektive ÄTA-post, eller ata1 om ingen annan passar. Arkitektarvode hör till ark.\n'+
+      'slag = en av: '+slags.join(', ')+'.\n'+
+      (text ? '\nFAKTURANS TEXT:\n'+text.slice(0,60000) : '\nFakturan finns i bifogade bilder.'); };
+    var go = function(text, imgs){
+      var opts = { modelTier:'default' }; if(imgs && imgs.length) opts.images = imgs;
+      invSetMsg('Claude läser fakturan… det kan ta upp till en minut.');
+      return invSample.json(prompt(text), opts);
+    };
+    var p;
+    if(isImg){ p = invImgOk ? go('', [invFile]) : Promise.reject({code:'images_unavailable'}); }
+    else p = invFile.arrayBuffer().then(pdfDoc).then(function(doc){
+      return pdfText(doc).then(function(t){
+        if(t.replace(/--- Sida \d+ ---|\s/g,'').length > 200) return go(t);
+        if(!invImgOk) throw {code:'images_unavailable'};
+        return pdfImages(doc, 4).then(function(imgs){ return go('', imgs); });
+      });
+    });
+    p.then(function(j){
+      if(!j || typeof j!=='object') throw {code:'invalid_json'};
+      var f = invForm, name = String(j.leverantor||'');
+      if(/thess/i.test(name)) f.supplierId = 'thessen'; else if(/erlandsson|artefacts|str design/i.test(name)) f.supplierId = 'arkitekt'; else if(name){ f.supplierId = 'ny'; f.supplierName = name; }
+      var ds = function(v){ return /^\d{4}-\d{2}-\d{2}$/.test(String(v||'')) ? String(v) : ''; };
+      var nv = function(v){ var n = Number(v); return isFinite(n) && v!==null && v!=='' ? nbDec(n) : ''; };
+      f.nr = String(j.fakturanummer||f.nr||''); f.date = ds(j.fakturadatum)||f.date; f.due = ds(j.forfallodatum)||f.due; f.kind = j.typ==='ÄTA'?'ÄTA':'Grund';
+      f.project = String(j.projekt||f.project||''); f.exMoms = nv(j.exklMoms); f.moms = nv(j.moms); f.rounding = nv(j.oresavrundning); f.rot = nv(j.rotAvdrag); f.toPay = nv(j.attBetala);
+      var ids = posts.map(function(x){return x.id;});
+      f.lines = (Array.isArray(j.rader)?j.rader:[]).slice(0,30).map(function(r){ return { text:String(r.text||'').slice(0,200), amount: nv(r.belopp), post: ids.indexOf(r.post)>=0 ? r.post : '', slag: slags.indexOf(r.slag)>=0 ? r.slag : 'Ospecificerat' }; });
+      invBusy = false; invSetMsg('Uppgifterna är ifyllda. Granska dem, särskilt belopp och poster, innan du sparar.','ok'); addRender();
+    }).catch(function(e){
+      invBusy = false; var c = e && e.code;
+      invSetMsg({images_unavailable:'Filen saknar läsbar text och bilder kan inte skickas här. Fyll i fälten själv.', not_granted:'Claude får inte användas i den här vyn.', rate_limited:'För många förfrågningar just nu. Försök igen om en stund.', invalid_json:'Claude kunde inte tolka fakturan. Fyll i fälten själv eller försök igen.', cancelled:'Avbrutet.'}[c] || ('Det gick inte att läsa fakturan'+(e&&e.message&&!c?' ('+e.message+')':'')+'. Fyll i fälten själv.'),'bad'); addRender();
+    });
+  }
+  function onAddedChange(){
+    compute(); updateMeta(); buildTabs();
+    var a = document.activeElement, typing = a && view.contains(a) && /INPUT|SELECT|TEXTAREA/.test(a.tagName);
+    if(current==='uppdatera'){ var l = document.getElementById('inv-list'); if(typing && l){ l.innerHTML = renderAddedList(); bindAdd(); } else addRender(); }
+    else if(!typing) show(current);
+  }
+  if(window.claude && typeof window.claude.use==='function'){
+    window.claude.use('db').then(function(db){
+      if(!db){ invState = 'off'; addRender(); return; }
+      invDb = db; invState = 'on';
+      db.collection('fakturor').onSnapshot(function(snap){
+        added = snap.docs.map(function(d){ return Object.assign({_id:d.id}, d.data()); });
+        onAddedChange();
+      }, function(){ invState = 'off'; addRender(); });
+      addRender();
+    }, function(){ invState = 'off'; addRender(); });
+    window.claude.use('assets').then(function(a){ invAssets = a || null; addRender(); }, function(){});
+    window.claude.use('sample').then(function(fn){ invSample = fn || null; if(fn && fn.limits) fn.limits().then(function(l){ invImgOk = !!(l && l.images); }, function(){}); addRender(); }, function(){});
+  } else invState = 'off';
 
   var start = 'sammanstallning';
   try{ start = (location.hash||'').slice(1) || localStorage.getItem('kv71-tab') || start; }catch(e){}
