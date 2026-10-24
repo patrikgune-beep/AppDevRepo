@@ -1370,6 +1370,7 @@ table.addlines input.nbin{width:9em}
       project:doc.project||'Tillagd faktura', exMoms:ex, moms:moms, rounding:rnd, rot:rot, toPay: doc.toPay!=null && doc.toPay!=='' ? Number(doc.toPay) : r2(ex+moms+rnd-rot),
       note: doc.note||'', pdf: doc.pdf||null, pdfName: doc.pdfName||'', pdfType: doc.pdfType||'', lines: lines };
   }
+  function baseVisible(){ return hiddenBase.length < BASE_INV.length; }
   function compute(){
     D.invoices = BASE_INV.filter(function(i){ return hiddenBase.indexOf(i.id)<0; }).concat(added.map(toInv));
     var sups = BASE_SUP.slice();
@@ -1576,12 +1577,14 @@ table.addlines input.nbin{width:9em}
     h += '</tbody></table></div><p class="faint" style="margin:0;font-size:12.5px">Gul förfallodag = ligger efter '+fmtDate(today)+'. Betalstatus registreras inte i appen.</p></div>';
 
     // Att kontrollera
+    if(baseVisible()){
     h += '<div class="block"><div class="head"><h2>Att kontrollera</h2></div><div class="card checks">';
     D.checks.forEach(function(c){
       h += '<div class="check"><span class="tag '+(c.level==='warn'?'warn':'')+'">'+(c.level==='warn'?'Åtgärd':'Info')+'</span><div><p class="t">'+esc(c.title)+'</p><p class="muted">'+esc(c.text)+'</p></div></div>';
     });
     h += '</div></div>';
-    h += '<p class="foot">Alla belopp i SEK. Utfall per arbetsmoment och utförare räknas exkl. moms. Påslaget fördelas på samma moment som den rad det hör till.'+(hiddenBase.length?' Kontrollpunkterna ovan gäller de ursprungligen inlästa fakturorna.':'')+'</p>';
+    }
+    h += '<p class="foot">Alla belopp i SEK. Utfall per arbetsmoment och utförare räknas exkl. moms. Påslaget fördelas på samma moment som den rad det hör till.'+(hiddenBase.length && baseVisible()?' Kontrollpunkterna ovan gäller de ursprungligen inlästa fakturorna.':'')+'</p>';
     h += renderReset();
     return h + '</section>';
   }
@@ -2216,7 +2219,7 @@ table.addlines input.nbin{width:9em}
     // Summering
     var fav = terms.filter(function(t){return t.status==='fav';}).reduce(function(a,t){return a-t.diff;},0);
     var devPrice = terms.filter(function(t){return t.status==='dev'||t.status==='check'||t.status==='gap';}).reduce(function(a,t){return a+Math.max(0,t.diff);},0);
-    var man = C.manual||[];
+    var man = baseVisible() ? (C.manual||[]) : [];
     var manCheck = man.filter(function(m){return m.status==='check';}).reduce(function(a,m){return a+m.amount;},0);
     var nDev = terms.filter(function(t){return t.status!=='ok'&&t.status!=='fav';}).length + man.length;
 
