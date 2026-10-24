@@ -198,6 +198,7 @@ table.addlines input.nbin{width:9em}
 .chk{display:flex;gap:8px;align-items:center;font-size:14px}
 .dangerbtn{background:var(--bad);color:#fff;border-color:var(--bad)}
 .resetcard .desc{display:block;font-size:13px;color:var(--ink-2)}
+tr.qcur td{background:var(--accent-soft)}
 @media (max-width:560px){
   .wrap{padding-inline:16px}
   td,th{padding:8px 8px}
@@ -2340,10 +2341,10 @@ table.addlines input.nbin{width:9em}
     h += '<div class="block"><div><div class="eyebrow">Fakturor som läggs till här sparas i appen och räknas in i alla flikar</div><h2 style="font-size:24px;margin-top:4px">'+(invEditing?'Redigera faktura':'Lägg till faktura')+'</h2></div>';
     if(!canWrite) h += '<div class="banner"><p>'+(invState==='loading'?'Ansluter till appens lagring…':'Fakturor kan bara sparas när appen är öppen i Claude och du har behörighet att redigera.')+'</p></div>';
     // step 1 upload
-    h += '<div class="card addcard"><div class="addstep"><span class="stepn">1</span><div><b>Ladda upp fakturan</b><span class="desc">PDF eller bild, högst 20 MB. Alla sidor läses, även inskannade bilagor.'+(invAssets?' Filen sparas med fakturan.':' Filen kan inte sparas i den här vyn, men uppgifterna kan läsas ut.')+'</span></div></div>'+
-      '<div class="addrow"><input type="file" id="inv-file" accept="application/pdf,image/png,image/jpeg,image/webp" aria-label="Välj fakturafil">'+
-      (invFile ? '<span class="tag ok">'+esc(invFile.name)+'</span>' : (f.pdf ? '<span class="tag ok">Sparad fil: '+esc(f.pdfName||'faktura')+'</span>' : ''))+
-      '<button class="chip askgo" id="inv-extract" '+((invFile&&invSample&&!invBusy)?'':'disabled')+'>Läs ut uppgifter med Claude</button></div>'+
+    h += '<div class="card addcard"><div class="addstep"><span class="stepn">1</span><div><b>Ladda upp fakturor</b><span class="desc">Välj en eller flera filer, PDF eller bild, högst 20 MB styck. Alla sidor läses, även inskannade bilagor.'+(invAssets?' Filen sparas med fakturan.':' Filen kan inte sparas i den här vyn, men uppgifterna kan läsas ut.')+'</span></div></div>'+
+      '<div class="addrow"><input type="file" id="inv-file" multiple accept="application/pdf,image/png,image/jpeg,image/webp" aria-label="Välj en eller flera fakturafiler">'+
+      (invEditing && f.pdf ? '<span class="tag ok">Sparad fil: '+esc(f.pdfName||'faktura')+'</span>' : '')+'</div>'+
+      '<div id="inv-queue">'+renderQueue()+'</div>'+
       (invSample ? '' : '<p class="faint" style="margin:0;font-size:12.5px">Utläsning med Claude fungerar bara i Claude-appen. Fyll annars i fälten nedan.</p>')+
       '</div>';
     // step 2 form
@@ -2354,7 +2355,7 @@ table.addlines input.nbin{width:9em}
     var fld = function(id,label,val,type,extra){ return '<label class="fld"><span>'+label+'</span><input id="'+id+'" '+(type?'type="'+type+'"':'inputmode="decimal"')+' value="'+esc(val)+'" '+(extra||'')+'></label>'; };
     var lineSum = f.lines.reduce(function(a,l){return a+(Number(numv(l.amount))||0);},0), ex = Number(numv(f.exMoms))||0;
     var calcPay = r2((Number(numv(f.exMoms))||0)+(Number(numv(f.moms))||0)+(Number(numv(f.rounding))||0)-(Number(numv(f.rot))||0));
-    h += '<div class="card addcard"><div class="addstep"><span class="stepn">2</span><div><b>Granska uppgifterna</b><span class="desc">Belopp i kronor. Raderna anges exkl. moms och kopplas till en post i Ny budget.</span></div></div>';
+    h += '<div class="card addcard" id="inv-form"><div class="addstep"><span class="stepn">2</span><div><b>Granska uppgifterna'+(invQIdx>=0&&invQueue[invQIdx]?': '+esc(invQueue[invQIdx].file.name):'')+'</b><span class="desc">Belopp i kronor. Raderna anges exkl. moms och kopplas till en post i Ny budget.</span></div></div>';
     h += '<div class="fgrid">'+
       '<label class="fld"><span>Leverantör</span>'+sel('f-supplierId', supOpts, f.supplierId)+'</label>'+
       (f.supplierId==='ny' ? fld('f-supplierName','Ny leverantör, namn',f.supplierName,'text') : '')+
@@ -2493,7 +2494,8 @@ table.addlines input.nbin{width:9em}
   function addRender(){ if(current!=='uppdatera') return; var y = window.scrollY; view.innerHTML = renderAdd(); bindAdd(); window.scrollTo(0,y); }
   function bindAdd(){
     var fi = document.getElementById('inv-file');
-    if(fi) fi.addEventListener('change', function(){ readForm(); invFile = fi.files && fi.files[0] || null; if(invFile && invFile.size > 20*1024*1024){ invSetMsg('Filen är större än 20 MB.','bad'); invFile = null; } addRender(); });
+    if(fi) fi.addEventListener('change', function(){ readForm(); if(invQIdx>=0 && invQueue[invQIdx] && invQueue[invQIdx].status!=='sparad') invQueue[invQIdx].form = clone(invForm); if(fi.files && fi.files.length) addFilesToQueue(fi.files); addRender(); });
+    bindQueue();
     view.querySelectorAll('.fgrid input, .fgrid select, #f-note').forEach(function(el){
       el.addEventListener('change', function(){ readForm(); if(el.id==='f-supplierId' || /exMoms|moms|rounding|rot/.test(el.id)) addRender(); });
     });
@@ -2502,11 +2504,11 @@ table.addlines input.nbin{width:9em}
     });
     view.querySelectorAll('[data-ldel]').forEach(function(b){ b.addEventListener('click', function(){ readForm(); invForm.lines.splice(+b.dataset.ldel,1); addRender(); }); });
     var al = document.getElementById('inv-addline'); if(al) al.addEventListener('click', function(){ readForm(); invForm.lines.push({text:'', amount:'', post: invForm.post||'', slag:'Ospecificerat'}); addRender(); });
-    var rs = document.getElementById('inv-reset'); if(rs) rs.addEventListener('click', function(){ invForm = blankForm(); invFile = null; invEditing = null; invSetMsg(''); addRender(); });
+    var rs = document.getElementById('inv-reset'); if(rs) rs.addEventListener('click', function(){ invForm = blankForm(); invEditing = null; invDupArm = false; if(invQIdx>=0 && invQueue[invQIdx]){ invQueue[invQIdx].form = null; invFile = invQueue[invQIdx].file; } else invFile = null; invSetMsg(''); addRender(); });
     var sv = document.getElementById('inv-save'); if(sv) sv.addEventListener('click', function(){ readForm(); invSave(); });
-    var ex = document.getElementById('inv-extract'); if(ex) ex.addEventListener('click', function(){ readForm(); invExtract(); });
     view.querySelectorAll('[data-review]').forEach(function(b){ b.addEventListener('click', function(){ invReview = b.dataset.review; addRender(); var r = document.getElementById('inv-review'); if(r) r.scrollIntoView({behavior:'smooth'}); renderPdfPreview(); }); });
     view.querySelectorAll('[data-edit]').forEach(function(b){ b.addEventListener('click', function(){ var d = added.filter(function(x){return x._id===b.dataset.edit;})[0]; if(!d) return;
+      if(invQIdx>=0 && invQueue[invQIdx] && invQueue[invQIdx].status!=='sparad'){ readForm(); invQueue[invQIdx].form = clone(invForm); } invQIdx = -1;
       invEditing = d._id; invFile = null; invForm = Object.assign(blankForm(), JSON.parse(JSON.stringify(d))); delete invForm._id; invForm.lines = (invForm.lines||[]).map(function(l){ return Object.assign({text:'',amount:'',post:'',slag:'Ospecificerat'}, l); });
       ['exMoms','moms','rounding','rot','toPay'].forEach(function(k){ if(invForm[k]!=null && invForm[k]!=='') invForm[k] = nbDec(Number(invForm[k])); });
       invSetMsg('Redigerar faktura '+(d.nr||'')+'. Spara när du är klar.'); addRender(); window.scrollTo(0,0); }); });
@@ -2532,6 +2534,9 @@ table.addlines input.nbin{width:9em}
   function invSave(){
     var err = invValidate(invForm); if(err){ invSetMsg(err,'bad'); return; }
     if(!invDb){ invSetMsg('Kan inte spara i den här vyn.','bad'); return; }
+    var dup = dupInfo(invForm, invQIdx);
+    if(dup && !invDupArm){ invDupArm = true; invSetMsg(dup+'. Klicka Spara igen för att spara ändå.','bad'); return; }
+    invDupArm = false;
     invBusy = true; invSetMsg('Sparar…'); var f = invForm;
     var up = (invFile && invAssets) ? invAssets.upload(invFile, {type: invFile.type || 'application/pdf'}) : Promise.resolve(null);
     up.then(function(res){
@@ -2546,8 +2551,14 @@ table.addlines input.nbin{width:9em}
       if(!invEditing) doc.createdAt = doc.updatedAt;
       return ref.set(invEditing ? Object.assign({createdAt: (added.filter(function(x){return x._id===invEditing;})[0]||{}).createdAt||doc.updatedAt}, doc) : doc).then(function(){ return ref.id; });
     }).then(function(id){
-      invBusy = false; var wasEdit = !!invEditing; invEditing = null; invFile = null; invForm = blankForm(); invReview = id;
-      invSetMsg(wasEdit ? 'Ändringarna är sparade.' : 'Fakturan är sparad och räknas nu in i appen.','ok'); addRender();
+      invBusy = false; var wasEdit = !!invEditing; invEditing = null; invFile = null; invForm = blankForm();
+      if(!wasEdit && invQIdx>=0 && invQueue[invQIdx]){
+        invQueue[invQIdx].status = 'sparad'; invQueue[invQIdx].form = null;
+        var savedName = invQueue[invQIdx].file.name, nx = nextDraft(); invQIdx = -1;
+        if(nx>=0){ loadDraft(nx); var m = document.getElementById('inv-msg'); invMsg = '<p class="diff-neg" style="margin:0">'+esc(savedName)+' är sparad.</p>' + invMsg; }
+        else { invReview = id; invSetMsg('Fakturan är sparad. Alla filer i kön är klara.','ok'); }
+      } else { invReview = id; invSetMsg(wasEdit ? 'Ändringarna är sparade.' : 'Fakturan är sparad och räknas nu in i appen.','ok'); }
+      addRender();
     }).catch(function(e){
       invBusy = false; var c = e && e.code;
       invSetMsg({too_large:'Filen är för stor (max 20 MB).', unsupported_type:'Filtypen stöds inte. Använd PDF, PNG, JPEG eller WebP.', quota_or_state:'Lagringen är full.', invalid_argument:'Du har inte behörighet att spara i appen.', not_granted:'Uppladdning är inte tillåten i den här vyn.'}[c] || 'Det gick inte att spara. Försök igen.','bad'); addRender();
@@ -2560,10 +2571,22 @@ table.addlines input.nbin{width:9em}
       if(invReview===id) invReview = null; invSetMsg('Fakturan är borttagen.','ok');
     }, function(){ invSetMsg('Det gick inte att ta bort fakturan.','bad'); addRender(); });
   }
-  function invExtract(){
-    if(!invFile || !invSample) return;
-    invBusy = true; invSetMsg('Läser filen…'); addRender();
-    var isImg = /^image\//.test(invFile.type), posts = invPosts(), slags = slagOpts();
+  var invQueue = [], invQIdx = -1, invQRunning = false, invQStop = false, invDupArm = false, invQSeq = 0;
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function formFromJson(j, posts, slags){
+    var f = blankForm(), name = String(j.leverantor||'');
+    if(/thess/i.test(name)) f.supplierId = 'thessen'; else if(/erlandsson|artefacts|str design/i.test(name)) f.supplierId = 'arkitekt'; else if(name){ f.supplierId = 'ny'; f.supplierName = name; }
+    var ds = function(v){ return /^\d{4}-\d{2}-\d{2}$/.test(String(v||'')) ? String(v) : ''; };
+    var nv = function(v){ var n = Number(v); return isFinite(n) && v!==null && v!=='' ? nbDec(n) : ''; };
+    f.nr = String(j.fakturanummer||''); f.date = ds(j.fakturadatum); f.due = ds(j.forfallodatum); f.kind = j.typ==='ÄTA'?'ÄTA':'Grund';
+    f.project = String(j.projekt||''); f.exMoms = nv(j.exklMoms); f.moms = nv(j.moms); f.rounding = nv(j.oresavrundning); f.rot = nv(j.rotAvdrag); f.toPay = nv(j.attBetala);
+    var ids = posts.map(function(x){return x.id;});
+    f.lines = (Array.isArray(j.rader)?j.rader:[]).slice(0,30).map(function(r){ return { text:String(r.text||'').slice(0,200), amount: nv(r.belopp), post: ids.indexOf(r.post)>=0 ? r.post : '', slag: slags.indexOf(r.slag)>=0 ? r.slag : 'Ospecificerat' }; });
+    if(Array.isArray(j.bilagor) && j.bilagor.length) f.note = 'Bilagor: ' + j.bilagor.slice(0,20).map(function(x){ return String(x.leverantor||'?')+' '+String(x.nummer||'')+(isFinite(Number(x.exklMoms))&&x.exklMoms!==null?' ('+nbNum(Number(x.exklMoms))+' kr exkl.)':''); }).join('; ');
+    return f;
+  }
+  function extractFile(file, progress){
+    var isImg = /^image\//.test(file.type), posts = invPosts(), slags = slagOpts(), info = '';
     var prompt = function(text){ return 'Du läser en faktura för renoveringen av Karlavägen 71. Huvudentreprenör är Thessén & Ek, arkitekt Viktor Erlandsson & Artefacts AB.\n'+
       'Returnera ENBART ett JSON-objekt: {"leverantor":string,"fakturanummer":string,"fakturadatum":"YYYY-MM-DD","forfallodatum":"YYYY-MM-DD","typ":"Grund"|"ÄTA","projekt":string,"exklMoms":number,"moms":number,"oresavrundning":number,"rotAvdrag":number,"attBetala":number,'+
       '"rader":[{"text":string,"belopp":number,"post":string,"slag":string}]}.\n'+
@@ -2573,52 +2596,121 @@ table.addlines input.nbin{width:9em}
       'post = id för den post i Ny budget som raden bäst hör till, eller "" om oklart. Poster: '+posts.map(function(p){return p.id+' = '+p.name;}).join('; ')+'.\n'+
       'Regler: arbetsledning, förbrukningsmaterial, transporter, servicebil, parkering och maskinhyra hör till allm. Arbeten i en ÄTA hör till respektive ÄTA-post, eller ata1 om ingen annan passar. Arkitektarvode hör till ark.\n'+
       'slag = en av: '+slags.join(', ')+'.\n'+
-      (text ? '\nFAKTURANS TEXT:\n'+text.slice(0,60000) : '\nFakturan finns i bifogade bilder.'); };
+      (text ? '\nFAKTURANS TEXT:\n'+text.slice(0,180000) : '\nFakturan finns i bifogade bilder.'); };
     var go = function(text, imgs){
       var opts = { modelTier:'default' }; if(imgs && imgs.length) opts.images = imgs;
-      invSetMsg('Claude läser fakturan… det kan ta upp till en minut.');
+      progress('Claude läser…');
       return invSample.json(prompt(text), opts);
     };
     var p;
-    invPagesInfo = '';
-    if(isImg){ invPagesInfo = '1 bild'; p = invImgOk ? go('', [invFile]) : Promise.reject({code:'images_unavailable'}); }
-    else p = invFile.arrayBuffer().then(pdfDoc).then(function(doc){
+    if(isImg){ info = '1 bild'; p = invImgOk ? go('', [file]) : Promise.reject({code:'images_unavailable'}); }
+    else p = file.arrayBuffer().then(pdfDoc).then(function(doc){
       return pdfPages(doc).then(function(pages){
         var textPages = pages.filter(function(x){return !x.scanned;}), scanPages = pages.filter(function(x){return x.scanned;}).map(function(x){return x.n;});
         var text = textPages.map(function(x){return '--- Sida '+x.n+' av '+doc.numPages+' ---\n'+x.text;}).join('\n');
         if(text.length > 180000) text = text.slice(0,180000);
-        invPagesInfo = doc.numPages+' sidor: '+textPages.length+' med text'+(scanPages.length?', '+scanPages.length+' inskannade (sidorna '+scanPages.join(', ')+')':'');
+        info = doc.numPages+' sidor: '+textPages.length+' med text'+(scanPages.length?', '+scanPages.length+' inskannade (sidorna '+scanPages.join(', ')+')':'');
         if(scanPages.length && !invImgOk){
-          invPagesInfo += '. De inskannade sidorna kan inte skickas som bild här och ingår inte';
+          info += '. De inskannade sidorna kan inte skickas som bild här och ingår inte';
           if(!textPages.length) throw {code:'images_unavailable'};
           return go(text);
         }
         if(!scanPages.length) return go(text);
-        invSetMsg('Förbereder '+scanPages.length+' inskannade sidor…');
+        progress('Förbereder '+scanPages.length+' inskannade sidor…');
         return pagesToImages(doc, scanPages, invImgMax).then(function(imgs){
-          invPagesInfo += ', skickade som '+imgs.length+' bild'+(imgs.length>1?'er':'');
+          info += ', skickade som '+imgs.length+' bild'+(imgs.length>1?'er':'');
           return go(text + '\n\nSidorna '+scanPages.join(', ')+' är inskannade och bifogas som bilder i sidordning'+(imgs.length<scanPages.length?' (flera sidor per bild)':'')+'.', imgs);
         });
       });
     });
-    p.then(function(j){
-      if(!j || typeof j!=='object') throw {code:'invalid_json'};
-      var f = invForm, name = String(j.leverantor||'');
-      if(/thess/i.test(name)) f.supplierId = 'thessen'; else if(/erlandsson|artefacts|str design/i.test(name)) f.supplierId = 'arkitekt'; else if(name){ f.supplierId = 'ny'; f.supplierName = name; }
-      var ds = function(v){ return /^\d{4}-\d{2}-\d{2}$/.test(String(v||'')) ? String(v) : ''; };
-      var nv = function(v){ var n = Number(v); return isFinite(n) && v!==null && v!=='' ? nbDec(n) : ''; };
-      f.nr = String(j.fakturanummer||f.nr||''); f.date = ds(j.fakturadatum)||f.date; f.due = ds(j.forfallodatum)||f.due; f.kind = j.typ==='ÄTA'?'ÄTA':'Grund';
-      f.project = String(j.projekt||f.project||''); f.exMoms = nv(j.exklMoms); f.moms = nv(j.moms); f.rounding = nv(j.oresavrundning); f.rot = nv(j.rotAvdrag); f.toPay = nv(j.attBetala);
-      var ids = posts.map(function(x){return x.id;});
-      f.lines = (Array.isArray(j.rader)?j.rader:[]).slice(0,30).map(function(r){ return { text:String(r.text||'').slice(0,200), amount: nv(r.belopp), post: ids.indexOf(r.post)>=0 ? r.post : '', slag: slags.indexOf(r.slag)>=0 ? r.slag : 'Ospecificerat' }; });
-      if(Array.isArray(j.bilagor) && j.bilagor.length){ var bl = 'Bilagor: ' + j.bilagor.slice(0,20).map(function(x){ return String(x.leverantor||'?')+' '+String(x.nummer||'')+(isFinite(Number(x.exklMoms))&&x.exklMoms!==null?' ('+nbNum(Number(x.exklMoms))+' kr exkl.)':''); }).join('; ');
-        f.note = f.note ? f.note + ' · ' + bl : bl; }
-      invBusy = false; invSetMsg('Uppgifterna är ifyllda ('+invPagesInfo+'). Granska dem, särskilt belopp och poster, innan du sparar.','ok'); addRender();
-    }).catch(function(e){
-      invBusy = false; var c = e && e.code;
-      invSetMsg({images_unavailable:'Filen saknar läsbar text och bilder kan inte skickas här. Fyll i fälten själv.', not_granted:'Claude får inte användas i den här vyn.', rate_limited:'För många förfrågningar just nu. Försök igen om en stund.', invalid_json:'Claude kunde inte tolka fakturan. Fyll i fälten själv eller försök igen.', cancelled:'Avbrutet.'}[c] || ('Det gick inte att läsa fakturan'+(e&&e.message&&!c?' ('+e.message+')':'')+'. Fyll i fälten själv.'),'bad'); addRender();
-    });
+    return p.then(function(j){ if(!j || typeof j!=='object') throw {code:'invalid_json'}; return { form: formFromJson(j, posts, slags), info: info }; });
   }
+  function extractErr(e){
+    var c = e && e.code;
+    return {images_unavailable:'Filen saknar läsbar text och bilder kan inte skickas här.', not_granted:'Claude får inte användas i den här vyn.', rate_limited:'För många förfrågningar just nu.', invalid_json:'Claude kunde inte tolka fakturan.', cancelled:'Avbrutet.'}[c] || ('Kunde inte läsa filen'+(e&&e.message&&!c?' ('+e.message+')':'')+'.');
+  }
+  function supName(f){ return f.supplierId==='ny' ? String(f.supplierName||'').trim() : ((BASE_SUP.filter(function(x){return x.id===f.supplierId;})[0]||{}).name || ''); }
+  function dupInfo(f, selfIdx){
+    var nr = String(f.nr||'').trim().toLowerCase(); if(!nr) return '';
+    var sid = f.supplierId==='ny' ? 'x-'+slugify(f.supplierName) : f.supplierId, hits = [];
+    D.invoices.forEach(function(i){ if(String(i.nr).trim().toLowerCase()===nr && i.supplier===sid && !(invEditing && i.docId===invEditing)) hits.push((i.added?'tillagd':'inläst')+' faktura '+i.nr); });
+    invQueue.forEach(function(q,k){ if(k!==selfIdx && q.form && q.status!=='sparad' && String(q.form.nr||'').trim().toLowerCase()===nr && (q.form.supplierId==='ny' ? 'x-'+slugify(q.form.supplierName) : q.form.supplierId)===sid) hits.push('även i kön ('+q.file.name+')'); });
+    return hits.length ? 'Möjlig dubblett: '+hits.join(', ') : '';
+  }
+  function loadDraft(i){
+    if(invQIdx>=0 && invQueue[invQIdx] && invQueue[invQIdx].status!=='sparad'){ readForm(); invQueue[invQIdx].form = clone(invForm); }
+    var q = invQueue[i]; if(!q) return;
+    invQIdx = i; invEditing = null; invFile = q.file; invDupArm = false;
+    invForm = q.form ? clone(q.form) : blankForm();
+    var d = dupInfo(invForm, i);
+    invSetMsg(q.status==='klar' ? ('Utkast '+(i+1)+' av '+invQueue.length+' ('+q.info+'). Granska och spara.'+(d?' '+d+'.':'')) : q.status==='fel' ? q.err+' Fyll i fälten själv eller läs ut igen.' : 'Filen är inte utläst än.', d?'bad':(q.status==='fel'?'bad':'ok'));
+  }
+  function nextDraft(){
+    for(var k=0;k<invQueue.length;k++){ var j = (invQIdx+1+k) % invQueue.length; if(invQueue[j].status==='klar' || invQueue[j].status==='fel') return j; }
+    for(var m=0;m<invQueue.length;m++) if(invQueue[m].status==='väntar' || invQueue[m].status==='läser') return m;
+    return -1;
+  }
+  function renderQueue(){
+    if(!invQueue.length) return '';
+    var st = {väntar:['','Väntar'], läser:['warn','Läser…'], klar:['ok','Klar att granska'], fel:['bad','Fel'], sparad:['ue','Sparad']};
+    var nWait = invQueue.filter(function(q){return q.status==='väntar'||q.status==='fel';}).length, nSaved = invQueue.filter(function(q){return q.status==='sparad';}).length;
+    var h = '<div class="nblwrap"><table class="nbl"><thead><tr><th>Fil</th><th>Status</th><th>Utläst</th><th></th></tr></thead><tbody>';
+    invQueue.forEach(function(q,i){
+      var f = q.form, d = f ? dupInfo(f, i) : '', s = st[q.status];
+      h += '<tr'+(i===invQIdx?' class="qcur"':'')+'><td>'+(i===invQIdx?'<b>▸ ':'')+esc(q.file.name)+(i===invQIdx?'</b>':'')+'<span class="desc">'+(q.info?esc(q.info):Math.round(q.file.size/1024)+' kB')+'</span></td>'+
+        '<td><span class="tag '+s[0]+'">'+s[1]+'</span>'+(q.status==='läser'&&q.prog?'<span class="desc">'+esc(q.prog)+'</span>':'')+(q.status==='fel'?'<span class="desc">'+esc(q.err)+'</span>':'')+'</td>'+
+        '<td>'+(f ? esc(supName(f)||'?')+' '+esc(f.nr||'')+(f.exMoms!==''?' · '+esc(f.exMoms)+' kr exkl.':'')+(d?'<span class="desc diff-pos">'+esc(d)+'</span>':'') : '<span class="faint">–</span>')+'</td>'+
+        '<td style="white-space:nowrap">'+(q.status!=='sparad' && i!==invQIdx ? '<button class="chip" data-qload="'+i+'">Granska</button> ' : '')+
+          (q.status==='fel' && invSample ? '<button class="chip" data-qretry="'+i+'">Läs ut igen</button> ' : '')+
+          (q.status!=='läser' && q.status!=='sparad' ? '<button class="nbreset" data-qdel="'+i+'" aria-label="Ta bort ur kön">×</button>' : '')+'</td></tr>';
+    });
+    h += '</tbody></table></div><div class="addrow">'+
+      (invSample && nWait ? '<button class="chip askgo" id="inv-runq" '+(invQRunning?'disabled':'')+'>'+(invQRunning?'Läser…':'Läs ut '+(nWait>1?'alla '+nWait:'filen')+' med Claude')+'</button>' : '')+
+      (invQRunning ? '<button class="chip" id="inv-stopq">Stoppa efter pågående</button>' : '')+
+      '<button class="chip" id="inv-clearq" '+(invQRunning?'disabled':'')+'>Töm kön</button>'+
+      '<span class="faint">'+invQueue.length+' filer · '+nSaved+' sparade</span></div>';
+    return h;
+  }
+  function queueRender(){ var el = document.getElementById('inv-queue'); if(el){ el.innerHTML = renderQueue(); bindQueue(); } }
+  function bindQueue(){
+    var box = document.getElementById('inv-queue'); if(!box) return;
+    box.querySelectorAll('[data-qload]').forEach(function(b){ b.addEventListener('click', function(){ loadDraft(+b.dataset.qload); addRender(); window.scrollTo(0, (document.getElementById('inv-form')||{}).offsetTop||0); }); });
+    box.querySelectorAll('[data-qretry]').forEach(function(b){ b.addEventListener('click', function(){ var q = invQueue[+b.dataset.qretry]; q.status = 'väntar'; q.err = ''; runQueue(); }); });
+    box.querySelectorAll('[data-qdel]').forEach(function(b){ b.addEventListener('click', function(){ var i = +b.dataset.qdel; if(i===invQIdx){ invQIdx = -1; invFile = null; invForm = blankForm(); invSetMsg(''); } else if(i<invQIdx) invQIdx--; invQueue.splice(i,1); addRender(); }); });
+    var r = document.getElementById('inv-runq'); if(r) r.addEventListener('click', function(){ readForm(); runQueue(); });
+    var sp = document.getElementById('inv-stopq'); if(sp) sp.addEventListener('click', function(){ invQStop = true; sp.disabled = true; sp.textContent = 'Stoppar…'; });
+    var c = document.getElementById('inv-clearq'); if(c) c.addEventListener('click', function(){ invQueue = []; invQIdx = -1; invFile = null; if(!invEditing){ invForm = blankForm(); } invSetMsg(''); addRender(); });
+  }
+  function userTyping(){ var a = document.activeElement; return a && view.contains(a) && /INPUT|SELECT|TEXTAREA/.test(a.tagName) && a.id!=='inv-file'; }
+  function runQueue(){
+    if(invQRunning || !invSample) return;
+    invQRunning = true; invQStop = false;
+    if(current==='uppdatera' && !userTyping()) addRender(); else queueRender();
+    var step = function(){
+      var i = -1; for(var k=0;k<invQueue.length;k++) if(invQueue[k].status==='väntar'){ i = k; break; }
+      if(i<0 || invQStop){ invQRunning = false; invQStop = false; if(current==='uppdatera' && !userTyping()) addRender(); else queueRender(); return; }
+      var q = invQueue[i]; q.status = 'läser'; q.prog = 'Läser filen…'; queueRender();
+      extractFile(q.file, function(t){ q.prog = t; queueRender(); }).then(function(res){
+        q.status = 'klar'; q.form = res.form; q.info = res.info;
+        if(invQIdx<0 || invQIdx===i){ var load = invQIdx<0 || !userTyping(); if(load){ invQIdx = -1; loadDraft(i); if(current==='uppdatera') addRender(); } else queueRender(); }
+        else queueRender();
+      }, function(e){ q.status = 'fel'; q.err = extractErr(e); if(invQIdx===i) invSetMsg(q.err+' Fyll i fälten själv eller läs ut igen.','bad'); queueRender(); })
+      .then(step);
+    };
+    step();
+  }
+  function addFilesToQueue(files){
+    var bad = [];
+    Array.prototype.forEach.call(files, function(f){
+      if(f.size > 20*1024*1024){ bad.push(f.name+' (över 20 MB)'); return; }
+      if(!/pdf|png|jpe?g|webp/i.test(f.type||f.name)){ bad.push(f.name+' (filtypen stöds inte)'); return; }
+      if(invQueue.some(function(q){ return q.file.name===f.name && q.file.size===f.size && q.status!=='sparad'; })){ bad.push(f.name+' (redan i kön)'); return; }
+      invQueue.push({ id: ++invQSeq, file: f, status: 'väntar', form: null, info: '', err: '' });
+    });
+    if(invQIdx<0 && !invEditing){ var first = -1; for(var k=0;k<invQueue.length;k++) if(invQueue[k].status!=='sparad'){ first = k; break; } if(first>=0){ invQIdx = first; invFile = invQueue[first].file; } }
+    invSetMsg(bad.length ? 'Hoppade över: '+bad.join(', ')+'.' : (invSample ? 'Filerna ligger i kön. Klicka "Läs ut" för att låta Claude fylla i uppgifterna.' : 'Filerna ligger i kön. Fyll i uppgifterna för varje faktura.'), bad.length?'bad':'');
+  }
+
   function onAddedChange(){
     compute(); updateMeta(); buildTabs();
     var a = document.activeElement, typing = a && view.contains(a) && /INPUT|SELECT|TEXTAREA/.test(a.tagName);
