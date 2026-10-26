@@ -108,7 +108,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 
 /* ===================== Data & lagring ===================== */
 const KEY = 'calisthenics-v1';
-const defaults = () => ({ v: 1, settings: { startDate: '', level: 0, actLevel: 0, time: '07:30', slot: 'morgon', notify: false, dismissed: -1, lastNotified: '' }, log: [] });
+const defaults = () => ({ v: 1, settings: { startDate: '', level: 0, actLevel: 0, time: '07:30', slot: 'morgon', notify: false, dismissed: -1, lastNotified: '', lastExport: '' }, log: [] });
 let S = defaults();
 function load() {
   try {
@@ -405,8 +405,10 @@ function viewSet() {
     <p class="mute">Importera filen i Google/Apple/Outlook-kalendern – då får du en riktig påminnelse varje träningsdag (vilodagar hoppas över). Det är den pålitliga vägen.</p>
     <div class="row between" style="margin-top:8px"><span>Notis i webbläsaren</span><button data-a="notify" aria-pressed="${se.notify}">${se.notify ? 'På' : 'Av'}</button></div>
     <p class="mute">Notisen fungerar bara medan appen är öppen i en flik.</p></div>
-  <div class="card"><h2>Data</h2><p class="mute">Allt sparas lokalt i din webbläsare. Säkerhetskopiera då och då.</p>
-    <div class="row"><button data-a="export">Exportera</button><button data-a="import">Importera</button><button class="danger" data-a="reset">Nollställ allt</button></div>
+  <div class="card"><h2>Data</h2><p class="mute">Allt sparas lokalt i din webbläsare. Spara en fil på din enhet som säkerhetskopia.</p>
+    <button class="primary" data-a="export" style="width:100%;margin-bottom:8px">💾 Spara all data till enhet</button>
+    <p class="mute">${se.lastExport ? 'Senast sparad: ' + niceDate(se.lastExport) : 'Du har inte sparat någon fil än.'}</p>
+    <div class="row"><button data-a="import">Hämta från fil</button><button class="danger" data-a="reset">Nollställ allt</button></div>
     <input type="file" id="file" accept="application/json" hidden></div>`;
 }
 
@@ -541,7 +543,7 @@ document.addEventListener('click', e => {
       if (S.settings.notify) { S.settings.notify = false; save(); break; }
       if (!('Notification' in window)) { alert('Din webbläsare stöder inte notiser.'); return; }
       Notification.requestPermission().then(p => { S.settings.notify = p === 'granted'; save(); render(); }); return;
-    case 'export': download('calisthenics-backup.json', JSON.stringify(S, null, 2), 'application/json'); return;
+    case 'export': download(`calisthenics-${today()}.json`, JSON.stringify(S, null, 2), 'application/json'); S.settings.lastExport = today(); save(); break;
     case 'import': $('#file').click(); return;
     case 'reset': if (!confirm('Radera allt – inställningar och logg?')) return; S = defaults(); save(); ui.date = today(); ui.tab = 'today'; break;
     case 'quit': {
