@@ -236,6 +236,12 @@ function setDone(kind, date, on) {
   }
   save();
 }
+function logPartial(kind, date, minutes) {
+  S.log = S.log.filter(l => !(l.date === date && l.kind === kind));
+  const w = weekOf(date);
+  S.log.push({ id: uid(), date, kind, minutes, level: S.settings.level, week: w, name: (kind === 'main' ? `Pass vecka ${w}` : 'Extraövningar') + ' (delvis)' });
+  save();
+}
 function stats() {
   const st = S.settings.startDate, t = today();
   const doneSet = new Set(S.log.filter(l => l.kind === 'main').map(l => l.date));
@@ -538,7 +544,15 @@ document.addEventListener('click', e => {
     case 'export': download('calisthenics-backup.json', JSON.stringify(S, null, 2), 'application/json'); return;
     case 'import': $('#file').click(); return;
     case 'reset': if (!confirm('Radera allt – inställningar och logg?')) return; S = defaults(); save(); ui.date = today(); ui.tab = 'today'; break;
-    case 'quit': closePlayer(); return;
+    case 'quit': {
+      if (P && !P.finished && P.i > 1 && P.date <= today()) {
+        const works = P.segs.filter(x => x.t === 'work').length;
+        const did = P.segs.slice(1, P.i).filter(x => x.t === 'work').length;
+        const min = Math.max(1, Math.round(P.segs.slice(0, P.i).reduce((t, x) => t + x.sec, 0) / 60));
+        if (confirm(`Du hann ${did} av ${works} övningar. Spara passet som genomfört (${min} min)?`)) logPartial(P.kind, P.date, min);
+      }
+      closePlayer(); return;
+    }
     case 'ppause':
       if (P.finished) return;
       if (P.paused) { P.end = Date.now() + P.left; P.paused = false; } else { P.left = P.end - Date.now(); P.paused = true; }
