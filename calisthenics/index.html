@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>Calisthenics Veckoschema</title>
+<style>
+:root{
+  --bg:#f5f7f6;--card:#fff;--ink:#14201d;--mute:#5d6b67;--line:#dfe6e3;
+  --brand:#0f766e;--brand-ink:#fff;--soft:#e3f2ef;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#0e1514;--card:#17211f;--ink:#e8f0ee;--mute:#9bacA7;--line:#263330;--brand:#2dd4bf;--brand-ink:#04211d;--soft:#173532;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171}
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+main{max-width:600px;margin:0 auto;padding:16px}
+h1{font-size:1.35rem;margin:0 0 2px}
+h2{font-size:1.05rem;margin:0 0 8px}
+h3{font-size:.95rem;margin:0 0 4px}
+p{margin:.3em 0}
+.mute{color:var(--mute);font-size:.88rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin:0 0 12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.grow{flex:1}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:9px 14px;cursor:pointer;min-height:42px}
+button.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand);font-weight:600}
+button.ghost{background:transparent}
+button.danger{color:var(--bad);border-color:var(--bad)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 10px;min-height:42px}
+.chips{display:flex;gap:6px}
+.chips button{flex:1;padding:8px 6px}
+.chips button[aria-pressed="true"]{background:var(--brand);color:var(--brand-ink);border-color:var(--brand);font-weight:600}
+.tag{display:inline-block;font-size:.72rem;padding:2px 8px;border-radius:99px;background:var(--soft);color:var(--brand);font-weight:600}
+.tag.ok{background:var(--ok);color:#fff}
+.tag.rest{background:var(--line);color:var(--mute)}
+.ex{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.ex:first-of-type{border-top:0}
+.ex .n{width:26px;height:26px;border-radius:50%;background:var(--soft);color:var(--brand);display:grid;place-items:center;font-weight:700;font-size:.8rem;flex:none}
+.ex b{display:block}
+.banner{background:var(--soft);border-color:var(--brand)}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav button{flex:1;border:0;border-radius:0;background:transparent;color:var(--mute);font-size:.72rem;padding:8px 2px;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:58px}
+nav button .i{font-size:1.25rem;line-height:1}
+nav button[aria-current="page"]{color:var(--brand);font-weight:700}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px}
+.tile .v{font-size:1.7rem;font-weight:800;line-height:1.1}
+.bars{display:flex;align-items:flex-end;gap:8px;height:140px;padding-top:6px}
+.bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;text-align:center;font-size:.7rem;color:var(--mute)}
+.bar .stack{display:flex;flex-direction:column-reverse;border-radius:6px 6px 0 0;overflow:hidden;min-height:2px}
+.stack i{display:block;flex:none}
+.seg-main{background:var(--brand)}.seg-extra{background:#60a5fa}.seg-act{background:#f59e0b}
+.legend{display:flex;gap:12px;font-size:.78rem;color:var(--mute);margin-top:8px;flex-wrap:wrap}
+.legend i{display:inline-block !important;width:10px;height:10px;border-radius:3px;margin-right:4px}
+.heat{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.heat div{aspect-ratio:1;border-radius:6px;background:var(--line);display:grid;place-items:center;font-size:.7rem;color:var(--mute);position:relative}
+.heat .d{background:var(--ok);color:#fff}.heat .m{background:transparent;border:2px solid var(--bad);color:var(--bad)}
+.heat .r{background:var(--soft)}.heat .t{outline:2px solid var(--brand)}.heat .f,.heat .b{opacity:.35}
+.heat .dot::after{content:"";position:absolute;right:3px;top:3px;width:6px;height:6px;border-radius:50%;background:#f59e0b}
+.heat .hd{background:none;aspect-ratio:auto;font-size:.7rem}
+.day{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);width:100%;border-left:0;border-right:0;border-bottom:0;border-radius:0;background:transparent;text-align:left}
+.day:first-of-type{border-top:0}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{text-align:left;padding:6px 4px;border-top:1px solid var(--line)}
+th{border-top:0;color:var(--mute);font-weight:600}
+tr.cur td{background:var(--soft);font-weight:600}
+.slot{display:block;width:100%;text-align:left;margin-bottom:8px;padding:12px}
+.slot[aria-pressed="true"]{border:2px solid var(--brand);background:var(--soft)}
+/* player */
+#player{position:fixed;inset:0;background:var(--bg);z-index:20;display:none;flex-direction:column;padding:16px;padding-top:max(16px,env(safe-area-inset-top));padding-bottom:max(16px,env(safe-area-inset-bottom))}
+#player.on{display:flex}
+#player .phase{text-align:center;font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.95rem}
+#player .big{font-size:5.5rem;font-weight:800;text-align:center;line-height:1;margin:10px 0;font-variant-numeric:tabular-nums}
+#player.work .phase,#player.work .big{color:var(--brand)}
+#player.rest .phase,#player.rest .big{color:var(--warn)}
+.prog{height:8px;background:var(--line);border-radius:99px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--brand);width:0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:no-preference){.prog i{transition:width .25s linear}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav id="nav" aria-label="Huvudmeny"></nav>
+<div id="player" role="dialog" aria-modal="true" aria-label="Träningspass"></div>
+
+<script>
+'use strict';
+/* ===================== Hjälpfunktioner ===================== */
+const pad = n => String(n).padStart(2, '0');
+const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d, 12); };
+const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return fmt(d); };
+const diff = (a, b) => Math.round((parse(a) - parse(b)) / 864e5);
+const today = () => fmt(new Date());
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const DAYS = ['Söndag', 'Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag'];
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+const niceDate = s => { const d = parse(s); return `${DAYS[d.getDay()].toLowerCase()} ${d.getDate()} ${MONTHS[d.getMonth()]}`; };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+/* ===================== Data & lagring ===================== */
+const KEY = 'calisthenics-v1';
+const defaults = () => ({ v: 1, settings: { startDate: '', level: 0, actLevel: 0, time: '07:30', slot: 'morgon', notify: false, dismissed: -1, lastNotified: '' }, log: [] });
+let S = defaults();
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) { const o = JSON.parse(raw); S = { ...defaults(), ...o, settings: { ...defaults().settings, ...(o.settings || {}) }, log: Array.isArray(o.log) ? o.log : [] }; }
+  } catch (e) { /* tom/blockerad lagring – appen fungerar utan */ }
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignorera */ } }
+
+/* ===================== Program ===================== */
+const LV = ['Lätt', 'Medel', 'Svår'];
+const WORKREST = [[30, 30], [40, 20], [45, 15]]; // sek arbete / vila per övning (1 min per övning)
+const EXTRA_MIN = 5;
+const weekOf = s => { const st = S.settings.startDate; if (!st) return 0; const d = diff(s, st); return d < 0 ? 0 : Math.floor(d / 7) + 1; };
+const mainMin = w => w <= 1 ? 5 : w < 4 ? 10 : 15;
+const isRest = s => weekOf(s) >= 2 && parse(s).getDay() === 1;
+const recLevel = w => w <= 4 ? 0 : w <= 8 ? 1 : 2;
+const currentWeek = () => weekOf(today());
+
+// Övningsbibliotek: varje övning har tre nivåer [namn, instruktion]
+const EX = {
+  push1: [['Armhävning mot vägg', 'Stå en armlängd från väggen, händerna i axelhöjd. Böj armarna och för bröstet mot väggen, tryck ifrån.'], ['Armhävning på knä', 'Knäna i golvet, rak linje från knä till huvud. Sänk bröstet mot golvet och tryck upp.'], ['Armhävning', 'Rak kropp från hälar till huvud. Sänk bröstet nästan till golvet och tryck upp.']],
+  push2: [['Stoldips, böjda ben', 'Händerna på en stadig stol bakom dig, knäna böjda. Sänk höften genom att böja armarna, tryck upp.'], ['Stoldips, raka ben', 'Som ovan men med sträckta ben och hälarna i golvet.'], ['Diamantarmhävning', 'Händerna nära varandra under bröstet. Armhävning med armbågarna tätt intill kroppen.']],
+  legs1: [['Knäböj till stol', 'Sätt dig på en stol och res dig utan att ta hjälp av händerna. Rak rygg.'], ['Knäböj', 'Fötterna axelbrett. Sänk höften bakåt och ner tills låren är parallella med golvet, res dig.'], ['Hoppknäböj', 'Gör en knäböj och spring upp i ett hopp. Landa mjukt direkt in i nästa.']],
+  legs2: [['Utfall bakåt med stöd', 'Håll i vägg eller stol. Kliv bakåt, sänk knät mot golvet, tryck tillbaka. Byt ben.'], ['Växelvis utfall', 'Kliv fram i ett utfall, tryck tillbaka och byt ben. Främre knät över foten.'], ['Hopputfall', 'Utfall och byt ben i luften med ett hopp. Landa mjukt.']],
+  glute: [['Höftlyft', 'Ligg på rygg med böjda knän. Lyft höften till rak linje axlar–knän, kläm skinkorna, sänk.'], ['Höftlyft med paus', 'Som höftlyft men håll 2 sekunder högst upp.'], ['Enbens höftlyft', 'Ena benet sträckt upp. Lyft höften på det andra benet, byt halvvägs.']],
+  core1: [['Planka på knä', 'Underarmar och knän i golvet. Rak linje från knä till huvud, spänn magen.'], ['Planka', 'På underarmar och tår. Kroppen rak, spänn mage och skinkor.'], ['Planka med axelklapp', 'Planka på raka armar, klappa växelvis motsatt axel utan att vrida höften.']],
+  core2: [['Crunch', 'Rygg, knän böjda, händer vid tinningarna. Lyft axlarna från golvet med kontroll.'], ['Cykelcrunch', 'Rygg, ben i luften. För motsatt armbåge mot knät i cykelrörelse.'], ['V-ups', 'Ligg utsträckt, lyft armar och raka ben samtidigt till ett V, sänk med kontroll.']],
+  core3: [['Bergsklättrare, långsam', 'Stöd på raka armar. Dra ett knä i taget mot bröstet i lugnt tempo.'], ['Bergsklättrare', 'Samma, men i rask takt med låg höft.'], ['Bergsklättrare, snabb', 'Högt tempo, höften låg, full rörelse varje gång.']],
+  back1: [['Superman', 'Ligg på mage. Lyft armar och ben några cm, håll 2 sek, sänk.'], ['Superman med hållning', 'Lyft armar och ben, håll 3–4 sek och andas lugnt.'], ['Superman W–Y', 'Lyft bröst och ben. Dra armbågarna in till ett W, sträck ut till ett Y. Kontrollerat tempo.']],
+  back2: [['Fågelhunden', 'På alla fyra: sträck motsatt arm och ben, håll 2 sek, byt.'], ['Fågelhunden med paus', 'Som ovan men håll 5 sek.'], ['Fågelhunden armbåge–knä', 'Sträck ut, för sedan armbåge mot knä under kroppen, sträck igen. Byt sida.']],
+  fb1: [['Marschera med armlyft', 'Marschera på stället och sträck armarna över huvudet vid varje steg.'], ['Jumping jacks', 'Hoppa ut med fötter och armar över huvudet, hoppa tillbaka.'], ['Burpees', 'Ner i planka, in med fötterna, hoppa upp med armarna över huvudet.']],
+  fb2: [['Höga knän, gång', 'Gå på stället och lyft knäna till höftnivå.'], ['Höga knän', 'Spring på stället med knäna upp till höften.'], ['Skidhopp', 'Hoppa med fötterna isär/ihop på diagonalen, armarna följer med. Högt tempo.']],
+  calf: [['Tåhävningar med stöd', 'Håll i en vägg. Res dig upp på tå, sänk långsamt.'], ['Tåhävningar', 'Stå fritt, res dig högt upp på tå, pausa kort, sänk.'], ['Enbens tåhävningar', 'Samma på ett ben i taget – byt halvvägs.']],
+  /* extra-övningar */
+  x_side: [['Sidoplanka på knä', 'På underarm och knä, höften uppe. Byt sida halvvägs.'], ['Sidoplanka', 'På underarm och fot, rak linje. Byt sida halvvägs.'], ['Sidoplanka med höftlyft', 'Sidoplanka där du sänker och lyfter höften. Byt sida halvvägs.']],
+  x_wall: [['Väggstol, grund', 'Ryggen mot väggen, sitt ca 45° ned och håll.'], ['Väggstol', 'Sitt med knän i 90° mot väggen och håll.'], ['Väggstol, enbens', 'Väggstol, lyft ett ben en stund, byt halvvägs.']],
+  x_dead: [['Dead bug, långsam', 'Rygg, knän 90° och armar upp. Sänk motsatt arm och ben långsamt, ländryggen mot golvet.'], ['Dead bug', 'Som ovan i jämnt tempo.'], ['Dead bug, raka ben', 'Sänk motsatt arm och rakt ben nära golvet utan att svanka.']],
+  x_hollow: [['Hollow hold, knän böjda', 'Rygg, lyft axlar och böjda knän, ländryggen i golvet.'], ['Hollow hold', 'Lyft axlar och raka ben några decimeter över golvet. Håll.'], ['Hollow rock', 'Från hollow-position, gunga fram och tillbaka som en vagga.']],
+  x_cat: [['Katt–ko', 'På alla fyra: runda och svanka ryggen i långsamt tempo.'], ['Katt–ko', 'På alla fyra: runda och svanka ryggen i långsamt tempo.'], ['Katt–ko', 'På alla fyra: runda och svanka ryggen i långsamt tempo.']],
+  x_child: [['Barnets ställning', 'Sitt på hälarna, sträck armarna framåt och slappna av.'], ['Barnets ställning', 'Sitt på hälarna, sträck armarna framåt och slappna av.'], ['Barnets ställning', 'Sitt på hälarna, sträck armarna framåt och slappna av.']],
+  x_hip: [['Höftböjarstretch', 'Utfallsposition med bakre knät i golvet. Skjut höften framåt, byt sida halvvägs.'], ['Höftböjarstretch', 'Utfallsposition med bakre knät i golvet. Skjut höften framåt, byt sida halvvägs.'], ['Höftböjarstretch', 'Utfallsposition med bakre knät i golvet. Skjut höften framåt, byt sida halvvägs.']],
+  x_ham: [['Baksidesstretch', 'Sitt med ett ben sträckt, luta överkroppen framåt med rak rygg. Byt halvvägs.'], ['Baksidesstretch', 'Sitt med ett ben sträckt, luta överkroppen framåt med rak rygg. Byt halvvägs.'], ['Baksidesstretch', 'Sitt med ett ben sträckt, luta överkroppen framåt med rak rygg. Byt halvvägs.']]
+};
+// Pass per veckodag (0 = söndag)
+const MAIN_PLAN = {
+  1: ['push1', 'legs1', 'core1', 'back1', 'fb1'],
+  2: ['push1', 'legs1', 'core1', 'back1', 'fb1'],
+  3: ['push2', 'legs2', 'core2', 'back2', 'fb2'],
+  4: ['push1', 'glute', 'core3', 'back1', 'fb1'],
+  5: ['push2', 'legs1', 'core1', 'back2', 'fb2'],
+  6: ['push1', 'legs2', 'core2', 'glute', 'fb1'],
+  0: ['push2', 'legs1', 'core3', 'back1', 'calf']
+};
+const EXTRA_PLAN = {
+  1: ['x_cat', 'x_child', 'x_hip', 'x_ham', 'x_dead'],
+  2: ['x_side', 'x_wall', 'x_dead', 'x_hip', 'x_child'],
+  3: ['x_hollow', 'calf', 'glute', 'x_ham', 'x_cat'],
+  4: ['x_side', 'x_hollow', 'x_wall', 'x_child', 'x_hip'],
+  5: ['x_dead', 'calf', 'x_side', 'x_ham', 'x_cat'],
+  6: ['x_wall', 'x_hollow', 'glute', 'x_hip', 'x_child'],
+  0: ['x_side', 'x_dead', 'calf', 'x_ham', 'x_cat']
+};
+
+function buildSession(date, kind, level) {
+  const dow = parse(date).getDay();
+  const ids = (kind === 'main' ? MAIN_PLAN : EXTRA_PLAN)[dow];
+  const items = ids.map(id => ({ name: EX[id][level][0], how: EX[id][level][1] }));
+  const [work, rest] = WORKREST[level];
+  const minutes = kind === 'main' ? mainMin(weekOf(date)) || 5 : EXTRA_MIN;
+  const rounds = minutes / 5;
+  const segs = [];
+  for (let r = 1; r <= rounds; r++) {
+    items.forEach((it, i) => {
+      const last = r === rounds && i === items.length - 1;
+      const nxt = last ? null : items[(i + 1) % items.length];
+      segs.push({ t: 'work', sec: work, name: it.name, how: it.how, label: `Runda ${r}/${rounds} · övning ${i + 1}/${items.length}` });
+      segs.push({ t: 'rest', sec: rest, name: last ? 'Klart – andas ut' : 'Vila', how: last ? 'Skaka loss armar och ben.' : 'Nästa: ' + nxt.name, label: `Runda ${r}/${rounds}` });
+    });
+  }
+  return { kind, items, minutes, rounds, work, rest, segs, title: kind === 'main' ? `Pass ${minutes} min` : `Extra ${EXTRA_MIN} min` };
+}
+
+/* ===================== Tid & aktiviteter ===================== */
+const SLOTS = [
+  { id: 'morgon', t: '07:30', n: 'Morgon', rec: true, why: 'Bäst för att bygga vana: passet är avklarat innan dagen hinner komma emellan. De första veckorna räcker 5–10 minuter, så koppla det till något du redan gör – t.ex. direkt efter tandborstningen eller före frukost.' },
+  { id: 'lunch', t: '12:15', n: 'Lunch', why: 'Ett bra avbrott mitt på dagen om du har en fast lunchrast. Lätt att skjuta på om dagen blir rörig.' },
+  { id: 'kväll', t: '18:00', n: 'Eftermiddag/kväll', why: 'Kroppen är ofta varmast och rörligast sent på dagen, vilket kan göra svårare pass lättare. Undvik hårda pass den sista timmen före läggdags.' }
+];
+const ACTS = [
+  [ // Lätt
+    { n: 'Promenad i lugnt tempo', min: 20, d: 'Gå i behagligt tempo – du ska kunna prata obehindrat. Gärna utomhus.' },
+    { n: 'Lång promenad i naturen', min: 30, d: 'Välj en stig eller park. Fokus på att njuta, inte på tempo.' },
+    { n: 'Mjukt rörlighetspass / yoga', min: 15, d: 'Följ en lugn yogaflow eller gör nacke, axlar, höfter och rygg i lugn takt.' },
+    { n: 'Cykla lugnt', min: 20, d: 'Platt sträcka, låg motståndsnivå, jämnt tempo.' },
+    { n: 'Dansa till tre favoritlåtar', min: 10, d: 'Sätt på musik och rör dig fritt. Allt räknas.' }
+  ],
+  [ // Medel
+    { n: 'Rask promenad', min: 30, d: 'Gå så raskt att du blir lite andfådd men fortfarande kan prata i korta meningar.' },
+    { n: 'Intervallpromenad', min: 25, d: '5 min lugnt, sedan 8 × (1 min väldigt rask gång + 2 min lugnt). Avsluta med 3 min lugn gång.' },
+    { n: 'Cykla i medeltempo', min: 30, d: 'Jämnt och ganska hårt tempo, några backar om möjligt.' },
+    { n: 'Simning', min: 20, d: 'Valfritt simsätt i jämnt tempo, vila vid behov.' },
+    { n: 'Trappgång', min: 15, d: 'Gå upp och ner för en trappa i jämn takt. Vila vid behov.' },
+    { n: 'Hopprep-intervaller', min: 15, d: '5 × (2 min hopprep, 1 min vila).' }
+  ],
+  [ // Svår
+    { n: 'Intervallöpning 30/90', min: 25, d: 'Jogga 5 min. Därefter 8 × (30 s nära max, 90 s lugn gång/jogg). Avsluta med 5 min nedvarvning.' },
+    { n: 'Backintervaller', min: 25, d: 'Hitta en brant backe. 6–8 × 45 s hårt uppför, gå ner som vila.' },
+    { n: 'Tabata-block', min: 16, d: '4 block × 4 min (20 s max / 10 s vila, 8 set): burpees, skidhopp, höga knän, bergsklättrare. 1 min vila mellan blocken.' },
+    { n: 'Löpning i jämnt tempo', min: 30, d: 'Sakta in tillräckligt för att orka hela vägen. Ska kännas ansträngande men hållbart.' },
+    { n: 'Trappintervaller', min: 20, d: '10 × (springa upp, gå ner). Fokus på explosiva steg.' },
+    { n: 'Hopprep på hög nivå', min: 20, d: '6 × (3 min hopprep, 1 min vila), valfritt med dubbelhopp.' }
+  ]
+];
+
+/* ===================== Logg ===================== */
+const entriesOn = (date, kind) => S.log.filter(l => l.date === date && (!kind || l.kind === kind));
+const isDone = (date, kind) => entriesOn(date, kind).length > 0;
+function setDone(kind, date, on) {
+  S.log = S.log.filter(l => !(l.date === date && l.kind === kind));
+  if (on) {
+    const w = weekOf(date);
+    const s = buildSession(date, kind, S.settings.level);
+    S.log.push({ id: uid(), date, kind, minutes: s.minutes, level: S.settings.level, week: w, name: kind === 'main' ? `Pass vecka ${w}` : 'Extraövningar' });
+  }
+  save();
+}
+function stats() {
+  const st = S.settings.startDate, t = today();
+  const doneSet = new Set(S.log.filter(l => l.kind === 'main').map(l => l.date));
+  let run = 0, best = 0, sched = 0, done = 0;
+  if (st && st <= t) {
+    for (let d = st; d <= t; d = addDays(d, 1)) {
+      if (isRest(d)) continue;
+      if (doneSet.has(d)) { run++; done++; sched++; best = Math.max(best, run); }
+      else if (d !== t) { run = 0; sched++; }
+    }
+  }
+  const sum = k => S.log.filter(l => l.kind === k).length;
+  return {
+    streak: run, best, rate: sched ? Math.round(done / sched * 100) : 0,
+    main: sum('main'), extra: sum('extra'), act: sum('activity'),
+    minutes: S.log.reduce((a, l) => a + (+l.minutes || 0), 0)
+  };
+}
+
+/* ===================== UI-state ===================== */
+const ui = { tab: 'today', date: today(), act: null, hist: 10 };
+const TABS = [['today', 'Idag', '🏠'], ['plan', 'Schema', '📅'], ['act', 'Aktivitet', '🚶'], ['stats', 'Statistik', '📊'], ['set', 'Inställningar', '⚙️']];
+const $ = s => document.querySelector(s);
+const chips = (cur, action) => `<div class="chips" role="group" aria-label="Svårighetsgrad">${LV.map((n, i) => `<button data-a="${action}" data-v="${i}" aria-pressed="${cur === i}">${n}</button>`).join('')}</div>`;
+
+/* ----- Idag ----- */
+function viewToday() {
+  const st = S.settings.startDate;
+  if (!st) {
+    return `<h1>Välkommen 👋</h1><p class="mute">Ett lugnt veckoschema med grundläggande calisthenics. Första fyra veckorna är för att komma igång.</p>
+    <div class="card"><h2>Starta programmet</h2>
+      <label class="mute" for="sd">Startdatum</label><br><input type="date" id="sd" value="${today()}">
+      <h3 style="margin-top:14px">Svårighetsgrad</h3>${chips(S.settings.level, 'lvl')}
+      <p class="mute">Rekommendation: börja på Lätt. Du kan byta när som helst.</p>
+      <button class="primary" data-a="begin" style="margin-top:8px;width:100%">Börja programmet</button></div>
+    <div class="card"><h2>Så är det upplagt</h2><table>
+      <tr><th>Vecka</th><th>Pass</th><th>Vila</th></tr>
+      <tr><td>1</td><td>5 min + 5 min extra</td><td>Ingen</td></tr>
+      <tr><td>2–3</td><td>10 min + 5 min extra</td><td>Måndag</td></tr>
+      <tr><td>4 →</td><td>15 min + 5 min extra</td><td>Måndag</td></tr></table></div>`;
+  }
+  const date = ui.date, w = weekOf(date), t = today();
+  const dowName = DAYS[parse(date).getDay()];
+  const nav = `<div class="row between" style="margin-bottom:10px">
+    <button data-a="day" data-v="-1" aria-label="Föregående dag">‹</button>
+    <div style="text-align:center"><h1>${date === t ? 'Idag' : dowName}</h1><div class="mute">${niceDate(date)}</div></div>
+    <button data-a="day" data-v="1" aria-label="Nästa dag">›</button></div>
+    ${date !== t ? '<div style="text-align:center;margin-bottom:10px"><button class="ghost" data-a="gotoday">Gå till idag</button></div>' : ''}`;
+  if (w === 0) return nav + `<div class="card">Programmet startar ${niceDate(st)}.</div>`;
+  const rest = isRest(date), future = date > t;
+  const rec = recLevel(currentWeek());
+  let h = nav;
+  if (date === t && S.settings.level < rec && S.settings.dismissed !== rec) {
+    h += `<div class="card banner"><h2>Dags att öka? 💪</h2><p>Du är i vecka ${currentWeek()}. Nybörjarfasen är klar – jag rekommenderar nivå <b>${LV[rec]}</b>.</p>
+    <div class="row"><button class="primary" data-a="lvlup" data-v="${rec}">Byt till ${LV[rec]}</button><button class="ghost" data-a="dismiss" data-v="${rec}">Inte nu</button></div></div>`;
+  }
+  h += `<div class="card"><div class="row between"><div><h2 style="margin:0">Vecka ${w}</h2><span class="mute">${rest ? 'Vilodag' : mainMin(w) + ' min + ' + EXTRA_MIN + ' min extra'}</span></div>
+    <span class="tag ${rest ? 'rest' : ''}">${rest ? 'Vila' : 'Pass'}</span></div>
+    <h3 style="margin-top:12px">Svårighetsgrad</h3>${chips(S.settings.level, 'lvl')}
+    ${rest ? '' : `<p class="mute" style="margin-top:8px">⏰ Föreslagen tid: <b>kl ${esc(S.settings.time)}</b> <a href="#" data-a="tab" data-v="set" style="color:var(--brand)">ändra</a></p>`}</div>`;
+  if (rest) {
+    return h + `<div class="card"><h2>Vilodag 😌</h2><p>Musklerna bygger upp sig under vila. Vill du röra på dig ändå är en lugn promenad perfekt.</p>
+      <button data-a="tab" data-v="act">Föreslå en lugn aktivitet</button></div>`;
+  }
+  for (const kind of ['main', 'extra']) {
+    const s = buildSession(date, kind, S.settings.level), done = isDone(date, kind);
+    h += `<div class="card"><div class="row between"><h2 style="margin:0">${kind === 'main' ? s.title : 'Extraövningar +' + EXTRA_MIN + ' min'}</h2>${done ? '<span class="tag ok">✓ Klart</span>' : ''}</div>
+      <p class="mute">${s.items.length} övningar × ${s.rounds} ${s.rounds > 1 ? 'rundor' : 'runda'} · ${s.work} s arbete / ${s.rest} s vila${kind === 'extra' ? ' · valfritt' : ''}</p>
+      <div style="margin:6px 0 10px">${s.items.map((it, i) => `<div class="ex"><span class="n">${i + 1}</span><div><b>${esc(it.name)}</b><span class="mute">${esc(it.how)}</span></div></div>`).join('')}</div>
+      <div class="row">${future ? '<span class="mute">Kan startas den dagen.</span>' : `<button class="primary grow" data-a="play" data-v="${kind}">▶ Starta med timer</button>
+      <button data-a="toggle" data-v="${kind}">${done ? 'Ångra' : 'Markera klar'}</button>`}</div></div>`;
+  }
+  return h + '<p class="mute">Tips: gör 1 min lätt uppvärmning (armcirklar, marschera) före passet. Smärta är en signal att avbryta – ansträngning är det inte.</p>';
+}
+
+/* ----- Schema ----- */
+function viewPlan() {
+  const st = S.settings.startDate;
+  if (!st) return '<h1>Schema</h1><div class="card">Starta programmet under fliken Idag först.</div>';
+  const cw = Math.max(currentWeek(), 1), ws = addDays(st, (cw - 1) * 7), t = today();
+  let h = `<h1>Vecka ${cw}</h1><p class="mute">${mainMin(cw)} min pass + ${EXTRA_MIN} min extra · tid kl ${esc(S.settings.time)}</p><div class="card">`;
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(ws, i), rest = isRest(d), done = isDone(d, 'main'), ex = isDone(d, 'extra'), fut = d > t;
+    h += `<button class="day" data-a="open" data-v="${d}"><div class="grow"><b>${DAYS[parse(d).getDay()]}</b>${d === t ? ' <span class="tag">idag</span>' : ''}<div class="mute">${niceDate(d)}</div></div>
+      <span>${rest ? '<span class="tag rest">Vila</span>' : done ? '<span class="tag ok">✓ ' + mainMin(weekOf(d)) + ' min</span>' : fut || d === t ? '<span class="mute">kl ' + esc(S.settings.time) + '</span>' : '<span class="mute" style="color:var(--bad)">missad</span>'}${ex ? ' <span class="tag">+extra</span>' : ''}</span></button>`;
+  }
+  h += `</div><div class="card"><h2>Hela programmet</h2><table><tr><th>Vecka</th><th>Pass</th><th>Vila</th><th>Rek. nivå</th></tr>`;
+  const rows = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  for (const w of rows) {
+    const label = w === 9 ? '9 →' : String(w);
+    h += `<tr class="${w === cw || (w === 9 && cw >= 9) ? 'cur' : ''}"><td>${label}</td><td>${mainMin(w)} + ${EXTRA_MIN} min</td><td>${w === 1 ? '–' : 'Mån'}</td><td>${LV[recLevel(w)]}</td></tr>`;
+  }
+  return h + `</table><p class="mute">Efter vecka 4 kan du öka svårigheten. Rekommendationen är bara ett förslag – du väljer själv.</p></div>`;
+}
+
+/* ----- Aktivitet ----- */
+function viewAct() {
+  const t = today(), lv = S.settings.actLevel, list = entriesOn(t, 'activity');
+  let h = `<h1>Extra aktivitet</h1><p class="mute">Få ett förslag på promenad, intervall eller annan rörelse.</p>`;
+  if (S.settings.startDate && isRest(t)) h += `<div class="card banner">Idag är det vilodag – välj gärna <b>Lätt</b> för återhämtning.</div>`;
+  h += `<div class="card"><h3>Svårighetsgrad</h3>${chips(lv, 'alvl')}<button class="primary" data-a="suggest" style="width:100%;margin-top:10px">🎲 Föreslå en aktivitet</button></div>`;
+  if (ui.act) {
+    const a = ui.act;
+    h += `<div class="card"><div class="row between"><h2 style="margin:0">${esc(a.n)}</h2><span class="tag">${a.min} min · ${LV[a.lv]}</span></div><p>${esc(a.d)}</p>
+      <div class="row"><button class="primary grow" data-a="actdone">✓ Jag gjorde den</button><button data-a="suggest">Annat förslag</button></div></div>`;
+  }
+  h += `<div class="card"><h2>Egen aktivitet</h2><div class="row"><input id="cn" placeholder="T.ex. cykling" class="grow" aria-label="Namn"><input id="cm" type="number" min="1" max="600" value="30" style="width:80px" aria-label="Minuter"><button data-a="custom">Logga</button></div></div>`;
+  if (list.length) h += `<div class="card"><h2>Idag</h2>${list.map(l => `<div class="row between" style="padding:4px 0"><span>${esc(l.name)} · ${l.minutes} min</span><button class="ghost danger" data-a="del" data-v="${l.id}" aria-label="Ta bort">✕</button></div>`).join('')}</div>`;
+  return h;
+}
+
+/* ----- Statistik ----- */
+function viewStats() {
+  const st = S.settings.startDate;
+  if (!st) return '<h1>Statistik</h1><div class="card">Ingen data än – starta programmet under fliken Idag.</div>';
+  const s = stats(), t = today(), cw = Math.max(currentWeek(), 1);
+  const tile = (v, l) => `<div class="tile"><div class="v">${v}</div><div class="mute">${l}</div></div>`;
+  let h = `<h1>Statistik</h1><div class="tiles" style="margin-top:10px">${tile(s.streak + ' 🔥', 'dagar i rad')}${tile(s.best, 'längsta svit')}${tile(s.main, 'genomförda pass')}${tile(s.rate + '%', 'av schemalagda dagar')}${tile(s.minutes, 'minuter totalt')}${tile(s.extra + ' / ' + s.act, 'extra-pass / aktiviteter')}</div>`;
+  // veckodiagram
+  const from = Math.max(1, cw - 7), weeks = [];
+  for (let w = from; w <= cw; w++) {
+    const a = addDays(st, (w - 1) * 7), b = addDays(a, 6), m = { main: 0, extra: 0, activity: 0 };
+    S.log.forEach(l => { if (l.date >= a && l.date <= b) m[l.kind] += +l.minutes || 0; });
+    weeks.push({ w, ...m });
+  }
+  const max = Math.max(30, ...weeks.map(x => x.main + x.extra + x.activity));
+  h += `<div class="card"><h2>Minuter per vecka</h2><div class="bars" role="img" aria-label="Stapeldiagram över träningsminuter per vecka">${weeks.map(x => {
+    const tot = x.main + x.extra + x.activity, hh = v => (v / max * 100) + '%';
+    return `<div class="bar"><div>${tot || ''}</div><div class="stack" style="height:${hh(tot)}"><i class="seg-main" style="height:${tot ? x.main / tot * 100 : 0}%"></i><i class="seg-extra" style="height:${tot ? x.extra / tot * 100 : 0}%"></i><i class="seg-act" style="height:${tot ? x.activity / tot * 100 : 0}%"></i></div><div>v${x.w}</div></div>`;
+  }).join('')}</div><div class="legend"><span><i class="seg-main"></i>Pass</span><span><i class="seg-extra"></i>Extraövningar</span><span><i class="seg-act"></i>Aktivitet</span></div></div>`;
+  // kalender (5 veckor, måndag först)
+  const dow = (parse(t).getDay() + 6) % 7, mon = addDays(t, -dow - 28);
+  let cells = ['M', 'T', 'O', 'T', 'F', 'L', 'S'].map(x => `<div class="hd">${x}</div>`).join('');
+  for (let i = 0; i < 35; i++) {
+    const d = addDays(mon, i);
+    let c = 'f';
+    if (d < st) c = 'b'; else if (d > t) c = 'f';
+    else if (isDone(d, 'main')) c = 'd'; else if (isRest(d)) c = 'r'; else if (d === t) c = ''; else c = 'm';
+    if (d === t) c += ' t';
+    if (isDone(d, 'extra') || isDone(d, 'activity')) c += ' dot';
+    cells += `<div class="${c}" title="${niceDate(d)}">${parse(d).getDate()}</div>`;
+  }
+  h += `<div class="card"><h2>Senaste 5 veckorna</h2><div class="heat">${cells}</div><div class="legend"><span>🟩 genomfört</span><span>🟥 missat</span><span>🟦 vila</span><span>🟠 prick = extra/aktivitet</span></div></div>`;
+  // historik
+  const hist = [...S.log].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  h += `<div class="card"><h2>Historik</h2>${hist.length ? hist.slice(0, ui.hist).map(l => `<div class="row between" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${esc(l.name)}</b><div class="mute">${niceDate(l.date)} · ${l.minutes} min · ${LV[l.level] || ''}</div></div><button class="ghost danger" data-a="del" data-v="${l.id}" aria-label="Ta bort">✕</button></div>`).join('') : '<p class="mute">Inget loggat ännu.</p>'}
+    ${hist.length > ui.hist ? '<button data-a="more" style="width:100%;margin-top:8px">Visa fler</button>' : ''}</div>`;
+  return h;
+}
+
+/* ----- Inställningar ----- */
+function viewSet() {
+  const se = S.settings;
+  return `<h1>Inställningar</h1>
+  <div class="card"><h2>Startdatum</h2><input type="date" id="sd" value="${esc(se.startDate)}" aria-label="Startdatum"><p class="mute">Vecka 1 börjar detta datum. Ändrar du det flyttas hela schemat; din logg ligger kvar.</p></div>
+  <div class="card"><h2>Förslag på tidpunkt</h2>
+    ${SLOTS.map(x => `<button class="slot" data-a="slot" data-v="${x.id}" aria-pressed="${se.slot === x.id}"><b>${x.n} · kl ${x.t}</b> ${x.rec ? '<span class="tag">Rekommenderas</span>' : ''}<div class="mute" style="margin-top:4px">${x.why}</div></button>`).join('')}
+    <div class="row" style="margin-top:6px"><label for="tm">Egen tid:</label><input type="time" id="tm" value="${esc(se.time)}"></div></div>
+  <div class="card"><h2>Påminnelser</h2>
+    <button data-a="ics" style="width:100%">📆 Ladda ner kalenderfil (12 veckor)</button>
+    <p class="mute">Importera filen i Google/Apple/Outlook-kalendern – då får du en riktig påminnelse varje träningsdag (vilodagar hoppas över). Det är den pålitliga vägen.</p>
+    <div class="row between" style="margin-top:8px"><span>Notis i webbläsaren</span><button data-a="notify" aria-pressed="${se.notify}">${se.notify ? 'På' : 'Av'}</button></div>
+    <p class="mute">Notisen fungerar bara medan appen är öppen i en flik.</p></div>
+  <div class="card"><h2>Data</h2><p class="mute">Allt sparas lokalt i din webbläsare. Säkerhetskopiera då och då.</p>
+    <div class="row"><button data-a="export">Exportera</button><button data-a="import">Importera</button><button class="danger" data-a="reset">Nollställ allt</button></div>
+    <input type="file" id="file" accept="application/json" hidden></div>`;
+}
+
+function render() {
+  const views = { today: viewToday, plan: viewPlan, act: viewAct, stats: viewStats, set: viewSet };
+  const y = window.scrollY;
+  $('#app').innerHTML = views[ui.tab]();
+  $('#nav').innerHTML = TABS.map(([id, n, i]) => `<button data-a="tab" data-v="${id}" ${ui.tab === id ? 'aria-current="page"' : ''}><span class="i" aria-hidden="true">${i}</span>${n}</button>`).join('');
+  window.scrollTo(0, y);
+}
+
+/* ===================== Kalenderfil ===================== */
+function makeICS() {
+  const st = S.settings.startDate, [hh, mm] = S.settings.time.split(':').map(Number);
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Calisthenics//SV', 'CALSCALE:GREGORIAN'];
+  const dt = (d, h, m) => d.replace(/-/g, '') + 'T' + pad(h) + pad(m) + '00';
+  for (let i = 0; i < 84; i++) {
+    const d = addDays(st, i);
+    if (isRest(d)) continue;
+    const w = weekOf(d), dur = mainMin(w), end = hh * 60 + mm + dur;
+    L.push('BEGIN:VEVENT', `UID:${d}-cal@calisthenics.local`, `DTSTAMP:${stamp}`, `DTSTART:${dt(d, hh, mm)}`, `DTEND:${dt(d, Math.floor(end / 60) % 24, end % 60)}`,
+      `SUMMARY:Calisthenics – vecka ${w} (${dur} min)`, `DESCRIPTION:${dur} min pass + ${EXTRA_MIN} min valfria extraövningar.`,
+      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Dags att träna!', 'TRIGGER:-PT10M', 'END:VALARM', 'END:VEVENT');
+  }
+  L.push('END:VCALENDAR');
+  return L.join('\r\n');
+}
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+/* ===================== Timer ===================== */
+let P = null, actx = null, wake = null;
+function beep(freq, dur) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.frequency.value = freq; g.gain.value = .15; o.connect(g); g.connect(actx.destination);
+    o.start(); o.stop(actx.currentTime + dur);
+  } catch (e) { /* ljud är valfritt */ }
+}
+const mmss = s => `${Math.floor(s / 60)}:${pad(s % 60)}`;
+function startPlayer(kind) {
+  const s = buildSession(ui.date, kind, S.settings.level);
+  const segs = [{ t: 'ready', sec: 5, name: 'Gör dig redo', how: 'Första övning: ' + s.segs[0].name, label: s.title }, ...s.segs];
+  P = { segs, kind, date: ui.date, paused: false, finished: false, total: segs.reduce((a, x) => a + x.sec, 0) };
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l => wake = l).catch(() => { }); } catch (e) { }
+  enterSeg(0); P.timer = setInterval(tick, 200);
+  $('#player').classList.add('on');
+}
+function enterSeg(i) {
+  P.i = i; P.end = Date.now() + P.segs[i].sec * 1000; P.last = null; drawPlayer();
+}
+function tick() {
+  if (!P || P.paused || P.finished) return;
+  const ms = P.end - Date.now();
+  if (ms <= 0) {
+    if (P.i + 1 >= P.segs.length) return finishPlayer();
+    const nt = P.segs[P.i + 1].t; enterSeg(P.i + 1); beep(nt === 'work' ? 1000 : 500, .3); try { navigator.vibrate && navigator.vibrate(150); } catch (e) { }
+    return;
+  }
+  const sec = Math.ceil(ms / 1000);
+  if (sec !== P.last) { P.last = sec; if (sec <= 3) beep(700, .1); updTimer(sec); }
+}
+function updTimer(sec) {
+  const e = $('#pt'); if (!e) return;
+  e.textContent = mmss(sec);
+  const before = P.segs.slice(0, P.i).reduce((a, x) => a + x.sec, 0);
+  $('#pb').style.width = ((before + P.segs[P.i].sec - sec) / P.total * 100) + '%';
+}
+function drawPlayer() {
+  const el = $('#player'), sg = P.segs[P.i];
+  el.className = 'on ' + (sg.t === 'work' ? 'work' : sg.t === 'rest' ? 'rest' : '');
+  el.innerHTML = `<div class="row between"><span class="mute">${esc(sg.label)}</span><button class="ghost" data-a="quit">✕ Avsluta</button></div>
+  <div class="prog" style="margin:10px 0"><i id="pb"></i></div>
+  <div class="phase" aria-live="polite">${sg.t === 'work' ? 'Kör!' : sg.t === 'rest' ? 'Vila' : 'Redo?'}</div>
+  <div class="big" id="pt" role="timer">${mmss(sg.sec)}</div>
+  <div style="text-align:center;flex:1;overflow:auto"><h1 style="font-size:1.6rem">${esc(sg.name)}</h1><p class="mute" style="font-size:1rem">${esc(sg.how)}</p></div>
+  <div class="row"><button data-a="pprev" aria-label="Föregående">⏮</button><button class="primary grow" data-a="ppause">${P.paused ? '▶ Fortsätt' : '⏸ Pausa'}</button><button data-a="pnext" aria-label="Hoppa över">⏭</button></div>`;
+  updTimer(Math.ceil((P.end - Date.now()) / 1000));
+}
+function finishPlayer() {
+  P.finished = true; clearInterval(P.timer); beep(1200, .6);
+  if (P.date <= today()) { setDone(P.kind, P.date, true); }
+  const el = $('#player'); el.className = 'on';
+  el.innerHTML = `<div style="margin:auto;text-align:center"><div style="font-size:4rem">🎉</div><h1>Bra jobbat!</h1><p class="mute">Passet är loggat.</p><button class="primary" data-a="quit" style="margin-top:16px">Klar</button></div>`;
+}
+function closePlayer() {
+  if (P) { clearInterval(P.timer); P = null; }
+  try { wake && wake.release(); wake = null; } catch (e) { }
+  $('#player').className = ''; $('#player').innerHTML = ''; render();
+}
+
+/* ===================== Händelser ===================== */
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  const a = b.dataset.a, v = b.dataset.v;
+  if (b.tagName === 'A') e.preventDefault();
+  switch (a) {
+    case 'tab': ui.tab = v; break;
+    case 'lvl': S.settings.level = +v; save(); break;
+    case 'alvl': S.settings.actLevel = +v; ui.act = null; save(); break;
+    case 'lvlup': S.settings.level = +v; save(); break;
+    case 'dismiss': S.settings.dismissed = +v; save(); break;
+    case 'begin': { const d = $('#sd').value || today(); S.settings.startDate = d; ui.date = d > today() ? d : today(); save(); break; }
+    case 'day': ui.date = addDays(ui.date, +v); break;
+    case 'gotoday': ui.date = today(); break;
+    case 'open': ui.date = v; ui.tab = 'today'; break;
+    case 'toggle': setDone(v, ui.date, !isDone(ui.date, v)); break;
+    case 'play': startPlayer(v); return;
+    case 'suggest': {
+      const lv = S.settings.actLevel, pool = ACTS[lv].filter(x => !ui.act || x.n !== ui.act.n);
+      ui.act = { ...pool[Math.floor(Math.random() * pool.length)], lv }; break;
+    }
+    case 'actdone': S.log.push({ id: uid(), date: today(), kind: 'activity', minutes: ui.act.min, level: ui.act.lv, week: weekOf(today()), name: ui.act.n }); save(); ui.act = null; break;
+    case 'custom': {
+      const n = $('#cn').value.trim(), m = Math.max(1, Math.min(600, +$('#cm').value || 0));
+      if (!n) { $('#cn').focus(); return; }
+      S.log.push({ id: uid(), date: today(), kind: 'activity', minutes: m, level: S.settings.actLevel, week: weekOf(today()), name: n }); save(); break;
+    }
+    case 'del': if (!confirm('Ta bort posten?')) return; S.log = S.log.filter(l => l.id !== v); save(); break;
+    case 'more': ui.hist += 15; break;
+    case 'slot': { const s = SLOTS.find(x => x.id === v); S.settings.slot = v; S.settings.time = s.t; save(); break; }
+    case 'ics':
+      if (!S.settings.startDate) { alert('Välj ett startdatum först (fliken Idag).'); return; }
+      download('calisthenics.ics', makeICS(), 'text/calendar'); return;
+    case 'notify':
+      if (S.settings.notify) { S.settings.notify = false; save(); break; }
+      if (!('Notification' in window)) { alert('Din webbläsare stöder inte notiser.'); return; }
+      Notification.requestPermission().then(p => { S.settings.notify = p === 'granted'; save(); render(); }); return;
+    case 'export': download('calisthenics-backup.json', JSON.stringify(S, null, 2), 'application/json'); return;
+    case 'import': $('#file').click(); return;
+    case 'reset': if (!confirm('Radera allt – inställningar och logg?')) return; S = defaults(); save(); ui.date = today(); ui.tab = 'today'; break;
+    case 'quit': closePlayer(); return;
+    case 'ppause':
+      if (P.finished) return;
+      if (P.paused) { P.end = Date.now() + P.left; P.paused = false; } else { P.left = P.end - Date.now(); P.paused = true; }
+      drawPlayer(); if (P.paused) updTimer(Math.ceil(P.left / 1000)); return;
+    case 'pnext': if (P.i + 1 >= P.segs.length) finishPlayer(); else { P.paused = false; enterSeg(P.i + 1); } return;
+    case 'pprev': P.paused = false; enterSeg(Math.max(0, P.i - 1)); return;
+  }
+  render();
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'sd' && ui.tab === 'set') { S.settings.startDate = e.target.value; save(); render(); }
+  else if (e.target.id === 'tm') { if (e.target.value) { S.settings.time = e.target.value; S.settings.slot = ''; save(); render(); } }
+  else if (e.target.id === 'file') {
+    const f = e.target.files[0]; if (!f) return;
+    f.text().then(t => {
+      const o = JSON.parse(t);
+      if (!o || !Array.isArray(o.log) || typeof o.settings !== 'object') throw new Error('bad');
+      if (!confirm('Ersätta nuvarande data med säkerhetskopian?')) return;
+      S = { ...defaults(), ...o, settings: { ...defaults().settings, ...o.settings } }; save(); render();
+    }).catch(() => alert('Filen kunde inte läsas som en säkerhetskopia.'));
+    e.target.value = '';
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && P) closePlayer(); });
+
+// Notis medan appen är öppen
+setInterval(() => {
+  const s = S.settings, n = new Date(), t = fmt(n);
+  if (!s.notify || !s.startDate || !('Notification' in window) || Notification.permission !== 'granted') return;
+  if (`${pad(n.getHours())}:${pad(n.getMinutes())}` !== s.time || s.lastNotified === t || isRest(t) || weekOf(t) === 0 || isDone(t, 'main')) return;
+  s.lastNotified = t; save();
+  new Notification('Dags att träna 💪', { body: `Vecka ${weekOf(t)}: ${mainMin(weekOf(t))} min väntar.` });
+}, 20000);
+
+load(); render();
+</script>
+</body>
+</html>
