@@ -108,7 +108,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 
 /* ===================== Data & lagring ===================== */
 const KEY = 'calisthenics-v1';
-const defaults = () => ({ v: 1, settings: { startDate: '', level: 0, actLevel: 0, time: '07:30', slot: 'morgon', notify: false, dismissed: -1, lastNotified: '', lastExport: '' }, log: [] });
+const defaults = () => ({ v: 1, settings: { startDate: '', level: 0, actLevel: 0, time: '07:30', slot: 'morgon', notify: false, dismissed: -1, lastNotified: '', lastExport: '', autoSave: true }, log: [] });
 let S = defaults();
 function load() {
   try {
@@ -235,12 +235,24 @@ function setDone(kind, date, on) {
     S.log.push({ id: uid(), date, kind, minutes: s.minutes, level: S.settings.level, week: w, name: kind === 'main' ? `Pass vecka ${w}` : 'Extraövningar' });
   }
   save();
+  if (on) autoSaveEntry(S.log[S.log.length - 1]);
 }
 function logPartial(kind, date, minutes) {
   S.log = S.log.filter(l => !(l.date === date && l.kind === kind));
   const w = weekOf(date);
   S.log.push({ id: uid(), date, kind, minutes, level: S.settings.level, week: w, name: (kind === 'main' ? `Pass vecka ${w}` : 'Extraövningar') + ' (delvis)' });
   save();
+  autoSaveEntry(S.log[S.log.length - 1]);
+}
+function entryFile(l) {
+  return { name: `pass-${l.date}-${l.kind}${l.kind === 'activity' ? '-' + String(l.id).slice(-4) : ''}.json`, text: JSON.stringify({ app: 'calisthenics', type: 'pass', entry: l }, null, 2) };
+}
+function saveEntry(l) { const f = entryFile(l); download(f.name, f.text, 'application/json'); }
+function autoSaveEntry(l) { if (l && S.settings.autoSave !== false) saveEntry(l); }
+function cleanEntry(e) {
+  const kinds = ['main', 'extra', 'activity'];
+  if (!e || typeof e !== 'object' || !kinds.includes(e.kind) || !/^\d{4}-\d{2}-\d{2}$/.test(e.date) || !e.id) return null;
+  return { id: String(e.id), date: e.date, kind: e.kind, minutes: Math.max(0, Math.min(600, +e.minutes || 0)), level: [0, 1, 2].includes(+e.level) ? +e.level : 0, week: +e.week || 0, name: String(e.name || '').slice(0, 80) };
 }
 function stats() {
   const st = S.settings.startDate, t = today();
@@ -312,7 +324,7 @@ function viewToday() {
       <p class="mute">${s.items.length} övningar × ${s.rounds} ${s.rounds > 1 ? 'rundor' : 'runda'} · ${s.work} s arbete / ${s.rest} s vila${kind === 'extra' ? ' · valfritt' : ''}</p>
       <div style="margin:6px 0 10px">${s.items.map((it, i) => `<div class="ex"><span class="n">${i + 1}</span><div><b>${esc(it.name)}</b><span class="mute">${esc(it.how)}</span></div></div>`).join('')}</div>
       <div class="row">${future ? '<span class="mute">Kan startas den dagen.</span>' : `<button class="primary grow" data-a="play" data-v="${kind}">▶ Starta med timer</button>
-      <button data-a="toggle" data-v="${kind}">${done ? 'Ångra' : 'Markera klar'}</button>`}</div></div>`;
+      <button data-a="toggle" data-v="${kind}">${done ? 'Ångra' : 'Markera klar'}</button>${done ? `<button data-a="savepass" data-v="${entriesOn(date, kind)[0].id}" aria-label="Spara passfil">💾 Spara fil</button>` : ''}`}</div></div>`;
   }
   return h + '<p class="mute">Tips: gör 1 min lätt uppvärmning (armcirklar, marschera) före passet. Smärta är en signal att avbryta – ansträngning är det inte.</p>';
 }
@@ -387,7 +399,7 @@ function viewStats() {
   h += `<div class="card"><h2>Senaste 5 veckorna</h2><div class="heat">${cells}</div><div class="legend"><span>🟩 genomfört</span><span>🟥 missat</span><span>🟦 vila</span><span>🟠 prick = extra/aktivitet</span></div></div>`;
   // historik
   const hist = [...S.log].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
-  h += `<div class="card"><h2>Historik</h2>${hist.length ? hist.slice(0, ui.hist).map(l => `<div class="row between" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${esc(l.name)}</b><div class="mute">${niceDate(l.date)} · ${l.minutes} min · ${LV[l.level] || ''}</div></div><button class="ghost danger" data-a="del" data-v="${l.id}" aria-label="Ta bort">✕</button></div>`).join('') : '<p class="mute">Inget loggat ännu.</p>'}
+  h += `<div class="card"><h2>Historik</h2>${hist.length ? hist.slice(0, ui.hist).map(l => `<div class="row between" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${esc(l.name)}</b><div class="mute">${niceDate(l.date)} · ${l.minutes} min · ${LV[l.level] || ''}</div></div><span class="row" style="flex-wrap:nowrap"><button class="ghost" data-a="savepass" data-v="${l.id}" aria-label="Spara passfil">💾</button><button class="ghost danger" data-a="del" data-v="${l.id}" aria-label="Ta bort">✕</button></span></div>`).join('') : '<p class="mute">Inget loggat ännu.</p>'}
     ${hist.length > ui.hist ? '<button data-a="more" style="width:100%;margin-top:8px">Visa fler</button>' : ''}</div>`;
   return h;
 }
@@ -405,11 +417,12 @@ function viewSet() {
     <p class="mute">Importera filen i Google/Apple/Outlook-kalendern – då får du en riktig påminnelse varje träningsdag (vilodagar hoppas över). Det är den pålitliga vägen.</p>
     <div class="row between" style="margin-top:8px"><span>Notis i webbläsaren</span><button data-a="notify" aria-pressed="${se.notify}">${se.notify ? 'På' : 'Av'}</button></div>
     <p class="mute">Notisen fungerar bara medan appen är öppen i en flik.</p></div>
-  <div class="card"><h2>Data</h2><p class="mute">Allt sparas lokalt i din webbläsare. Spara en fil på din enhet som säkerhetskopia.</p>
+  <div class="card"><h2>Data</h2><p class="mute">Varje pass sparas som en egen fil på enheten (<code>pass-datum-typ.json</code>). Du kan läsa tillbaka passfiler med Hämta från fil. Allt sparas dessutom lokalt i din webbläsare. Spara en fil på din enhet som säkerhetskopia.</p>
     <button class="primary" data-a="export" style="width:100%;margin-bottom:8px">💾 Spara all data till enhet</button>
     <p class="mute">${se.lastExport ? 'Senast sparad: ' + niceDate(se.lastExport) : 'Du har inte sparat någon fil än.'}</p>
+    <div class="row between" style="margin-bottom:8px"><span>Spara passfil automatiskt efter varje pass</span><button data-a="autosave" aria-pressed="${se.autoSave !== false}">${se.autoSave !== false ? 'På' : 'Av'}</button></div>
     <div class="row"><button data-a="import">Hämta från fil</button><button class="danger" data-a="reset">Nollställ allt</button></div>
-    <input type="file" id="file" accept="application/json" hidden></div>`;
+    <input type="file" id="file" accept="application/json" multiple hidden></div>`;
 }
 
 function render() {
@@ -496,9 +509,9 @@ function drawPlayer() {
 }
 function finishPlayer() {
   P.finished = true; clearInterval(P.timer); beep(1200, .6);
-  if (P.date <= today()) { setDone(P.kind, P.date, true); }
+  if (P.date <= today()) { setDone(P.kind, P.date, true); P.entryId = entriesOn(P.date, P.kind)[0].id; }
   const el = $('#player'); el.className = 'on';
-  el.innerHTML = `<div style="margin:auto;text-align:center"><div style="font-size:4rem">🎉</div><h1>Bra jobbat!</h1><p class="mute">Passet är loggat.</p><button class="primary" data-a="quit" style="margin-top:16px">Klar</button></div>`;
+  el.innerHTML = `<div style="margin:auto;text-align:center"><div style="font-size:4rem">🎉</div><h1>Bra jobbat!</h1><p class="mute">Passet är loggat.</p><div class="row" style="justify-content:center;margin-top:16px"><button data-a="savepass" data-v="${P.entryId || ''}">💾 Spara passfil</button><button class="primary" data-a="quit">Klar</button></div></div>`;
 }
 function closePlayer() {
   if (P) { clearInterval(P.timer); P = null; }
@@ -527,13 +540,15 @@ document.addEventListener('click', e => {
       const lv = S.settings.actLevel, pool = ACTS[lv].filter(x => !ui.act || x.n !== ui.act.n);
       ui.act = { ...pool[Math.floor(Math.random() * pool.length)], lv }; break;
     }
-    case 'actdone': S.log.push({ id: uid(), date: today(), kind: 'activity', minutes: ui.act.min, level: ui.act.lv, week: weekOf(today()), name: ui.act.n }); save(); ui.act = null; break;
+    case 'actdone': S.log.push({ id: uid(), date: today(), kind: 'activity', minutes: ui.act.min, level: ui.act.lv, week: weekOf(today()), name: ui.act.n }); save(); autoSaveEntry(S.log[S.log.length - 1]); ui.act = null; break;
     case 'custom': {
       const n = $('#cn').value.trim(), m = Math.max(1, Math.min(600, +$('#cm').value || 0));
       if (!n) { $('#cn').focus(); return; }
-      S.log.push({ id: uid(), date: today(), kind: 'activity', minutes: m, level: S.settings.actLevel, week: weekOf(today()), name: n }); save(); break;
+      S.log.push({ id: uid(), date: today(), kind: 'activity', minutes: m, level: S.settings.actLevel, week: weekOf(today()), name: n }); save(); autoSaveEntry(S.log[S.log.length - 1]); break;
     }
     case 'del': if (!confirm('Ta bort posten?')) return; S.log = S.log.filter(l => l.id !== v); save(); break;
+    case 'savepass': { const l = S.log.find(x => x.id === v); if (l) saveEntry(l); return; }
+    case 'autosave': S.settings.autoSave = S.settings.autoSave === false; save(); break;
     case 'more': ui.hist += 15; break;
     case 'slot': { const s = SLOTS.find(x => x.id === v); S.settings.slot = v; S.settings.time = s.t; save(); break; }
     case 'ics':
@@ -568,14 +583,20 @@ document.addEventListener('change', e => {
   if (e.target.id === 'sd' && ui.tab === 'set') { S.settings.startDate = e.target.value; save(); render(); }
   else if (e.target.id === 'tm') { if (e.target.value) { S.settings.time = e.target.value; S.settings.slot = ''; save(); render(); } }
   else if (e.target.id === 'file') {
-    const f = e.target.files[0]; if (!f) return;
-    f.text().then(t => {
-      const o = JSON.parse(t);
-      if (!o || !Array.isArray(o.log) || typeof o.settings !== 'object') throw new Error('bad');
-      if (!confirm('Ersätta nuvarande data med säkerhetskopian?')) return;
-      S = { ...defaults(), ...o, settings: { ...defaults().settings, ...o.settings } }; save(); render();
-    }).catch(() => alert('Filen kunde inte läsas som en säkerhetskopia.'));
-    e.target.value = '';
+    const files = [...e.target.files]; e.target.value = '';
+    if (!files.length) return;
+    Promise.all(files.map(f => f.text().then(JSON.parse))).then(objs => {
+      const passes = objs.filter(o => o && o.type === 'pass').map(o => cleanEntry(o.entry)).filter(Boolean);
+      const backup = objs.find(o => o && Array.isArray(o.log) && o.settings && typeof o.settings === 'object');
+      if (!backup && !passes.length) throw new Error('bad');
+      const go = () => {
+        if (backup) S = { ...defaults(), ...backup, settings: { ...defaults().settings, ...backup.settings }, log: backup.log.map(cleanEntry).filter(Boolean) };
+        let n = 0;
+        passes.forEach(p => { if (!S.log.some(l => l.id === p.id)) { S.log.push(p); n++; } });
+        save(); render(); alert(backup ? 'Säkerhetskopian är inläst.' : `${n} pass lästes in.`);
+      };
+      if (backup) { if (confirm('Ersätta nuvarande data med säkerhetskopian?')) go(); } else go();
+    }).catch(() => alert('Filen kunde inte läsas som passfil eller säkerhetskopia.'));
   }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && P) closePlayer(); });
