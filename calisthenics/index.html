@@ -108,7 +108,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 
 /* ===================== Data & lagring ===================== */
 const KEY = 'calisthenics-v1';
-const defaults = () => ({ v: 1, settings: { startDate: '', level: 0, actLevel: 0, time: '07:30', slot: 'morgon', notify: false, dismissed: -1, lastNotified: '', lastExport: '', autoSave: true }, log: [] });
+const defaults = () => ({ v: 1, settings: { startDate: '', level: 0, actLevel: 0, time: '07:30', slot: 'morgon', notify: false, dismissed: -1, lastNotified: '', lastExport: '', autoSave: true }, log: [], shuffle: {} });
 let S = defaults();
 function load() {
   try {
@@ -173,9 +173,65 @@ const EXTRA_PLAN = {
   0: ['x_side', 'x_dead', 'calf', 'x_ham', 'x_cat']
 };
 
+// Fler övningar så att varje fokus har minst fem att slumpa mellan
+Object.assign(EX, {
+  push3: [['Pike-hållning', 'Stå på alla fyra, lyft höften högt i ett upp-och-ned-V, böj armarna lätt så huvudet närmar sig golvet och tryck tillbaka.'], ['Pike-armhävning', 'Från pike-position, böj armarna så huvudet sänks mot golvet mellan händerna, tryck upp.'], ['Pike-armhävning, fötterna uppe', 'Fötterna på en stol eller ett lågt bord, höften högt. Sänk huvudet mot golvet och tryck upp.']],
+  push4: [['Upp–ner-planka från knä', 'På knä på raka armar: sänk till underarmarna ett i taget och tryck upp igen.'], ['Upp–ner-planka', 'I planka: sänk till underarmar ett i taget och tryck upp igen. Byt ledande arm.'], ['Upp–ner-planka med armhävning', 'Som upp–ner, men gör en armhävning varje gång du är uppe.']],
+  push5: [['Bred armhävning mot vägg', 'Händerna bredare än axlarna mot väggen. Böj armarna och tryck ifrån.'], ['Bred armhävning på knä', 'Händerna brett, knäna i golvet. Sänk bröstet mot golvet och tryck upp.'], ['Bred armhävning', 'Händerna brett, rak kropp. Sänk bröstet nära golvet och tryck upp.']],
+  legs3: [['Sumoknäböj med stöd', 'Fötterna brett, tårna utåt, håll i en stol. Sänk höften rakt ner och res dig.'], ['Sumoknäböj', 'Fötterna brett, tårna utåt. Sänk höften rakt ner med knäna i tårnas riktning, res dig.'], ['Sumohopp', 'Sumoknäböj, hoppa upp med fötterna ihop och landa brett igen.']],
+  back3: [['Omvänd snöängel, kort', 'Ligg på mage, lyft bröstet lite. För armarna i små bågar från sidorna mot huvudet.'], ['Omvänd snöängel', 'Ligg på mage, lyft bröst och armar. För armarna i full båge från höfterna till över huvudet.'], ['Omvänd snöängel med benlyft', 'Som ovan, men håll även benen lyfta hela tiden.']],
+  back4: [['T-lyft', 'Ligg på mage med armarna ut som ett T. Lyft armarna några cm, dra ihop skulderbladen, sänk.'], ['T-lyft med paus', 'Som T-lyft men håll 3 sek högst upp.'], ['T-lyft med benlyft', 'T-lyft samtidigt som du lyfter raka ben.']],
+  back5: [['Superman-simning, långsam', 'Ligg på mage, lyft armar och ben och flytta dem långsamt upp och ner som simtag.'], ['Superman-simning', 'Lyft armar och ben och simma med raska, små rörelser.'], ['Superman-simning, snabb', 'Snabba simtag med högt lyfta armar och ben, jämn andning.']]
+});
+const same = (n, h) => [[n, h], [n, h], [n, h]];
+EX.x_shoulder = same('Axelcirklar', 'Stå upprätt och gör stora, långsamma cirklar med armarna framåt och bakåt. Byt riktning halvvägs.');
+EX.x_twist = same('Ryggrotation', 'På alla fyra: ena handen bakom nacken, vrid armbågen mot taket och tillbaka. Byt sida halvvägs.');
+EX.x_deepsq = same('Djup hållning', 'Gå ner i djup knäböj med hälarna i golvet, tryck armbågarna mot knäna och andas lugnt.');
+EX.x_chest = same('Bröstöppnare mot vägg', 'Stå med sidan mot en vägg, handen mot väggen i axelhöjd, vrid bröstet bort från armen. Byt sida halvvägs.');
+
+// Fokus: kategorier för slumpning
+const EX_CAT = {
+  push: ['push1', 'push2', 'push3', 'push4', 'push5'],
+  legs: ['legs1', 'legs2', 'legs3', 'glute', 'calf', 'x_wall'],
+  core: ['core1', 'core2', 'core3', 'x_side', 'x_dead', 'x_hollow'],
+  back: ['back1', 'back2', 'back3', 'back4', 'back5'],
+  fb: ['fb1', 'fb2'],
+  mob: ['x_cat', 'x_child', 'x_hip', 'x_ham', 'x_shoulder', 'x_twist', 'x_deepsq', 'x_chest']
+};
+const FOCI = [['standard', 'Dagens standard'], ['full', 'Helkropp'], ['chest', 'Bröst & axlar'], ['core', 'Mage'], ['back', 'Rygg'], ['legs', 'Ben & rumpa'], ['mob', 'Rörlighet']];
+const FOCUS_CAT = { chest: 'push', core: 'core', back: 'back', legs: 'legs', mob: 'mob' };
+const rnd = a => a[Math.floor(Math.random() * a.length)];
+const shuffled = a => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+const shuf = () => (S.shuffle && typeof S.shuffle === 'object' && !Array.isArray(S.shuffle)) ? S.shuffle : (S.shuffle = {});
+const sameSet = (a, b) => !!a && !!b && [...a].sort().join() === [...b].sort().join();
+// Fem övningar för valt fokus, gärna annorlunda än föregående val
+function pickIds(focus, prev) {
+  const mk = () => focus === 'full' ? ['push', 'legs', 'core', 'back', 'fb'].map(c => rnd(EX_CAT[c])) : shuffled(EX_CAT[FOCUS_CAT[focus]]).slice(0, 5);
+  let ids = mk();
+  for (let i = 0; i < 8 && sameSet(ids, prev); i++) ids = mk();
+  return ids;
+}
+// En enda slumpad övning
+function pickOne(focus, prev) {
+  const pool = focus === 'any' ? Object.keys(EX) : focus === 'full' ? ['push', 'legs', 'core', 'back', 'fb'].flatMap(c => EX_CAT[c]) : EX_CAT[FOCUS_CAT[focus]];
+  const c = pool.filter(i => i !== prev);
+  return rnd(c.length ? c : pool);
+}
+const logDate = () => ui.date <= today() ? ui.date : today();
+function buildOne() {
+  const ex = EX[ui.one.id][S.settings.level];
+  return { title: 'Extraövning', segs: [{ t: 'work', sec: 60, name: ex[0], how: ex[1], label: 'Extraövning · 1 min' }] };
+}
+function logOne() {
+  const date = logDate(), ex = EX[ui.one.id][S.settings.level];
+  S.log.push({ id: uid(), date, kind: 'activity', minutes: 1, level: S.settings.level, week: weekOf(date), name: 'Extraövning: ' + ex[0] });
+  save(); autoSaveEntry(S.log[S.log.length - 1]);
+}
+
 function buildSession(date, kind, level) {
   const dow = parse(date).getDay();
-  const ids = (kind === 'main' ? MAIN_PLAN : EXTRA_PLAN)[dow];
+  const ov = shuf()[date + '|' + kind];
+  const ids = ov && Array.isArray(ov.ids) && ov.ids.length === 5 && ov.ids.every(i => EX[i]) ? ov.ids : (kind === 'main' ? MAIN_PLAN : EXTRA_PLAN)[dow];
   const items = ids.map(id => ({ name: EX[id][level][0], how: EX[id][level][1] }));
   const [work, rest] = WORKREST[level];
   const minutes = kind === 'main' ? mainMin(weekOf(date)) || 5 : EXTRA_MIN;
@@ -276,11 +332,18 @@ function stats() {
 }
 
 /* ===================== UI-state ===================== */
-const ui = { tab: 'today', date: today(), act: null, hist: 10 };
+const ui = { tab: 'today', date: today(), act: null, hist: 10, one: null, oneFocus: 'any', oneMsg: '' };
 const TABS = [['today', 'Idag', '🏠'], ['plan', 'Schema', '📅'], ['act', 'Aktivitet', '🚶'], ['stats', 'Statistik', '📊'], ['set', 'Inställningar', '⚙️']];
 const $ = s => document.querySelector(s);
 const chips = (cur, action) => `<div class="chips" role="group" aria-label="Svårighetsgrad">${LV.map((n, i) => `<button data-a="${action}" data-v="${i}" aria-pressed="${cur === i}">${n}</button>`).join('')}</div>`;
 
+function oneCard() {
+  const o = ui.one, ex = o && EX[o.id] && EX[o.id][S.settings.level];
+  return `<div class="card"><h2>Slumpa en extra övning</h2><p class="mute">En övning på 1 minut, utöver passet.</p>
+    <div class="row"><label class="sr" for="f-one">Fokus</label><select id="f-one" data-focus="one" class="grow">${[['any', 'Valfritt'], ...FOCI.slice(1)].map(([v, n]) => `<option value="${v}" ${ui.oneFocus === v ? 'selected' : ''}>${n}</option>`).join('')}</select><button class="primary" data-a="rollone">🎲 Slumpa</button></div>
+    ${ex ? `<div class="ex" style="margin-top:8px"><span class="n">★</span><div><b>${esc(ex[0])}</b><span class="mute">${esc(ex[1])}</span></div></div>
+    <div class="row"><button class="primary grow" data-a="playone">▶ Kör 1 min</button><button data-a="doneone">Markera klar</button></div>` : ui.oneMsg ? `<p style="margin-top:8px"><span class="tag ok">✓ ${esc(ui.oneMsg)}</span></p>` : ''}</div>`;
+}
 /* ----- Idag ----- */
 function viewToday() {
   const st = S.settings.startDate;
@@ -318,16 +381,18 @@ function viewToday() {
     ${rest ? '' : `<p class="mute" style="margin-top:8px">⏰ Föreslagen tid: <b>kl ${esc(S.settings.time)}</b> <a href="#" data-a="tab" data-v="set" style="color:var(--brand)">ändra</a></p>`}</div>`;
   if (rest) {
     return h + `<div class="card"><h2>Vilodag 😌</h2><p>Musklerna bygger upp sig under vila. Vill du röra på dig ändå är en lugn promenad perfekt.</p>
-      <button data-a="tab" data-v="act">Föreslå en lugn aktivitet</button></div>`;
+      <button data-a="tab" data-v="act">Föreslå en lugn aktivitet</button></div>` + oneCard();
   }
   for (const kind of ['main', 'extra']) {
     const s = buildSession(date, kind, S.settings.level), done = isDone(date, kind);
-    h += `<div class="card"><div class="row between"><h2 style="margin:0">${kind === 'main' ? s.title : 'Extraövningar +' + EXTRA_MIN + ' min'}</h2>${done ? '<span class="tag ok">✓ Klart</span>' : ''}</div>
+    h += `<div class="card"><div class="row between"><h2 style="margin:0">${kind === 'main' ? s.title : 'Extraövningar +' + EXTRA_MIN + ' min'}</h2>${shuf()[date + '|' + kind] ? '<span class="tag">Slumpat</span> ' : ''}${done ? '<span class="tag ok">✓ Klart</span>' : ''}</div>
       <p class="mute">${s.items.length} övningar × ${s.rounds} ${s.rounds > 1 ? 'rundor' : 'runda'} · ${s.work} s arbete / ${s.rest} s vila${kind === 'extra' ? ' · valfritt' : ''}</p>
+      <div class="row" style="margin:6px 0"><label class="sr" for="f-${kind}">Fokus</label><select id="f-${kind}" data-focus="${kind}" class="grow" ${done ? 'disabled' : ''}>${FOCI.map(([v, n]) => `<option value="${v}" ${(shuf()[date + '|' + kind] ? shuf()[date + '|' + kind].focus : 'standard') === v ? 'selected' : ''}>${n}</option>`).join('')}</select><button data-a="shuffle" data-v="${kind}" ${done ? 'disabled' : ''}>🎲 Slumpa nya</button></div>
       <div style="margin:6px 0 10px">${s.items.map((it, i) => `<div class="ex"><span class="n">${i + 1}</span><div><b>${esc(it.name)}</b><span class="mute">${esc(it.how)}</span></div></div>`).join('')}</div>
       <div class="row">${future ? '<span class="mute">Kan startas den dagen.</span>' : `<button class="primary grow" data-a="play" data-v="${kind}">▶ Starta med timer</button>
       <button data-a="toggle" data-v="${kind}">${done ? 'Ångra' : 'Markera klar'}</button>${done ? `<button data-a="savepass" data-v="${entriesOn(date, kind)[0].id}" aria-label="Spara passfil">💾 Spara alla pass</button>` : ''}`}</div></div>`;
   }
+  h += oneCard();
   return h + '<p class="mute">Tips: gör 1 min lätt uppvärmning (armcirklar, marschera) före passet. Smärta är en signal att avbryta – ansträngning är det inte.</p>';
 }
 
@@ -471,9 +536,9 @@ function beep(freq, dur) {
 }
 const mmss = s => `${Math.floor(s / 60)}:${pad(s % 60)}`;
 function startPlayer(kind) {
-  const s = buildSession(ui.date, kind, S.settings.level);
+  const s = kind === 'one' ? buildOne() : buildSession(ui.date, kind, S.settings.level);
   const segs = [{ t: 'ready', sec: 5, name: 'Gör dig redo', how: 'Första övning: ' + s.segs[0].name, label: s.title }, ...s.segs];
-  P = { segs, kind, date: ui.date, paused: false, finished: false, total: segs.reduce((a, x) => a + x.sec, 0) };
+  P = { segs, kind, date: kind === 'one' ? logDate() : ui.date, paused: false, finished: false, total: segs.reduce((a, x) => a + x.sec, 0) };
   try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l => wake = l).catch(() => { }); } catch (e) { }
   enterSeg(0); P.timer = setInterval(tick, 200);
   $('#player').classList.add('on');
@@ -511,7 +576,8 @@ function drawPlayer() {
 }
 function finishPlayer() {
   P.finished = true; clearInterval(P.timer); beep(1200, .6);
-  if (P.date <= today()) { setDone(P.kind, P.date, true); P.entryId = entriesOn(P.date, P.kind)[0].id; }
+  if (P.kind === 'one') { logOne(); ui.oneMsg = 'Loggat: ' + EX[ui.one.id][S.settings.level][0]; ui.one = null; }
+  else if (P.date <= today()) { setDone(P.kind, P.date, true); P.entryId = entriesOn(P.date, P.kind)[0].id; }
   const el = $('#player'); el.className = 'on';
   el.innerHTML = `<div style="margin:auto;text-align:center"><div style="font-size:4rem">🎉</div><h1>Bra jobbat!</h1><p class="mute">Passet är loggat.</p><div class="row" style="justify-content:center;margin-top:16px"><button data-a="savepass">💾 Spara alla pass</button><button class="primary" data-a="quit">Klar</button></div></div>`;
 }
@@ -551,6 +617,10 @@ document.addEventListener('click', e => {
     case 'del': if (!confirm('Ta bort posten?')) return; S.log = S.log.filter(l => l.id !== v); save(); break;
     case 'savepass': saveEntry(); return;
     case 'autosave': S.settings.autoSave = S.settings.autoSave === false; save(); break;
+    case 'rollone': ui.one = { id: pickOne(ui.oneFocus, ui.one && ui.one.id) }; ui.oneMsg = ''; break;
+    case 'playone': if (ui.one) startPlayer('one'); return;
+    case 'doneone': if (ui.one) { logOne(); ui.oneMsg = 'Loggat: ' + EX[ui.one.id][S.settings.level][0]; ui.one = null; } break;
+    case 'shuffle': { const key = ui.date + '|' + v, cur = shuf()[key]; const f = cur ? cur.focus : 'full'; shuf()[key] = { focus: f, ids: pickIds(f, cur && cur.ids) }; save(); break; }
     case 'more': ui.hist += 15; break;
     case 'slot': { const s = SLOTS.find(x => x.id === v); S.settings.slot = v; S.settings.time = s.t; save(); break; }
     case 'ics':
@@ -582,6 +652,17 @@ document.addEventListener('click', e => {
   render();
 });
 document.addEventListener('change', e => {
+  const fk = e.target.dataset && e.target.dataset.focus;
+  if (fk) {
+    const f = e.target.value;
+    if (fk === 'one') { ui.oneFocus = f; ui.one = { id: pickOne(f, ui.one && ui.one.id) }; ui.oneMsg = ''; }
+    else {
+      const key = ui.date + '|' + fk, cur = shuf()[key];
+      if (f === 'standard') delete shuf()[key]; else shuf()[key] = { focus: f, ids: pickIds(f, cur && cur.ids) };
+      save();
+    }
+    render(); return;
+  }
   if (e.target.id === 'sd' && ui.tab === 'set') { S.settings.startDate = e.target.value; save(); render(); }
   else if (e.target.id === 'tm') { if (e.target.value) { S.settings.time = e.target.value; S.settings.slot = ''; save(); render(); } }
   else if (e.target.id === 'file') {
