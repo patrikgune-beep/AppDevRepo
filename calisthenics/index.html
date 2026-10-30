@@ -72,7 +72,8 @@ th,td{text-align:left;padding:6px 4px;border-top:1px solid var(--line)}
 th{border-top:0;color:var(--mute);font-weight:600}
 tr.cur td{background:var(--soft);font-weight:600}
 .slot{display:block;width:100%;text-align:left;margin-bottom:8px;padding:12px}
-.slot[aria-pressed="true"]{border:2px solid var(--brand);background:var(--soft)}
+button[aria-pressed="true"]{background:var(--brand);color:var(--brand-ink);border-color:var(--brand);font-weight:600}
+.slot[aria-pressed="true"]{border:2px solid var(--brand);background:var(--soft);color:var(--ink);font-weight:400}
 /* player */
 #player{position:fixed;inset:0;background:var(--bg);z-index:20;display:none;flex-direction:column;padding:16px;padding-top:max(16px,env(safe-area-inset-top));padding-bottom:max(16px,env(safe-area-inset-bottom))}
 #player.on{display:flex}
@@ -108,7 +109,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 
 /* ===================== Data & lagring ===================== */
 const KEY = 'calisthenics-v1';
-const defaults = () => ({ v: 1, settings: { startDate: '', level: 0, actLevel: 0, time: '07:30', slot: 'morgon', notify: false, dismissed: -1, lastNotified: '', lastExport: '', autoSave: true }, log: [], shuffle: {} });
+const defaults = () => ({ v: 1, settings: { startDate: '', level: 0, actLevel: 0, time: '07:30', slot: 'morgon', notify: false, dismissed: -1, lastNotified: '', lastExport: '', autoSave: true, actParts: [] }, log: [], shuffle: {} });
 let S = defaults();
 function load() {
   try {
@@ -212,8 +213,25 @@ function pickIds(focus, prev) {
   return ids;
 }
 // En enda slumpad övning
-function pickOne(focus, prev) {
-  const pool = focus === 'any' ? Object.keys(EX) : focus === 'full' ? ['push', 'legs', 'core', 'back', 'fb'].flatMap(c => EX_CAT[c]) : EX_CAT[FOCUS_CAT[focus]];
+const PARTS = [['full', 'Helkropp'], ['chest', 'Bröst & axlar'], ['core', 'Mage'], ['back', 'Rygg'], ['legs', 'Ben & rumpa'], ['mob', 'Rörlighet']];
+const validParts = a => Array.isArray(a) ? a.filter(p => PARTS.some(x => x[0] === p)) : [];
+const partsOf = ov => !ov ? [] : Array.isArray(ov.parts) ? validParts(ov.parts) : validParts([ov.focus]);
+const partCats = ps => [...new Set(ps.flatMap(p => p === 'full' ? ['push', 'legs', 'core', 'back', 'fb'] : [FOCUS_CAT[p]]))];
+const toggle = (a, v) => a.includes(v) ? a.filter(x => x !== v) : [...a, v];
+// Fem övningar fördelade över flera valda kroppsdelar
+function pickMulti(parts, prev) {
+  const mk = () => {
+    const cats = shuffled(partCats(parts)), ids = [];
+    for (let i = 0; i < 60 && ids.length < 5; i++) { const c = EX_CAT[cats[i % cats.length]].filter(x => !ids.includes(x)); if (c.length) ids.push(rnd(c)); }
+    return shuffled(ids);
+  };
+  let ids = mk();
+  for (let i = 0; i < 8 && sameSet(ids, prev); i++) ids = mk();
+  return ids;
+}
+const partChips = (sel, action, disabled) => `<div class="row" role="group" aria-label="Kroppsdelar" style="gap:6px">${PARTS.map(([k, n]) => `<button data-a="${action}" data-v="${k}" aria-pressed="${sel.includes(k)}" ${disabled ? 'disabled' : ''} style="padding:6px 12px;min-height:38px">${n}</button>`).join('')}</div>`;
+function pickOne(parts, prev) {
+  const pool = parts.length ? partCats(parts).flatMap(c => EX_CAT[c]) : Object.keys(EX);
   const c = pool.filter(i => i !== prev);
   return rnd(c.length ? c : pool);
 }
@@ -242,7 +260,7 @@ function buildSession(date, kind, level) {
       const last = r === rounds && i === items.length - 1;
       const nxt = last ? null : items[(i + 1) % items.length];
       segs.push({ t: 'work', sec: work, name: it.name, how: it.how, label: `Runda ${r}/${rounds} · övning ${i + 1}/${items.length}` });
-      segs.push({ t: 'rest', sec: rest, name: last ? 'Klart – andas ut' : 'Vila', how: last ? 'Skaka loss armar och ben.' : 'Nästa: ' + nxt.name, label: `Runda ${r}/${rounds}` });
+      segs.push({ t: 'rest', sec: rest, name: last ? 'Klart – andas ut' : 'Vila', how: last ? 'Skaka loss armar och ben.' : '', nextName: last ? '' : nxt.name, nextHow: last ? '' : nxt.how, label: `Runda ${r}/${rounds}` });
     });
   }
   return { kind, items, minutes, rounds, work, rest, segs, title: kind === 'main' ? `Pass ${minutes} min` : `Extra ${EXTRA_MIN} min` };
@@ -256,27 +274,40 @@ const SLOTS = [
 ];
 const ACTS = [
   [ // Lätt
-    { n: 'Promenad i lugnt tempo', min: 20, d: 'Gå i behagligt tempo – du ska kunna prata obehindrat. Gärna utomhus.' },
-    { n: 'Lång promenad i naturen', min: 30, d: 'Välj en stig eller park. Fokus på att njuta, inte på tempo.' },
-    { n: 'Mjukt rörlighetspass / yoga', min: 15, d: 'Följ en lugn yogaflow eller gör nacke, axlar, höfter och rygg i lugn takt.' },
-    { n: 'Cykla lugnt', min: 20, d: 'Platt sträcka, låg motståndsnivå, jämnt tempo.' },
-    { n: 'Dansa till tre favoritlåtar', min: 10, d: 'Sätt på musik och rör dig fritt. Allt räknas.' }
+    { n: 'Promenad i lugnt tempo', min: 20, parts: ['legs'], d: 'Gå i behagligt tempo – du ska kunna prata obehindrat. Gärna utomhus.' },
+    { n: 'Lång promenad i naturen', min: 30, parts: ['legs'], d: 'Välj en stig eller park. Fokus på att njuta, inte på tempo.' },
+    { n: 'Mjukt rörlighetspass / yoga', min: 15, parts: ['mob', 'core', 'back'], d: 'Följ en lugn yogaflow eller gör nacke, axlar, höfter och rygg i lugn takt.' },
+    { n: 'Axlar och nacke – rörlighetsflöde', min: 10, parts: ['mob', 'chest', 'back'], d: 'Axelcirklar, bröstöppnare mot vägg, nackrullningar och katt–ko. 30–45 sekunder per rörelse.' },
+    { n: 'Cykla lugnt', min: 20, parts: ['legs'], d: 'Platt sträcka, låg motståndsnivå, jämnt tempo.' },
+    { n: 'Dansa till tre favoritlåtar', min: 10, parts: ['full', 'legs'], d: 'Sätt på musik och rör dig fritt. Allt räknas.' },
+    { n: 'Stavgång (Nordic walking)', min: 30, parts: ['legs', 'back', 'chest'], d: 'Gå med stavar i jämnt tempo och använd armarna aktivt – det belastar rygg, axlar och armar.' },
+    { n: 'Lugn simning eller vattengymnastik', min: 20, parts: ['full', 'back', 'chest'], d: 'Valfritt simsätt i lugn takt. Vila vid kanten vid behov.' },
+    { n: 'Bålstabilitet på mattan', min: 12, parts: ['core', 'back'], d: 'Fågelhunden, dead bug och planka på knä. 3 omgångar med 30 s per övning.' }
   ],
   [ // Medel
-    { n: 'Rask promenad', min: 30, d: 'Gå så raskt att du blir lite andfådd men fortfarande kan prata i korta meningar.' },
-    { n: 'Intervallpromenad', min: 25, d: '5 min lugnt, sedan 8 × (1 min väldigt rask gång + 2 min lugnt). Avsluta med 3 min lugn gång.' },
-    { n: 'Cykla i medeltempo', min: 30, d: 'Jämnt och ganska hårt tempo, några backar om möjligt.' },
-    { n: 'Simning', min: 20, d: 'Valfritt simsätt i jämnt tempo, vila vid behov.' },
-    { n: 'Trappgång', min: 15, d: 'Gå upp och ner för en trappa i jämn takt. Vila vid behov.' },
-    { n: 'Hopprep-intervaller', min: 15, d: '5 × (2 min hopprep, 1 min vila).' }
+    { n: 'Rask promenad', min: 30, parts: ['legs'], d: 'Gå så raskt att du blir lite andfådd men fortfarande kan prata i korta meningar.' },
+    { n: 'Intervallpromenad', min: 25, parts: ['legs'], d: '5 min lugnt, sedan 8 × (1 min väldigt rask gång + 2 min lugnt). Avsluta med 3 min lugn gång.' },
+    { n: 'Cykla i medeltempo', min: 30, parts: ['legs'], d: 'Jämnt och ganska hårt tempo, några backar om möjligt.' },
+    { n: 'Simning', min: 20, parts: ['full', 'back', 'chest'], d: 'Valfritt simsätt i jämnt tempo, vila vid behov.' },
+    { n: 'Trappgång', min: 15, parts: ['legs'], d: 'Gå upp och ner för en trappa i jämn takt. Vila vid behov.' },
+    { n: 'Hopprep-intervaller', min: 15, parts: ['legs', 'full'], d: '5 × (2 min hopprep, 1 min vila).' },
+    { n: 'Yoga-flow', min: 25, parts: ['mob', 'core', 'back', 'legs'], d: 'Solhälsning, krigare och hund-position i flytande rörelse. Håll varje ställning 3–5 andetag.' },
+    { n: 'Rodd', min: 20, parts: ['back', 'legs', 'core'], d: 'Roddmaskin eller roddbåt i jämnt tempo. Tryck med benen först, dra sedan med ryggen och armarna.' },
+    { n: 'Klättring på lekplats eller klättervägg', min: 20, parts: ['back', 'chest', 'core'], d: 'Klättra, häng och dra dig upp i lugn takt med vila mellan försöken.' },
+    { n: 'Bålcirkel med plankor', min: 12, parts: ['core'], d: 'Planka, sidoplanka (båda sidor), cykelcrunch och bergsklättrare. 40 s per övning, 3 varv.' }
   ],
   [ // Svår
-    { n: 'Intervallöpning 30/90', min: 25, d: 'Jogga 5 min. Därefter 8 × (30 s nära max, 90 s lugn gång/jogg). Avsluta med 5 min nedvarvning.' },
-    { n: 'Backintervaller', min: 25, d: 'Hitta en brant backe. 6–8 × 45 s hårt uppför, gå ner som vila.' },
-    { n: 'Tabata-block', min: 16, d: '4 block × 4 min (20 s max / 10 s vila, 8 set): burpees, skidhopp, höga knän, bergsklättrare. 1 min vila mellan blocken.' },
-    { n: 'Löpning i jämnt tempo', min: 30, d: 'Sakta in tillräckligt för att orka hela vägen. Ska kännas ansträngande men hållbart.' },
-    { n: 'Trappintervaller', min: 20, d: '10 × (springa upp, gå ner). Fokus på explosiva steg.' },
-    { n: 'Hopprep på hög nivå', min: 20, d: '6 × (3 min hopprep, 1 min vila), valfritt med dubbelhopp.' }
+    { n: 'Intervallöpning 30/90', min: 25, parts: ['legs', 'full'], d: 'Jogga 5 min. Därefter 8 × (30 s nära max, 90 s lugn gång/jogg). Avsluta med 5 min nedvarvning.' },
+    { n: 'Backintervaller', min: 25, parts: ['legs'], d: 'Hitta en brant backe. 6–8 × 45 s hårt uppför, gå ner som vila.' },
+    { n: 'Tabata-block', min: 16, parts: ['full', 'core', 'chest', 'legs'], d: '4 block × 4 min (20 s max / 10 s vila, 8 set): burpees, skidhopp, höga knän, bergsklättrare. 1 min vila mellan blocken.' },
+    { n: 'Löpning i jämnt tempo', min: 30, parts: ['legs'], d: 'Sakta in tillräckligt för att orka hela vägen. Ska kännas ansträngande men hållbart.' },
+    { n: 'Trappintervaller', min: 20, parts: ['legs'], d: '10 × (springa upp, gå ner). Fokus på explosiva steg.' },
+    { n: 'Hopprep på hög nivå', min: 20, parts: ['legs', 'full'], d: '6 × (3 min hopprep, 1 min vila), valfritt med dubbelhopp.' },
+    { n: 'Roddintervaller', min: 20, parts: ['back', 'legs', 'core', 'full'], d: '10 × (1 min hårt, 1 min lugnt) på roddmaskin eller i roddbåt.' },
+    { n: 'Skuggboxning eller boxning mot säck', min: 20, parts: ['chest', 'core', 'full'], d: '6 × (2 min boxning med slag, rotation och fotarbete, 1 min vila).' },
+    { n: 'Simintervaller', min: 25, parts: ['full', 'back', 'chest'], d: '8 × (50 m hårt, 30 s vila). Byt simsätt varannan längd.' },
+    { n: 'Power-yoga', min: 30, parts: ['mob', 'core', 'back'], d: 'Kraftfullt flöde med långa hållningar: plankor, krigare, båt och bro.' },
+    { n: 'Avancerad bålcirkel', min: 15, parts: ['core'], d: '4 varv: V-ups, planka med axelklapp, sidoplanka med höftlyft, hollow hold – 40 s arbete, 20 s vila.' }
   ]
 ];
 
@@ -332,7 +363,7 @@ function stats() {
 }
 
 /* ===================== UI-state ===================== */
-const ui = { tab: 'today', date: today(), act: null, hist: 10, one: null, oneFocus: 'any', oneMsg: '' };
+const ui = { tab: 'today', date: today(), act: null, hist: 10, one: null, oneParts: [], oneMsg: '', actNote: '' };
 const TABS = [['today', 'Idag', '🏠'], ['plan', 'Schema', '📅'], ['act', 'Aktivitet', '🚶'], ['stats', 'Statistik', '📊'], ['set', 'Inställningar', '⚙️']];
 const $ = s => document.querySelector(s);
 const chips = (cur, action) => `<div class="chips" role="group" aria-label="Svårighetsgrad">${LV.map((n, i) => `<button data-a="${action}" data-v="${i}" aria-pressed="${cur === i}">${n}</button>`).join('')}</div>`;
@@ -340,7 +371,7 @@ const chips = (cur, action) => `<div class="chips" role="group" aria-label="Svå
 function oneCard() {
   const o = ui.one, ex = o && EX[o.id] && EX[o.id][S.settings.level];
   return `<div class="card"><h2>Slumpa en extra övning</h2><p class="mute">En övning på 1 minut, utöver passet.</p>
-    <div class="row"><label class="sr" for="f-one">Fokus</label><select id="f-one" data-focus="one" class="grow">${[['any', 'Valfritt'], ...FOCI.slice(1)].map(([v, n]) => `<option value="${v}" ${ui.oneFocus === v ? 'selected' : ''}>${n}</option>`).join('')}</select><button class="primary" data-a="rollone">🎲 Slumpa</button></div>
+    <div style="margin-bottom:8px">${partChips(ui.oneParts, 'opart')}</div><p class="mute" style="margin:0 0 8px">Inget valt = valfri övning.</p><button class="primary" data-a="rollone">🎲 Slumpa</button>
     ${ex ? `<div class="ex" style="margin-top:8px"><span class="n">★</span><div><b>${esc(ex[0])}</b><span class="mute">${esc(ex[1])}</span></div></div>
     <div class="row"><button class="primary grow" data-a="playone">▶ Kör 1 min</button><button data-a="doneone">Markera klar</button></div>` : ui.oneMsg ? `<p style="margin-top:8px"><span class="tag ok">✓ ${esc(ui.oneMsg)}</span></p>` : ''}</div>`;
 }
@@ -387,7 +418,9 @@ function viewToday() {
     const s = buildSession(date, kind, S.settings.level), done = isDone(date, kind);
     h += `<div class="card"><div class="row between"><h2 style="margin:0">${kind === 'main' ? s.title : 'Extraövningar +' + EXTRA_MIN + ' min'}</h2>${shuf()[date + '|' + kind] ? '<span class="tag">Slumpat</span> ' : ''}${done ? '<span class="tag ok">✓ Klart</span>' : ''}</div>
       <p class="mute">${s.items.length} övningar × ${s.rounds} ${s.rounds > 1 ? 'rundor' : 'runda'} · ${s.work} s arbete / ${s.rest} s vila${kind === 'extra' ? ' · valfritt' : ''}</p>
-      <div class="row" style="margin:6px 0"><label class="sr" for="f-${kind}">Fokus</label><select id="f-${kind}" data-focus="${kind}" class="grow" ${done ? 'disabled' : ''}>${FOCI.map(([v, n]) => `<option value="${v}" ${(shuf()[date + '|' + kind] ? shuf()[date + '|' + kind].focus : 'standard') === v ? 'selected' : ''}>${n}</option>`).join('')}</select><button data-a="shuffle" data-v="${kind}" ${done ? 'disabled' : ''}>🎲 Slumpa nya</button></div>
+      ${kind === 'extra'
+        ? `<div style="margin:6px 0"><div class="mute" style="margin-bottom:6px">Välj en eller flera kroppsdelar</div>${partChips(partsOf(shuf()[date + '|extra']), 'xpart', done)}<button data-a="shuffle" data-v="extra" style="margin-top:8px" ${done ? 'disabled' : ''}>🎲 Slumpa nya</button></div>`
+        : `<div class="row" style="margin:6px 0"><label class="sr" for="f-${kind}">Fokus</label><select id="f-${kind}" data-focus="${kind}" class="grow" ${done ? 'disabled' : ''}>${FOCI.map(([v, n]) => `<option value="${v}" ${(shuf()[date + '|' + kind] ? shuf()[date + '|' + kind].focus : 'standard') === v ? 'selected' : ''}>${n}</option>`).join('')}</select><button data-a="shuffle" data-v="${kind}" ${done ? 'disabled' : ''}>🎲 Slumpa nya</button></div>`}
       <div style="margin:6px 0 10px">${s.items.map((it, i) => `<div class="ex"><span class="n">${i + 1}</span><div><b>${esc(it.name)}</b><span class="mute">${esc(it.how)}</span></div></div>`).join('')}</div>
       <div class="row">${future ? '<span class="mute">Kan startas den dagen.</span>' : `<button class="primary grow" data-a="play" data-v="${kind}">▶ Starta med timer</button>
       <button data-a="toggle" data-v="${kind}">${done ? 'Ångra' : 'Markera klar'}</button>${done ? `<button data-a="savepass" data-v="${entriesOn(date, kind)[0].id}" aria-label="Spara passfil">💾 Spara alla pass</button>` : ''}`}</div></div>`;
@@ -421,10 +454,13 @@ function viewAct() {
   const t = today(), lv = S.settings.actLevel, list = entriesOn(t, 'activity');
   let h = `<h1>Extra aktivitet</h1><p class="mute">Få ett förslag på promenad, intervall eller annan rörelse.</p>`;
   if (S.settings.startDate && isRest(t)) h += `<div class="card banner">Idag är det vilodag – välj gärna <b>Lätt</b> för återhämtning.</div>`;
-  h += `<div class="card"><h3>Svårighetsgrad</h3>${chips(lv, 'alvl')}<button class="primary" data-a="suggest" style="width:100%;margin-top:10px">🎲 Föreslå en aktivitet</button></div>`;
+  h += `<div class="card"><h3>Svårighetsgrad</h3>${chips(lv, 'alvl')}
+    <h3 style="margin-top:12px">Kroppsdelar</h3>${partChips(validParts(S.settings.actParts), 'apart')}<p class="mute" style="margin:6px 0 0">Välj en eller flera. Inget valt = valfri aktivitet.</p>
+    <button class="primary" data-a="suggest" style="width:100%;margin-top:10px">🎲 Föreslå en aktivitet</button></div>`;
   if (ui.act) {
     const a = ui.act;
     h += `<div class="card"><div class="row between"><h2 style="margin:0">${esc(a.n)}</h2><span class="tag">${a.min} min · ${LV[a.lv]}</span></div><p>${esc(a.d)}</p>
+      <p class="mute">Tränar: ${(a.parts || []).map(k => PARTS.find(x => x[0] === k)[1]).join(', ')}</p>${ui.actNote ? `<p class="mute">${esc(ui.actNote)}</p>` : ''}
       <div class="row"><button class="primary grow" data-a="actdone">✓ Jag gjorde den</button><button data-a="suggest">Annat förslag</button></div></div>`;
   }
   h += `<div class="card"><h2>Egen aktivitet</h2><div class="row"><input id="cn" placeholder="T.ex. cykling" class="grow" aria-label="Namn"><input id="cm" type="number" min="1" max="600" value="30" style="width:80px" aria-label="Minuter"><button data-a="custom">Logga</button></div></div>`;
@@ -537,7 +573,7 @@ function beep(freq, dur) {
 const mmss = s => `${Math.floor(s / 60)}:${pad(s % 60)}`;
 function startPlayer(kind) {
   const s = kind === 'one' ? buildOne() : buildSession(ui.date, kind, S.settings.level);
-  const segs = [{ t: 'ready', sec: 5, name: 'Gör dig redo', how: 'Första övning: ' + s.segs[0].name, label: s.title }, ...s.segs];
+  const segs = [{ t: 'ready', sec: 5, name: 'Gör dig redo', how: '', nextName: s.segs[0].name, nextHow: s.segs[0].how, label: s.title }, ...s.segs];
   P = { segs, kind, date: kind === 'one' ? logDate() : ui.date, paused: false, finished: false, total: segs.reduce((a, x) => a + x.sec, 0) };
   try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l => wake = l).catch(() => { }); } catch (e) { }
   enterSeg(0); P.timer = setInterval(tick, 200);
@@ -570,7 +606,9 @@ function drawPlayer() {
   <div class="prog" style="margin:10px 0"><i id="pb"></i></div>
   <div class="phase" aria-live="polite">${sg.t === 'work' ? 'Kör!' : sg.t === 'rest' ? 'Vila' : 'Redo?'}</div>
   <div class="big" id="pt" role="timer">${mmss(sg.sec)}</div>
-  <div style="text-align:center;flex:1;overflow:auto"><h1 style="font-size:1.6rem">${esc(sg.name)}</h1><p class="mute" style="font-size:1rem">${esc(sg.how)}</p></div>
+  <div style="text-align:center;flex:1;overflow:auto">${sg.t !== 'work' && sg.nextName
+    ? `<div class="mute">${sg.t === 'ready' ? 'Första övning' : 'Nästa övning'}</div><h1 style="font-size:1.6rem">${esc(sg.nextName)}</h1><p class="mute" style="font-size:1rem">${esc(sg.nextHow)}</p>`
+    : `<h1 style="font-size:1.6rem">${esc(sg.name)}</h1>${sg.t === 'work' ? '' : `<p class="mute" style="font-size:1rem">${esc(sg.how)}</p>`}`}</div>
   <div class="row"><button data-a="pprev" aria-label="Föregående">⏮</button><button class="primary grow" data-a="ppause">${P.paused ? '▶ Fortsätt' : '⏸ Pausa'}</button><button data-a="pnext" aria-label="Hoppa över">⏭</button></div>`;
   updTimer(Math.ceil((P.end - Date.now()) / 1000));
 }
@@ -605,7 +643,12 @@ document.addEventListener('click', e => {
     case 'toggle': setDone(v, ui.date, !isDone(ui.date, v)); break;
     case 'play': startPlayer(v); return;
     case 'suggest': {
-      const lv = S.settings.actLevel, pool = ACTS[lv].filter(x => !ui.act || x.n !== ui.act.n);
+      const lv = S.settings.actLevel, ps = validParts(S.settings.actParts);
+      const match = ACTS[lv].filter(x => !ps.length || x.parts.some(p => ps.includes(p)));
+      ui.actNote = '';
+      let pool = match.filter(x => !ui.act || x.n !== ui.act.n);
+      if (!match.length) { pool = ACTS[lv].filter(x => !ui.act || x.n !== ui.act.n); ui.actNote = `Ingen aktivitet på nivån ${LV[lv]} passar valda kroppsdelar – här är ett annat förslag.`; }
+      else if (!pool.length) pool = match;
       ui.act = { ...pool[Math.floor(Math.random() * pool.length)], lv }; break;
     }
     case 'actdone': S.log.push({ id: uid(), date: today(), kind: 'activity', minutes: ui.act.min, level: ui.act.lv, week: weekOf(today()), name: ui.act.n }); save(); autoSaveEntry(S.log[S.log.length - 1]); ui.act = null; break;
@@ -617,10 +660,22 @@ document.addEventListener('click', e => {
     case 'del': if (!confirm('Ta bort posten?')) return; S.log = S.log.filter(l => l.id !== v); save(); break;
     case 'savepass': saveEntry(); return;
     case 'autosave': S.settings.autoSave = S.settings.autoSave === false; save(); break;
-    case 'rollone': ui.one = { id: pickOne(ui.oneFocus, ui.one && ui.one.id) }; ui.oneMsg = ''; break;
+    case 'rollone': ui.one = { id: pickOne(ui.oneParts, ui.one && ui.one.id) }; ui.oneMsg = ''; break;
+    case 'opart': ui.oneParts = toggle(ui.oneParts, v); ui.one = { id: pickOne(ui.oneParts, ui.one && ui.one.id) }; ui.oneMsg = ''; break;
+    case 'xpart': {
+      const key = ui.date + '|extra', cur = shuf()[key], ps = toggle(partsOf(cur), v);
+      if (!ps.length) delete shuf()[key]; else shuf()[key] = { focus: 'multi', parts: ps, ids: pickMulti(ps, cur && cur.ids) };
+      save(); break;
+    }
+    case 'apart': S.settings.actParts = toggle(validParts(S.settings.actParts), v); ui.act = null; ui.actNote = ''; save(); break;
     case 'playone': if (ui.one) startPlayer('one'); return;
     case 'doneone': if (ui.one) { logOne(); ui.oneMsg = 'Loggat: ' + EX[ui.one.id][S.settings.level][0]; ui.one = null; } break;
-    case 'shuffle': { const key = ui.date + '|' + v, cur = shuf()[key]; const f = cur ? cur.focus : 'full'; shuf()[key] = { focus: f, ids: pickIds(f, cur && cur.ids) }; save(); break; }
+    case 'shuffle': {
+      const key = ui.date + '|' + v, cur = shuf()[key];
+      if (v === 'extra') { const ps = partsOf(cur).length ? partsOf(cur) : ['full']; shuf()[key] = { focus: 'multi', parts: ps, ids: pickMulti(ps, cur && cur.ids) }; }
+      else { const f = cur ? cur.focus : 'full'; shuf()[key] = { focus: f, ids: pickIds(f, cur && cur.ids) }; }
+      save(); break;
+    }
     case 'more': ui.hist += 15; break;
     case 'slot': { const s = SLOTS.find(x => x.id === v); S.settings.slot = v; S.settings.time = s.t; save(); break; }
     case 'ics':
@@ -655,8 +710,7 @@ document.addEventListener('change', e => {
   const fk = e.target.dataset && e.target.dataset.focus;
   if (fk) {
     const f = e.target.value;
-    if (fk === 'one') { ui.oneFocus = f; ui.one = { id: pickOne(f, ui.one && ui.one.id) }; ui.oneMsg = ''; }
-    else {
+    {
       const key = ui.date + '|' + fk, cur = shuf()[key];
       if (f === 'standard') delete shuf()[key]; else shuf()[key] = { focus: f, ids: pickIds(f, cur && cur.ids) };
       save();
