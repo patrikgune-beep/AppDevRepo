@@ -9,10 +9,11 @@
 :root{
   --bg:#f5f7f6;--card:#fff;--ink:#14201d;--mute:#5d6b67;--line:#dfe6e3;
   --brand:#0f766e;--brand-ink:#fff;--soft:#e3f2ef;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;
+  --lv0:#15803d;--lv1:#b45309;--lv2:#6d28d9;--lv-ink:#fff;
   --r:14px;
 }
 @media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){--bg:#0e1514;--card:#17211f;--ink:#e8f0ee;--mute:#9bacA7;--line:#263330;--brand:#2dd4bf;--brand-ink:#04211d;--soft:#173532;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171}
+  :root:not([data-theme="light"]){--bg:#0e1514;--card:#17211f;--ink:#e8f0ee;--mute:#9bacA7;--line:#263330;--brand:#2dd4bf;--brand-ink:#04211d;--soft:#173532;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--lv0:#4ade80;--lv1:#fbbf24;--lv2:#a78bfa;--lv-ink:#04130d}
 }
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -56,14 +57,15 @@ nav button[aria-current="page"]{color:var(--brand);font-weight:700}
 .bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;text-align:center;font-size:.7rem;color:var(--mute)}
 .bar .stack{display:flex;flex-direction:column-reverse;border-radius:6px 6px 0 0;overflow:hidden;min-height:2px}
 .stack i{display:block;flex:none}
-.seg-main{background:var(--brand)}.seg-extra{background:#60a5fa}.seg-act{background:#f59e0b}
+.seg-l0,.lv0{background:var(--lv0)}.seg-l1,.lv1{background:var(--lv1)}.seg-l2,.lv2{background:var(--lv2)}
+.lv{display:inline-block;padding:0 8px;border-radius:99px;font-size:.72rem;font-weight:600;color:var(--lv-ink);vertical-align:middle}
 .legend{display:flex;gap:12px;font-size:.78rem;color:var(--mute);margin-top:8px;flex-wrap:wrap}
 .legend i{display:inline-block !important;width:10px;height:10px;border-radius:3px;margin-right:4px}
 .heat{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
 .heat div{aspect-ratio:1;border-radius:6px;background:var(--line);display:grid;place-items:center;font-size:.7rem;color:var(--mute);position:relative}
-.heat .d{background:var(--ok);color:#fff}.heat .m{background:transparent;border:2px solid var(--bad);color:var(--bad)}
+.heat .d{color:var(--lv-ink);font-weight:700}.heat .d0{background:var(--lv0)}.heat .d1{background:var(--lv1)}.heat .d2{background:var(--lv2)}.heat .m{background:transparent;border:2px solid var(--bad);color:var(--bad)}
 .heat .r{background:var(--soft)}.heat .t{outline:2px solid var(--brand)}.heat .f,.heat .b{opacity:.35}
-.heat .dot::after{content:"";position:absolute;right:3px;top:3px;width:6px;height:6px;border-radius:50%;background:#f59e0b}
+.heat .dot::after{content:"";position:absolute;right:3px;top:3px;width:6px;height:6px;border-radius:50%;background:var(--ink);border:1px solid var(--card)}
 .heat .hd{background:none;aspect-ratio:auto;font-size:.7rem}
 .day{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);width:100%;border-left:0;border-right:0;border-bottom:0;border-radius:0;background:transparent;text-align:left}
 .day:first-of-type{border-top:0}
@@ -476,17 +478,17 @@ function viewStats() {
   const tile = (v, l) => `<div class="tile"><div class="v">${v}</div><div class="mute">${l}</div></div>`;
   let h = `<h1>Statistik</h1><div class="tiles" style="margin-top:10px">${tile(s.streak + ' 🔥', 'dagar i rad')}${tile(s.best, 'längsta svit')}${tile(s.main, 'genomförda pass')}${tile(s.rate + '%', 'av schemalagda dagar')}${tile(s.minutes, 'minuter totalt')}${tile(s.extra + ' / ' + s.act, 'extra-pass / aktiviteter')}</div>`;
   // veckodiagram
-  const from = Math.max(1, cw - 7), weeks = [];
+  const lvOf = l => Math.min(2, Math.max(0, +l.level || 0));
+  const from = Math.max(1, cw - 7), weeks = [], lvTot = [0, 0, 0];
   for (let w = from; w <= cw; w++) {
-    const a = addDays(st, (w - 1) * 7), b = addDays(a, 6), m = { main: 0, extra: 0, activity: 0 };
-    S.log.forEach(l => { if (l.date >= a && l.date <= b) m[l.kind] += +l.minutes || 0; });
-    weeks.push({ w, ...m });
+    const a = addDays(st, (w - 1) * 7), b = addDays(a, 6), m = [0, 0, 0];
+    S.log.forEach(l => { if (l.date >= a && l.date <= b) { m[lvOf(l)] += +l.minutes || 0; lvTot[lvOf(l)] += +l.minutes || 0; } });
+    weeks.push({ w, m, tot: m[0] + m[1] + m[2] });
   }
-  const max = Math.max(30, ...weeks.map(x => x.main + x.extra + x.activity));
-  h += `<div class="card"><h2>Minuter per vecka</h2><div class="bars" role="img" aria-label="Stapeldiagram över träningsminuter per vecka">${weeks.map(x => {
-    const tot = x.main + x.extra + x.activity, hh = v => (v / max * 100) + '%';
-    return `<div class="bar"><div>${tot || ''}</div><div class="stack" style="height:${hh(tot)}"><i class="seg-main" style="height:${tot ? x.main / tot * 100 : 0}%"></i><i class="seg-extra" style="height:${tot ? x.extra / tot * 100 : 0}%"></i><i class="seg-act" style="height:${tot ? x.activity / tot * 100 : 0}%"></i></div><div>v${x.w}</div></div>`;
-  }).join('')}</div><div class="legend"><span><i class="seg-main"></i>Pass</span><span><i class="seg-extra"></i>Extraövningar</span><span><i class="seg-act"></i>Aktivitet</span></div></div>`;
+  const max = Math.max(30, ...weeks.map(x => x.tot));
+  h += `<div class="card"><h2>Minuter per vecka och nivå</h2><div class="bars" role="img" aria-label="Stapeldiagram över träningsminuter per vecka, färgade efter svårighetsgrad">${weeks.map(x =>
+    `<div class="bar"><div>${x.tot || ''}</div><div class="stack" style="height:${x.tot / max * 100}%">${x.m.map((v, i) => `<i class="seg-l${i}" style="height:${x.tot ? v / x.tot * 100 : 0}%"></i>`).join('')}</div><div>v${x.w}</div></div>`).join('')}</div>
+    <div class="legend">${LV.map((n, i) => `<span><i class="lv${i}"></i>${n} · ${lvTot[i]} min</span>`).join('')}</div></div>`;
   // kalender (5 veckor, måndag först)
   const dow = (parse(t).getDay() + 6) % 7, mon = addDays(t, -dow - 28);
   let cells = ['M', 'T', 'O', 'T', 'F', 'L', 'S'].map(x => `<div class="hd">${x}</div>`).join('');
@@ -494,15 +496,15 @@ function viewStats() {
     const d = addDays(mon, i);
     let c = 'f';
     if (d < st) c = 'b'; else if (d > t) c = 'f';
-    else if (isDone(d, 'main')) c = 'd'; else if (isRest(d)) c = 'r'; else if (d === t) c = ''; else c = 'm';
+    else if (isDone(d, 'main')) c = 'd d' + lvOf(entriesOn(d, 'main')[0]); else if (isRest(d)) c = 'r'; else if (d === t) c = ''; else c = 'm';
     if (d === t) c += ' t';
     if (isDone(d, 'extra') || isDone(d, 'activity')) c += ' dot';
     cells += `<div class="${c}" title="${niceDate(d)}">${parse(d).getDate()}</div>`;
   }
-  h += `<div class="card"><h2>Senaste 5 veckorna</h2><div class="heat">${cells}</div><div class="legend"><span>🟩 genomfört</span><span>🟥 missat</span><span>🟦 vila</span><span>🟠 prick = extra/aktivitet</span></div></div>`;
+  h += `<div class="card"><h2>Senaste 5 veckorna</h2><div class="heat">${cells}</div><div class="legend">${LV.map((n, i) => `<span><i class="lv${i}"></i>${n}</span>`).join('')}<span>🟥 missat</span><span>🟦 vila</span><span>● prick = extra/aktivitet</span></div></div>`;
   // historik
   const hist = [...S.log].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
-  h += `<div class="card"><h2>Historik</h2>${hist.length ? hist.slice(0, ui.hist).map(l => `<div class="row between" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${esc(l.name)}</b><div class="mute">${niceDate(l.date)} · ${l.minutes} min · ${LV[l.level] || ''}</div></div><span class="row" style="flex-wrap:nowrap"><button class="ghost danger" data-a="del" data-v="${l.id}" aria-label="Ta bort">✕</button></span></div>`).join('') : '<p class="mute">Inget loggat ännu.</p>'}
+  h += `<div class="card"><h2>Historik</h2>${hist.length ? hist.slice(0, ui.hist).map(l => `<div class="row between" style="padding:6px 0;border-top:1px solid var(--line)"><div><b>${esc(l.name)}</b><div class="mute">${niceDate(l.date)} · ${l.minutes} min · <span class="lv lv${lvOf(l)}">${LV[lvOf(l)]}</span></div></div><span class="row" style="flex-wrap:nowrap"><button class="ghost danger" data-a="del" data-v="${l.id}" aria-label="Ta bort">✕</button></span></div>`).join('') : '<p class="mute">Inget loggat ännu.</p>'}
     ${hist.length > ui.hist ? '<button data-a="more" style="width:100%;margin-top:8px">Visa fler</button>' : ''}</div>`;
   return h;
 }
@@ -608,7 +610,7 @@ function drawPlayer() {
   <div class="big" id="pt" role="timer">${mmss(sg.sec)}</div>
   <div style="text-align:center;flex:1;overflow:auto">${sg.t !== 'work' && sg.nextName
     ? `<div class="mute">${sg.t === 'ready' ? 'Första övning' : 'Nästa övning'}</div><h1 style="font-size:1.6rem">${esc(sg.nextName)}</h1><p class="mute" style="font-size:1rem">${esc(sg.nextHow)}</p>`
-    : `<h1 style="font-size:1.6rem">${esc(sg.name)}</h1>${sg.t === 'work' ? '' : `<p class="mute" style="font-size:1rem">${esc(sg.how)}</p>`}`}</div>
+    : `<h1 style="font-size:1.6rem">${esc(sg.name)}</h1><p class="mute" style="font-size:1rem">${esc(sg.how)}</p>`}</div>
   <div class="row"><button data-a="pprev" aria-label="Föregående">⏮</button><button class="primary grow" data-a="ppause">${P.paused ? '▶ Fortsätt' : '⏸ Pausa'}</button><button data-a="pnext" aria-label="Hoppa över">⏭</button></div>`;
   updTimer(Math.ceil((P.end - Date.now()) / 1000));
 }
