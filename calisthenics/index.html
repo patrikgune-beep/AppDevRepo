@@ -111,7 +111,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 
 /* ===================== Data & lagring ===================== */
 const KEY = 'calisthenics-v1';
-const defaults = () => ({ v: 1, settings: { startDate: '', level: 0, actLevel: 0, time: '07:30', slot: 'morgon', notify: false, dismissed: -1, lastNotified: '', lastExport: '', autoSave: true, actParts: [] }, log: [], shuffle: {} });
+const defaults = () => ({ v: 1, settings: { startDate: '', level: 0, actLevel: 0, time: '07:30', slot: 'morgon', notify: false, dismissed: -1, lastNotified: '', lastExport: '', autoSave: true, actParts: [], afterMin: 15, afterLevel: 2, lvOverride: {} }, log: [], shuffle: {} });
 let S = defaults();
 function load() {
   try {
@@ -126,9 +126,21 @@ const LV = ['Lätt', 'Medel', 'Svår'];
 const WORKREST = [[30, 30], [40, 20], [45, 15]]; // sek arbete / vila per övning (1 min per övning)
 const EXTRA_MIN = 5;
 const weekOf = s => { const st = S.settings.startDate; if (!st) return 0; const d = diff(s, st); return d < 0 ? 0 : Math.floor(d / 7) + 1; };
-const mainMin = w => w <= 1 ? 5 : w < 4 ? 10 : 15;
+// Program: vecka 1–12 är fasta (minuter, nivå). Från vecka 13 gäller användarens val, vecka efter vecka.
+const PLAN = { 1: [5, 0], 2: [10, 0], 3: [10, 0], 4: [15, 0], 5: [10, 1], 6: [10, 1], 7: [15, 1], 8: [15, 1], 9: [10, 2], 10: [10, 2], 11: [15, 2], 12: [15, 2] };
+const PHASES = [[1, 1], [2, 3], [4, 4], [5, 6], [7, 8], [9, 10], [11, 12]];
+const AFTER_MINS = [5, 10, 15, 20, 25, 30];
+const afterMin = () => AFTER_MINS.includes(+S.settings.afterMin) ? +S.settings.afterMin : 15;
+const afterLevel = () => [0, 1, 2].includes(+S.settings.afterLevel) ? +S.settings.afterLevel : 2;
+const mainMin = w => w <= 0 ? 5 : w <= 12 ? PLAN[w][0] : afterMin();
+const planLevel = w => w <= 0 ? 0 : w <= 12 ? PLAN[w][1] : afterLevel();
+function levelFor(date) {
+  const w = weekOf(date);
+  if (w > 12 || w <= 0) return planLevel(w);
+  const ov = S.settings.lvOverride && +S.settings.lvOverride[w];
+  return [0, 1, 2].includes(ov) && S.settings.lvOverride[w] !== null && S.settings.lvOverride[w] !== '' ? ov : planLevel(w);
+}
 const isRest = s => weekOf(s) >= 2 && parse(s).getDay() === 1;
-const recLevel = w => w <= 4 ? 0 : w <= 8 ? 1 : 2;
 const currentWeek = () => weekOf(today());
 
 // Övningsbibliotek: varje övning har tre nivåer [namn, instruktion]
@@ -238,13 +250,14 @@ function pickOne(parts, prev) {
   return rnd(c.length ? c : pool);
 }
 const logDate = () => ui.date <= today() ? ui.date : today();
+const curLevel = () => levelFor(logDate());
 function buildOne() {
-  const ex = EX[ui.one.id][S.settings.level];
+  const ex = EX[ui.one.id][curLevel()];
   return { title: 'Extraövning', segs: [{ t: 'work', sec: 60, name: ex[0], how: ex[1], label: 'Extraövning · 1 min' }] };
 }
 function logOne() {
-  const date = logDate(), ex = EX[ui.one.id][S.settings.level];
-  S.log.push({ id: uid(), date, kind: 'activity', minutes: 1, level: S.settings.level, week: weekOf(date), name: 'Extraövning: ' + ex[0] });
+  const date = logDate(), ex = EX[ui.one.id][curLevel()];
+  S.log.push({ id: uid(), date, kind: 'activity', minutes: 1, level: curLevel(), week: weekOf(date), name: 'Extraövning: ' + ex[0] });
   save(); autoSaveEntry(S.log[S.log.length - 1]);
 }
 
@@ -320,8 +333,8 @@ function setDone(kind, date, on) {
   S.log = S.log.filter(l => !(l.date === date && l.kind === kind));
   if (on) {
     const w = weekOf(date);
-    const s = buildSession(date, kind, S.settings.level);
-    S.log.push({ id: uid(), date, kind, minutes: s.minutes, level: S.settings.level, week: w, name: kind === 'main' ? `Pass vecka ${w}` : 'Extraövningar' });
+    const s = buildSession(date, kind, levelFor(date));
+    S.log.push({ id: uid(), date, kind, minutes: s.minutes, level: levelFor(date), week: w, name: kind === 'main' ? `Pass vecka ${w}` : 'Extraövningar' });
   }
   save();
   if (on) autoSaveEntry(S.log[S.log.length - 1]);
@@ -329,7 +342,7 @@ function setDone(kind, date, on) {
 function logPartial(kind, date, minutes) {
   S.log = S.log.filter(l => !(l.date === date && l.kind === kind));
   const w = weekOf(date);
-  S.log.push({ id: uid(), date, kind, minutes, level: S.settings.level, week: w, name: (kind === 'main' ? `Pass vecka ${w}` : 'Extraövningar') + ' (delvis)' });
+  S.log.push({ id: uid(), date, kind, minutes, level: levelFor(date), week: w, name: (kind === 'main' ? `Pass vecka ${w}` : 'Extraövningar') + ' (delvis)' });
   save();
   autoSaveEntry(S.log[S.log.length - 1]);
 }
@@ -371,11 +384,16 @@ const $ = s => document.querySelector(s);
 const chips = (cur, action) => `<div class="chips" role="group" aria-label="Svårighetsgrad">${LV.map((n, i) => `<button data-a="${action}" data-v="${i}" aria-pressed="${cur === i}">${n}</button>`).join('')}</div>`;
 
 function oneCard() {
-  const o = ui.one, ex = o && EX[o.id] && EX[o.id][S.settings.level];
+  const o = ui.one, ex = o && EX[o.id] && EX[o.id][curLevel()];
   return `<div class="card"><h2>Slumpa en extra övning</h2><p class="mute">En övning på 1 minut, utöver passet.</p>
     <div style="margin-bottom:8px">${partChips(ui.oneParts, 'opart')}</div><p class="mute" style="margin:0 0 8px">Inget valt = valfri övning.</p><button class="primary" data-a="rollone">🎲 Slumpa</button>
     ${ex ? `<div class="ex" style="margin-top:8px"><span class="n">★</span><div><b>${esc(ex[0])}</b><span class="mute">${esc(ex[1])}</span></div></div>
     <div class="row"><button class="primary grow" data-a="playone">▶ Kör 1 min</button><button data-a="doneone">Markera klar</button></div>` : ui.oneMsg ? `<p style="margin-top:8px"><span class="tag ok">✓ ${esc(ui.oneMsg)}</span></p>` : ''}</div>`;
+}
+function phaseRows(cw) {
+  const lv = n => `<span class="lv lv${n}">${LV[n]}</span>`;
+  return PHASES.map(([a, b]) => `<tr class="${cw >= a && cw <= b ? 'cur' : ''}"><td>${a === b ? a : a + '–' + b}</td><td>${mainMin(a)} + ${EXTRA_MIN} min</td><td>${a === 1 ? '–' : 'Mån'}</td><td>${lv(planLevel(a))}</td></tr>`).join('')
+    + `<tr class="${cw > 12 ? 'cur' : ''}"><td>13 →</td><td>${afterMin()} + ${EXTRA_MIN} min</td><td>Mån</td><td>${lv(afterLevel())} <span class="mute">(ditt val)</span></td></tr>`;
 }
 /* ----- Idag ----- */
 function viewToday() {
@@ -384,14 +402,10 @@ function viewToday() {
     return `<h1>Välkommen 👋</h1><p class="mute">Ett lugnt veckoschema med grundläggande calisthenics. Första fyra veckorna är för att komma igång.</p>
     <div class="card"><h2>Starta programmet</h2>
       <label class="mute" for="sd">Startdatum</label><br><input type="date" id="sd" value="${today()}">
-      <h3 style="margin-top:14px">Svårighetsgrad</h3>${chips(S.settings.level, 'lvl')}
-      <p class="mute">Rekommendation: börja på Lätt. Du kan byta när som helst.</p>
+      <p class="mute" style="margin-top:12px">Programmet bestämmer tid och svårighetsgrad för vecka 1–12. Från vecka 13 väljer du själv.</p>
       <button class="primary" data-a="begin" style="margin-top:8px;width:100%">Börja programmet</button></div>
     <div class="card"><h2>Så är det upplagt</h2><table>
-      <tr><th>Vecka</th><th>Pass</th><th>Vila</th></tr>
-      <tr><td>1</td><td>5 min + 5 min extra</td><td>Ingen</td></tr>
-      <tr><td>2–3</td><td>10 min + 5 min extra</td><td>Måndag</td></tr>
-      <tr><td>4 →</td><td>15 min + 5 min extra</td><td>Måndag</td></tr></table></div>`;
+      <tr><th>Vecka</th><th>Pass</th><th>Vila</th><th>Nivå</th></tr>${phaseRows(0)}</table></div>`;
   }
   const date = ui.date, w = weekOf(date), t = today();
   const dowName = DAYS[parse(date).getDay()];
@@ -402,22 +416,18 @@ function viewToday() {
     ${date !== t ? '<div style="text-align:center;margin-bottom:10px"><button class="ghost" data-a="gotoday">Gå till idag</button></div>' : ''}`;
   if (w === 0) return nav + `<div class="card">Programmet startar ${niceDate(st)}.</div>`;
   const rest = isRest(date), future = date > t;
-  const rec = recLevel(currentWeek());
   let h = nav;
-  if (date === t && S.settings.level < rec && S.settings.dismissed !== rec) {
-    h += `<div class="card banner"><h2>Dags att öka? 💪</h2><p>Du är i vecka ${currentWeek()}. Nybörjarfasen är klar – jag rekommenderar nivå <b>${LV[rec]}</b>.</p>
-    <div class="row"><button class="primary" data-a="lvlup" data-v="${rec}">Byt till ${LV[rec]}</button><button class="ghost" data-a="dismiss" data-v="${rec}">Inte nu</button></div></div>`;
-  }
   h += `<div class="card"><div class="row between"><div><h2 style="margin:0">Vecka ${w}</h2><span class="mute">${rest ? 'Vilodag' : mainMin(w) + ' min + ' + EXTRA_MIN + ' min extra'}</span></div>
     <span class="tag ${rest ? 'rest' : ''}">${rest ? 'Vila' : 'Pass'}</span></div>
-    <h3 style="margin-top:12px">Svårighetsgrad</h3>${chips(S.settings.level, 'lvl')}
+    <h3 style="margin-top:12px">Svårighetsgrad</h3>${chips(levelFor(date), 'lvl')}
+    <p class="mute" style="margin:6px 0 0">${w > 12 ? `Från vecka 13 gäller dina egna val: ${afterMin()} + ${EXTRA_MIN} min, ${LV[afterLevel()]}. Nivån du väljer här gäller varje vecka tills du ändrar. Tiden ändrar du under Schema.` : `Programmets nivå vecka ${w}: <b>${LV[planLevel(w)]}</b>${levelFor(date) !== planLevel(w) ? ' · ändrad av dig, tryck på programmets nivå för att återgå' : ''}.`}</p>
     ${rest ? '' : `<p class="mute" style="margin-top:8px">⏰ Föreslagen tid: <b>kl ${esc(S.settings.time)}</b> <a href="#" data-a="tab" data-v="set" style="color:var(--brand)">ändra</a></p>`}</div>`;
   if (rest) {
     return h + `<div class="card"><h2>Vilodag 😌</h2><p>Musklerna bygger upp sig under vila. Vill du röra på dig ändå är en lugn promenad perfekt.</p>
       <button data-a="tab" data-v="act">Föreslå en lugn aktivitet</button></div>` + oneCard();
   }
   for (const kind of ['main', 'extra']) {
-    const s = buildSession(date, kind, S.settings.level), done = isDone(date, kind);
+    const s = buildSession(date, kind, levelFor(date)), done = isDone(date, kind);
     h += `<div class="card"><div class="row between"><h2 style="margin:0">${kind === 'main' ? s.title : 'Extraövningar +' + EXTRA_MIN + ' min'}</h2>${shuf()[date + '|' + kind] ? '<span class="tag">Slumpat</span> ' : ''}${done ? '<span class="tag ok">✓ Klart</span>' : ''}</div>
       <p class="mute">${s.items.length} övningar × ${s.rounds} ${s.rounds > 1 ? 'rundor' : 'runda'} · ${s.work} s arbete / ${s.rest} s vila${kind === 'extra' ? ' · valfritt' : ''}</p>
       ${kind === 'extra'
@@ -436,19 +446,19 @@ function viewPlan() {
   const st = S.settings.startDate;
   if (!st) return '<h1>Schema</h1><div class="card">Starta programmet under fliken Idag först.</div>';
   const cw = Math.max(currentWeek(), 1), ws = addDays(st, (cw - 1) * 7), t = today();
-  let h = `<h1>Vecka ${cw}</h1><p class="mute">${mainMin(cw)} min pass + ${EXTRA_MIN} min extra · tid kl ${esc(S.settings.time)}</p><div class="card">`;
+  let h = `<h1>Vecka ${cw}</h1><p class="mute">${mainMin(cw)} min pass + ${EXTRA_MIN} min extra · ${LV[levelFor(ws)]} · tid kl ${esc(S.settings.time)}</p><div class="card">`;
   for (let i = 0; i < 7; i++) {
     const d = addDays(ws, i), rest = isRest(d), done = isDone(d, 'main'), ex = isDone(d, 'extra'), fut = d > t;
     h += `<button class="day" data-a="open" data-v="${d}"><div class="grow"><b>${DAYS[parse(d).getDay()]}</b>${d === t ? ' <span class="tag">idag</span>' : ''}<div class="mute">${niceDate(d)}</div></div>
       <span>${rest ? '<span class="tag rest">Vila</span>' : done ? '<span class="tag ok">✓ ' + mainMin(weekOf(d)) + ' min</span>' : fut || d === t ? '<span class="mute">kl ' + esc(S.settings.time) + '</span>' : '<span class="mute" style="color:var(--bad)">missad</span>'}${ex ? ' <span class="tag">+extra</span>' : ''}</span></button>`;
   }
-  h += `</div><div class="card"><h2>Hela programmet</h2><table><tr><th>Vecka</th><th>Pass</th><th>Vila</th><th>Rek. nivå</th></tr>`;
-  const rows = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-  for (const w of rows) {
-    const label = w === 9 ? '9 →' : String(w);
-    h += `<tr class="${w === cw || (w === 9 && cw >= 9) ? 'cur' : ''}"><td>${label}</td><td>${mainMin(w)} + ${EXTRA_MIN} min</td><td>${w === 1 ? '–' : 'Mån'}</td><td>${LV[recLevel(w)]}</td></tr>`;
-  }
-  return h + `</table><p class="mute">Efter vecka 4 kan du öka svårigheten. Rekommendationen är bara ett förslag – du väljer själv.</p></div>`;
+  h += `</div><div class="card"><h2>Hela programmet</h2><table><tr><th>Vecka</th><th>Pass</th><th>Vila</th><th>Nivå</th></tr>${phaseRows(cw)}</table></div>
+  <div class="card"><h2>Från vecka 13 – du väljer</h2>
+    <label class="mute" for="am">Tid per pass (plus ${EXTRA_MIN} min extra)</label><br>
+    <select id="am" style="margin:4px 0 10px">${AFTER_MINS.map(m => `<option value="${m}" ${afterMin() === m ? 'selected' : ''}>${m} min</option>`).join('')}</select>
+    <h3>Svårighetsgrad</h3>${chips(afterLevel(), 'afterlvl')}
+    <p class="mute" style="margin-top:8px">Valet gäller varje vecka från vecka 13 tills du ändrar det.</p></div>`;
+  return h;
 }
 
 /* ----- Aktivitet ----- */
@@ -518,7 +528,7 @@ function viewSet() {
     ${SLOTS.map(x => `<button class="slot" data-a="slot" data-v="${x.id}" aria-pressed="${se.slot === x.id}"><b>${x.n} · kl ${x.t}</b> ${x.rec ? '<span class="tag">Rekommenderas</span>' : ''}<div class="mute" style="margin-top:4px">${x.why}</div></button>`).join('')}
     <div class="row" style="margin-top:6px"><label for="tm">Egen tid:</label><input type="time" id="tm" value="${esc(se.time)}"></div></div>
   <div class="card"><h2>Påminnelser</h2>
-    <button data-a="ics" style="width:100%">📆 Ladda ner kalenderfil (12 veckor)</button>
+    <button data-a="ics" style="width:100%">📆 Ladda ner kalenderfil (26 veckor)</button>
     <p class="mute">Importera filen i Google/Apple/Outlook-kalendern – då får du en riktig påminnelse varje träningsdag (vilodagar hoppas över). Det är den pålitliga vägen.</p>
     <div class="row between" style="margin-top:8px"><span>Notis i webbläsaren</span><button data-a="notify" aria-pressed="${se.notify}">${se.notify ? 'På' : 'Av'}</button></div>
     <p class="mute">Notisen fungerar bara medan appen är öppen i en flik.</p></div>
@@ -544,7 +554,7 @@ function makeICS() {
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
   const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Calisthenics//SV', 'CALSCALE:GREGORIAN'];
   const dt = (d, h, m) => d.replace(/-/g, '') + 'T' + pad(h) + pad(m) + '00';
-  for (let i = 0; i < 84; i++) {
+  for (let i = 0; i < 182; i++) {
     const d = addDays(st, i);
     if (isRest(d)) continue;
     const w = weekOf(d), dur = mainMin(w), end = hh * 60 + mm + dur;
@@ -574,7 +584,7 @@ function beep(freq, dur) {
 }
 const mmss = s => `${Math.floor(s / 60)}:${pad(s % 60)}`;
 function startPlayer(kind) {
-  const s = kind === 'one' ? buildOne() : buildSession(ui.date, kind, S.settings.level);
+  const s = kind === 'one' ? buildOne() : buildSession(ui.date, kind, levelFor(ui.date));
   const segs = [{ t: 'ready', sec: 5, name: 'Gör dig redo', how: '', nextName: s.segs[0].name, nextHow: s.segs[0].how, label: s.title }, ...s.segs];
   P = { segs, kind, date: kind === 'one' ? logDate() : ui.date, paused: false, finished: false, total: segs.reduce((a, x) => a + x.sec, 0) };
   try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l => wake = l).catch(() => { }); } catch (e) { }
@@ -616,7 +626,7 @@ function drawPlayer() {
 }
 function finishPlayer() {
   P.finished = true; clearInterval(P.timer); beep(1200, .6);
-  if (P.kind === 'one') { logOne(); ui.oneMsg = 'Loggat: ' + EX[ui.one.id][S.settings.level][0]; ui.one = null; }
+  if (P.kind === 'one') { logOne(); ui.oneMsg = 'Loggat: ' + EX[ui.one.id][curLevel()][0]; ui.one = null; }
   else if (P.date <= today()) { setDone(P.kind, P.date, true); P.entryId = entriesOn(P.date, P.kind)[0].id; }
   const el = $('#player'); el.className = 'on';
   el.innerHTML = `<div style="margin:auto;text-align:center"><div style="font-size:4rem">🎉</div><h1>Bra jobbat!</h1><p class="mute">Passet är loggat.</p><div class="row" style="justify-content:center;margin-top:16px"><button data-a="savepass">💾 Spara alla pass</button><button class="primary" data-a="quit">Klar</button></div></div>`;
@@ -634,10 +644,17 @@ document.addEventListener('click', e => {
   if (b.tagName === 'A') e.preventDefault();
   switch (a) {
     case 'tab': ui.tab = v; break;
-    case 'lvl': S.settings.level = +v; save(); break;
+    case 'lvl': {
+      const w = weekOf(ui.date);
+      if (w > 12) S.settings.afterLevel = +v;
+      else if (w > 0) {
+        if (!S.settings.lvOverride || typeof S.settings.lvOverride !== 'object') S.settings.lvOverride = {};
+        if (+v === planLevel(w)) delete S.settings.lvOverride[w]; else S.settings.lvOverride[w] = +v;
+      }
+      save(); break;
+    }
+    case 'afterlvl': S.settings.afterLevel = +v; save(); break;
     case 'alvl': S.settings.actLevel = +v; ui.act = null; save(); break;
-    case 'lvlup': S.settings.level = +v; save(); break;
-    case 'dismiss': S.settings.dismissed = +v; save(); break;
     case 'begin': { const d = $('#sd').value || today(); S.settings.startDate = d; ui.date = d > today() ? d : today(); save(); break; }
     case 'day': ui.date = addDays(ui.date, +v); break;
     case 'gotoday': ui.date = today(); break;
@@ -671,7 +688,7 @@ document.addEventListener('click', e => {
     }
     case 'apart': S.settings.actParts = toggle(validParts(S.settings.actParts), v); ui.act = null; ui.actNote = ''; save(); break;
     case 'playone': if (ui.one) startPlayer('one'); return;
-    case 'doneone': if (ui.one) { logOne(); ui.oneMsg = 'Loggat: ' + EX[ui.one.id][S.settings.level][0]; ui.one = null; } break;
+    case 'doneone': if (ui.one) { logOne(); ui.oneMsg = 'Loggat: ' + EX[ui.one.id][curLevel()][0]; ui.one = null; } break;
     case 'shuffle': {
       const key = ui.date + '|' + v, cur = shuf()[key];
       if (v === 'extra') { const ps = partsOf(cur).length ? partsOf(cur) : ['full']; shuf()[key] = { focus: 'multi', parts: ps, ids: pickMulti(ps, cur && cur.ids) }; }
@@ -709,6 +726,7 @@ document.addEventListener('click', e => {
   render();
 });
 document.addEventListener('change', e => {
+  if (e.target.id === 'am') { S.settings.afterMin = +e.target.value; save(); render(); return; }
   const fk = e.target.dataset && e.target.dataset.focus;
   if (fk) {
     const f = e.target.value;
