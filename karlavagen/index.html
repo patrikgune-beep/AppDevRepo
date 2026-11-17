@@ -68,6 +68,10 @@ nav.tabs button:hover{color:var(--ink)}
 nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
 nav.tabs button:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 nav.tabs .sub{font-weight:500;color:var(--ink-3);margin-left:6px;font-size:12px}
+nav.subtabs{position:static;margin:-14px 0 22px;border-bottom:0;gap:6px;flex-wrap:wrap;overflow:visible}
+nav.subtabs button{font-size:13px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
+nav.subtabs button[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+nav.subtabs button[aria-selected="true"] .sub{color:inherit;opacity:.75}
 
 section.panel{display:grid;gap:28px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
@@ -76,7 +80,9 @@ section.panel{display:grid;gap:28px}
 .kpi .s{font-size:12.5px;color:var(--ink-2)}
 .kpi.missing .v{color:var(--warn)}
 
-.block{display:grid;gap:12px}
+.block{display:grid;gap:12px;min-width:0}
+.block>*{min-width:0}
+main#view{min-width:0;max-width:100%}
 .block>.head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}
 .scroll{overflow-x:auto}
@@ -132,7 +138,8 @@ details.ue>summary::-webkit-details-marker{display:none}
 .filters{display:flex;flex-wrap:wrap;gap:6px}
 .chip{font:600 12.5px/1 var(--body);padding:8px 11px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.group{display:grid;gap:10px}
+.group{display:grid;gap:10px;min-width:0}
+.group>*{min-width:0}
 .group>h3{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
 .foot{font-size:12.5px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:14px}
 code{font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
@@ -148,6 +155,7 @@ tbody.nbrow.open>tr:first-child>td{background:var(--surface-2)}
 tr.nbdetrow>td{padding:0 0 14px;background:var(--surface-2)}
 .nbdet{margin:0 10px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;display:grid;gap:10px;width:calc(100vw - 84px);max-width:1080px;box-sizing:border-box}
 .nbdet .nblwrap{overflow-x:auto}
+.nblwrap{overflow-x:auto;max-width:100%}
 table.nbl{min-width:760px}
 table.nbl{font-size:13px}
 table.nbl td,table.nbl th{padding:5px 6px;vertical-align:middle}
@@ -164,7 +172,18 @@ table.offt th .desc{display:block;text-transform:none;letter-spacing:0;font-weig
 table.offt td:first-child{min-width:190px}
 table.offt td,table.offt th{vertical-align:top}
 .offmin{font-weight:700;color:var(--good)}
-tr.offdet>td{background:var(--surface-2);font-size:12.5px}
+tr.offdet>td{background:var(--surface-2);font-size:12.5px;padding:10px}
+.offdetgrid{display:grid;grid-template-columns:1fr;gap:10px}
+.offdetb{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;gap:6px;align-content:start;overflow-x:auto}
+.offdeth{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+table.offdett{font-size:12.5px;width:100%;min-width:560px}
+table.offdett td:first-child{width:55%}
+table.offdett td,table.offdett th{padding:4px 6px;vertical-align:top}
+table.offdett tr.off td{color:var(--ink-3)}
+table.offdett tr.off td:nth-child(4){text-decoration:line-through}
+.offst{white-space:nowrap;cursor:pointer}
+.offkbtn{font:inherit;font-weight:600;background:none;border:0;padding:0;color:var(--ink);cursor:pointer;text-align:left;display:flex;align-items:baseline}
+.offkbtn:hover{color:var(--accent)}
 .offlist{display:grid;gap:3px;min-width:160px}
 .offlist>div{display:flex;justify-content:space-between;gap:10px}
 .offlist>div.off{color:var(--ink-3);text-decoration:line-through}
@@ -206,13 +225,15 @@ table.nbt td,table.nbt th{padding-inline:8px}
 .askbtns{display:flex;gap:8px}
 .askgo{background:var(--accent);color:#fff;border-color:var(--accent)}
 .askgo[disabled]{opacity:.5}
-.addcard{padding:16px;display:grid;gap:12px}
+.addcard{padding:16px;display:grid;gap:12px;min-width:0}
+.addcard>*{min-width:0}
+.addstep>div{min-width:0}
 .addstep{display:flex;gap:12px;align-items:flex-start}
 .addstep .desc{display:block;font-size:13px;color:var(--ink-2);margin-top:2px}
 .addcard .head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .stepn{flex:none;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700}
 .addrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px 14px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(190px,100%),1fr));gap:10px 14px}
 .fld{display:grid;gap:4px;font-size:12.5px;color:var(--ink-2)}
 .fld input,.fld select,table.addlines select{font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);min-width:0;width:100%}
 .fld input:focus,.fld select:focus{outline:2px solid var(--accent);outline-offset:1px}
@@ -241,6 +262,7 @@ tr.qcur td{background:var(--accent-soft)}
     <div class="meta" id="meta"></div>
   </header>
   <nav class="tabs" id="tabs" role="tablist" aria-label="Flikar"></nav>
+  <nav class="tabs subtabs" id="subtabs" role="tablist" aria-label="Fakturor" hidden></nav>
   <main id="view"></main>
 </div>
 
@@ -1556,34 +1578,41 @@ tr.qcur td{background:var(--accent-soft)}
   /* ---------- Tabs ---------- */
   var tabs;
   function buildTabs(){
-  tabs = [{id:'sammanstallning', label:'Sammanställning'}];
+  subTabs = [];
   D.suppliers.forEach(function(s){
     var n = D.invoices.filter(function(i){return i.supplier===s.id;}).length;
     if(!n && !BASE_SUP.some(function(x){return x.id===s.id;})) return;
-    tabs.push({id:'lev-'+s.id, label:s.short, sub:n+' fakt.'});
+    subTabs.push({id:'lev-'+s.id, label:s.short, sub:n+' fakt.'});
   });
-  tabs.push({id:'detaljer', label:'Detaljer'});
-  tabs.push({id:'avtal', label:'Avtalskontroll'});
-  tabs.push({id:'nybudget', label:'Ny budget'});
-  tabs.push({id:'offerter', label:'Offerter', sub: (D.offers||[]).length+(offAdded?offAdded.length:0)+' st'});
-  tabs.push({id:'fraga', label:'Fråga budgeten'});
-  tabs.push({id:'uppdatera', label:'Lägg till faktura', sub: added.length ? added.length+' nya' : ''});
-  nav.innerHTML = tabs.map(function(t){
-    return '<button role="tab" id="tab-'+t.id+'" data-tab="'+t.id+'" aria-selected="'+(t.id===current)+'">'+esc(t.label)+(t.sub?'<span class="sub">'+t.sub+'</span>':'')+'</button>';
-  }).join('');
+  subTabs.push({id:'detaljer', label:'Detaljer'});
+  subTabs.push({id:'uppdatera', label:'Lägg till och hantera fakturor', sub: added.length ? added.length+' tillagda' : ''});
+  topTabs = [{id:'sammanstallning', label:'Sammanställning'}, {id:'fakturor', label:'Fakturor', sub: D.invoices.length+' st'}, {id:'avtal', label:'Avtalskontroll'},
+    {id:'offerter', label:'Offerter', sub: (D.offers||[]).length+(offAdded?offAdded.length:0)+' st'}, {id:'nybudget', label:'Ny budget'}, {id:'fraga', label:'Fråga budgeten'}];
+  tabs = topTabs.concat(subTabs);
+  var btn = function(t, sel){ return '<button role="tab" id="tab-'+t.id+'" data-tab="'+t.id+'" aria-selected="'+sel+'">'+esc(t.label)+(t.sub?'<span class="sub">'+t.sub+'</span>':'')+'</button>'; };
+  var isSub = subTabs.some(function(t){return t.id===current;});
+  nav.innerHTML = topTabs.map(function(t){ return btn(t, t.id===current || (t.id==='fakturor' && isSub)); }).join('');
+  subnav.innerHTML = subTabs.map(function(t){ return btn(t, t.id===current); }).join('');
+  subnav.hidden = !isSub;
   }
-  var nav = document.getElementById('tabs');
+  var nav = document.getElementById('tabs'), subnav = document.getElementById('subtabs');
   var view = document.getElementById('view');
-  var current;
+  var current, tabs, topTabs, subTabs;
   buildTabs();
   nav.addEventListener('click',function(e){ var b=e.target.closest('button[data-tab]'); if(b) show(b.dataset.tab); });
+  subnav.addEventListener('click',function(e){ var b=e.target.closest('button[data-tab]'); if(b) show(b.dataset.tab); });
 
   var vatMode = 'inkl';
   try{ vatMode = localStorage.getItem('kv71-vat') || 'inkl'; }catch(e){}
   function show(id){
+    if(id==='fakturor'){ var last = ''; try{ last = localStorage.getItem('kv71-subtab') || ''; }catch(e){} id = subTabs.some(function(t){return t.id===last;}) ? last : subTabs[0].id; }
     if(!tabs.some(function(t){return t.id===id;})) id='sammanstallning';
     current=id;
-    Array.prototype.forEach.call(nav.children,function(b){ b.setAttribute('aria-selected', b.dataset.tab===id?'true':'false'); });
+    var isSub = subTabs.some(function(t){return t.id===id;});
+    if(isSub) try{ localStorage.setItem('kv71-subtab', id); }catch(e){}
+    Array.prototype.forEach.call(nav.children,function(b){ b.setAttribute('aria-selected', (b.dataset.tab===id || (isSub && b.dataset.tab==='fakturor'))?'true':'false'); });
+    Array.prototype.forEach.call(subnav.children,function(b){ b.setAttribute('aria-selected', b.dataset.tab===id?'true':'false'); });
+    subnav.hidden = !isSub;
     if(id==='sammanstallning') view.innerHTML = renderSummary();
     else if(id==='detaljer') view.innerHTML = renderDetails();
     else if(id==='uppdatera'){ view.innerHTML = renderAdd(); bindAdd(); }
@@ -1738,7 +1767,7 @@ tr.qcur td{background:var(--accent-soft)}
     h += '<div class="facts"><span>Projekt <b>'+esc(i.project)+'</b></span><span>Förfaller <b>'+fmtDate(i.due)+'</b></span><span>Moms <b>'+k2(i.moms)+'</b></span>'+(i.rot?'<span>ROT-avdrag <b>−'+k2(i.rot)+'</b>'+(i.rotPreliminary&&i.rotPreliminary!==i.rot?' (preliminärt −'+k2(i.rotPreliminary)+')':'')+'</span>':'')+(i.rounding?'<span>Öresavrundning <b>'+k2(i.rounding)+'</b></span>':'')+'</div>';
     if(i.note) h += '<p class="muted" style="margin:6px 12px 2px;font-size:13px"><span class="tag warn">Obs</span> '+esc(i.note)+'</p>';
     if(i.added) h += '<p style="margin:6px 12px 2px;font-size:13px"><button class="linkbtn" style="display:inline" data-review="'+esc(i.docId)+'">Granska fakturan'+(i.pdf?' och PDF:en':'')+'</button></p>';
-    if(i.detailFrom) h += '<p class="muted" style="margin:6px 12px 2px;font-size:13px"><span class="tag">Flera versioner</span> Rader och underlag kommer från en annan version av samma faktura ('+esc(memberLabel(i.detailFrom))+'). Se Lägg till faktura.</p>';
+    if(i.detailFrom) h += '<p class="muted" style="margin:6px 12px 2px;font-size:13px"><span class="tag">Flera versioner</span> Rader och underlag kommer från en annan version av samma faktura ('+esc(memberLabel(i.detailFrom))+'). Se Fakturor, Lägg till och hantera fakturor.</p>';
     h += ueVerify(i);
     h += '<div class="scroll"><table><thead><tr><th>Rad</th><th class="n">Antal</th><th class="n">À-pris</th><th class="n">Belopp</th><th>Arbetsmoment</th></tr></thead><tbody>';
     i.lines.forEach(function(l){
@@ -2583,18 +2612,14 @@ tr.qcur td{background:var(--accent-soft)}
     // matrix
     var kats = OKAT.filter(function(k){ return cols.some(function(c){ return c.s.has[k.id]; }); });
     var common = kats.filter(function(k){ return cols.every(function(c){ return (c.s.kat[k.id]||0) > 0.5; }); }).map(function(k){return k.id;});
+    var allOpen = kats.every(function(k){ return offOpenKat[k.id]; });
+    h += '<div class="addrow"><button class="chip" id="off-allopen">'+(allOpen?'Dölj alla detaljer':'Visa detaljer för alla poster')+'</button><span class="faint">Klicka på en kostnadspost för rader, antal, à-pris, alternativ och tillval.</span></div>';
     h += '<div class="card scroll"><table class="offt"><thead><tr><th>Kostnadspost</th>'+cols.map(function(c){ return '<th class="n">'+esc(c.o.leverantor)+'<span class="desc">'+esc(c.o.namn)+'</span></th>'; }).join('')+'</tr></thead>';
     kats.forEach(function(k){
       var vals = cols.map(function(c){ return c.s.kat[k.id]||0; }), pos = vals.filter(function(v){return v>0.5;}), min = pos.length>1 ? Math.min.apply(null,pos) : null, open = !!offOpenKat[k.id];
-      h += '<tbody class="offk'+(open?' open':'')+'"><tr><td><button class="nbtog" data-offkat="'+k.id+'" aria-expanded="'+open+'">'+(open?'▾':'▸')+'</button>'+esc(k.namn)+'</td>'+
+      h += '<tbody class="offk'+(open?' open':'')+'"><tr><td><button class="offkbtn" data-offkat="'+k.id+'" aria-expanded="'+open+'"><span class="nbtog-sp">'+(open?'▾':'▸')+'</span>'+esc(k.namn)+'</button></td>'+
         vals.map(function(v){ return '<td class="n">'+(v>0.5 ? '<span class="num'+(min!=null&&Math.abs(v-min)<0.5?' offmin':'')+'">'+kr(v)+'</span>' : '<span class="faint">ingår ej</span>')+'</td>'; }).join('')+'</tr>';
-      if(open){
-        h += '<tr class="offdet"><td></td>'+cols.map(function(c){
-          var L = c.egen ? c.o.lines.filter(function(l){return l.kat===k.id;}).map(function(l){ return {text: l.own ? l.own.text : l.r.text, amt:l.amt, on:true, note: l.own ? 'egen rad' : (l.src.id!==c.o.bas.id ? 'från '+l.src.leverantor : (l.changed ? 'justerad' : ''))}; })
-                         : offLines(c.o).filter(function(l){return l.r.kat===k.id;}).map(function(l){ return {text:l.r.text, amt:l.amt, on:l.on, note: !l.pick ? 'ej valt alternativ' : (!l.tOn ? 'tillval, ej med' : (l.r.tillval ? 'tillval' : ''))}; });
-          return '<td><div class="offlist">'+(L.length ? L.map(function(x){ return '<div class="'+(x.on?'':'off')+'"><span>'+esc(x.text)+(x.note?' <span class="faint">('+esc(x.note)+')</span>':'')+'</span><span class="num">'+kr(x.amt)+'</span></div>'; }).join('') : '<span class="faint">Inga rader</span>')+'</div></td>';
-        }).join('')+'</tr>';
-      }
+      if(open) h += '<tr class="offdet"><td colspan="'+(cols.length+1)+'"><div class="offdetgrid">'+cols.map(function(c){ return offDetBlock(c, k.id); }).join('')+'</div></td></tr>';
       h += '</tbody>';
     });
     var tot = cols.map(function(c){ return c.s.tot; }), cmp = cols.map(function(c){ return common.reduce(function(a,k){ return a + (c.s.kat[k]||0); },0); });
@@ -2627,6 +2652,31 @@ tr.qcur td{background:var(--accent-soft)}
     cols.forEach(function(c){ if(c.egen) return; var o = c.o;
       h += '<div class="card offcard"><b>'+esc(offLabel(o))+'</b>'+(o.anm?'<p class="muted" style="margin:0;font-size:13px">'+esc(o.anm)+'</p>':'')+(o.ingarEj.length?'<ul class="offul">'+o.ingarEj.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>':'<span class="faint">Inga undantag angivna.</span>')+'</div>'; });
     return h + '</div></div>';
+  }
+  function offDetBlock(c, kat){
+    var o = c.o, h = '<div class="offdetb"><div class="offdeth"><span><b>'+esc(o.leverantor)+'</b> <span class="faint">'+esc(o.namn)+'</span></span><b class="num">'+((c.s.kat[kat]||0)>0.5 ? kr(c.s.kat[kat]) : 'ingår ej')+'</b></div>';
+    var qty = function(r){ return r.antal!=null ? fmt2.format(r.antal).replace(/,00$/,'')+' '+esc(r.enhet||'') : ''; };
+    if(c.egen){
+      var E = o.lines.filter(function(l){ return l.kat===kat; });
+      if(!E.length) return h + '<p class="faint" style="margin:0">Inga rader. Lägg till under Egen offert.</p></div>';
+      h += '<table class="offdett"><thead><tr><th>Rad</th><th class="n">Offererat</th><th class="n">Ditt belopp</th></tr></thead><tbody>';
+      E.forEach(function(l){ h += '<tr><td>'+esc(l.own ? l.own.text : l.r.text)+'<span class="desc">'+(l.own ? 'egen rad' : esc(l.src.leverantor+' · '+l.src.namn)+(l.changed?' · justerad':''))+'</span></td><td class="n faint">'+(l.own?'–':kr(l.doc))+'</td><td class="n">'+kr(l.amt)+'</td></tr>'; });
+      return h + '</tbody></table></div>';
+    }
+    var L = offLines(o).filter(function(l){ return l.r.kat===kat; });
+    if(!L.length) return h + '<p class="faint" style="margin:0">Posten ingår inte i offerten'+(o.ingarEj.length?'. Se "Ingår inte" nedan.':'.')+'</p></div>';
+    var on = L.filter(function(l){return l.on;}), tv = L.filter(function(l){return l.r.tillval;});
+    h += '<table class="offdett"><thead><tr><th>Rad</th><th class="n">Antal</th><th class="n">À-pris</th><th class="n">Belopp</th><th>Med i summan</th></tr></thead><tbody>';
+    L.forEach(function(l){
+      var r = l.r, st;
+      if(r.grupp) st = '<label class="offst"><input type="radio" name="og-'+esc(o.id)+'-'+esc(r.grupp)+'" data-offgrpr="'+esc(o.id)+'|'+esc(r.grupp)+'|'+esc(r.id)+'"'+(l.pick?' checked':'')+'> '+esc(r.alt||'Alternativ')+'</label>'+(r.tillval?' <span class="tag">tillval</span>':'');
+      else if(r.tillval) st = '<label class="offst"><input type="checkbox" data-offtv="'+esc(o.id)+'|'+esc(r.id)+'"'+(l.tOn?' checked':'')+'> Tillval</label>';
+      else st = '<span class="faint">Ingår</span>';
+      h += '<tr class="'+(l.on?'':'off')+'"><td>'+esc(r.text)+'<span class="desc">'+(r.grupp?esc((o.grupper||{})[r.grupp]||'Alternativ')+' · ':'')+esc(r.typ||'')+(r.kalla?' · '+esc(r.kalla):'')+(r.desc?' · '+esc(r.desc):'')+'</span></td><td class="n">'+qty(r)+'</td><td class="n">'+(r.apris!=null?k2(r.apris):'')+'</td><td class="n">'+kr(l.amt)+'</td><td>'+st+'</td></tr>';
+    });
+    var tvOn = tv.filter(function(l){return l.on;});
+    h += '<tr class="sub"><td colspan="3">Med i summan: '+on.length+' av '+L.length+' rader'+(tv.length?' · tillval '+tvOn.length+' av '+tv.length+' valda, '+kr(tvOn.reduce(function(a,l){return a+l.amt;},0)):'')+'</td><td class="n">'+kr(on.reduce(function(a,l){return a+l.amt;},0))+'</td><td></td></tr>';
+    return h + '</tbody></table></div>';
   }
   function renderOffEgen(){
     var e = offSt.egen || {}, all = offVisible(), eg = egenOffer();
@@ -2701,6 +2751,8 @@ tr.qcur td{background:var(--accent-soft)}
     view.querySelectorAll('[data-offopt]').forEach(function(d){ d.addEventListener('toggle', function(){ offOptOpen[d.dataset.offopt] = d.open; }); });
     view.querySelectorAll('[data-offkat]').forEach(function(b){ b.addEventListener('click', function(){ var k = b.dataset.offkat; offOpenKat[k] = !offOpenKat[k]; offRender(); }); });
     view.querySelectorAll('[data-offniva]').forEach(function(s){ s.addEventListener('change', function(){ if(!s.value) return; var st = offSet(s.dataset.offniva); st.niva = s.value; delete st.grupper; offChanged(); }); });
+    view.querySelectorAll('[data-offgrpr]').forEach(function(c){ c.addEventListener('change', function(){ var p = c.dataset.offgrpr.split('|'), st = offSet(p[0]); st.grupper = st.grupper || {}; st.grupper[p[1]] = p[2]; offChanged(); }); });
+    var ao = document.getElementById('off-allopen'); if(ao) ao.addEventListener('click', function(){ var cols = offCols(), ks = OKAT.filter(function(k){ return cols.some(function(c){ return c.s.has[k.id]; }); }), all = ks.every(function(k){ return offOpenKat[k.id]; }); ks.forEach(function(k){ offOpenKat[k.id] = !all; }); offRender(); });
     view.querySelectorAll('[data-offgrp]').forEach(function(s){ s.addEventListener('change', function(){ var p = s.dataset.offgrp.split('|'), st = offSet(p[0]); st.grupper = st.grupper || {}; st.grupper[p[1]] = s.value; offChanged(); }); });
     view.querySelectorAll('[data-offtv]').forEach(function(c){ c.addEventListener('change', function(){ var p = c.dataset.offtv.split('|'), st = offSet(p[0]); st.tillval = st.tillval || {}; st.tillval[p[1]] = c.checked; offChanged(); }); });
     view.querySelectorAll('[data-offtvall]').forEach(function(b){ b.addEventListener('click', function(){ var p = b.dataset.offtvall.split('|'), o = offById(p[0]), st = offSet(p[0]); st.tillval = st.tillval || {}; o.rader.forEach(function(r){ if(r.tillval) st.tillval[r.grupp||r.id] = p[1]==='1'; }); offChanged(); }); });
