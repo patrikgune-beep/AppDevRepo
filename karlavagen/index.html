@@ -1585,8 +1585,9 @@ tr.qcur td{background:var(--accent-soft)}
     subTabs.push({id:'lev-'+s.id, label:s.short, sub:n+' fakt.'});
   });
   subTabs.push({id:'detaljer', label:'Detaljer'});
+  subTabs.push({id:'avtal', label:'Avtalskontroll'});
   subTabs.push({id:'uppdatera', label:'Lägg till och hantera fakturor', sub: added.length ? added.length+' tillagda' : ''});
-  topTabs = [{id:'sammanstallning', label:'Sammanställning'}, {id:'fakturor', label:'Fakturor', sub: D.invoices.length+' st'}, {id:'avtal', label:'Avtalskontroll'},
+  topTabs = [{id:'sammanstallning', label:'Sammanställning'}, {id:'fakturor', label:'Fakturor', sub: D.invoices.length+' st'},
     {id:'offerter', label:'Offerter', sub: (D.offers||[]).length+(offAdded?offAdded.length:0)+' st'}, {id:'nybudget', label:'Ny budget'}, {id:'fraga', label:'Fråga budgeten'}];
   tabs = topTabs.concat(subTabs);
   var btn = function(t, sel){ return '<button role="tab" id="tab-'+t.id+'" data-tab="'+t.id+'" aria-selected="'+sel+'">'+esc(t.label)+(t.sub?'<span class="sub">'+t.sub+'</span>':'')+'</button>'; };
@@ -2502,10 +2503,16 @@ tr.qcur td{background:var(--accent-soft)}
 
   /* ---------- Offerter ---------- */
   var OKAT = D.offerKat || [], OKIDS = OKAT.map(function(k){return k.id;}), OFF_BASE = (D.offers||[]).map(offNorm), offAdded = [];
-  function offBlank(){ return { val:{}, dolda:[], ejJmf:[], visaEgen:true, egen:{bas:'', namn:'Egen offert', per:{}} }; }
+  function offBlank(){ return { val:{}, dolda:[], ejJmf:[], egna:[], egenAktiv:'' }; }
+  /* Earlier versions had a single own offer in `egen`: move it into the list */
+  function offMigrate(st){
+    if(!Array.isArray(st.egna)) st.egna = [];
+    if(st.egen && st.egen.bas && !st.egna.length){ st.egna.push({id:'e1', namn:st.egen.namn||'Egen offert', bas:st.egen.bas, per:st.egen.per||{}, visa: st.visaEgen!==false}); st.egenAktiv = 'e1'; }
+    delete st.egen; delete st.visaEgen; return st;
+  }
   var offSt = offBlank(), offDb = null, offDoc = null, offTimer = null, offSaving = false, offStatus = 'local';
-  var offTab = 'jmf', offOpenKat = {}, offOptOpen = {}, offEdit = null, offMsg = '', offBusy = false, offFile = null, offDelArm = null, offResetArm = false;
-  try{ var _os = JSON.parse(localStorage.getItem('kv71-offerter')||'null'); if(_os && typeof _os==='object') offSt = Object.assign(offBlank(), _os); }catch(e){}
+  var offTab = 'jmf', offOpenKat = {}, offOptOpen = {}, offEgenDelArm = null, offEdit = null, offMsg = '', offBusy = false, offFile = null, offDelArm = null, offResetArm = false;
+  try{ var _os = JSON.parse(localStorage.getItem('kv71-offerter')||'null'); if(_os && typeof _os==='object') offSt = offMigrate(Object.assign(offBlank(), _os)); }catch(e){}
   try{ offTab = localStorage.getItem('kv71-offtab') || 'jmf'; }catch(e){}
   function offNorm(o){
     o.rader = (Array.isArray(o.rader)?o.rader:[]).map(function(r, i){
@@ -2546,13 +2553,14 @@ tr.qcur td{background:var(--accent-soft)}
     return { kat:k, has:n, tot:tot, tillval:tv };
   }
   /* Egen offert: a base supplier, per post optionally another offer as source, own amounts per row and own rows */
-  function egenPer(){
-    var e = offSt.egen = offSt.egen || {bas:'', per:{}}; e.per = e.per || {}; if(!e.bas) return null;
+  function egenCur(){ var l = offSt.egna || []; return l.filter(function(x){ return x.id===offSt.egenAktiv; })[0] || l[0] || null; }
+  function egenPer(e){
+    e = e || egenCur(); if(!e || !e.bas) return null; e.per = e.per || {};
     var p = e.per[e.bas] = e.per[e.bas] || {}; p.just = p.just || {}; p.rader = p.rader || []; p.kalla = p.kalla || {}; return p;
   }
-  function egenOffer(){
-    var e = offSt.egen || {}, bas = offById(e.bas); if(!bas) return null;
-    var p = egenPer(), lines = [], k = {}, has = {}, tot = 0;
+  function egenOffer(e){
+    e = e || egenCur(); var bas = e && offById(e.bas); if(!bas) return null;
+    var p = egenPer(e), lines = [], k = {}, has = {}, tot = 0;
     OKAT.forEach(function(c){
       var src = offById(p.kalla[c.id]) || bas;
       offLines(src).forEach(function(l){
@@ -2562,11 +2570,11 @@ tr.qcur td{background:var(--accent-soft)}
       p.rader.filter(function(x){ return x.kat===c.id; }).forEach(function(x){ lines.push({kat:c.id, own:x, key:'own|'+x.id, amt:Number(x.belopp)||0, doc:0, changed:true}); });
     });
     lines.forEach(function(l){ k[l.kat] = (k[l.kat]||0) + l.amt; has[l.kat] = 1; tot += l.amt; });
-    return { id:'egen', leverantor:bas.leverantor, namn:e.namn || 'Egen offert', nr:'utgår från '+offLabel(bas), bas:bas, lines:lines, sums:{kat:k, has:has, tot:tot, tillval:0} };
+    return { id:'egen:'+e.id, eid:e.id, leverantor:bas.leverantor, namn:e.namn || 'Egen offert', nr:'utgår från '+offLabel(bas), bas:bas, lines:lines, sums:{kat:k, has:has, tot:tot, tillval:0} };
   }
   function offCols(){
     var cols = offVisible().filter(function(o){ return (offSt.ejJmf||[]).indexOf(o.id)<0; }).map(function(o){ return {o:o, s:offSums(o)}; });
-    var eg = egenOffer(); if(eg && offSt.visaEgen!==false) cols.push({o:eg, s:eg.sums, egen:true});
+    (offSt.egna||[]).forEach(function(e){ if(e.visa===false) return; var eg = egenOffer(e); if(eg) cols.push({o:eg, s:eg.sums, egen:true}); });
     return cols;
   }
   function offSave(){
@@ -2584,7 +2592,7 @@ tr.qcur td{background:var(--accent-soft)}
 
   function renderOffers(){
     var h = '<section class="panel"><div class="block"><div class="head"><div><div class="eyebrow">Alla belopp inkl. moms och före ROT-avdrag</div><h2 style="font-size:24px;margin-top:4px">Offerter</h2></div><span id="off-status" class="tag"></span></div>';
-    h += '<div class="filters" role="tablist" aria-label="Vy">'+[['jmf','Jämförelse'],['egen','Egen offert'],['add','Lägg till och hantera offerter']].map(function(t){ return '<button class="chip" data-offtab="'+t[0]+'" aria-pressed="'+(offTab===t[0])+'">'+t[1]+'</button>'; }).join('')+'</div></div>';
+    h += '<div class="filters" role="tablist" aria-label="Vy">'+[['jmf','Jämförelse'],['egen','Egna offerter'+((offSt.egna||[]).length?' ('+offSt.egna.length+')':'')],['add','Lägg till och hantera offerter']].map(function(t){ return '<button class="chip" data-offtab="'+t[0]+'" aria-pressed="'+(offTab===t[0])+'">'+t[1]+'</button>'; }).join('')+'</div></div>';
     h += offTab==='egen' ? renderOffEgen() : offTab==='add' ? renderOffAdd() : renderOffCompare();
     return h + '</section>';
   }
@@ -2594,10 +2602,10 @@ tr.qcur td{background:var(--accent-soft)}
     return '<label class="fld offniva"><span>Kvalitetsnivå</span><select data-offniva="'+esc(o.id)+'">'+[['dyr','Dyrast alternativ'],['mellan','Mellan'],['billig','Billigast alternativ']].map(function(x){ return '<option value="'+x[0]+'"'+(!own && (st.niva||'dyr')===x[0]?' selected':'')+'>'+x[1]+'</option>'; }).join('')+(own?'<option selected value="">Eget val per grupp</option>':'')+'</select></label>';
   }
   function renderOffCompare(){
-    var all = offVisible(), cols = offCols(), eg = egenOffer();
+    var all = offVisible(), cols = offCols();
     var h = '<div class="block"><div class="filters" aria-label="Offerter i jämförelsen">';
     all.forEach(function(o){ var on = (offSt.ejJmf||[]).indexOf(o.id)<0; h += '<button class="chip" data-offjmf="'+esc(o.id)+'" aria-pressed="'+on+'">'+esc(offLabel(o))+'</button>'; });
-    if(eg) h += '<button class="chip" data-offegenvis="1" aria-pressed="'+(offSt.visaEgen!==false)+'">'+esc(eg.namn)+'</button>';
+    (offSt.egna||[]).forEach(function(e){ if(e.bas) h += '<button class="chip" data-offegenvis="'+esc(e.id)+'" aria-pressed="'+(e.visa!==false)+'">'+esc(e.namn||'Egen offert')+'</button>'; });
     h += '</div>';
     if(!cols.length) return h + '<p class="muted">Välj minst en offert.</p></div>';
     // cards
@@ -2606,7 +2614,7 @@ tr.qcur td{background:var(--accent-soft)}
       var o = c.o;
       h += '<div class="card offcard'+(c.egen?' egen':'')+'"><div class="eyebrow">'+esc(o.leverantor)+'</div><b>'+esc(o.namn)+'</b><span class="faint">'+esc(o.nr||'')+(o.datum?' · '+fmtDate(o.datum):'')+'</span>'+
         '<span class="v num">'+kr(c.s.tot)+'</span>'+(c.s.tillval?'<span class="faint">varav tillval '+kr(c.s.tillval)+'</span>':'')+
-        (c.egen ? '<button class="linkbtn" data-offtab="egen">Redigera egen offert</button>' : offNivaSel(o))+'</div>';
+        (c.egen ? '<button class="linkbtn" data-egenedit="'+esc(o.eid)+'">Redigera</button>' : offNivaSel(o))+'</div>';
     });
     h += '</div>';
     // matrix
@@ -2679,13 +2687,18 @@ tr.qcur td{background:var(--accent-soft)}
     return h + '</tbody></table></div>';
   }
   function renderOffEgen(){
-    var e = offSt.egen || {}, all = offVisible(), eg = egenOffer();
-    var h = '<div class="block"><div class="card addcard"><div class="fgrid">'+
+    var e = egenCur(), all = offVisible(), list = offSt.egna || [];
+    var h = '<div class="block"><div class="addrow">'+list.map(function(x){ return '<button class="chip" data-egensel="'+esc(x.id)+'" aria-pressed="'+(e && x.id===e.id)+'">'+esc(x.namn||'Egen offert')+(x.bas?'':' (tom)')+'</button>'; }).join('')+
+      '<button class="chip askgo" id="egen-ny">+ Ny egen offert</button></div>';
+    if(!e) return h + '<p class="muted" style="margin:0">Du har inga egna offerter. Skapa en för att utgå från en leverantörs offert och justera kostnaderna per post.</p></div>';
+    var eg = egenOffer(e);
+    h += '<div class="card addcard"><div class="fgrid">'+
       '<label class="fld"><span>Utgå från offert</span><select id="egen-bas"><option value="">Välj leverantör och offert…</option>'+all.map(function(o){ return '<option value="'+esc(o.id)+'"'+(e.bas===o.id?' selected':'')+'>'+esc(offLabel(o))+'</option>'; }).join('')+'</select></label>'+
-      '<label class="fld"><span>Namn</span><input id="egen-namn" type="text" value="'+esc(e.namn||'Egen offert')+'"></label></div>'+
+      '<label class="fld"><span>Namn</span><input id="egen-namn" type="text" value="'+esc(e.namn||'Egen offert')+'"></label>'+
+      '<div class="fld"><span>&nbsp;</span><button class="chip" id="egen-del">'+(offEgenDelArm===e.id?'Klicka igen för att ta bort':'Ta bort den här egna offerten')+'</button></div></div>'+
       '<p class="faint" style="margin:0;font-size:12.5px">Belopp inkl. moms. Ändra ett belopp genom att skriva i fältet. För varje post kan du hämta raderna från en annan offert, till exempel köket från en leverantör och bygget från en annan. Alternativ och tillval följer valen under Jämförelse. Ändringarna sparas per utgångsoffert.</p></div>';
     if(!eg) return h + '</div>';
-    var p = egenPer(), others = all;
+    var p = egenPer(e), others = all;
     h += '<div class="kpis">'+kpi('Egen offert', kr(eg.sums.tot), esc(offLabel(eg.bas)))+kpi('Utgångsofferten', kr(offSums(eg.bas).tot), 'med valda alternativ och tillval')+kpi('Skillnad', (eg.sums.tot-offSums(eg.bas).tot<0?'−':'+')+kr(Math.abs(eg.sums.tot-offSums(eg.bas).tot)), 'mot utgångsofferten')+'</div>';
     h += '<div class="nblwrap card"><table class="nbl offegen"><thead><tr><th>Post och rad</th><th class="n">Offererat</th><th class="n">Ditt belopp</th><th></th></tr></thead>';
     OKAT.forEach(function(k){
@@ -2717,7 +2730,15 @@ tr.qcur td{background:var(--accent-soft)}
       h += '<tr><td>'+esc(offLabel(o))+'<span class="desc">'+esc(o.nr||'')+(o.fast?' · inbyggd':' · tillagd')+'</span></td><td class="num" style="text-align:left">'+(o.datum?fmtDate(o.datum):'–')+'</td><td class="n">'+kr(offSums(o).tot)+'</td><td><button class="chip" data-offhide="'+esc(o.id)+'">'+(hid?'Dold, visa':'Visas, dölj')+'</button></td><td style="white-space:nowrap">'+
         (o.pdf ? '<a class="chip" href="/_blob/'+encodeURIComponent(o.pdf)+'" target="_blank" rel="noopener">Fil</a> ' : '')+
         (!o.fast && canWrite ? '<button class="chip" data-offedit="'+esc(o.docId)+'">Redigera</button> <button class="chip" data-offdel="'+esc(o.docId)+'">'+(offDelArm===o.docId?'Klicka igen för att ta bort':'Ta bort')+'</button>' : '')+'</td></tr>'; });
+    (offSt.egna||[]).forEach(function(e){ var eg = egenOffer(e);
+      h += '<tr><td>'+esc(e.namn||'Egen offert')+'<span class="desc">egen offert'+(eg?' · utgår från '+esc(offLabel(eg.bas)):' · ingen utgångsoffert vald')+'</span></td><td>–</td><td class="n">'+(eg?kr(eg.sums.tot):'–')+'</td><td><button class="chip" data-offegenvis="'+esc(e.id)+'">'+(e.visa===false?'Dold, visa':'Visas, dölj')+'</button></td><td style="white-space:nowrap"><button class="chip" data-egenedit="'+esc(e.id)+'">Redigera</button> <button class="chip" data-egendel="'+esc(e.id)+'">'+(offEgenDelArm===e.id?'Klicka igen för att ta bort':'Ta bort')+'</button></td></tr>'; });
     return h + '</tbody></table></div></div>';
+  }
+  function egenDelete(id){
+    if(offEgenDelArm!==id){ offEgenDelArm = id; offRender(); setTimeout(function(){ if(offEgenDelArm===id){ offEgenDelArm = null; offRender(); } }, 4000); return; }
+    offEgenDelArm = null; offSt.egna = (offSt.egna||[]).filter(function(x){ return x.id!==id; });
+    if(offSt.egenAktiv===id) offSt.egenAktiv = offSt.egna.length ? offSt.egna[0].id : '';
+    offSetMsg('Den egna offerten är borttagen.','ok'); offChanged();
   }
   function renderOffEditor(){
     var f = offEdit, n = function(v){ return v==null || v==='' ? '' : nbDec(Number(v)); };
@@ -2747,7 +2768,13 @@ tr.qcur td{background:var(--accent-soft)}
     offSetStatus();
     view.querySelectorAll('[data-offtab]').forEach(function(b){ b.addEventListener('click', function(){ offTab = b.dataset.offtab; try{ localStorage.setItem('kv71-offtab', offTab); }catch(e){} offRender(); }); });
     view.querySelectorAll('[data-offjmf]').forEach(function(b){ b.addEventListener('click', function(){ var id = b.dataset.offjmf, l = (offSt.ejJmf||[]).slice(), i = l.indexOf(id); if(i>=0) l.splice(i,1); else l.push(id); offSt.ejJmf = l; offChanged(); }); });
-    var ev = view.querySelector('[data-offegenvis]'); if(ev) ev.addEventListener('click', function(){ offSt.visaEgen = offSt.visaEgen===false; offChanged(); });
+    view.querySelectorAll('[data-offegenvis]').forEach(function(b){ b.addEventListener('click', function(){ var e = (offSt.egna||[]).filter(function(x){return x.id===b.dataset.offegenvis;})[0]; if(!e) return; e.visa = e.visa===false; offChanged(); }); });
+    view.querySelectorAll('[data-egenedit]').forEach(function(b){ b.addEventListener('click', function(){ offSt.egenAktiv = b.dataset.egenedit; offTab = 'egen'; try{ localStorage.setItem('kv71-offtab', offTab); }catch(e){} offChanged(); window.scrollTo(0,0); }); });
+    view.querySelectorAll('[data-egensel]').forEach(function(b){ b.addEventListener('click', function(){ offSt.egenAktiv = b.dataset.egensel; offEgenDelArm = null; offChanged(); }); });
+    view.querySelectorAll('[data-egendel]').forEach(function(b){ b.addEventListener('click', function(){ egenDelete(b.dataset.egendel); }); });
+    var ed = document.getElementById('egen-del'); if(ed) ed.addEventListener('click', function(){ var e = egenCur(); if(e) egenDelete(e.id); });
+    var eny = document.getElementById('egen-ny'); if(eny) eny.addEventListener('click', function(){ var l = offSt.egna = offSt.egna || [], cur = egenCur(), id = 'e'+Date.now().toString(36);
+      l.push({id:id, namn:'Egen offert '+(l.length+1), bas: cur ? cur.bas : '', per:{}, visa:true}); offSt.egenAktiv = id; offChanged(); });
     view.querySelectorAll('[data-offopt]').forEach(function(d){ d.addEventListener('toggle', function(){ offOptOpen[d.dataset.offopt] = d.open; }); });
     view.querySelectorAll('[data-offkat]').forEach(function(b){ b.addEventListener('click', function(){ var k = b.dataset.offkat; offOpenKat[k] = !offOpenKat[k]; offRender(); }); });
     view.querySelectorAll('[data-offniva]').forEach(function(s){ s.addEventListener('change', function(){ if(!s.value) return; var st = offSet(s.dataset.offniva); st.niva = s.value; delete st.grupper; offChanged(); }); });
@@ -2757,15 +2784,15 @@ tr.qcur td{background:var(--accent-soft)}
     view.querySelectorAll('[data-offtv]').forEach(function(c){ c.addEventListener('change', function(){ var p = c.dataset.offtv.split('|'), st = offSet(p[0]); st.tillval = st.tillval || {}; st.tillval[p[1]] = c.checked; offChanged(); }); });
     view.querySelectorAll('[data-offtvall]').forEach(function(b){ b.addEventListener('click', function(){ var p = b.dataset.offtvall.split('|'), o = offById(p[0]), st = offSet(p[0]); st.tillval = st.tillval || {}; o.rader.forEach(function(r){ if(r.tillval) st.tillval[r.grupp||r.id] = p[1]==='1'; }); offChanged(); }); });
     // egen
-    var eb = document.getElementById('egen-bas'); if(eb) eb.addEventListener('change', function(){ offSt.egen = offSt.egen || {per:{}}; offSt.egen.bas = eb.value; offChanged(); });
-    var en = document.getElementById('egen-namn'); if(en) en.addEventListener('change', function(){ offSt.egen.namn = en.value.trim() || 'Egen offert'; offChanged(); });
-    view.querySelectorAll('[data-egenkalla]').forEach(function(s){ s.addEventListener('change', function(){ var p = egenPer(); if(s.value===offSt.egen.bas) delete p.kalla[s.dataset.egenkalla]; else p.kalla[s.dataset.egenkalla] = s.value; offChanged(); }); });
+    var eb = document.getElementById('egen-bas'); if(eb) eb.addEventListener('change', function(){ var e = egenCur(); if(e){ e.bas = eb.value; offChanged(); } });
+    var en = document.getElementById('egen-namn'); if(en) en.addEventListener('change', function(){ var e = egenCur(); if(e){ e.namn = en.value.trim() || 'Egen offert'; offChanged(); } });
+    view.querySelectorAll('[data-egenkalla]').forEach(function(s){ s.addEventListener('change', function(){ var p = egenPer(); if(s.value===egenCur().bas) delete p.kalla[s.dataset.egenkalla]; else p.kalla[s.dataset.egenkalla] = s.value; offChanged(); }); });
     view.querySelectorAll('[data-egenjust]').forEach(function(i){ i.addEventListener('change', function(){ var p = egenPer(), v = nbParse(i.value); if(v==null) delete p.just[i.dataset.egenjust]; else p.just[i.dataset.egenjust] = v; offChanged(); }); });
     view.querySelectorAll('[data-egenreset]').forEach(function(b){ b.addEventListener('click', function(){ delete egenPer().just[b.dataset.egenreset]; offChanged(); }); });
     view.querySelectorAll('[data-egenadd]').forEach(function(b){ b.addEventListener('click', function(){ egenPer().rader.push({id:'e'+Date.now().toString(36), kat:b.dataset.egenadd, text:'Egen rad', belopp:0}); offChanged(); }); });
     view.querySelectorAll('[data-egenown]').forEach(function(i){ i.addEventListener('change', function(){ var x = egenPer().rader.filter(function(r){return r.id===i.dataset.egenown;})[0]; if(!x) return; if(i.dataset.f==='belopp') x.belopp = nbParse(i.value)||0; else x.text = i.value; offChanged(); }); });
     view.querySelectorAll('[data-egenowndel]').forEach(function(b){ b.addEventListener('click', function(){ var p = egenPer(); p.rader = p.rader.filter(function(r){return r.id!==b.dataset.egenowndel;}); offChanged(); }); });
-    var er = document.getElementById('egen-reset'); if(er) er.addEventListener('click', function(){ if(!offResetArm){ offResetArm = true; offRender(); setTimeout(function(){ if(offResetArm){ offResetArm = false; offRender(); } }, 4000); return; } offResetArm = false; offSt.egen.per[offSt.egen.bas] = {just:{}, rader:[], kalla:{}}; offChanged(); });
+    var er = document.getElementById('egen-reset'); if(er) er.addEventListener('click', function(){ if(!offResetArm){ offResetArm = true; offRender(); setTimeout(function(){ if(offResetArm){ offResetArm = false; offRender(); } }, 4000); return; } offResetArm = false; var ec = egenCur(); ec.per[ec.bas] = {just:{}, rader:[], kalla:{}}; offChanged(); });
     // add / manage
     var fi = document.getElementById('off-file'); if(fi) fi.addEventListener('change', function(){ offFile = fi.files && fi.files[0] || null; offSetMsg(offFile ? (invSample ? 'Klicka "Läs ut med Claude".' : 'Utläsning med Claude fungerar bara i Claude-appen. Skapa en tom offert och fyll i.') : ''); offRender(); });
     var rd = document.getElementById('off-read'); if(rd) rd.addEventListener('click', function(){ offRead(); });
@@ -2849,8 +2876,8 @@ tr.qcur td{background:var(--accent-soft)}
       if(snap.metadata && snap.metadata.hasPendingWrites) return;
       if(offTimer || offSaving) return;
       var d = snap.exists ? snap.data() : null;
-      if(d){ offSt = Object.assign(offBlank(), d); delete offSt.updatedAt; }
-      else if(offStatus==='local' && Object.keys(offSt.val||{}).length + ((offSt.egen||{}).bas?1:0) > 0) { offStatus = 'db'; offSave(); return; }
+      if(d){ var had = !Array.isArray(d.egna) && d.egen; offSt = offMigrate(Object.assign(offBlank(), d)); delete offSt.updatedAt; if(had && offDoc){ offStatus = 'db'; offSave(); } }
+      else if(offStatus==='local' && Object.keys(offSt.val||{}).length + (offSt.egna||[]).length > 0) { offStatus = 'db'; offSave(); return; }
       offStatus = 'db'; if(!offTyping()) offRender(); else offSetStatus();
     }, function(){ offStatus = 'local'; offSetStatus(); });
     db.collection('offerter').onSnapshot(function(snap){
