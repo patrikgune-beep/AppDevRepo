@@ -154,6 +154,27 @@ table.nbl td,table.nbl th{padding:5px 6px;vertical-align:middle}
 table.nbl tr.off td{color:var(--ink-3)}
 table.nbl tr.off input.nbin{opacity:.55}
 input.nbin.sm{width:5.5em}
+.offcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.offcard{padding:12px 14px;display:grid;gap:4px;align-content:start}
+.offcard.egen{border-color:var(--accent)}
+.offcard .v{font:700 22px/1.2 var(--display);font-variant-numeric:tabular-nums;margin-top:4px}
+.offcard .fld{margin-top:6px}
+table.offt{min-width:640px}
+table.offt th .desc{display:block;text-transform:none;letter-spacing:0;font-weight:500}
+table.offt td:first-child{min-width:190px}
+table.offt td,table.offt th{vertical-align:top}
+.offmin{font-weight:700;color:var(--good)}
+tr.offdet>td{background:var(--surface-2);font-size:12.5px}
+.offlist{display:grid;gap:3px;min-width:160px}
+.offlist>div{display:flex;justify-content:space-between;gap:10px}
+.offlist>div.off{color:var(--ink-3);text-decoration:line-through}
+.offopt>summary{cursor:pointer;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;padding:12px 14px}
+.offoptbody{padding:0 14px 14px;display:grid;gap:10px}
+.offtvlist{display:grid;gap:4px;font-size:13px}
+.offtvlist label{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
+.offul{margin:4px 0 0;padding-left:18px;font-size:13px;display:grid;gap:2px}
+tr.offegenhead>td{background:var(--surface-2)}
+.offniva select{max-width:100%}
 input.nbtext{width:100%;min-width:12em;font:inherit;padding:5px 8px;border:1px solid var(--accent);border-radius:6px;background:var(--accent-soft);color:var(--ink)}
 .nbadd{justify-self:start}
 .nbspent{display:grid;gap:3px;font-size:13px;max-width:520px}
@@ -1335,6 +1356,12 @@ tr.qcur td{background:var(--accent-soft)}
     {"level": "info", "title": "P-avgift varierar mellan 25 och 28 kr/h", "text": "28 kr/h på 132354, 132395 och 132396, 25 kr/h på 132387 och 132388. Små belopp, men fråga vilken taxa som gäller."},
     {"level": "info", "title": "HLL-fakturorna är märkta P1079", "text": "Alla fyra HLL-fakturor har märkningen P1079, inte P2079. Troligen Thesséns interna märkning eller ett skrivfel."},
     {"level": "info", "title": "Arkitektfaktura 9248 är utställd av STR Design AB", "text": "Samma org.nr (559014-3391) som Viktor Erlandsson & Artefacts AB."}
+  ],
+  "offerKat": [{"id": "etabl", "namn": "Etablering, projektledning & allmänt"}, {"id": "riv", "namn": "Rivning"}, {"id": "bygg", "namn": "Bygg: golv, tak, väggar, dörrar"}, {"id": "el", "namn": "El"}, {"id": "puts", "namn": "Puts"}, {"id": "mal", "namn": "Måleri"}, {"id": "platt", "namn": "Plattsättning"}, {"id": "golv", "namn": "Parkett & mattor"}, {"id": "vvs", "namn": "VVS-installation"}, {"id": "vent", "namn": "Ventilation"}, {"id": "sop", "namn": "Sophantering"}, {"id": "bad", "namn": "Sten, kakel, porslin & armaturer"}, {"id": "belys", "namn": "Belysning, brytare & uttag"}, {"id": "snick", "namn": "Kök & specialsnickerier"}, {"id": "vitv", "namn": "Vitvaror"}, {"id": "glas", "namn": "Glas, glasblock & smide"}, {"id": "tapet", "namn": "Tapet"}, {"id": "ovr", "namn": "Övrigt"}],
+  "offers": [
+    {"id": "te-orig", "leverantor": "Thessén & Ek", "namn": "Ursprunglig offert", "nr": "D2053-1", "datum": "2026-04-28", "fast": true, "anm": "Löpande räkning med uppskattade belopp inkl. moms. Snickare och målare 650 kr/h, arbetsledare 875 kr/h inkl. moms, 12 % påslag på material och UE. Kök och badrum är schabloner. Offerten räknar med 200 000 kr ROT, som inte är avdraget här.", "ingarEj": ["Arkitekt, konstruktör (KA) och besiktning"], "rader": [{"id": "o0", "kat": "riv", "text": "Rivningsarbeten", "belopp": 198750, "typ": "blandat", "desc": "Rivning kök, wc, innerväggar, matta och parkett. 2 nya dörrhål. Spårning för el, 32 h."}, {"id": "o1", "kat": "bygg", "text": "Byggnadsarbeten", "belopp": 387500, "typ": "blandat", "desc": "Täckning, nya väggar, socklar, 6 innerdörrar, bastupanel, montering kök och glaspartier."}, {"id": "o2", "kat": "mal", "text": "Målningsarbeten", "belopp": 365000, "typ": "blandat", "desc": "Lagning av spår, spackling och målning av tak, väggar, fönster och snickerier. Jotun."}, {"id": "o3", "kat": "platt", "text": "Plattarbeten", "belopp": 202500, "typ": "blandat", "desc": "Hall, badrum och bastu: spackling, tätskikt, sättning och fogning."}, {"id": "o4", "kat": "vvs", "text": "Rörarbeten", "belopp": 140000, "typ": "blandat", "desc": "Demontering, flytt av avlopp, 2 brunnar, tappvatten kök och bad."}, {"id": "o5", "kat": "el", "text": "Elarbeten", "belopp": 314250, "typ": "blandat", "desc": "Demontering, omdragning, golvvärme, bastu, spotlights, Plejd, Renova."}, {"id": "o6", "kat": "golv", "text": "Parkettarbeten", "belopp": 200000, "typ": "blandat", "desc": "Ny fiskbensparkett, slipning och hårdvaxolja, 6 trösklar."}, {"id": "o7", "kat": "puts", "text": "Putsarbeten", "belopp": 70000, "typ": "blandat", "desc": "Putslagningar efter rivning, schablon."}, {"id": "o8", "kat": "vent", "text": "Ventilationsarbeten", "belopp": 28750, "typ": "blandat", "desc": "Kök och badrum, schablon."}, {"id": "o9", "kat": "etabl", "text": "Allmänna kostnader", "belopp": 209250, "typ": "blandat", "desc": "Transporter, kranlyft, arbetsledning, materialhantering, förbrukningsmaterial, etablering."}, {"id": "o10", "kat": "sop", "text": "Sophantering", "belopp": 76250, "typ": "blandat", "desc": "Big Bag, sorterat."}, {"id": "o11", "kat": "bad", "text": "Badrum, bastu & sten (schablon)", "belopp": 200000, "typ": "övrigt", "desc": "Schablon för inredning och sten."}, {"id": "o12", "kat": "snick", "text": "Kök, vitvaror & stenskivor (schablon)", "belopp": 750000, "typ": "övrigt", "desc": "Schablon."}]},
+    {"id": "te-upd", "leverantor": "Thessén & Ek", "namn": "Uppdaterad offert", "nr": "D2058 rev 1 + ÄTA 2–6", "datum": "2026-10-16", "fast": true, "anm": "D2058 rev 1 (2026-05-08) och ÄTA 2–6 (2026-10-16), löpande räkning inkl. moms. ÄTA 2 och 6 innehåller alternativ, välj nivå nedan. Montering i ÄTA 4 och 6 är räknad med 812,50 kr/h, avtalat är 650 kr/h inkl. moms. Belopp som redan är fakturerat ingår.", "ingarEj": ["Belysningsarmaturer (ÄTA 3)", "Gardinskenor i tak (ej prissatta)", "Glasblock: monteringsmaterial, transporter och konstruktionsarbete (ej prissatta)", "Rostfritt kök, kök och garderober saknar specifikation", "Arkitekt"], "grupper": {"ata2-b-tsb": "Badrum: tvättställsblandare", "ata2-b-du": "Badrum: duschblandare", "ata2-b-sp": "Badrum: spolplatta", "ata2-w-tsb": "Wc: tvättställsblandare", "ata2-w-sp": "Wc: spolplatta", "ata2-k-bl": "Kök: blandare", "ata6-sten": "Sten och klinker i badrum och hall"}, "rader": [{"id": "riv-sparning", "kat": "riv", "text": "Spårning för ny el", "belopp": 20800, "typ": "arbete", "antal": 32, "enhet": "h", "apris": 650}, {"id": "riv-ovr", "kat": "riv", "text": "Rivning kök, wc, innerväggar runt wc/pentry och förråd, matta och parkett. Upptag för 2 nya dörrhål.", "belopp": 177950, "typ": "blandat", "desc": "Resten av posten, inte uppdelat i offerten"}, {"id": "bygg-bygg", "kat": "bygg", "text": "Byggnadsarbeten", "belopp": 387500, "typ": "blandat", "desc": "Täckning av golv. Nya väggar runt badrum och hall, igensättning av 2 dörrhål. Nya socklar. Montering av 6 befintliga innerdörrar med omfattningar och foder. Panel och lavar i bastu. Komplettering badrum. Montering av kök och glaspartier."}, {"id": "mal-sparning", "kat": "mal", "text": "Lägga i spårningar efter el", "belopp": 20800, "typ": "arbete", "antal": 32, "enhet": "h", "apris": 650}, {"id": "mal-ovr", "kat": "mal", "text": "Spackling och målning 2–3 ggr av tak, väggar, fönster (insida) och snickerier. Jotun ingår.", "belopp": 344200, "typ": "blandat", "desc": "Resten av posten, inte uppdelat i offerten"}, {"id": "platt-platt", "kat": "platt", "text": "Plattarbeten", "belopp": 202500, "typ": "blandat", "desc": "Hall: tunnspackling, natursten. Badrum: flytspackling, tätskikt, sättning och fogning, kuvertskärning, inbyggnad av wc-fixtur. Bastu: flytspackling, tätskikt, sättning, sockel, kuvertskärning."}, {"id": "ror-ror", "kat": "vvs", "text": "Rörarbeten", "belopp": 140000, "typ": "blandat", "desc": "Demontering badrum och kök. Flytt av avlopp. 2 standardbrunnar. Tappvatten kök och badrum. Komplettering."}, {"id": "el-el", "kat": "el", "text": "Elarbeten", "belopp": 314250, "typ": "blandat", "desc": "Demontering. Omdragning för kök, badrum och flyttade väggar och dörrhål. Badrum: golvvärme, bastuaggregat, uttag i kommod, 4 LED-spotlights. Plejd-dimrar. Serie Renova. Inkoppling och avprovning."}, {"id": "parkett-parkett", "kat": "golv", "text": "Parkettarbeten", "belopp": 85875, "typ": "blandat", "desc": "Läggning, slipning och hårdvaxolja. Slipning och behandling av 6 trösklar. D2053-1 hade samtliga rum för 200 000 kr."}, {"id": "puts-puts", "kat": "puts", "text": "Putsarbeten", "belopp": 70000, "typ": "blandat", "desc": "Schablon"}, {"id": "vent-vent", "kat": "vent", "text": "Ventilationsarbeten", "belopp": 28750, "typ": "blandat", "desc": "Schablon"}, {"id": "allm-allm", "kat": "etabl", "text": "Allmänna kostnader", "belopp": 209250, "typ": "blandat", "desc": "Transporter, 1 kranlyft, arbetsledning, materialhantering, förbrukningsmaterial, etablering och avetablering."}, {"id": "sop-sop", "kat": "sop", "text": "Sophantering", "belopp": 76250, "typ": "övrigt", "desc": "Sorterat"}, {"id": "ata2-b-fix", "kat": "bad", "text": "Badrum: fixtur Geberit med inbyggd påse", "belopp": 9800, "typ": "material", "kalla": "ÄTA 2"}, {"id": "ata2-b-wc", "kat": "bad", "text": "Badrum: wc Laufen Kartell, vägghängd", "belopp": 8013.75, "typ": "material", "kalla": "ÄTA 2"}, {"id": "ata2-b-ts", "kat": "bad", "text": "Badrum: tvättställ Laufen Val med tvål-ö", "belopp": 8371.25, "typ": "material", "kalla": "ÄTA 2"}, {"id": "ata2-b-tsb1", "kat": "bad", "text": "Badrum: tvättställsblandare Dornbracht Meta", "belopp": 5715, "typ": "material", "grupp": "ata2-b-tsb", "alt": "Alt 1", "kalla": "ÄTA 2"}, {"id": "ata2-b-tsb2", "kat": "bad", "text": "Badrum: tvättställsblandare Scandtap Equip Classic", "belopp": 4556.25, "typ": "material", "grupp": "ata2-b-tsb", "alt": "Alt 2", "kalla": "ÄTA 2"}, {"id": "ata2-b-du1", "kat": "bad", "text": "Badrum: duschblandare Dornbracht Tara Showerpipe + handdusch", "belopp": 31817.5, "typ": "material", "grupp": "ata2-b-du", "alt": "Alt 1", "kalla": "ÄTA 2"}, {"id": "ata2-b-du2", "kat": "bad", "text": "Badrum: duschblandare Scandtap Steel Pleasure 2 Classic", "belopp": 18811.25, "typ": "material", "grupp": "ata2-b-du", "alt": "Alt 2", "kalla": "ÄTA 2"}, {"id": "ata2-b-sp1", "kat": "bad", "text": "Badrum: spolplatta Dornbracht Angular", "belopp": 4750, "typ": "material", "grupp": "ata2-b-sp", "alt": "Alt 1", "kalla": "ÄTA 2"}, {"id": "ata2-b-sp2", "kat": "bad", "text": "Badrum: spolplatta Scandtap Style Classic", "belopp": 4188.75, "typ": "material", "grupp": "ata2-b-sp", "alt": "Alt 2", "kalla": "ÄTA 2"}, {"id": "ata2-b-uni", "kat": "vvs", "text": "Badrum: extra arbete Uni-drain", "belopp": 12250, "typ": "arbete", "kalla": "ÄTA 2"}, {"id": "ata2-w-fix", "kat": "bad", "text": "Wc: fixtur Geberit med inbyggd påse", "belopp": 9800, "typ": "material", "kalla": "ÄTA 2"}, {"id": "ata2-w-wc", "kat": "bad", "text": "Wc: wc Laufen Kartell, vägghängd", "belopp": 8013.75, "typ": "material", "kalla": "ÄTA 2"}, {"id": "ata2-w-tsb1", "kat": "bad", "text": "Wc: tvättställsblandare Dornbracht Meta", "belopp": 5715, "typ": "material", "grupp": "ata2-w-tsb", "alt": "Alt 1", "kalla": "ÄTA 2"}, {"id": "ata2-w-tsb2", "kat": "bad", "text": "Wc: tvättställsblandare Scandtap Equip Classic", "belopp": 4556.25, "typ": "material", "grupp": "ata2-w-tsb", "alt": "Alt 2", "kalla": "ÄTA 2"}, {"id": "ata2-w-sp1", "kat": "bad", "text": "Wc: spolplatta Dornbracht Angular", "belopp": 4750, "typ": "material", "grupp": "ata2-w-sp", "alt": "Alt 1", "kalla": "ÄTA 2"}, {"id": "ata2-w-sp2", "kat": "bad", "text": "Wc: spolplatta Scandtap Style Classic", "belopp": 4188.75, "typ": "material", "grupp": "ata2-w-sp", "alt": "Alt 2", "kalla": "ÄTA 2"}, {"id": "ata2-k-bl1", "kat": "bad", "text": "Kök: blandare Dornbracht Tara Ultra Pivot", "belopp": 12715, "typ": "material", "grupp": "ata2-k-bl", "alt": "Alt 1", "kalla": "ÄTA 2"}, {"id": "ata2-k-bl2", "kat": "bad", "text": "Kök: blandare Dornbracht Tara pull-down med dusch", "belopp": 9956.25, "typ": "material", "grupp": "ata2-k-bl", "alt": "Alt 2", "kalla": "ÄTA 2"}, {"id": "ata2-k-bl3", "kat": "bad", "text": "Kök: blandare Scandtap Equip D Classic", "belopp": 5882.5, "typ": "material", "grupp": "ata2-k-bl", "alt": "Alt 3", "kalla": "ÄTA 2"}, {"id": "ata3-el", "kat": "el", "text": "Elektriker: tillkommande arbete och material", "belopp": 494480, "typ": "blandat", "desc": "Slang, fästmaterial, inkopplingsmaterial, brytare och uttag. Ingen specifikation. Armaturer ingår inte.", "kalla": "ÄTA 3"}, {"id": "ata3-gips", "kat": "bygg", "text": "Gips, tak", "belopp": 6562.5, "typ": "material", "antal": 50, "enhet": "st", "apris": 131.25, "kalla": "ÄTA 3"}, {"id": "ata3-skruv", "kat": "bygg", "text": "Skruv", "belopp": 5625, "typ": "material", "kalla": "ÄTA 3"}, {"id": "ata3-gles", "kat": "bygg", "text": "Glespanel och kranbil", "belopp": 10875, "typ": "material", "kalla": "ÄTA 3"}, {"id": "ata3-arb", "kat": "bygg", "text": "Snickare: glesning och gipsning av tak", "belopp": 52000, "typ": "arbete", "antal": 80, "enhet": "h", "apris": 650, "kalla": "ÄTA 3"}, {"id": "ata4-matta", "kat": "golv", "text": "Mattläggning", "belopp": 126000, "typ": "blandat", "desc": "Object Carpet Moody 2000, kulör 2003 Greige, cirka 33 m². Två våder, montering med 6 mm filt och spiklist.", "kalla": "ÄTA 4"}, {"id": "ata4-fris", "kat": "golv", "text": "Fris i trä runt sten i korridor", "belopp": 43750, "typ": "blandat", "desc": "Fiskbensparkett i stället för sten kostar 2 240 kr/m² inkl. moms", "kalla": "ÄTA 4"}, {"id": "ata4-mont", "kat": "snick", "text": "Montering snickerier och inredning", "belopp": 195000, "typ": "arbete", "desc": "Avtalat pris är 650 kr/h inkl. moms. 812,50 = 650 × 1,25.", "antal": 240, "enhet": "h", "apris": 812.5, "kalla": "ÄTA 4"}, {"id": "ata4-sockel-arb", "kat": "bygg", "text": "Montering special socklar och foder", "belopp": 41600, "typ": "arbete", "antal": 64, "enhet": "h", "apris": 650, "kalla": "ÄTA 4"}, {"id": "ata4-sockel-mat", "kat": "bygg", "text": "Special socklar och foder, material", "belopp": 27500, "typ": "material", "antal": 220, "enhet": "lm", "apris": 125, "kalla": "ÄTA 4"}, {"id": "ata4-gardin-arb", "kat": "ovr", "text": "Arbete kring infällda gardinskenor i tak", "belopp": 20800, "typ": "arbete", "antal": 32, "enhet": "h", "apris": 650, "kalla": "ÄTA 4"}, {"id": "ata4-gardin", "kat": "ovr", "text": "Gardinskenor tak", "belopp": 0, "typ": "material", "desc": "Inte prissatt", "kalla": "ÄTA 4"}, {"id": "ata4-kok", "kat": "snick", "text": "Kök, skåp och garderober enligt projektplan", "belopp": 1525622.5, "typ": "material", "desc": "Kök: synligt rostfritt, stommar i melamin. Garderober, kommoder och sängstomme i körsbärsfanérad MDF. Ingen specifikation.", "kalla": "ÄTA 4"}, {"id": "ata4-dorrar", "kat": "bygg", "text": "Swedoor Stable dörr och karm 9×21, exkl. trycken", "belopp": 17250, "typ": "material", "antal": 6, "enhet": "st", "apris": 2875, "kalla": "ÄTA 4"}, {"id": "ata5-tvatt", "kat": "vitv", "text": "Tvätt-/torkmaskin Miele WTI370 WPM", "belopp": 31360, "typ": "material", "kalla": "ÄTA 5"}, {"id": "ata5-disk", "kat": "vitv", "text": "Diskmaskin Miele G 7288 SCVi XXL, integrerad", "belopp": 22260, "typ": "material", "kalla": "ÄTA 5"}, {"id": "ata5-spis", "kat": "vitv", "text": "Spis Bertazzoni PRO95I2EXT2, 90 cm induktion, dubbelugn", "belopp": 65520, "typ": "material", "kalla": "ÄTA 5"}, {"id": "ata5-flakt", "kat": "vitv", "text": "Köksfläkt Fjäråskupan Aura", "belopp": 33600, "typ": "material", "kalla": "ÄTA 5"}, {"id": "ata5-kyl", "kat": "vitv", "text": "Kyl/frys Bertazzoni REF604BBNPTC-S", "belopp": 19572.5, "typ": "material", "kalla": "ÄTA 5"}, {"id": "ata5-vin", "kat": "vitv", "text": "Vinkyl Vigneron XP, integrerad", "belopp": 22260, "typ": "material", "kalla": "ÄTA 5"}, {"id": "ata6-spackel", "kat": "platt", "text": "Tillkommande flytspackel, EPS och sättning av sten", "belopp": 211900, "typ": "blandat", "desc": "Kontrollera överlapp med Plattarbeten", "kalla": "ÄTA 6"}, {"id": "ata6-kakel", "kat": "bad", "text": "Kakel Höganäs Arkitekt 2.0, 96×96 blank, cirka 20 m²", "belopp": 15400, "typ": "material", "kalla": "ÄTA 6"}, {"id": "ata6-sten-bl", "kat": "bad", "text": "Sten: Brännlyckamarmor", "belopp": 600000, "typ": "material", "desc": "Inget pris. Stenfirman bedömer 60–80 % dyrare än Verde Italia, 550 000–600 000 kr", "grupp": "ata6-sten", "alt": "Alt 1", "kalla": "ÄTA 6"}, {"id": "ata6-sten-vi", "kat": "bad", "text": "Sten: Verde Italia finslipad, inkl. stendetaljer och 1 tvättställ", "belopp": 378000, "typ": "material", "grupp": "ata6-sten", "alt": "Alt 2", "kalla": "ÄTA 6"}, {"id": "ata6-sten-kl", "kat": "bad", "text": "Klinker: Bricmate M Kolmården 60×60, cirka 40 m²", "belopp": 57250, "typ": "material", "desc": "Utan stendetaljer. Kräver ytterligare tvättställ och bänkskivor i båda badrummen", "grupp": "ata6-sten", "alt": "Alt 3", "kalla": "ÄTA 6"}, {"id": "ata6-glas", "kat": "glas", "text": "Glass bricks, solid, orange peel, 200×100×50", "belopp": 105000, "typ": "material", "desc": "Kräver konstruktionsarbete under, som inte ingår", "antal": 700, "enhet": "st", "apris": 150, "kalla": "ÄTA 6"}, {"id": "ata6-smide-dorr", "kat": "glas", "text": "Smidesdörr med texturglas, dusch", "belopp": 77000, "typ": "blandat", "kalla": "ÄTA 6"}, {"id": "ata6-smide-omf", "kat": "glas", "text": "Smidesomfattningar kök, serveringshål och gånghål, rostfritt", "belopp": 28750, "typ": "blandat", "kalla": "ÄTA 6"}, {"id": "ata6-mont", "kat": "glas", "text": "Montering glasblock och impregnering av alla stenar", "belopp": 117000, "typ": "arbete", "desc": "Avtalat pris är 650 kr/h inkl. moms. 812,50 = 650 × 1,25.", "antal": 144, "enhet": "h", "apris": 812.5, "kalla": "ÄTA 6"}, {"id": "ata6-mat", "kat": "glas", "text": "Material för montering av glasblock, lim och impregnering", "belopp": 0, "typ": "material", "desc": "Inte prissatt", "kalla": "ÄTA 6"}, {"id": "ata6-transp", "kat": "glas", "text": "Transporter och uppbärning", "belopp": 0, "typ": "övrigt", "desc": "Tillkommer, inte prissatt", "kalla": "ÄTA 6"}, {"id": "ata6-konstr", "kat": "glas", "text": "Konstruktionsarbete för glasblock", "belopp": 0, "typ": "arbete", "desc": "Krävs enligt tillverkaren, inte prissatt", "kalla": "ÄTA 6"}]},
+    {"id": "fl-d1935", "leverantor": "FL Construction", "namn": "Offert", "nr": "D1935-1", "datum": "2026-11-17", "fast": true, "anm": "Priser inkl. moms, bygger på projektplanen 2026-10-08. Mängder stäms av på plats, avvikelser regleras som ÄTA. Inkl. moms: snickare 812,50 kr/h, elektriker och rörmokare 868,75 kr/h, plattsättare 843,75 kr/h, murare 750 kr/h, projektledning 1 312,50 kr/h. Tillval (tapet, sten, kakel, porslin, armaturer, Jung, belysning) ligger utanför totalsumman 2 239 538 kr. Belysningspriserna är en uppskattning, drivdon tillkommer. Giltig 30 dagar från 2026-11-17.", "ingarEj": ["Köksinredning i körsbär, inkl. rostfri bänkskiva med ho", "Specialsnickerier enligt KSV_A01–L02: garderober, sänggavlar, bokhyllor, kommoder, bänkar", "Vitvaror", "Glasblocksväggar", "Stenskivor i Brännlyckanmarmor utöver tvättstället", "Belysningsarmaturer, Casambi-drivdon och programmering (armaturer finns som uppskattat tillval)", "Ventilation: frånluft i våtrum och anslutning av köksfläkt", "Ångaggregat och tätskikt för bastu, ångbastu har utgått", "Heltäckningsmatta i sovrum och linoleum i garderober", "Gardinskenor, gardiner och textilier", "Tillstånd från BRF och anmälan till byggnadsnämnden", "Ny stigare, el in i lägenheten förutsätts räcka", "Dolda fel i stomme, bjälklag, el och stammar samt asbest"], "grupper": {"jung": "Jung-brytare och uttag: kulör"}, "rader": [{"id": "f1", "kat": "etabl", "text": "Snickare: etablering av arbetsplats", "belopp": 4875, "typ": "arbete", "antal": 6, "enhet": "h", "apris": 812.5}, {"id": "f2", "kat": "etabl", "text": "Projektledning: genomgång med samtliga hantverkare", "belopp": 10500, "typ": "arbete", "antal": 8, "enhet": "h", "apris": 1312.5}, {"id": "f3", "kat": "etabl", "text": "Material: första hjälpen, etableringsmaterial", "belopp": 3125, "typ": "material", "antal": 1, "enhet": "st", "apris": 3125}, {"id": "f4", "kat": "bygg", "text": "Snickare: golvuppbyggnad (rätning, ljudisolering, skivor, avjämning)", "belopp": 65000, "typ": "arbete", "antal": 80, "enhet": "h", "apris": 812.5}, {"id": "f5", "kat": "bygg", "text": "Snickare: glespanel och gipsning av innertak", "belopp": 130000, "typ": "arbete", "antal": 160, "enhet": "h", "apris": 812.5}, {"id": "f6", "kat": "bygg", "text": "Snickare: uppbyggnad av väggar och slitsar", "belopp": 130000, "typ": "arbete", "antal": 160, "enhet": "h", "apris": 812.5}, {"id": "f7", "kat": "bygg", "text": "Snickare: övriga byggarbeten, dörrkarmar, dörrar, socklar, foder, igensättning", "belopp": 195000, "typ": "arbete", "antal": 240, "enhet": "h", "apris": 812.5}, {"id": "f8", "kat": "bygg", "text": "Material: undertak gips och glespanel", "belopp": 131250, "typ": "material", "antal": 1, "enhet": "st", "apris": 131250}, {"id": "f9", "kat": "bygg", "text": "Material: golv plywood, reglar, OSB, gips, isolering inkl. transporter", "belopp": 212500, "typ": "material", "antal": 1, "enhet": "st", "apris": 212500}, {"id": "f10", "kat": "bygg", "text": "Dörrar Swedoor", "belopp": 86250, "typ": "material", "antal": 6, "enhet": "st", "apris": 14375}, {"id": "f11", "kat": "bygg", "text": "Socklar och foder", "belopp": 27687.5, "typ": "material", "antal": 1, "enhet": "st", "apris": 27687.5}, {"id": "f12", "kat": "bygg", "text": "Servicebil inkl. parkering, snickare", "belopp": 16250, "typ": "övrigt", "antal": 20, "enhet": "st", "apris": 812.5}, {"id": "f13", "kat": "el", "text": "Elektriker: utredning av befintliga eldragningar", "belopp": 13900, "typ": "arbete", "antal": 16, "enhet": "h", "apris": 868.75}, {"id": "f14", "kat": "el", "text": "Elektriker: dragning av det som inte är gjort, dosor, golvvärme i badrum", "belopp": 86875, "typ": "arbete", "antal": 100, "enhet": "h", "apris": 868.75}, {"id": "f15", "kat": "el", "text": "Elektriker: komplettering", "belopp": 104250, "typ": "arbete", "antal": 120, "enhet": "h", "apris": 868.75}, {"id": "f16", "kat": "el", "text": "Material: installationsmaterial, slang, FQ, dosor", "belopp": 73125, "typ": "material", "antal": 1, "enhet": "st", "apris": 73125, "desc": "Styrning för belysning finns under tillval. Endast framdragning för LED i snickerier."}, {"id": "f17", "kat": "el", "text": "Servicebil inkl. parkering, el", "belopp": 12187.5, "typ": "övrigt", "antal": 15, "enhet": "st", "apris": 812.5}, {"id": "f18", "kat": "el", "text": "Elektriker: arbetsledning", "belopp": 13900, "typ": "arbete", "antal": 16, "enhet": "h", "apris": 868.75}, {"id": "f19", "kat": "puts", "text": "Murare: lagning av spårningar samt hålkäl", "belopp": 42000, "typ": "arbete", "antal": 56, "enhet": "h", "apris": 750}, {"id": "f20", "kat": "puts", "text": "Material: gipsputs, förbrukning inkl. transporter", "belopp": 15812.5, "typ": "material", "antal": 1, "enhet": "st", "apris": 15812.5}, {"id": "f21", "kat": "puts", "text": "Servicebil inkl. parkering, murare", "belopp": 4062.5, "typ": "övrigt", "antal": 5, "enhet": "st", "apris": 812.5}, {"id": "f22", "kat": "mal", "text": "Målare: bredspackling och målning av tak, väggar, snickerier, fönster och element, Alcro", "belopp": 255937.5, "typ": "blandat", "antal": 105, "enhet": "m² BOA", "apris": 2437.5}, {"id": "f23", "kat": "platt", "text": "Plattsättning: arbetstimmar", "belopp": 84375, "typ": "arbete", "antal": 100, "enhet": "h", "apris": 843.75}, {"id": "f24", "kat": "platt", "text": "Material: fix, fog, tätskikt, transporter", "belopp": 33562.5, "typ": "material", "antal": 1, "enhet": "st", "apris": 33562.5, "desc": "Klinker och natursten finns under tillval."}, {"id": "f25", "kat": "platt", "text": "Frikopplingsmatta Ditra", "belopp": 13550, "typ": "material", "antal": 20, "enhet": "m²", "apris": 677.5}, {"id": "f26", "kat": "platt", "text": "Servicebil inkl. parkering, plattsättare", "belopp": 8125, "typ": "övrigt", "antal": 10, "enhet": "st", "apris": 812.5}, {"id": "f27", "kat": "golv", "text": "Golvslipning ek, hårdvax", "belopp": 28437.5, "typ": "blandat", "antal": 50, "enhet": "m²", "apris": 568.75}, {"id": "f28", "kat": "golv", "text": "Golvläggning stav ek, fiskben, inkl. material", "belopp": 44000, "typ": "blandat", "antal": 16, "enhet": "m²", "apris": 2750}, {"id": "f29", "kat": "golv", "text": "Slipning av trösklar, möten mot stengolv m.m.", "belopp": 30625, "typ": "blandat", "antal": 1, "enhet": "st", "apris": 30625}, {"id": "f30", "kat": "vvs", "text": "Rörmokare: arbetstimmar", "belopp": 69500, "typ": "arbete", "antal": 80, "enhet": "h", "apris": 868.75}, {"id": "f31", "kat": "vvs", "text": "Servicebil inkl. parkering, rörmokare", "belopp": 4875, "typ": "övrigt", "antal": 6, "enhet": "st", "apris": 812.5}, {"id": "f32", "kat": "vvs", "text": "Installationsmaterial", "belopp": 46750, "typ": "material", "antal": 1, "enhet": "st", "apris": 46750}, {"id": "f33", "kat": "vvs", "text": "Geberit Duofix Sigma väggfixtur 112 cm", "belopp": 13750, "typ": "material", "antal": 2, "enhet": "st", "apris": 6875}, {"id": "f34", "kat": "vvs", "text": "Golvbrunn Unidrain linjeavlopp Classic Line Column, ca 1040 mm", "belopp": 5625, "typ": "material", "antal": 1, "enhet": "st", "apris": 5625}, {"id": "f35", "kat": "etabl", "text": "Projektledning", "belopp": 157500, "typ": "arbete", "antal": 120, "enhet": "h", "apris": 1312.5}, {"id": "f36", "kat": "sop", "text": "Sophantering Big Bag", "belopp": 33125, "typ": "övrigt", "antal": 1, "enhet": "st", "apris": 33125}, {"id": "f37", "kat": "etabl", "text": "Frakter och transporter", "belopp": 15625, "typ": "övrigt", "antal": 1, "enhet": "st", "apris": 15625}, {"id": "f38", "kat": "etabl", "text": "Uppbärning av material", "belopp": 15625, "typ": "arbete", "antal": 1, "enhet": "st", "apris": 15625}, {"id": "f39", "kat": "ovr", "text": "Öresavrundning", "belopp": 0.5, "typ": "övrigt", "antal": 1, "enhet": "st", "apris": 0.5}, {"id": "f40", "kat": "tapet", "text": "Tapet Vescom Ilesha (silke) i matrum inkl. primer, lim och montage", "belopp": 49600, "typ": "blandat", "antal": 1, "enhet": "st", "apris": 49600, "tillval": true}, {"id": "f41", "kat": "bad", "text": "Brännlyckanmarmor 200×200 mm (golv 26, vägg 14, spill 6 m²)", "belopp": 227700, "typ": "material", "antal": 46, "enhet": "m²", "apris": 4950, "tillval": true}, {"id": "f42", "kat": "bad", "text": "Kakel Höganäs Arkitekt 2.0, 96×96 blank (dusch 15, kök 4, spill 3 m²)", "belopp": 16060, "typ": "material", "antal": 22, "enhet": "m²", "apris": 730, "tillval": true}, {"id": "f43", "kat": "bad", "text": "Frakt marmor", "belopp": 2875, "typ": "övrigt", "antal": 1, "enhet": "st", "apris": 2875, "tillval": true}, {"id": "f44", "kat": "bad", "text": "Wc Laufen Kartell, vägghängd rimless", "belopp": 21050, "typ": "material", "antal": 2, "enhet": "st", "apris": 10525, "tillval": true}, {"id": "f45", "kat": "bad", "text": "Wc-sits Laufen Kartell, mjukstängande", "belopp": 2812.5, "typ": "material", "antal": 2, "enhet": "st", "apris": 1406.25, "tillval": true}, {"id": "f46", "kat": "bad", "text": "Spolplatta Dornbracht Angular, krom", "belopp": 10625, "typ": "material", "antal": 2, "enhet": "st", "apris": 5312.5, "tillval": true}, {"id": "f47", "kat": "bad", "text": "Tvättställ Laufen Val med tvål-ö", "belopp": 11206.25, "typ": "material", "antal": 1, "enhet": "st", "apris": 11206.25, "tillval": true}, {"id": "f48", "kat": "bad", "text": "Blandare Dornbracht Meta, krom", "belopp": 14665, "typ": "material", "antal": 2, "enhet": "st", "apris": 7332.5, "tillval": true}, {"id": "f49", "kat": "bad", "text": "Dornbracht Tara Showerpipe 300 mm, krom", "belopp": 30725, "typ": "material", "antal": 1, "enhet": "st", "apris": 30725, "tillval": true}, {"id": "f50", "kat": "bad", "text": "Handdusch Dornbracht, krom", "belopp": 2687.5, "typ": "material", "antal": 1, "enhet": "st", "apris": 2687.5, "tillval": true}, {"id": "f51", "kat": "bad", "text": "Duschdörr i glas (ungefärligt pris)", "belopp": 18750, "typ": "material", "antal": 1, "enhet": "st", "apris": 18750, "tillval": true}, {"id": "f52", "kat": "bad", "text": "Tvättställ sten i marmor", "belopp": 43750, "typ": "material", "antal": 1, "enhet": "st", "apris": 43750, "tillval": true}, {"id": "f53", "kat": "belys", "text": "Jung Schuko-uttag, trådlöst", "belopp": 6491.1, "typ": "material", "antal": 56, "enhet": "st", "apris": 115.91, "tillval": true}, {"id": "f54", "kat": "belys", "text": "Jung ram 1-fack", "belopp": 1523.5, "typ": "material", "antal": 40, "enhet": "st", "apris": 38.09, "tillval": true}, {"id": "f55", "kat": "belys", "text": "Jung ram 2-fack", "belopp": 889.35, "typ": "material", "antal": 14, "enhet": "st", "apris": 63.53, "tillval": true}, {"id": "f56", "kat": "belys", "text": "Jung Bluetooth-sändare", "belopp": 6312.9, "typ": "material", "antal": 3, "enhet": "st", "apris": 2104.3, "tillval": true}, {"id": "f57", "kat": "belys", "text": "Jung Bluetooth-sändare", "belopp": 19489.39, "typ": "material", "antal": 9, "enhet": "st", "apris": 2165.49, "tillval": true}, {"id": "f58", "kat": "belys", "text": "Jung, vit standard", "belopp": 0, "typ": "material", "tillval": true, "grupp": "jung", "alt": "Vit"}, {"id": "f59", "kat": "belys", "text": "Jung, tillägg för matt vit (ca 25 000 kr + moms)", "belopp": 31250, "typ": "material", "tillval": true, "grupp": "jung", "alt": "Matt vit"}, {"id": "f60", "kat": "belys", "text": "PHOS Nano Occular Micro Plate (uppskattning)", "belopp": 80000, "typ": "material", "antal": 32, "enhet": "st", "apris": 2500, "tillval": true}, {"id": "f61", "kat": "belys", "text": "Örsjö Ray Medium, vägg, nickel (uppskattning)", "belopp": 43350, "typ": "material", "antal": 6, "enhet": "st", "apris": 7225, "tillval": true}, {"id": "f62", "kat": "belys", "text": "Marset Ringo C 70, smoke (uppskattning)", "belopp": 56250, "typ": "material", "antal": 2, "enhet": "st", "apris": 28125, "tillval": true}, {"id": "f63", "kat": "belys", "text": "Design House Stockholm Luna Lamp, small (uppskattning)", "belopp": 7785, "typ": "material", "antal": 3, "enhet": "st", "apris": 2595, "tillval": true}, {"id": "f64", "kat": "belys", "text": "Örsjö Karamell, pendel (uppskattning)", "belopp": 41000, "typ": "material", "antal": 1, "enhet": "st", "apris": 41000, "tillval": true}]}
   ]
 }
 </script>
@@ -1538,6 +1565,7 @@ tr.qcur td{background:var(--accent-soft)}
   tabs.push({id:'detaljer', label:'Detaljer'});
   tabs.push({id:'avtal', label:'Avtalskontroll'});
   tabs.push({id:'nybudget', label:'Ny budget'});
+  tabs.push({id:'offerter', label:'Offerter', sub: (D.offers||[]).length+(offAdded?offAdded.length:0)+' st'});
   tabs.push({id:'fraga', label:'Fråga budgeten'});
   tabs.push({id:'uppdatera', label:'Lägg till faktura', sub: added.length ? added.length+' nya' : ''});
   nav.innerHTML = tabs.map(function(t){
@@ -1561,6 +1589,7 @@ tr.qcur td{background:var(--accent-soft)}
     else if(id==='uppdatera'){ view.innerHTML = renderAdd(); bindAdd(); }
     else if(id==='avtal') view.innerHTML = renderContract();
     else if(id==='nybudget'){ view.innerHTML = renderNewBudget(); bindNewBudget(); }
+    else if(id==='offerter'){ view.innerHTML = renderOffers(); bindOffers(); }
     else if(id==='fraga'){ view.innerHTML = renderAsk(); bindAsk(); }
     else view.innerHTML = renderSupplier(id.slice(4));
     try{ localStorage.setItem('kv71-tab', id); }catch(e){}
@@ -1872,6 +1901,8 @@ tr.qcur td{background:var(--accent-soft)}
       sammaFakturanummer: D.dups.map(function(g){ var sup = supById[g.supplier]; return {leverantor: sup?sup.name:'', nr:g.nr, bedomning:g.label, forklaring:g.text, valtAvAnvandaren: !g.auto,
         versioner: g.members.map(function(c){ return {version:memberLabel(c), datum:c.date, exklMoms:r2(c.exMoms), moms:r2(c.moms), rot:r2(c.rot||0), attBetala:r2(c.toPay), rader: c.lines.map(function(l){ return {text:l.text, belopp:r2(l.amount), underlag: l.ue ? ueById[l.ue].vendor+' '+ueById[l.ue].nr : undefined}; }), rakas: g.all || g.counted===c}; })}; }),
       underleverantorsfakturorSomInteRaknasIgen: D.ueOwn.map(function(o){ return {nr:o.inv.nr, leverantor:(supById[o.inv.supplier]||{}).name, ingarIThessenFaktura:o.u.billedIn.map(function(b){return b.nr;}), raknasAndå:o.counted}; }),
+      offerter: offCols().map(function(c){ var o = c.o; var pk = {}; Object.keys(c.s.kat).forEach(function(k){ pk[katName(k)] = r0(c.s.kat[k]); });
+        return {leverantor:o.leverantor, namn:o.namn, nr:o.nr, datum:o.datum, totaltInklMoms:r0(c.s.tot), varavTillval:r0(c.s.tillval), perKostnadspost:pk, villkor:o.anm, ingarInte:o.ingarEj, egenOffert:!!c.egen}; }),
       observationer: NB.insights
     };
   }
@@ -1907,6 +1938,7 @@ tr.qcur td{background:var(--accent-soft)}
     'Om något inte finns i underlaget, säg det rakt ut och vad det betyder för budgeten. Exempel: armaturer är inte prissatta i ÄTA 3.',
     'Räkna bara rader med medraknad=true om inte frågan gäller alternativ.',
     'FAKTUROR OCH UNDERLAG: Thessén vidarefakturerar underleverantörernas fakturor (underlag, t.ex. Genchel El, Hard Workers, HLL, Beijer) med 12 % påslag. Underlagens belopp INGÅR REDAN i Thesséns fakturabelopp. Lägg aldrig ihop underlag med Thesséns fakturor och räkna aldrig en faktura två gånger. Underlagsbelopp är exkl. moms och exkl. påslag; kostnaden för dig = underlag × 1,12 × 1,25.',
+    'OFFERTER: offerter[] är leverantörernas offerter med valda alternativ och tillval, inkl. moms. Poster som saknas i perKostnadspost ingår inte i den offerten; jämför bara poster som båda har och nämn vad som saknas. Thesséns offertbelopp innehåller redan utfört och fakturerat arbete, en ny leverantör prissätter bara det som återstår.',
     'Använd verktyget sok_fakturarader för frågor om vad som gjorts, timmar, material eller vem som utfört arbetet. Det söker i alla fakturarader, inklusive underlagens egna rader och tidböcker. Raderna är redan fördelade så att de summerar till fakturerat belopp utan dubbelräkning; påslagsrader är separata.',
     'Fältet underlag[].kontroll visar om Thesséns fakturerade belopp stämmer med underlaget + 12 %. sammaFakturanummer visar fakturor som lästs in flera gånger, appens bedömning och vilken version som räknas. Förklara skillnaderna konkret om du får frågor om dem.',
     'Formatera med korta stycken och punktlistor som börjar med "- ". Fetstil med **. Inga tabeller, inga rubriker. Högst cirka 200 ord.',
@@ -2437,6 +2469,342 @@ tr.qcur td{background:var(--accent-soft)}
     C.quotes.forEach(function(q){ h += '<div class="check" style="grid-template-columns:1fr"><p class="muted">”'+esc(q)+'”</p></div>'; });
     h += '</div></div>';
     return h + '</section>';
+  }
+
+  /* ---------- Offerter ---------- */
+  var OKAT = D.offerKat || [], OKIDS = OKAT.map(function(k){return k.id;}), OFF_BASE = (D.offers||[]).map(offNorm), offAdded = [];
+  function offBlank(){ return { val:{}, dolda:[], ejJmf:[], visaEgen:true, egen:{bas:'', namn:'Egen offert', per:{}} }; }
+  var offSt = offBlank(), offDb = null, offDoc = null, offTimer = null, offSaving = false, offStatus = 'local';
+  var offTab = 'jmf', offOpenKat = {}, offOptOpen = {}, offEdit = null, offMsg = '', offBusy = false, offFile = null, offDelArm = null, offResetArm = false;
+  try{ var _os = JSON.parse(localStorage.getItem('kv71-offerter')||'null'); if(_os && typeof _os==='object') offSt = Object.assign(offBlank(), _os); }catch(e){}
+  try{ offTab = localStorage.getItem('kv71-offtab') || 'jmf'; }catch(e){}
+  function offNorm(o){
+    o.rader = (Array.isArray(o.rader)?o.rader:[]).map(function(r, i){
+      var x = Object.assign({}, r); x.id = String(x.id || ('r'+(i+1))); x.kat = OKIDS.indexOf(x.kat)>=0 ? x.kat : 'ovr'; x.belopp = Number(x.belopp)||0; x.text = String(x.text||'Rad'); return x; });
+    o.grupper = o.grupper || {}; o.ingarEj = Array.isArray(o.ingarEj) ? o.ingarEj : []; return o;
+  }
+  function katName(k){ var x = OKAT.filter(function(c){return c.id===k;})[0]; return x ? x.namn : 'Övrigt'; }
+  function offAll(){ return OFF_BASE.concat(offAdded); }
+  function offVisible(){ return offAll().filter(function(o){ return (offSt.dolda||[]).indexOf(o.id)<0; }); }
+  function offById(id){ return offAll().filter(function(o){return o.id===id;})[0]; }
+  function offLabel(o){ return o.leverantor+' · '+o.namn; }
+  function offS(id){ offSt.val = offSt.val || {}; return offSt.val[id] || {}; }
+  function offSet(id){ offSt.val = offSt.val || {}; offSt.val[id] = offSt.val[id] || {}; return offSt.val[id]; }
+  function offGroups(o){ var g = {}; o.rader.forEach(function(r){ if(r.grupp) (g[r.grupp]=g[r.grupp]||[]).push(r); }); return g; }
+  /* Chosen alternative per group: a manual pick wins, otherwise the level (dyrast, mellan, billigast) decides */
+  function offChosen(o){
+    var st = offS(o.id), niva = st.niva || 'dyr', G = offGroups(o), out = {};
+    Object.keys(G).forEach(function(g){
+      var alts = G[g], sel = (st.grupper||{})[g];
+      if(!sel || !alts.some(function(a){return a.id===sel;})){
+        var s = alts.slice().sort(function(a,b){ return a.belopp-b.belopp; });
+        sel = (niva==='billig' ? s[0] : niva==='mellan' ? s[Math.floor((s.length-1)/2)] : s[s.length-1]).id;
+      }
+      out[g] = sel;
+    });
+    return out;
+  }
+  function offLines(o){
+    var ch = offChosen(o), tv = offS(o.id).tillval || {};
+    return o.rader.map(function(r){
+      var key = r.grupp || r.id, tOn = !r.tillval || tv[key]==null || !!tv[key], pick = !r.grupp || ch[r.grupp]===r.id;
+      return { r:r, on: pick && tOn, pick:pick, tOn:tOn, amt:r.belopp };
+    });
+  }
+  function offSums(o){
+    var k = {}, tot = 0, tv = 0, n = {};
+    offLines(o).forEach(function(l){ n[l.r.kat] = 1; if(!l.on) return; k[l.r.kat] = (k[l.r.kat]||0) + l.amt; tot += l.amt; if(l.r.tillval) tv += l.amt; });
+    return { kat:k, has:n, tot:tot, tillval:tv };
+  }
+  /* Egen offert: a base supplier, per post optionally another offer as source, own amounts per row and own rows */
+  function egenPer(){
+    var e = offSt.egen = offSt.egen || {bas:'', per:{}}; e.per = e.per || {}; if(!e.bas) return null;
+    var p = e.per[e.bas] = e.per[e.bas] || {}; p.just = p.just || {}; p.rader = p.rader || []; p.kalla = p.kalla || {}; return p;
+  }
+  function egenOffer(){
+    var e = offSt.egen || {}, bas = offById(e.bas); if(!bas) return null;
+    var p = egenPer(), lines = [], k = {}, has = {}, tot = 0;
+    OKAT.forEach(function(c){
+      var src = offById(p.kalla[c.id]) || bas;
+      offLines(src).forEach(function(l){
+        if(l.r.kat!==c.id || !l.on) return; var key = src.id+'|'+l.r.id, j = p.just[key];
+        lines.push({kat:c.id, src:src, r:l.r, key:key, doc:l.amt, amt: j!=null ? Number(j) : l.amt, changed: j!=null});
+      });
+      p.rader.filter(function(x){ return x.kat===c.id; }).forEach(function(x){ lines.push({kat:c.id, own:x, key:'own|'+x.id, amt:Number(x.belopp)||0, doc:0, changed:true}); });
+    });
+    lines.forEach(function(l){ k[l.kat] = (k[l.kat]||0) + l.amt; has[l.kat] = 1; tot += l.amt; });
+    return { id:'egen', leverantor:bas.leverantor, namn:e.namn || 'Egen offert', nr:'utgår från '+offLabel(bas), bas:bas, lines:lines, sums:{kat:k, has:has, tot:tot, tillval:0} };
+  }
+  function offCols(){
+    var cols = offVisible().filter(function(o){ return (offSt.ejJmf||[]).indexOf(o.id)<0; }).map(function(o){ return {o:o, s:offSums(o)}; });
+    var eg = egenOffer(); if(eg && offSt.visaEgen!==false) cols.push({o:eg, s:eg.sums, egen:true});
+    return cols;
+  }
+  function offSave(){
+    try{ localStorage.setItem('kv71-offerter', JSON.stringify(offSt)); }catch(e){}
+    if(!offDoc) return;
+    if(offTimer) clearTimeout(offTimer);
+    offTimer = setTimeout(function(){ offTimer = null; offSaving = true; offStatus = 'saving'; offSetStatus();
+      offDoc.set(JSON.parse(JSON.stringify(Object.assign({}, offSt, {updatedAt:new Date().toISOString()})))).then(function(){ offSaving = false; offStatus = 'db'; offSetStatus(); }, function(){ offSaving = false; offStatus = 'error'; offSetStatus(); });
+    }, 500);
+  }
+  function offSetStatus(){ var el = document.getElementById('off-status'); if(!el) return; var m = {db:['ok','Sparas i appen'], saving:['','Sparar…'], error:['bad','Kunde inte spara'], local:['warn','Sparas bara i den här webbläsaren']}[offStatus]; if(m){ el.className = 'tag '+m[0]; el.textContent = m[1]; } }
+  function offChanged(){ offSave(); offRender(); }
+  function offRender(){ if(current!=='offerter') return; var y = window.scrollY; view.innerHTML = renderOffers(); bindOffers(); window.scrollTo(0,y); }
+  function offTyping(){ var a = document.activeElement; return a && view.contains(a) && /INPUT|SELECT|TEXTAREA/.test(a.tagName) && a.type!=='file'; }
+
+  function renderOffers(){
+    var h = '<section class="panel"><div class="block"><div class="head"><div><div class="eyebrow">Alla belopp inkl. moms och före ROT-avdrag</div><h2 style="font-size:24px;margin-top:4px">Offerter</h2></div><span id="off-status" class="tag"></span></div>';
+    h += '<div class="filters" role="tablist" aria-label="Vy">'+[['jmf','Jämförelse'],['egen','Egen offert'],['add','Lägg till och hantera offerter']].map(function(t){ return '<button class="chip" data-offtab="'+t[0]+'" aria-pressed="'+(offTab===t[0])+'">'+t[1]+'</button>'; }).join('')+'</div></div>';
+    h += offTab==='egen' ? renderOffEgen() : offTab==='add' ? renderOffAdd() : renderOffCompare();
+    return h + '</section>';
+  }
+  function offNivaSel(o){
+    var G = offGroups(o); if(!Object.keys(G).length) return '';
+    var st = offS(o.id), own = st.grupper && Object.keys(st.grupper).length;
+    return '<label class="fld offniva"><span>Kvalitetsnivå</span><select data-offniva="'+esc(o.id)+'">'+[['dyr','Dyrast alternativ'],['mellan','Mellan'],['billig','Billigast alternativ']].map(function(x){ return '<option value="'+x[0]+'"'+(!own && (st.niva||'dyr')===x[0]?' selected':'')+'>'+x[1]+'</option>'; }).join('')+(own?'<option selected value="">Eget val per grupp</option>':'')+'</select></label>';
+  }
+  function renderOffCompare(){
+    var all = offVisible(), cols = offCols(), eg = egenOffer();
+    var h = '<div class="block"><div class="filters" aria-label="Offerter i jämförelsen">';
+    all.forEach(function(o){ var on = (offSt.ejJmf||[]).indexOf(o.id)<0; h += '<button class="chip" data-offjmf="'+esc(o.id)+'" aria-pressed="'+on+'">'+esc(offLabel(o))+'</button>'; });
+    if(eg) h += '<button class="chip" data-offegenvis="1" aria-pressed="'+(offSt.visaEgen!==false)+'">'+esc(eg.namn)+'</button>';
+    h += '</div>';
+    if(!cols.length) return h + '<p class="muted">Välj minst en offert.</p></div>';
+    // cards
+    h += '<div class="offcards">';
+    cols.forEach(function(c){
+      var o = c.o;
+      h += '<div class="card offcard'+(c.egen?' egen':'')+'"><div class="eyebrow">'+esc(o.leverantor)+'</div><b>'+esc(o.namn)+'</b><span class="faint">'+esc(o.nr||'')+(o.datum?' · '+fmtDate(o.datum):'')+'</span>'+
+        '<span class="v num">'+kr(c.s.tot)+'</span>'+(c.s.tillval?'<span class="faint">varav tillval '+kr(c.s.tillval)+'</span>':'')+
+        (c.egen ? '<button class="linkbtn" data-offtab="egen">Redigera egen offert</button>' : offNivaSel(o))+'</div>';
+    });
+    h += '</div>';
+    // matrix
+    var kats = OKAT.filter(function(k){ return cols.some(function(c){ return c.s.has[k.id]; }); });
+    var common = kats.filter(function(k){ return cols.every(function(c){ return (c.s.kat[k.id]||0) > 0.5; }); }).map(function(k){return k.id;});
+    h += '<div class="card scroll"><table class="offt"><thead><tr><th>Kostnadspost</th>'+cols.map(function(c){ return '<th class="n">'+esc(c.o.leverantor)+'<span class="desc">'+esc(c.o.namn)+'</span></th>'; }).join('')+'</tr></thead>';
+    kats.forEach(function(k){
+      var vals = cols.map(function(c){ return c.s.kat[k.id]||0; }), pos = vals.filter(function(v){return v>0.5;}), min = pos.length>1 ? Math.min.apply(null,pos) : null, open = !!offOpenKat[k.id];
+      h += '<tbody class="offk'+(open?' open':'')+'"><tr><td><button class="nbtog" data-offkat="'+k.id+'" aria-expanded="'+open+'">'+(open?'▾':'▸')+'</button>'+esc(k.namn)+'</td>'+
+        vals.map(function(v){ return '<td class="n">'+(v>0.5 ? '<span class="num'+(min!=null&&Math.abs(v-min)<0.5?' offmin':'')+'">'+kr(v)+'</span>' : '<span class="faint">ingår ej</span>')+'</td>'; }).join('')+'</tr>';
+      if(open){
+        h += '<tr class="offdet"><td></td>'+cols.map(function(c){
+          var L = c.egen ? c.o.lines.filter(function(l){return l.kat===k.id;}).map(function(l){ return {text: l.own ? l.own.text : l.r.text, amt:l.amt, on:true, note: l.own ? 'egen rad' : (l.src.id!==c.o.bas.id ? 'från '+l.src.leverantor : (l.changed ? 'justerad' : ''))}; })
+                         : offLines(c.o).filter(function(l){return l.r.kat===k.id;}).map(function(l){ return {text:l.r.text, amt:l.amt, on:l.on, note: !l.pick ? 'ej valt alternativ' : (!l.tOn ? 'tillval, ej med' : (l.r.tillval ? 'tillval' : ''))}; });
+          return '<td><div class="offlist">'+(L.length ? L.map(function(x){ return '<div class="'+(x.on?'':'off')+'"><span>'+esc(x.text)+(x.note?' <span class="faint">('+esc(x.note)+')</span>':'')+'</span><span class="num">'+kr(x.amt)+'</span></div>'; }).join('') : '<span class="faint">Inga rader</span>')+'</div></td>';
+        }).join('')+'</tr>';
+      }
+      h += '</tbody>';
+    });
+    var tot = cols.map(function(c){ return c.s.tot; }), cmp = cols.map(function(c){ return common.reduce(function(a,k){ return a + (c.s.kat[k]||0); },0); });
+    h += '<tbody><tr class="total"><td>Totalt</td>'+tot.map(function(v){ return '<td class="n">'+kr(v)+'</td>'; }).join('')+'</tr>';
+    if(cols.some(function(c){return c.s.tillval;})) h += '<tr class="sub"><td>varav tillval</td>'+cols.map(function(c){ return '<td class="n">'+(c.s.tillval?kr(c.s.tillval):'–')+'</td>'; }).join('')+'</tr>';
+    if(cols.length>1) h += '<tr class="sub"><td>Jämförbart: bara poster som alla har ('+common.length+' st)</td>'+cmp.map(function(v){ return '<td class="n">'+kr(v)+'</td>'; }).join('')+'</tr>';
+    if(cols.length>1) h += '<tr class="sub"><td>Skillnad mot '+esc(cols[0].o.leverantor+' '+cols[0].o.namn.toLowerCase())+', jämförbart</td>'+cmp.map(function(v,i){ return '<td class="n">'+(i===0?'–':diffSpan(v-cmp[0]))+'</td>'; }).join('')+'</tr>';
+    var teBilled = D.invoices.filter(function(i){return i.supplier==='thessen';}).reduce(function(a,i){return a+i.total;},0);
+    if(teBilled>0 && cols.some(function(c){ return !/thess/i.test(c.o.leverantor); }))
+      h += '<tr class="sub"><td>Totalt inkl. det Thessén & Ek redan fakturerat ('+kr(teBilled)+')<span class="desc">Thesséns offertbelopp innehåller redan utfört arbete. En ny leverantör tar bara det som återstår.</span></td>'+cols.map(function(c){ return '<td class="n">'+(/thess/i.test(c.o.leverantor) ? '<span class="faint">ingår</span>' : kr(c.s.tot+teBilled))+'</td>'; }).join('')+'</tr>';
+    h += '</tbody></table></div>';
+    h += '<p class="faint" style="margin:0;font-size:12.5px">Lägst belopp per post är markerat. "Ingår ej" betyder att offerten saknar posten, inte att den är gratis. Jämför därför helst raden "Jämförbart". Klicka på en post för att se raderna.</p></div>';
+    // alternatives and options
+    cols.forEach(function(c){ if(c.egen) return; var o = c.o, G = offGroups(o), tv = o.rader.filter(function(r){ return r.tillval && !r.grupp; });
+      var gk = Object.keys(G); if(!gk.length && !tv.length) return;
+      var ch = offChosen(o), tvs = offS(o.id).tillval || {};
+      h += '<div class="block"><details class="card offopt" data-offopt="'+esc(o.id)+'"'+(offOptOpen[o.id]?' open':'')+'><summary><b>'+esc(offLabel(o))+': alternativ och tillval</b><span class="faint">'+gk.length+' val, '+tv.length+' tillval</span></summary><div class="offoptbody">';
+      gk.forEach(function(g){ var tOn = !G[g][0].tillval || tvs[g]==null || !!tvs[g];
+        h += '<label class="fld"><span>'+esc(o.grupper[g]||g)+'</span><select data-offgrp="'+esc(o.id)+'|'+esc(g)+'">'+G[g].map(function(r){ return '<option value="'+esc(r.id)+'"'+(ch[g]===r.id?' selected':'')+'>'+esc((r.alt?r.alt+': ':'')+r.text)+' – '+kr(r.belopp)+'</option>'; }).join('')+'</select>'+
+          (G[g][0].tillval ? '<span><input type="checkbox" data-offtv="'+esc(o.id)+'|'+esc(g)+'"'+(tOn?' checked':'')+'> Med i offerten</span>' : '')+'</label>'; });
+      if(tv.length){
+        h += '<div class="addrow"><b>Tillval</b><button class="chip" data-offtvall="'+esc(o.id)+'|1">Alla med</button><button class="chip" data-offtvall="'+esc(o.id)+'|0">Inga</button></div><div class="offtvlist">';
+        tv.forEach(function(r){ var on = tvs[r.id]==null || !!tvs[r.id]; h += '<label><input type="checkbox" data-offtv="'+esc(o.id)+'|'+esc(r.id)+'"'+(on?' checked':'')+'> <span>'+esc(r.text)+'</span><span class="num">'+kr(r.belopp)+'</span></label>'; });
+        h += '</div>';
+      }
+      h += '</div></details></div>';
+    });
+    // scope notes
+    h += '<div class="block"><div class="head"><h2>Ingår inte och villkor</h2></div><div class="offcards">';
+    cols.forEach(function(c){ if(c.egen) return; var o = c.o;
+      h += '<div class="card offcard"><b>'+esc(offLabel(o))+'</b>'+(o.anm?'<p class="muted" style="margin:0;font-size:13px">'+esc(o.anm)+'</p>':'')+(o.ingarEj.length?'<ul class="offul">'+o.ingarEj.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>':'<span class="faint">Inga undantag angivna.</span>')+'</div>'; });
+    return h + '</div></div>';
+  }
+  function renderOffEgen(){
+    var e = offSt.egen || {}, all = offVisible(), eg = egenOffer();
+    var h = '<div class="block"><div class="card addcard"><div class="fgrid">'+
+      '<label class="fld"><span>Utgå från offert</span><select id="egen-bas"><option value="">Välj leverantör och offert…</option>'+all.map(function(o){ return '<option value="'+esc(o.id)+'"'+(e.bas===o.id?' selected':'')+'>'+esc(offLabel(o))+'</option>'; }).join('')+'</select></label>'+
+      '<label class="fld"><span>Namn</span><input id="egen-namn" type="text" value="'+esc(e.namn||'Egen offert')+'"></label></div>'+
+      '<p class="faint" style="margin:0;font-size:12.5px">Belopp inkl. moms. Ändra ett belopp genom att skriva i fältet. För varje post kan du hämta raderna från en annan offert, till exempel köket från en leverantör och bygget från en annan. Alternativ och tillval följer valen under Jämförelse. Ändringarna sparas per utgångsoffert.</p></div>';
+    if(!eg) return h + '</div>';
+    var p = egenPer(), others = all;
+    h += '<div class="kpis">'+kpi('Egen offert', kr(eg.sums.tot), esc(offLabel(eg.bas)))+kpi('Utgångsofferten', kr(offSums(eg.bas).tot), 'med valda alternativ och tillval')+kpi('Skillnad', (eg.sums.tot-offSums(eg.bas).tot<0?'−':'+')+kr(Math.abs(eg.sums.tot-offSums(eg.bas).tot)), 'mot utgångsofferten')+'</div>';
+    h += '<div class="nblwrap card"><table class="nbl offegen"><thead><tr><th>Post och rad</th><th class="n">Offererat</th><th class="n">Ditt belopp</th><th></th></tr></thead>';
+    OKAT.forEach(function(k){
+      var L = eg.lines.filter(function(l){return l.kat===k.id;}), srcs = others.filter(function(o){ return offSums(o).has[k.id]; });
+      if(!L.length && !srcs.length) return;
+      var cur = p.kalla[k.id] && offById(p.kalla[k.id]) ? p.kalla[k.id] : eg.bas.id, sub = L.reduce(function(a,l){return a+l.amt;},0);
+      var ref = others.filter(function(o){ return o.id!==cur && offSums(o).kat[k.id]; }).map(function(o){ return esc(o.leverantor+' '+o.namn.toLowerCase())+' '+kr(offSums(o).kat[k.id]); }).join(' · ');
+      h += '<tbody><tr class="offegenhead"><td><b>'+esc(k.namn)+'</b>'+(ref?'<span class="desc">Andra offerter: '+ref+'</span>':'')+'</td><td colspan="2" class="n"><select data-egenkalla="'+k.id+'" aria-label="Källa för '+esc(k.namn)+'">'+others.map(function(o){ return '<option value="'+esc(o.id)+'"'+(o.id===cur?' selected':'')+(srcs.indexOf(o)<0?' disabled':'')+'>'+esc(offLabel(o))+(srcs.indexOf(o)<0?' (saknar posten)':'')+'</option>'; }).join('')+'</select></td><td class="n"><b class="num">'+kr(sub)+'</b></td></tr>';
+      L.forEach(function(l){
+        if(l.own) h += '<tr><td><input class="nbtext" data-egenown="'+esc(l.own.id)+'" data-f="text" value="'+esc(l.own.text)+'" aria-label="Radtext"></td><td class="n faint">egen rad</td><td class="n">'+nbIn('data-egenown="'+esc(l.own.id)+'" data-f="belopp"', nbNum(l.amt), true)+'</td><td><button class="nbreset" data-egenowndel="'+esc(l.own.id)+'" aria-label="Ta bort raden">×</button></td></tr>';
+        else h += '<tr><td>'+esc(l.r.text)+(l.r.desc?'<span class="desc">'+esc(l.r.desc)+'</span>':'')+'</td><td class="n faint">'+kr(l.doc)+'</td><td class="n">'+nbIn('data-egenjust="'+esc(l.key)+'"', nbNum(l.amt), l.changed)+'</td><td>'+(l.changed?'<button class="nbreset" data-egenreset="'+esc(l.key)+'" aria-label="Återställ" title="Återställ">↺</button>':'')+'</td></tr>';
+      });
+      h += '<tr><td colspan="4"><button class="linkbtn" data-egenadd="'+k.id+'">+ Egen rad i '+esc(k.namn.toLowerCase())+'</button></td></tr></tbody>';
+    });
+    h += '<tbody><tr class="total"><td>Totalt</td><td class="n">'+kr(eg.lines.reduce(function(a,l){return a+l.doc;},0))+'</td><td class="n">'+kr(eg.sums.tot)+'</td><td></td></tr></tbody></table></div>';
+    h += '<div class="addrow"><button class="chip" id="egen-reset">'+(offResetArm?'Klicka igen för att återställa':'Återställ alla belopp för den här utgångsofferten')+'</button></div>';
+    return h + '</div>';
+  }
+  function renderOffAdd(){
+    var canWrite = !!offDb, h = '<div class="block">';
+    if(offEdit) return h + renderOffEditor() + '</div>';
+    h += '<div class="card addcard"><div class="addstep"><span class="stepn">+</span><div><b>Lägg till offert</b><span class="desc">Ladda upp offerten som PDF eller bild och låt Claude läsa ut raderna, eller skapa en tom offert och fyll i själv. Du granskar alltid innan något sparas.</span></div></div>'+
+      '<div class="addrow"><input type="file" id="off-file" accept="application/pdf,image/png,image/jpeg,image/webp" aria-label="Välj offertfil">'+
+      (invSample && offFile ? '<button class="chip askgo" id="off-read" '+(offBusy?'disabled':'')+'>'+(offBusy?'Läser…':'Läs ut med Claude')+'</button>' : '')+
+      '<button class="chip" id="off-new">Ny tom offert</button></div>'+
+      (canWrite ? '' : '<p class="faint" style="margin:0">Offerter kan bara sparas när appen är öppen i Claude.</p>')+'<div id="off-msg">'+offMsg+'</div></div>';
+    h += '<div class="card scroll" style="margin-top:12px"><table><thead><tr><th>Offert</th><th>Datum</th><th class="n">Totalt</th><th>Visas</th><th></th></tr></thead><tbody>';
+    offAll().forEach(function(o){ var hid = (offSt.dolda||[]).indexOf(o.id)>=0;
+      h += '<tr><td>'+esc(offLabel(o))+'<span class="desc">'+esc(o.nr||'')+(o.fast?' · inbyggd':' · tillagd')+'</span></td><td class="num" style="text-align:left">'+(o.datum?fmtDate(o.datum):'–')+'</td><td class="n">'+kr(offSums(o).tot)+'</td><td><button class="chip" data-offhide="'+esc(o.id)+'">'+(hid?'Dold, visa':'Visas, dölj')+'</button></td><td style="white-space:nowrap">'+
+        (o.pdf ? '<a class="chip" href="/_blob/'+encodeURIComponent(o.pdf)+'" target="_blank" rel="noopener">Fil</a> ' : '')+
+        (!o.fast && canWrite ? '<button class="chip" data-offedit="'+esc(o.docId)+'">Redigera</button> <button class="chip" data-offdel="'+esc(o.docId)+'">'+(offDelArm===o.docId?'Klicka igen för att ta bort':'Ta bort')+'</button>' : '')+'</td></tr>'; });
+    return h + '</tbody></table></div></div>';
+  }
+  function renderOffEditor(){
+    var f = offEdit, n = function(v){ return v==null || v==='' ? '' : nbDec(Number(v)); };
+    var sum = f.rader.reduce(function(a,r){ return a+(r.tillval?0:(Number(nbParse(r.belopp))||0)); },0), tsum = f.rader.reduce(function(a,r){ return a+(r.tillval?(Number(nbParse(r.belopp))||0):0); },0);
+    var h = '<div class="card addcard" id="off-editor"><div class="head"><h2>'+(f.docId?'Redigera offert':'Ny offert')+'</h2><span class="muted">'+(f.info?esc(f.info):'')+'</span></div>';
+    h += '<div class="fgrid">'+[['leverantor','Leverantör','text'],['namn','Namn på offerten','text'],['nr','Offertnummer','text'],['datum','Datum','date']].map(function(x){ return '<label class="fld"><span>'+x[1]+'</span><input data-oef="'+x[0]+'" type="'+x[2]+'" value="'+esc(f[x[0]]||'')+'"></label>'; }).join('')+'</div>';
+    h += '<label class="fld" style="margin-top:8px"><span>Villkor och anmärkningar</span><textarea data-oef="anm" rows="2">'+esc(f.anm||'')+'</textarea></label>';
+    h += '<label class="fld"><span>Ingår inte (en per rad)</span><textarea data-oef="ingarEj" rows="3">'+esc((f.ingarEj||[]).join('\n'))+'</textarea></label>';
+    h += '<div class="nblwrap" style="margin-top:10px"><table class="nbl addlines"><thead><tr><th>Kostnadspost</th><th>Rad</th><th class="n">Belopp inkl. moms</th><th>Typ</th><th>Tillval</th><th>Alternativgrupp</th><th>Alternativ</th><th></th></tr></thead><tbody>';
+    f.rader.forEach(function(r,i){
+      h += '<tr><td><select data-oer="'+i+'" data-f="kat">'+OKAT.map(function(k){ return '<option value="'+k.id+'"'+(k.id===r.kat?' selected':'')+'>'+esc(k.namn)+'</option>'; }).join('')+'</select></td>'+
+        '<td><input class="nbtext" data-oer="'+i+'" data-f="text" value="'+esc(r.text)+'" aria-label="Radtext"></td>'+
+        '<td class="n"><input class="nbin" data-oer="'+i+'" data-f="belopp" value="'+esc(r.belopp===''?'':n(nbParse(r.belopp)))+'" inputmode="decimal" aria-label="Belopp"></td>'+
+        '<td><select data-oer="'+i+'" data-f="typ">'+['arbete','material','blandat','övrigt'].map(function(t){ return '<option'+(t===(r.typ||'blandat')?' selected':'')+'>'+t+'</option>'; }).join('')+'</select></td>'+
+        '<td><input type="checkbox" data-oer="'+i+'" data-f="tillval"'+(r.tillval?' checked':'')+' aria-label="Tillval"></td>'+
+        '<td><input class="nbin sm" style="text-align:left" data-oer="'+i+'" data-f="grupp" value="'+esc(r.grupp||'')+'" aria-label="Grupp"></td>'+
+        '<td><input class="nbin sm" style="text-align:left" data-oer="'+i+'" data-f="alt" value="'+esc(r.alt||'')+'" aria-label="Alternativ"></td>'+
+        '<td><button class="nbreset" data-oerdel="'+i+'" aria-label="Ta bort raden">×</button></td></tr>';
+    });
+    h += '<tr class="sub"><td colspan="2">Summa utan tillval'+(tsum?' · tillval '+kr(tsum):'')+'</td><td class="n">'+kr(sum)+'</td><td colspan="5" class="faint">Rader med samma alternativgrupp är alternativ till varandra. Bara ett räknas.</td></tr>';
+    h += '</tbody></table></div><button class="chip nbadd" id="oe-addrow">+ Lägg till rad</button>';
+    h += '<div id="off-msg">'+offMsg+'</div><div class="addrow"><button class="chip askgo" id="oe-save" '+(offDb&&!offBusy?'':'disabled')+'>Spara offerten</button><button class="chip" id="oe-cancel">Avbryt</button></div></div>';
+    return h;
+  }
+  function offSetMsg(t, kind){ offMsg = t ? '<p class="'+(kind==='bad'?'diff-pos':kind==='ok'?'diff-neg':'muted')+'" style="margin:0">'+esc(t)+'</p>' : ''; var el = document.getElementById('off-msg'); if(el) el.innerHTML = offMsg; }
+  function bindOffers(){
+    offSetStatus();
+    view.querySelectorAll('[data-offtab]').forEach(function(b){ b.addEventListener('click', function(){ offTab = b.dataset.offtab; try{ localStorage.setItem('kv71-offtab', offTab); }catch(e){} offRender(); }); });
+    view.querySelectorAll('[data-offjmf]').forEach(function(b){ b.addEventListener('click', function(){ var id = b.dataset.offjmf, l = (offSt.ejJmf||[]).slice(), i = l.indexOf(id); if(i>=0) l.splice(i,1); else l.push(id); offSt.ejJmf = l; offChanged(); }); });
+    var ev = view.querySelector('[data-offegenvis]'); if(ev) ev.addEventListener('click', function(){ offSt.visaEgen = offSt.visaEgen===false; offChanged(); });
+    view.querySelectorAll('[data-offopt]').forEach(function(d){ d.addEventListener('toggle', function(){ offOptOpen[d.dataset.offopt] = d.open; }); });
+    view.querySelectorAll('[data-offkat]').forEach(function(b){ b.addEventListener('click', function(){ var k = b.dataset.offkat; offOpenKat[k] = !offOpenKat[k]; offRender(); }); });
+    view.querySelectorAll('[data-offniva]').forEach(function(s){ s.addEventListener('change', function(){ if(!s.value) return; var st = offSet(s.dataset.offniva); st.niva = s.value; delete st.grupper; offChanged(); }); });
+    view.querySelectorAll('[data-offgrp]').forEach(function(s){ s.addEventListener('change', function(){ var p = s.dataset.offgrp.split('|'), st = offSet(p[0]); st.grupper = st.grupper || {}; st.grupper[p[1]] = s.value; offChanged(); }); });
+    view.querySelectorAll('[data-offtv]').forEach(function(c){ c.addEventListener('change', function(){ var p = c.dataset.offtv.split('|'), st = offSet(p[0]); st.tillval = st.tillval || {}; st.tillval[p[1]] = c.checked; offChanged(); }); });
+    view.querySelectorAll('[data-offtvall]').forEach(function(b){ b.addEventListener('click', function(){ var p = b.dataset.offtvall.split('|'), o = offById(p[0]), st = offSet(p[0]); st.tillval = st.tillval || {}; o.rader.forEach(function(r){ if(r.tillval) st.tillval[r.grupp||r.id] = p[1]==='1'; }); offChanged(); }); });
+    // egen
+    var eb = document.getElementById('egen-bas'); if(eb) eb.addEventListener('change', function(){ offSt.egen = offSt.egen || {per:{}}; offSt.egen.bas = eb.value; offChanged(); });
+    var en = document.getElementById('egen-namn'); if(en) en.addEventListener('change', function(){ offSt.egen.namn = en.value.trim() || 'Egen offert'; offChanged(); });
+    view.querySelectorAll('[data-egenkalla]').forEach(function(s){ s.addEventListener('change', function(){ var p = egenPer(); if(s.value===offSt.egen.bas) delete p.kalla[s.dataset.egenkalla]; else p.kalla[s.dataset.egenkalla] = s.value; offChanged(); }); });
+    view.querySelectorAll('[data-egenjust]').forEach(function(i){ i.addEventListener('change', function(){ var p = egenPer(), v = nbParse(i.value); if(v==null) delete p.just[i.dataset.egenjust]; else p.just[i.dataset.egenjust] = v; offChanged(); }); });
+    view.querySelectorAll('[data-egenreset]').forEach(function(b){ b.addEventListener('click', function(){ delete egenPer().just[b.dataset.egenreset]; offChanged(); }); });
+    view.querySelectorAll('[data-egenadd]').forEach(function(b){ b.addEventListener('click', function(){ egenPer().rader.push({id:'e'+Date.now().toString(36), kat:b.dataset.egenadd, text:'Egen rad', belopp:0}); offChanged(); }); });
+    view.querySelectorAll('[data-egenown]').forEach(function(i){ i.addEventListener('change', function(){ var x = egenPer().rader.filter(function(r){return r.id===i.dataset.egenown;})[0]; if(!x) return; if(i.dataset.f==='belopp') x.belopp = nbParse(i.value)||0; else x.text = i.value; offChanged(); }); });
+    view.querySelectorAll('[data-egenowndel]').forEach(function(b){ b.addEventListener('click', function(){ var p = egenPer(); p.rader = p.rader.filter(function(r){return r.id!==b.dataset.egenowndel;}); offChanged(); }); });
+    var er = document.getElementById('egen-reset'); if(er) er.addEventListener('click', function(){ if(!offResetArm){ offResetArm = true; offRender(); setTimeout(function(){ if(offResetArm){ offResetArm = false; offRender(); } }, 4000); return; } offResetArm = false; offSt.egen.per[offSt.egen.bas] = {just:{}, rader:[], kalla:{}}; offChanged(); });
+    // add / manage
+    var fi = document.getElementById('off-file'); if(fi) fi.addEventListener('change', function(){ offFile = fi.files && fi.files[0] || null; offSetMsg(offFile ? (invSample ? 'Klicka "Läs ut med Claude".' : 'Utläsning med Claude fungerar bara i Claude-appen. Skapa en tom offert och fyll i.') : ''); offRender(); });
+    var rd = document.getElementById('off-read'); if(rd) rd.addEventListener('click', function(){ offRead(); });
+    var nw = document.getElementById('off-new'); if(nw) nw.addEventListener('click', function(){ offEdit = {leverantor:'', namn:'Offert', nr:'', datum:'', anm:'', ingarEj:[], rader:[{kat:'bygg', text:'', belopp:'', typ:'blandat'}]}; offSetMsg(''); offRender(); });
+    view.querySelectorAll('[data-offhide]').forEach(function(b){ b.addEventListener('click', function(){ var id = b.dataset.offhide, l = (offSt.dolda||[]).slice(), i = l.indexOf(id); if(i>=0) l.splice(i,1); else l.push(id); offSt.dolda = l; offChanged(); }); });
+    view.querySelectorAll('[data-offedit]').forEach(function(b){ b.addEventListener('click', function(){ var o = offAdded.filter(function(x){return x.docId===b.dataset.offedit;})[0]; if(!o) return; offEdit = JSON.parse(JSON.stringify(o)); offSetMsg(''); offRender(); window.scrollTo(0,0); }); });
+    view.querySelectorAll('[data-offdel]').forEach(function(b){ b.addEventListener('click', function(){ var id = b.dataset.offdel;
+      if(offDelArm!==id){ offDelArm = id; offRender(); setTimeout(function(){ if(offDelArm===id){ offDelArm = null; offRender(); } }, 4000); return; }
+      offDelArm = null; var o = offAdded.filter(function(x){return x.docId===id;})[0];
+      offDb.collection('offerter').doc(id).delete().then(function(){ if(o && o.pdf && invAssets) invAssets.delete(o.pdf).catch(function(){}); offSetMsg('Offerten är borttagen.','ok'); }, function(){ offSetMsg('Det gick inte att ta bort offerten.','bad'); }); }); });
+    // editor
+    view.querySelectorAll('[data-oef]').forEach(function(i){ i.addEventListener('change', function(){ var k = i.dataset.oef; offEdit[k] = k==='ingarEj' ? i.value.split('\n').map(function(x){return x.trim();}).filter(Boolean) : i.value; }); });
+    view.querySelectorAll('[data-oer]').forEach(function(i){ i.addEventListener('change', function(){ var r = offEdit.rader[+i.dataset.oer]; if(!r) return; var f = i.dataset.f; r[f] = i.type==='checkbox' ? i.checked : i.value; if(f==='belopp' || f==='tillval') offRender(); }); });
+    view.querySelectorAll('[data-oerdel]').forEach(function(b){ b.addEventListener('click', function(){ offEdit.rader.splice(+b.dataset.oerdel,1); offRender(); }); });
+    var ar = document.getElementById('oe-addrow'); if(ar) ar.addEventListener('click', function(){ var last = offEdit.rader[offEdit.rader.length-1]; offEdit.rader.push({kat: last ? last.kat : 'bygg', text:'', belopp:'', typ:'blandat'}); offRender(); });
+    var oc = document.getElementById('oe-cancel'); if(oc) oc.addEventListener('click', function(){ offEdit = null; offSetMsg(''); offRender(); });
+    var os = document.getElementById('oe-save'); if(os) os.addEventListener('click', offSaveOffer);
+  }
+  function offSaveOffer(){
+    var f = offEdit; if(!f || !offDb) return;
+    if(!String(f.leverantor||'').trim()){ offSetMsg('Ange leverantör.','bad'); return; }
+    var rader = f.rader.filter(function(r){ return String(r.text||'').trim() || nbParse(r.belopp)!=null; }).map(function(r, i){
+      var x = { id: r.id || ('r'+(i+1)+'-'+Date.now().toString(36)), kat: OKIDS.indexOf(r.kat)>=0 ? r.kat : 'ovr', text: String(r.text||'Rad').trim().slice(0,200), belopp: nbParse(r.belopp)||0, typ: r.typ||'blandat' };
+      if(r.tillval) x.tillval = true; if(String(r.grupp||'').trim()) x.grupp = String(r.grupp).trim().slice(0,40); if(String(r.alt||'').trim()) x.alt = String(r.alt).trim().slice(0,40);
+      ['antal','apris'].forEach(function(k){ if(r[k]!=null && r[k]!=='' && isFinite(Number(r[k]))) x[k] = Number(r[k]); }); if(r.enhet) x.enhet = String(r.enhet).slice(0,12); if(r.desc) x.desc = String(r.desc).slice(0,300);
+      return x; });
+    if(!rader.length){ offSetMsg('Lägg till minst en rad.','bad'); return; }
+    var grupper = {}; rader.forEach(function(r){ if(r.grupp) grupper[r.grupp] = (f.grupper||{})[r.grupp] || r.grupp; });
+    var doc = { leverantor:String(f.leverantor).trim().slice(0,120), namn:String(f.namn||'Offert').trim().slice(0,120), nr:String(f.nr||'').slice(0,60), datum:/^\d{4}-\d{2}-\d{2}$/.test(f.datum||'')?f.datum:'',
+      anm:String(f.anm||'').slice(0,2000), ingarEj:(f.ingarEj||[]).slice(0,40).map(function(x){return String(x).slice(0,300);}), grupper:grupper, rader:rader, updatedAt:new Date().toISOString() };
+    offBusy = true; offSetMsg('Sparar…'); offRender();
+    var up = (!f.docId && offFile && invAssets) ? invAssets.upload(offFile, {type: offFile.type || 'application/pdf'}).catch(function(){ return null; }) : Promise.resolve(null);
+    up.then(function(res){
+      if(res){ doc.pdf = res.id; doc.pdfName = offFile.name; doc.pdfType = offFile.type || 'application/pdf'; } else if(f.pdf){ doc.pdf = f.pdf; doc.pdfName = f.pdfName||''; doc.pdfType = f.pdfType||''; }
+      var ref = f.docId ? offDb.collection('offerter').doc(f.docId) : offDb.collection('offerter').doc();
+      doc.createdAt = f.createdAt || doc.updatedAt;
+      return ref.set(doc).then(function(){ return ref.id; });
+    }).then(function(id){ offBusy = false; offEdit = null; offFile = null; var eo = offSt.ejJmf||[]; offSt.ejJmf = eo.filter(function(x){return x!=='x-'+id;}); offSetMsg('Offerten är sparad och finns med i jämförelsen.','ok'); offRender(); },
+      function(){ offBusy = false; offSetMsg('Det gick inte att spara offerten.','bad'); offRender(); });
+  }
+  function offRead(){
+    var file = offFile; if(!file || !invSample || offBusy) return;
+    offBusy = true; offSetMsg('Läser filen…'); offRender();
+    var isImg = /^image\//.test(file.type), info = '';
+    var prompt = function(text){ return 'Du läser en offert för renoveringen av lägenheten Karlavägen 71.\n'+
+      'Returnera ENBART ett JSON-objekt: {"leverantor":string,"namn":string,"nr":string,"datum":"YYYY-MM-DD","anm":string,"ingarEj":[string],"grupper":{"<grupp>":string},'+
+      '"rader":[{"text":string,"kat":string,"antal":number,"enhet":string,"apris":number,"belopp":number,"typ":"arbete"|"material"|"blandat"|"övrigt","tillval":boolean,"grupp":string,"alt":string}]}.\n'+
+      'Belopp i kronor INKLUSIVE moms, som tal med punkt som decimaltecken. Står offerten exkl. moms: multiplicera med 1,25 och skriv det i anm.\n'+
+      'Läs ALLA sidor. Ta med varje prissatt rad, högst 120, men inte delsummor eller totalsummor. Öresavrundning blir en rad i kat "ovr".\n'+
+      'kat = den kostnadspost raden hör till: '+OKAT.map(function(k){return k.id+' = '+k.namn;}).join('; ')+'. Servicebil och parkering hör till samma post som yrkesgruppen. Projektledning, etablering, frakter och uppbärning hör till etabl.\n'+
+      'tillval = true för rader under rubriker som "tillval" eller "option" och som inte ingår i offertens totalsumma.\n'+
+      'Rader som är alternativ till varandra (t.ex. "Alt 1"/"Alt 2", olika material eller kvalitetsnivåer för samma sak) får samma "grupp" (kort id) och var sitt "alt". Beskriv gruppen i "grupper". Annars "grupp": "".\n'+
+      'anm = kort sammanfattning av villkor: giltighet, timpriser, löpande eller fast pris, betalningsvillkor. ingarEj = det offerten säger att den inte omfattar.\n'+
+      (text ? '\nOFFERTENS TEXT:\n'+text.slice(0,180000) : '\nOfferten finns i bifogade bilder.'); };
+    var go = function(text, imgs){ var o = {modelTier:'default'}; if(imgs && imgs.length) o.images = imgs; offSetMsg('Claude läser offerten…'); return invSample.json(prompt(text), o); };
+    var p;
+    if(isImg){ info = '1 bild'; p = invImgOk ? go('', [file]) : Promise.reject({code:'images_unavailable'}); }
+    else p = file.arrayBuffer().then(pdfDoc).then(function(doc){ return pdfPages(doc).then(function(pages){
+      var tp = pages.filter(function(x){return !x.scanned;}), sp = pages.filter(function(x){return x.scanned;}).map(function(x){return x.n;});
+      var text = tp.map(function(x){ return '--- Sida '+x.n+' av '+doc.numPages+' ---\n'+x.text; }).join('\n');
+      info = doc.numPages+' sidor'+(sp.length?', '+sp.length+' inskannade':'');
+      if(!sp.length) return go(text);
+      if(!invImgOk){ if(!tp.length) throw {code:'images_unavailable'}; info += ' (inskannade sidor ingår inte)'; return go(text); }
+      return pagesToImages(doc, sp, invImgMax).then(function(imgs){ return go(text+'\n\nSidorna '+sp.join(', ')+' är inskannade och bifogas som bilder.', imgs); });
+    }); });
+    p.then(function(j){
+      if(!j || typeof j!=='object' || !Array.isArray(j.rader)) throw {code:'invalid_json'};
+      var num = function(v){ var n = Number(v); return v!==null && v!=='' && isFinite(n) ? n : null; };
+      offEdit = { leverantor:String(j.leverantor||''), namn:String(j.namn||'Offert'), nr:String(j.nr||''), datum:/^\d{4}-\d{2}-\d{2}$/.test(String(j.datum||''))?String(j.datum):'', anm:String(j.anm||''),
+        ingarEj:(Array.isArray(j.ingarEj)?j.ingarEj:[]).map(String), grupper:(j.grupper&&typeof j.grupper==='object')?j.grupper:{}, info:'Utläst: '+info,
+        rader: j.rader.slice(0,150).map(function(r){ return { kat: OKIDS.indexOf(r.kat)>=0 ? r.kat : 'ovr', text:String(r.text||''), belopp: num(r.belopp)!=null ? nbDec(num(r.belopp)) : '', typ: ['arbete','material','blandat','övrigt'].indexOf(r.typ)>=0 ? r.typ : 'blandat',
+          tillval: !!r.tillval, grupp: r.grupp ? String(r.grupp) : '', alt: r.alt ? String(r.alt) : '', antal:num(r.antal), enhet:r.enhet?String(r.enhet):'', apris:num(r.apris) }; }) };
+      var s = offEdit.rader.reduce(function(a,r){ return a+(r.tillval?0:(nbParse(r.belopp)||0)); },0);
+      offBusy = false; offSetMsg('Claude har läst ut '+offEdit.rader.length+' rader, summa utan tillval '+kr(s)+'. Jämför med offertens totalsumma och granska kostnadsposterna innan du sparar.','ok'); offRender();
+    }).catch(function(e){ offBusy = false; offSetMsg(extractErr(e),'bad'); offRender(); });
+  }
+  function offInit(db){
+    offDb = db;
+    try{ offDoc = db.doc('installningar/offerter'); }catch(e){ return; }
+    offDoc.onSnapshot(function(snap){
+      if(snap.metadata && snap.metadata.hasPendingWrites) return;
+      if(offTimer || offSaving) return;
+      var d = snap.exists ? snap.data() : null;
+      if(d){ offSt = Object.assign(offBlank(), d); delete offSt.updatedAt; }
+      else if(offStatus==='local' && Object.keys(offSt.val||{}).length + ((offSt.egen||{}).bas?1:0) > 0) { offStatus = 'db'; offSave(); return; }
+      offStatus = 'db'; if(!offTyping()) offRender(); else offSetStatus();
+    }, function(){ offStatus = 'local'; offSetStatus(); });
+    db.collection('offerter').onSnapshot(function(snap){
+      offAdded = snap.docs.map(function(d){ return offNorm(Object.assign({}, d.data(), {id:'x-'+d.id, docId:d.id, fast:false})); });
+      if(!offTyping()) offRender();
+    }, function(){});
   }
 
   /* ---------- Lägg till faktura ---------- */
@@ -2987,7 +3355,7 @@ tr.qcur td{background:var(--accent-soft)}
   if(window.claude && typeof window.claude.use==='function'){
     window.claude.use('db').then(function(db){
       if(!db){ invState = 'off'; addRender(); return; }
-      invDb = db; invState = 'on';
+      invDb = db; invState = 'on'; offInit(db);
       db.doc('installningar/fakturor').onSnapshot(function(snap){
         if(snap.metadata && snap.metadata.hasPendingWrites) return;
         var d = snap.exists ? snap.data() : null; hiddenBase = (d && Array.isArray(d.dolda)) ? d.dolda.filter(function(x){return typeof x==='string';}) : [];
