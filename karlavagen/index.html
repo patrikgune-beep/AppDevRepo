@@ -68,6 +68,7 @@ nav.tabs button:hover{color:var(--ink)}
 nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
 nav.tabs button:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 nav.tabs .sub{font-weight:500;color:var(--ink-3);margin-left:6px;font-size:12px}
+nav.subtabs[hidden]{display:none}
 nav.subtabs{position:static;margin:-14px 0 22px;border-bottom:0;gap:6px;flex-wrap:wrap;overflow:visible}
 nav.subtabs button{font-size:13px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
 nav.subtabs button[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
@@ -220,6 +221,9 @@ table.nbt td,table.nbt th{padding-inline:8px}
 .aska p{margin:0 0 8px} .aska p:last-child{margin-bottom:0}
 .aska ul{margin:0 0 8px;padding-left:20px;display:grid;gap:3px}
 .askform{display:grid;gap:8px}
+.aska .scroll{margin:0 0 8px}
+table.asktbl{font-size:13px;min-width:0}
+table.asktbl td,table.asktbl th{padding:5px 8px}
 .askform textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);resize:vertical}
 .askform textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
 .askbtns{display:flex;gap:8px}
@@ -2003,13 +2007,23 @@ tr.qcur td{background:var(--accent-soft)}
       execute:function(inp){ var t = (inp.tal||[]).map(Number).filter(isFinite); var s0 = t.reduce(function(a,b){return a+b;},0); var f = Number(inp.faktor); return {summa: Math.round(s0*100)/100, medFaktor: isFinite(f)&&inp.faktor!=null ? Math.round(s0*f*100)/100 : undefined}; }}
   ];
   function askMd(t){
-    var lines = esc(t).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').split('\n'), h = '', inList = false;
+    var lines = esc(t).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').split('\n'), h = '', inList = false, tbl = null;
+    var flush = function(){ if(!tbl) return; var hd = tbl[0], body = tbl.slice(1);
+      h += '<div class="scroll"><table class="asktbl"><thead><tr>'+hd.map(function(c){ return '<th>'+c+'</th>'; }).join('')+'</tr></thead><tbody>'+body.map(function(r){ return '<tr>'+r.map(function(c){ return '<td'+(/^[−\-+]?[\d\s ]+(,\d+)?\s*(kr|%)?$/.test(c)?' class="n"':'')+'>'+c+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody></table></div>'; tbl = null; };
     lines.forEach(function(ln){
+      if(/^\s*\|.*\|\s*$/.test(ln)){
+        if(inList){ h += '</ul>'; inList = false; }
+        var cells = ln.trim().replace(/^\||\|$/g,'').split('|').map(function(c){ return c.trim(); });
+        if(cells.every(function(c){ return /^:?-{2,}:?$/.test(c); })) return;
+        (tbl = tbl || []).push(cells); return;
+      }
+      flush();
       var m = ln.match(/^\s*[-•]\s+(.*)$/);
       if(m){ if(!inList){ h += '<ul>'; inList = true; } h += '<li>'+m[1]+'</li>'; return; }
       if(inList){ h += '</ul>'; inList = false; }
       if(ln.trim()) h += '<p>'+ln+'</p>';
     });
+    flush();
     if(inList) h += '</ul>';
     return h;
   }
@@ -2066,7 +2080,7 @@ tr.qcur td{background:var(--accent-soft)}
     window.claude.use('sample').then(function(fn){
       askSample = fn || null; askState = fn ? 'on' : 'off';
       if(fn && fn.limits) fn.limits().then(function(l){ askToolsOk = !!(l && l.tools); }, function(){});
-      askRender();
+      askRender(); if(current==='offerter' && offTab==='fraga') offRender();
     }, function(){ askState = 'off'; askRender(); });
   } else { askState = 'off'; }
 
@@ -2592,8 +2606,8 @@ tr.qcur td{background:var(--accent-soft)}
 
   function renderOffers(){
     var h = '<section class="panel"><div class="block"><div class="head"><div><div class="eyebrow">Alla belopp inkl. moms och före ROT-avdrag</div><h2 style="font-size:24px;margin-top:4px">Offerter</h2></div><span id="off-status" class="tag"></span></div>';
-    h += '<div class="filters" role="tablist" aria-label="Vy">'+[['jmf','Jämförelse'],['egen','Egna offerter'+((offSt.egna||[]).length?' ('+offSt.egna.length+')':'')],['add','Lägg till och hantera offerter']].map(function(t){ return '<button class="chip" data-offtab="'+t[0]+'" aria-pressed="'+(offTab===t[0])+'">'+t[1]+'</button>'; }).join('')+'</div></div>';
-    h += offTab==='egen' ? renderOffEgen() : offTab==='add' ? renderOffAdd() : renderOffCompare();
+    h += '<div class="filters" role="tablist" aria-label="Vy">'+[['jmf','Jämförelse'],['egen','Egna offerter'+((offSt.egna||[]).length?' ('+offSt.egna.length+')':'')],['fraga','Fråga om offerterna'],['add','Lägg till och hantera offerter']].map(function(t){ return '<button class="chip" data-offtab="'+t[0]+'" aria-pressed="'+(offTab===t[0])+'">'+t[1]+'</button>'; }).join('')+'</div></div>';
+    h += offTab==='egen' ? renderOffEgen() : offTab==='add' ? renderOffAdd() : offTab==='fraga' ? renderOffAsk() : renderOffCompare();
     return h + '</section>';
   }
   function offNivaSel(o){
@@ -2765,7 +2779,7 @@ tr.qcur td{background:var(--accent-soft)}
   }
   function offSetMsg(t, kind){ offMsg = t ? '<p class="'+(kind==='bad'?'diff-pos':kind==='ok'?'diff-neg':'muted')+'" style="margin:0">'+esc(t)+'</p>' : ''; var el = document.getElementById('off-msg'); if(el) el.innerHTML = offMsg; }
   function bindOffers(){
-    offSetStatus();
+    offSetStatus(); bindOffAsk();
     view.querySelectorAll('[data-offtab]').forEach(function(b){ b.addEventListener('click', function(){ offTab = b.dataset.offtab; try{ localStorage.setItem('kv71-offtab', offTab); }catch(e){} offRender(); }); });
     view.querySelectorAll('[data-offjmf]').forEach(function(b){ b.addEventListener('click', function(){ var id = b.dataset.offjmf, l = (offSt.ejJmf||[]).slice(), i = l.indexOf(id); if(i>=0) l.splice(i,1); else l.push(id); offSt.ejJmf = l; offChanged(); }); });
     view.querySelectorAll('[data-offegenvis]').forEach(function(b){ b.addEventListener('click', function(){ var e = (offSt.egna||[]).filter(function(x){return x.id===b.dataset.offegenvis;})[0]; if(!e) return; e.visa = e.visa===false; offChanged(); }); });
@@ -2868,6 +2882,132 @@ tr.qcur td{background:var(--accent-soft)}
       var s = offEdit.rader.reduce(function(a,r){ return a+(r.tillval?0:(nbParse(r.belopp)||0)); },0);
       offBusy = false; offSetMsg('Claude har läst ut '+offEdit.rader.length+' rader, summa utan tillval '+kr(s)+'. Jämför med offertens totalsumma och granska kostnadsposterna innan du sparar.','ok'); offRender();
     }).catch(function(e){ offBusy = false; offSetMsg(extractErr(e),'bad'); offRender(); });
+  }
+  /* Questions about the offers: Claude gets a summary and two tools that read the offers' rows with the current choices */
+  var offAskTurns = [], offAskBusy = false, offAskLive = '', offAskCtl = null;
+  var OFF_ASK_EX = ['Vad kostar elarbeten i de olika offerterna?', 'Dela upp alla offerter i delarna grund, kök och badrum', 'Vad ingår hos Thessén men inte hos FL?', 'Jämför timpriserna för snickare, el och VVS', 'Vilka poster skiljer mest mellan offerterna?'];
+  function offAskRows(c){
+    if(c.egen) return c.o.lines.map(function(l){ var r = l.own || l.r; return {id: l.key, kat:l.kat, text: l.own ? l.own.text : l.r.text, beskrivning: l.own ? 'egen rad' : r.desc, typ: l.own ? 'blandat' : r.typ, antal: l.own ? undefined : r.antal, enhet: l.own ? undefined : r.enhet, apris: l.own ? undefined : r.apris, belopp: r2(l.amt), med: true, kalla: l.own ? 'egen rad' : offLabel(l.src)}; });
+    return offLines(c.o).map(function(l){ var r = l.r; return {id:r.id, kat:r.kat, text:r.text, beskrivning:r.desc, typ:r.typ, antal:r.antal, enhet:r.enhet, apris:r.apris, belopp:r2(l.amt), med:l.on, tillval:!!r.tillval || undefined,
+      alternativ: r.grupp ? ((c.o.grupper||{})[r.grupp]||r.grupp)+': '+(r.alt||'')+(l.pick?' (valt)':' (ej valt)') : undefined, ata: r.kalla}; });
+  }
+  function offAskPick(names){
+    var cols = offCols(); if(!names || !names.length) return cols;
+    var q = names.map(function(n){ return String(n).toLowerCase(); });
+    return cols.filter(function(c){ var t = (c.o.leverantor+' '+c.o.namn+' '+(c.o.nr||'')).toLowerCase(); return q.some(function(n){ return t.indexOf(n)>=0; }); });
+  }
+  /* A search word matches the start of a word in the row text, so "el" finds "elarbeten" but not "glespanel" */
+  function offWordHit(x, words){
+    if(!words || !words.length) return false;
+    var t = ' '+(x.text+' '+(x.alternativ||'')).toLowerCase().replace(/[^a-z0-9åäöéü]+/g,' ');
+    return words.some(function(w){ w = String(w||'').toLowerCase().trim(); return w && t.indexOf(' '+w)>=0; });
+  }
+  function offMatch(x, katList, words){ return (katList && katList.indexOf(x.kat)>=0) || offWordHit(x, words); }
+  var offAskTools = [
+    { name:'offert_rader',
+      description:'Hämtar rader ur offerterna i jämförelsen, med användarens valda alternativ och tillval. Returnerar per offert summa inkl. moms för raderna som är med, antal rader och raderna. Utan filter: alla rader.',
+      inputSchema:{type:'object', properties:{
+        offerter:{type:'array', items:{type:'string'}, description:'Delsträngar av leverantör eller offertnamn, t.ex. "FL", "Uppdaterad", "Egen". Tomt = alla.'},
+        kategorier:{type:'array', items:{type:'string', enum:OKIDS}, description:'Kostnadsposter (id).'},
+        sok:{type:'array', items:{type:'string'}, description:'Sökord som matchar början av ett ord i radtexten, t.ex. ["el", "elektriker"] hittar "Elarbeten" men inte "glespanel". En rad matchar om kostnadspost ELLER sökord passar.'},
+        typ:{type:'array', items:{type:'string', enum:['arbete','material','blandat','övrigt']}},
+        visaEjMedraknade:{type:'boolean', description:'true = ta också med ej valda alternativ och avvalda tillval (de räknas aldrig in i summan).'}}},
+      execute:function(inp){
+        inp = inp || {}; var K = inp.kategorier||[], W = inp.sok||[], T = inp.typ||[], all = !K.length && !W.length;
+        offAskNote('Läser offertraderna…');
+        return { enhet:'kr inkl. moms', offerter: offAskPick(inp.offerter).map(function(c){
+          var R = offAskRows(c).filter(function(x){ return (all || offMatch(x, K, W)) && (!T.length || T.indexOf(x.typ)>=0) && (x.med || inp.visaEjMedraknade); });
+          var on = R.filter(function(x){ return x.med; });
+          return { offert: offLabel(c.o), egenOffert: !!c.egen, summa: r2(on.reduce(function(a,x){ return a+x.belopp; },0)), antalRader: on.length,
+            arbetstimmar: r2(on.reduce(function(a,x){ return a + (/^(h|tim)/.test(x.enhet||'') && x.antal ? x.antal : 0); },0)) || undefined,
+            rader: R.slice(0,60), notering: R.length>60 ? 'Visar 60 av '+R.length+' rader. Summan gäller alla.' : undefined };
+        }) };
+      }},
+    { name:'dela_upp',
+      description:'Delar upp varje offert i delar som du definierar och summerar exakt. Varje medräknad rad hamnar i den första del vars kategorier (kostnadsposter) passar, annars i den första del vars sökord matchar början av ett ord i radtexten, annars i restdelen. Returnerar summa per del och offert samt vilka rader som hamnade var.',
+      inputSchema:{type:'object', properties:{
+        delar:{type:'array', items:{type:'object', properties:{namn:{type:'string'}, kategorier:{type:'array', items:{type:'string', enum:OKIDS}}, sok:{type:'array', items:{type:'string'}}}, required:['namn']}, description:'I prioritetsordning. Exempel: [{"namn":"Kök","kategorier":["snick","vitv"],"sok":["kök"]},{"namn":"Badrum","kategorier":["bad"],"sok":["badrum","dusch","wc","våtrum","tätskikt","bastu"]}]'},
+        rest:{type:'string', description:'Namn på delen för allt annat, t.ex. "Grund".'},
+        offerter:{type:'array', items:{type:'string'}}},
+        required:['delar','rest']},
+      execute:function(inp){
+        inp = inp || {}; var D2 = (inp.delar||[]).slice(0,10), rest = String(inp.rest||'Övrigt');
+        offAskNote('Delar upp offerterna…');
+        return { enhet:'kr inkl. moms', offerter: offAskPick(inp.offerter).map(function(c){
+          var sums = {}, rows = {};
+          D2.forEach(function(d){ sums[d.namn] = 0; rows[d.namn] = []; }); sums[rest] = 0; rows[rest] = [];
+          offAskRows(c).filter(function(x){ return x.med; }).forEach(function(x){
+            // Cost post decides first, then search words in the row text, otherwise the rest
+            var d = D2.filter(function(d){ return (d.kategorier||[]).indexOf(x.kat)>=0; })[0] || D2.filter(function(d){ return offWordHit(x, d.sok||[]); })[0], n = d ? d.namn : rest;
+            sums[n] += x.belopp; rows[n].push(x.text+' '+fmt0.format(Math.round(x.belopp)));
+          });
+          Object.keys(sums).forEach(function(k){ sums[k] = r2(sums[k]); });
+          return { offert: offLabel(c.o), totalt: r2(c.s.tot), perDel: sums, raderPerDel: rows };
+        }) };
+      }},
+    { name:'summera', description:'Adderar en lista tal exakt. Använd för all aritmetik utöver verktygens summor.',
+      inputSchema:{type:'object', properties:{tal:{type:'array', items:{type:'number'}}}, required:['tal']},
+      execute:function(inp){ var t = (inp.tal||[]).map(Number).filter(isFinite); return {summa: r2(t.reduce(function(a,b){return a+b;},0))}; }}
+  ];
+  var OFF_ASK_RULES = [
+    'Du är en noggrann byggekonom som jämför offerter för renoveringen av lägenheten Karlavägen 71. Svara på svenska, kort och konkret, och börja med svaret.',
+    'Alla belopp är kronor inkl. moms och före ROT-avdrag. Skriv belopp som "123 456 kr".',
+    'Offerterna gäller med användarens valda kvalitetsnivå, alternativ och tillval. Egna offerter är användarens egna kalkyler.',
+    'Använd verktygen för alla belopp: offert_rader för en del eller post, dela_upp för att dela upp offerterna i delar som grund, kök och badrum, summera för övrig addition. Räkna aldrig i huvudet.',
+    'Använd i första hand kostnadsposter (kategorier). Sökord behövs bara för rader i andra poster, till exempel blandare i köket eller rivning av badrum. Korta sökord ger falska träffar ("el" hittar också "element"), så välj hela ord som "elektriker" och kontrollera raderna.',
+    'När du delar upp: säg kort hur du delade upp. Kontrollera i raderPerDel att inget hamnat fel och kör om med bättre regler om det behövs. Säg också vilka rader som gäller flera delar samtidigt, till exempel en rivningsrad för både kök och wc.',
+    'Att en post saknas i en offert betyder att den inte ingår, inte att den är gratis. Säg alltid vad som saknas när du jämför. Thesséns offerter innehåller redan utfört och fakturerat arbete. FL:s offert gäller bara det som återstår.',
+    'Peka ut stora poster utan specifikation och belopp som är uppskattningar.',
+    'Formatera med korta stycken, punktlistor som börjar med "- " och fetstil med **. För jämförelser mellan offerter får du använda en enkel tabell med | mellan kolumnerna, en rubrikrad och högst 8 rader. Inga rubriker. Högst cirka 250 ord.'
+  ].join('\n');
+  function offAskContext(){
+    return { kostnadsposter: OKAT.map(function(k){ return {id:k.id, namn:k.namn}; }),
+      offerter: offCols().map(function(c){ var o = c.o, pk = {}; Object.keys(c.s.kat).forEach(function(k){ pk[k] = r0(c.s.kat[k]); });
+        return {offert: offLabel(o), nr:o.nr, datum:o.datum, egenOffert: !!c.egen, totaltInklMoms: r0(c.s.tot), varavTillval: r0(c.s.tillval), perKostnadspost: pk, villkor: o.anm, ingarInte: o.ingarEj}; }),
+      fakturaratAvThessen: r0(D.invoices.filter(function(i){return i.supplier==='thessen';}).reduce(function(a,i){return a+i.total;},0)) };
+  }
+  function offAskPrompt(){
+    var p = OFF_ASK_RULES+'\n\nOFFERTERNA (JSON, per kostnadspost):\n'+JSON.stringify(offAskContext());
+    if(!askToolsOk) p += '\n\nALLA RADER (JSON):\n'+JSON.stringify(offCols().map(function(c){ return {offert: offLabel(c.o), rader: offAskRows(c).filter(function(x){return x.med;}).map(function(x){ return [x.kat, x.text, x.belopp]; })}; }));
+    return p;
+  }
+  function offAskNote(t){ var el = document.getElementById('offask-note'); if(el) el.textContent = t; }
+  function renderOffAsk(){
+    var h = '<div class="block" style="max-width:900px">';
+    if(!askSample) return h + '<div class="banner"><p>Frågor fungerar bara när appen är öppen i Claude.</p></div></div>';
+    var cols = offCols();
+    h += '<p class="muted" style="margin:0">Svaren bygger på offerterna som är med i jämförelsen just nu ('+cols.length+' st), med dina valda alternativ och tillval.</p>';
+    h += '<div class="filters" role="group" aria-label="Exempelfrågor">'+OFF_ASK_EX.map(function(q){ return '<button class="chip" data-offaskex="'+esc(q)+'">'+esc(q)+'</button>'; }).join('')+'</div>';
+    h += '<div class="askthread">';
+    offAskTurns.forEach(function(t){ h += t.role==='user' ? '<div class="askq">'+esc(t.content)+'</div>' : '<div class="aska card">'+askMd(t.content)+(t.err?'<p class="faint">'+esc(t.err)+'</p>':'')+'</div>'; });
+    if(offAskBusy) h += '<div class="aska card" id="offask-live">'+(offAskLive?askMd(offAskLive):'<p class="faint">Tänker…</p>')+'<p class="faint" id="offask-note"></p></div>';
+    h += '</div><form class="askform" id="offask-form"><textarea id="offask-q" rows="2" placeholder="Till exempel: Vad kostar badrummet i de olika offerterna?" aria-label="Fråga om offerterna"'+(offAskBusy?' disabled':'')+'></textarea>'+
+      '<div class="askbtns"><button type="submit" class="chip askgo" '+(offAskBusy?'disabled':'')+'>Fråga</button>'+(offAskBusy?'<button type="button" class="chip" id="offask-stop">Stoppa</button>':'')+(offAskTurns.length&&!offAskBusy?'<button type="button" class="chip" id="offask-clear">Rensa</button>':'')+'</div></form>';
+    return h + '<p class="faint" style="font-size:12.5px;margin:0">Frågor använder din egen Claude-användning. Summorna räknas av appen, inte av Claude.</p></div>';
+  }
+  function bindOffAsk(){
+    var f = document.getElementById('offask-form'); if(!f) return;
+    var ta = document.getElementById('offask-q');
+    f.addEventListener('submit', function(e){ e.preventDefault(); offAskSend(ta.value); });
+    ta.addEventListener('keydown', function(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); offAskSend(ta.value); } });
+    view.querySelectorAll('[data-offaskex]').forEach(function(b){ b.addEventListener('click', function(){ offAskSend(b.dataset.offaskex); }); });
+    var st = document.getElementById('offask-stop'); if(st) st.addEventListener('click', function(){ if(offAskCtl) offAskCtl.abort(); });
+    var cl = document.getElementById('offask-clear'); if(cl) cl.addEventListener('click', function(){ offAskTurns = []; offRender(); });
+  }
+  function offAskSend(q){
+    q = String(q||'').trim(); if(!q || offAskBusy || !askSample) return;
+    offAskTurns.push({role:'user', content:q}); offAskBusy = true; offAskLive = ''; offRender();
+    var hist = offAskTurns.filter(function(t){ return !t.err; }).slice(-7);
+    var msgs = [{role:'user', content: offAskPrompt()}].concat(hist.map(function(t){ return {role:t.role, content:t.content}; }));
+    offAskCtl = new AbortController();
+    var opts = { signal: offAskCtl.signal, cache:false, onText:function(u){ offAskLive = u.text; var el = document.getElementById('offask-live'); if(el) el.innerHTML = askMd(u.text)+'<p class="faint" id="offask-note"></p>'; } };
+    if(askToolsOk){ opts.tools = offAskTools; delete opts.cache; }
+    askSample(msgs, opts).then(function(res){
+      offAskTurns.push({role:'assistant', content: res.text + (res.truncated ? '\n\n(Svaret blev avkortat. Ställ en smalare fråga.)' : '')});
+    }, function(e){
+      var code = e && e.code, msg = {cancelled:'Stoppad.', rate_limited:'För många frågor just nu. Försök igen om en stund.', not_granted:'Frågor är inte tillåtna för den här appen.', sampling_disabled:'Claude är inte tillgängligt för kontot.', session_expired:'Logga in igen och försök på nytt.', refused:'Claude kunde inte svara på den frågan. Formulera om den.', prompt_too_large:'Underlaget blev för stort.'}[code] || 'Något gick fel. Försök igen.';
+      offAskTurns.push({role:'assistant', content: (e && e.text && code!=='refused') ? e.text : ' ', err: msg});
+    }).then(function(){ offAskBusy = false; offAskLive = ''; offAskCtl = null; offRender(); var ta = document.getElementById('offask-q'); if(ta) ta.focus(); });
   }
   function offInit(db){
     offDb = db;
