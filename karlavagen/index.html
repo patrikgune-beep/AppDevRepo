@@ -162,6 +162,7 @@ table.nbl{font-size:13px}
 table.nbl td,table.nbl th{padding:5px 6px;vertical-align:middle}
 table.nbl tr.off td{color:var(--ink-3)}
 table.nbl tr.off input.nbin{opacity:.55}
+table.nbutf td{vertical-align:top}
 input.nbin.sm{width:5.5em}
 .offcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
 .offcard{padding:12px 14px;display:grid;gap:4px;align-content:start}
@@ -194,6 +195,10 @@ table.offdett tr.off td:nth-child(4){text-decoration:line-through}
 .offtvlist label{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
 .offul{margin:4px 0 0;padding-left:18px;font-size:13px;display:grid;gap:2px}
 tr.offegenhead>td{background:var(--surface-2)}
+.offprog{display:grid;gap:2px;margin-top:6px;padding-top:6px;border-top:1px solid var(--line);font-size:13px}
+.offprog b{font-size:17px}
+.offutf{border-color:var(--accent)}
+tr.offprogrow td{border-top:2px solid var(--ink)}
 .offniva select{max-width:100%}
 input.nbtext{width:100%;min-width:12em;font:inherit;padding:5px 8px;border:1px solid var(--accent);border-radius:6px;background:var(--accent-soft);color:var(--ink)}
 .nbadd{justify-self:start}
@@ -2219,8 +2224,23 @@ tr.qcur td{background:var(--accent-soft)}
       h += '<div class="nbspent"><span class="eyebrow">Nedlagt hittills, inkl. moms</span>';
       bd.forEach(function(x){ h += '<div><span>'+esc(x.k)+'</span><span class="num">'+kr(x.v)+'</span></div>'; });
       h += '<div class="t"><span>Summa</span><span class="num">'+kr(o.spent)+'</span></div></div>';
+      h += nbUtfall(o);
     }
     return h + '</div>';
+  }
+  /* Every invoiced row that counts towards the post, and what that means for the final cost */
+  function nbUtfall(o){
+    var row = o.row, L = rows.map(function(r){ return {r:r, w:nbW(row,r)}; }).filter(function(x){ return x.w>0; });
+    if(!L.length) return '';
+    L.sort(function(a,b){ return String(a.r.nr||a.r.inv).localeCompare(String(b.r.nr||b.r.inv)) || b.r.amount*b.w - a.r.amount*a.w; });
+    var h = '<div class="nblwrap"><b>Utfallsposter</b> <span class="faint">fakturerade rader som räknas på posten, inkl. moms</span><table class="nbl nbutf"><thead><tr><th>Faktura</th><th>Utförare</th><th>Rad</th><th class="n">Antal</th><th class="n">À-pris exkl.</th><th class="n">Belopp</th></tr></thead><tbody>';
+    L.forEach(function(x){ var r = x.r;
+      h += '<tr><td class="num" style="text-align:left">'+esc(r.nr||r.inv||'')+'<span class="desc">'+esc(r.kind||'')+'</span></td><td>'+esc(r.source)+'</td><td>'+esc(r.text)+(r.desc?'<span class="desc">'+esc(r.desc)+'</span>':'')+(x.w<0.999?'<span class="desc">'+fmt0.format(Math.round(x.w*100))+' % av raden räknas här</span>':'')+'</td>'+
+        '<td class="n">'+(r.qty!=null&&!r.paslag?fmt2.format(r.qty*(x.w<0.999?1:1)).replace(/,00$/,'')+' '+esc(r.unit||''):'')+'</td><td class="n">'+(r.price!=null&&!r.paslag?k2(r.price):'')+'</td><td class="n">'+kr(r.amount*x.w*1.25)+'</td></tr>'; });
+    h += '<tr class="sub"><td colspan="5">Utfall hittills</td><td class="n">'+kr(o.spent)+'</td></tr>';
+    h += '<tr class="sub"><td colspan="5">Kvar enligt kalkylen'+(o.changed?' (justerat av dig)':'')+'</td><td class="n">'+kr(o.rem)+'</td></tr>';
+    h += '<tr class="total"><td colspan="5">Prognos slutlig kostnad = justerad budget'+(o.kal<0.5?'<span class="desc">Posten har ingen kalkyl (löpande räkning), så prognosen är utfallet plus det du anger som återstående</span>':o.spent>o.kal+0.5?'<span class="desc diff-pos">Utfallet är redan '+kr(o.spent-o.kal)+' över kalkylen</span>':'')+'</td><td class="n">'+kr(o.adj)+'</td></tr>';
+    return h + '</tbody></table></div>';
   }
 
   function renderNewBudget(){
@@ -2250,18 +2270,19 @@ tr.qcur td{background:var(--accent-soft)}
     R.forEach(function(o){
       var r = o.row, g = /^ÄTA/.test(r.name) ? 'Ändrings- och tilläggsarbeten' : (r.actual==='arkitekt' ? 'Utanför offerten' : 'Offertposter');
       if(g!==group){ group=g; h += '<tbody><tr class="sub"><td colspan="8">'+g+'</td></tr></tbody>'; }
-      var open = !!nbOpen[r.id], hasDet = (r.items&&r.items.length)||r.actual||nbCustom(r.id).length;
+      var open = !!nbOpen[r.id], hasDet = (r.items&&r.items.length)||r.actual||nbCustom(r.id).length||o.hasSpent;
       var A = 'data-r="'+r.id+'"';
       var kalDiff = r.nu!=null ? o.kal - r.nu : null;
       var manual = (o.hasSpent ? o.changed && Math.abs(o.rem - o.remDefault)>0.5 : o.changed && Math.abs(o.adj - o.kal)>0.5);
       var nLines = (r.items||[]).length + nbCustom(r.id).length;
-      var togLbl = (open?'▾ Dölj detaljer':'▸ Visa detaljer')+(nLines?' · '+nLines+' rader':'');
+      var nUtf = o.hasSpent ? rows.filter(function(x){ return nbW(r,x)>0; }).length : 0;
+      var togLbl = (open?'▾ Dölj detaljer':'▸ Visa detaljer')+(nLines?' · '+nLines+' rader':'')+(nUtf?' · '+nUtf+' utfallsposter':'');
       h += '<tbody class="nbrow'+(open?' open':'')+'"><tr><td>'+(hasDet?'<button class="nbname" data-tog="'+r.id+'" aria-expanded="'+open+'">'+esc(r.name)+'</button>':'<b>'+esc(r.name)+'</b>')+(r.note?'<span class="desc">'+esc(r.note)+'</span>':'')+
         (hasDet?'<button class="nbtogtxt" data-tog="'+r.id+'" aria-expanded="'+open+'">'+togLbl+'</button>':'')+'</td>'+
         '<td class="n">'+(r.orig?kr(r.orig):'<span class="faint">—</span>')+'</td>'+
         '<td class="n">'+(r.nu==null?'<span class="faint">löpande</span>':kr(r.nu))+(r.nu!=null&&r.orig&&r.nu!==r.orig?'<span class="desc '+(r.nu>r.orig?'diff-pos':'diff-neg')+'">'+(r.nu>r.orig?'+':'−')+kr(Math.abs(r.nu-r.orig))+'</span>':'')+'</td>'+
         '<td class="n">'+kr(o.kal)+(kalDiff!=null&&Math.abs(kalDiff)>=1?'<span class="desc '+(kalDiff>0?'diff-pos':'diff-neg')+'">'+(kalDiff>0?'+':'−')+kr(Math.abs(kalDiff))+'</span>':'')+'</td>'+
-        '<td class="n">'+(o.hasSpent?kr(o.spent):'<span class="faint">0</span>')+'</td>'+
+        '<td class="n">'+(o.hasSpent?kr(o.spent)+(o.kal>0.5?'<span class="desc'+(o.spent>o.kal+0.5?' diff-pos':'')+'">'+fmt0.format(Math.round(o.spent/o.kal*100))+' % av kalkyl</span>':''):'<span class="faint">0</span>')+'</td>'+
         '<td class="n">'+(o.hasSpent ? nbIn(A+' data-f="rem"', nbNum(o.rem), o.changed)+(o.changed?'<button class="nbreset" data-reset="'+r.id+'" title="Återställ till '+nbNum(o.remDefault)+'" aria-label="Återställ">↺</button>':'') : '<span class="faint">'+kr(o.rem)+'</span>')+'</td>'+
         '<td class="n">'+(o.hasSpent ? '<b>'+kr(o.adj)+'</b>' : nbIn(A+' data-f="adj"', nbNum(o.adj), o.changed)+(o.changed?'<button class="nbreset" data-reset="'+r.id+'" title="Återställ till kalkylen '+nbNum(o.kal)+'" aria-label="Återställ">↺</button>':''))+
           (manual?'<span class="desc warnc">manuellt, kalkylen ger '+kr(o.hasSpent? o.spent+o.remDefault : o.kal)+'</span>':'')+'</td>'+
@@ -2586,6 +2607,33 @@ tr.qcur td{background:var(--accent-soft)}
     lines.forEach(function(l){ k[l.kat] = (k[l.kat]||0) + l.amt; has[l.kat] = 1; tot += l.amt; });
     return { id:'egen:'+e.id, eid:e.id, leverantor:bas.leverantor, namn:e.namn || 'Egen offert', nr:'utgår från '+offLabel(bas), bas:bas, lines:lines, sums:{kat:k, has:has, tot:tot, tillval:0} };
   }
+  /* Utfall: invoiced rows mapped to the offers' cost posts, incl. moms. "_ute" = outside every offer (architect, structural engineer) */
+  var POSTKAT = {'Rivningsarbeten':'riv','Byggnadsarbeten':'bygg','Målningsarbeten':'mal','Plattarbeten':'platt','Rörarbeten':'vvs','Elarbeten':'el','Parkettarbeten':'golv','Putsarbeten':'puts',
+    'Ventilationsarbeten':'vent','Allmänna kostnader':'etabl','Sophantering':'sop','Utanför offerten':'_ute'};
+  var ATAKAT = {1:'bygg',2:'bad',3:'el',4:'snick',5:'vitv',6:'glas'};
+  function rowKat(r){
+    var p = r.post || postFor(r); if(POSTKAT[p]) return POSTKAT[p];
+    var m = /^ÄTA (\d)/.exec(p); if(m) return ATAKAT[m[1]] || 'ovr';
+    return /arkitekt|utanför/i.test(p) ? '_ute' : 'ovr';
+  }
+  /* ÄTA 1 is billed by the hour with no amount in any offer, so its outcome ("_ata1") is added on top of every forecast, like the architect */
+  function offUtfall(){
+    var k = {}, by = {}, tot = 0;
+    var add = function(c, r, w){ var v = r.amount*1.25*w; k[c] = (k[c]||0) + v; (by[c] = by[c] || []).push({r:r, w:w}); tot += v; };
+    rows.forEach(function(r){
+      var a1 = r.nbRow ? (r.nbRow==='ata1' ? 1 : 0) : (r.ataShare||0);
+      if(a1>0) add('_ata1', r, a1);
+      if(a1<1) add(rowKat(r), r, 1-a1);
+    });
+    return { kat:k, rader:by, tot:tot, ute:k._ute||0, ata1:k._ata1||0 };
+  }
+  /* Does the offer cover the whole project incl. work already invoiced, or only what remains? */
+  function offOmf(o){ if(!o) return 'hela'; if(o.bas) return offOmf(o.bas); var v = offS(o.id).omf; return v || (/thess/i.test(o.leverantor) ? 'hela' : 'rest'); }
+  function offProg(c, U){
+    var omf = offOmf(c.o), k = {}, tot = U.ute + U.ata1;
+    OKAT.forEach(function(x){ var u = U.kat[x.id]||0, o = c.s.kat[x.id]||0, v = omf==='hela' ? Math.max(u, o) : u + o; if(v>0.5){ k[x.id] = v; tot += v; } });
+    return { kat:k, tot:tot, omf:omf };
+  }
   function offCols(){
     var cols = offVisible().filter(function(o){ return (offSt.ejJmf||[]).indexOf(o.id)<0; }).map(function(o){ return {o:o, s:offSums(o)}; });
     (offSt.egna||[]).forEach(function(e){ if(e.visa===false) return; var eg = egenOffer(e); if(eg) cols.push({o:eg, s:eg.sums, egen:true}); });
@@ -2617,9 +2665,12 @@ tr.qcur td{background:var(--accent-soft)}
   }
   function renderOffCompare(){
     var all = offVisible(), cols = offCols();
+    var U = offUtfall(), showU = offSt.visaUtfall!==false && U.tot>0.5;
+    cols.forEach(function(c){ c.p = offProg(c, U); });
     var h = '<div class="block"><div class="filters" aria-label="Offerter i jämförelsen">';
     all.forEach(function(o){ var on = (offSt.ejJmf||[]).indexOf(o.id)<0; h += '<button class="chip" data-offjmf="'+esc(o.id)+'" aria-pressed="'+on+'">'+esc(offLabel(o))+'</button>'; });
     (offSt.egna||[]).forEach(function(e){ if(e.bas) h += '<button class="chip" data-offegenvis="'+esc(e.id)+'" aria-pressed="'+(e.visa!==false)+'">'+esc(e.namn||'Egen offert')+'</button>'; });
+    if(U.tot>0.5) h += '<button class="chip" data-offutf="1" aria-pressed="'+showU+'">Utfall och prognos</button>';
     h += '</div>';
     if(!cols.length) return h + '<p class="muted">Välj minst en offert.</p></div>';
     // cards
@@ -2628,32 +2679,47 @@ tr.qcur td{background:var(--accent-soft)}
       var o = c.o;
       h += '<div class="card offcard'+(c.egen?' egen':'')+'"><div class="eyebrow">'+esc(o.leverantor)+'</div><b>'+esc(o.namn)+'</b><span class="faint">'+esc(o.nr||'')+(o.datum?' · '+fmtDate(o.datum):'')+'</span>'+
         '<span class="v num">'+kr(c.s.tot)+'</span>'+(c.s.tillval?'<span class="faint">varav tillval '+kr(c.s.tillval)+'</span>':'')+
+        (showU ? '<span class="offprog">Prognos slutlig kostnad <b class="num">'+kr(c.p.tot)+'</b></span>'+(c.egen ? '<span class="faint">'+(c.p.omf==='hela'?'Omfattar hela projektet':'Gäller återstående arbete')+', som utgångsofferten</span>' :
+          '<label class="fld offniva"><span>Offerten omfattar</span><select data-offomf="'+esc(o.id)+'"><option value="hela"'+(c.p.omf==='hela'?' selected':'')+'>Hela projektet, utfallet ingår</option><option value="rest"'+(c.p.omf==='rest'?' selected':'')+'>Återstående arbete, utfallet läggs till</option></select></label>') : '')+
         (c.egen ? '<button class="linkbtn" data-egenedit="'+esc(o.eid)+'">Redigera</button>' : offNivaSel(o))+'</div>';
     });
     h += '</div>';
     // matrix
-    var kats = OKAT.filter(function(k){ return cols.some(function(c){ return c.s.has[k.id]; }); });
+    var kats = OKAT.filter(function(k){ return cols.some(function(c){ return c.s.has[k.id]; }) || (showU && (U.kat[k.id]||0)>0.5); });
     var common = kats.filter(function(k){ return cols.every(function(c){ return (c.s.kat[k.id]||0) > 0.5; }); }).map(function(k){return k.id;});
     var allOpen = kats.every(function(k){ return offOpenKat[k.id]; });
     h += '<div class="addrow"><button class="chip" id="off-allopen">'+(allOpen?'Dölj alla detaljer':'Visa detaljer för alla poster')+'</button><span class="faint">Klicka på en kostnadspost för rader, antal, à-pris, alternativ och tillval.</span></div>';
-    h += '<div class="card scroll"><table class="offt"><thead><tr><th>Kostnadspost</th>'+cols.map(function(c){ return '<th class="n">'+esc(c.o.leverantor)+'<span class="desc">'+esc(c.o.namn)+'</span></th>'; }).join('')+'</tr></thead>';
+    h += '<div class="card scroll"><table class="offt"><thead><tr><th>Kostnadspost</th>'+(showU?'<th class="n">Utfall hittills<span class="desc">fakturerat</span></th>':'')+cols.map(function(c){ return '<th class="n">'+esc(c.o.leverantor)+'<span class="desc">'+esc(c.o.namn)+'</span></th>'; }).join('')+'</tr></thead>';
     kats.forEach(function(k){
       var vals = cols.map(function(c){ return c.s.kat[k.id]||0; }), pos = vals.filter(function(v){return v>0.5;}), min = pos.length>1 ? Math.min.apply(null,pos) : null, open = !!offOpenKat[k.id];
+      var u = U.kat[k.id]||0;
       h += '<tbody class="offk'+(open?' open':'')+'"><tr><td><button class="offkbtn" data-offkat="'+k.id+'" aria-expanded="'+open+'"><span class="nbtog-sp">'+(open?'▾':'▸')+'</span>'+esc(k.namn)+'</button></td>'+
-        vals.map(function(v){ return '<td class="n">'+(v>0.5 ? '<span class="num'+(min!=null&&Math.abs(v-min)<0.5?' offmin':'')+'">'+kr(v)+'</span>' : '<span class="faint">ingår ej</span>')+'</td>'; }).join('')+'</tr>';
-      if(open) h += '<tr class="offdet"><td colspan="'+(cols.length+1)+'"><div class="offdetgrid">'+cols.map(function(c){ return offDetBlock(c, k.id); }).join('')+'</div></td></tr>';
+        (showU ? '<td class="n">'+(u>0.5?'<span class="num">'+kr(u)+'</span>':'<span class="faint">–</span>')+'</td>' : '')+
+        vals.map(function(v, i){ var pv = cols[i].p.kat[k.id]||0, warn = showU && cols[i].p.omf==='hela' && u > v+0.5;
+          return '<td class="n">'+(v>0.5 ? '<span class="num'+(min!=null&&Math.abs(v-min)<0.5?' offmin':'')+'">'+kr(v)+'</span>' : '<span class="faint">ingår ej</span>')+
+            (showU && u>0.5 ? '<span class="desc'+(warn?' diff-pos':'')+'">'+(warn?'utfallet är redan högre · ':'')+'slutligt '+kr(pv)+'</span>' : '')+'</td>'; }).join('')+'</tr>';
+      if(open) h += '<tr class="offdet"><td colspan="'+(cols.length+1+(showU?1:0))+'"><div class="offdetgrid">'+(showU?offUtfBlock(U, k.id):'')+cols.map(function(c){ return offDetBlock(c, k.id); }).join('')+'</div></td></tr>';
       h += '</tbody>';
     });
     var tot = cols.map(function(c){ return c.s.tot; }), cmp = cols.map(function(c){ return common.reduce(function(a,k){ return a + (c.s.kat[k]||0); },0); });
-    h += '<tbody><tr class="total"><td>Totalt</td>'+tot.map(function(v){ return '<td class="n">'+kr(v)+'</td>'; }).join('')+'</tr>';
-    if(cols.some(function(c){return c.s.tillval;})) h += '<tr class="sub"><td>varav tillval</td>'+cols.map(function(c){ return '<td class="n">'+(c.s.tillval?kr(c.s.tillval):'–')+'</td>'; }).join('')+'</tr>';
-    if(cols.length>1) h += '<tr class="sub"><td>Jämförbart: bara poster som alla har ('+common.length+' st)</td>'+cmp.map(function(v){ return '<td class="n">'+kr(v)+'</td>'; }).join('')+'</tr>';
-    if(cols.length>1) h += '<tr class="sub"><td>Skillnad mot '+esc(cols[0].o.leverantor+' '+cols[0].o.namn.toLowerCase())+', jämförbart</td>'+cmp.map(function(v,i){ return '<td class="n">'+(i===0?'–':diffSpan(v-cmp[0]))+'</td>'; }).join('')+'</tr>';
-    var teBilled = D.invoices.filter(function(i){return i.supplier==='thessen';}).reduce(function(a,i){return a+i.total;},0);
-    if(teBilled>0 && cols.some(function(c){ return !/thess/i.test(c.o.leverantor); }))
-      h += '<tr class="sub"><td>Totalt inkl. det Thessén & Ek redan fakturerat ('+kr(teBilled)+')<span class="desc">Thesséns offertbelopp innehåller redan utfört arbete. En ny leverantör tar bara det som återstår.</span></td>'+cols.map(function(c){ return '<td class="n">'+(/thess/i.test(c.o.leverantor) ? '<span class="faint">ingår</span>' : kr(c.s.tot+teBilled))+'</td>'; }).join('')+'</tr>';
+    var uc = showU ? '<td></td>' : '';
+    [['_ata1','ÄTA 1, löpande räkning','undergolv m.m. utan belopp i någon offert, fakturerat'],['_ute','Utanför offerterna','arkitekt och konstruktör, fakturerat']].forEach(function(x){
+      var v = U.kat[x[0]]||0; if(!showU || v<0.5) return; var open = !!offOpenKat[x[0]];
+      h += '<tbody class="offk'+(open?' open':'')+'"><tr><td><button class="offkbtn" data-offkat="'+x[0]+'" aria-expanded="'+open+'"><span class="nbtog-sp">'+(open?'▾':'▸')+'</span>'+x[1]+'</button><span class="desc">'+x[2]+'</span></td><td class="n">'+kr(v)+'</td>'+cols.map(function(){ return '<td class="n"><span class="faint">–</span><span class="desc">slutligt '+kr(v)+'</span></td>'; }).join('')+'</tr>';
+      if(open) h += '<tr class="offdet"><td colspan="'+(cols.length+2)+'"><div class="offdetgrid">'+offUtfBlock(U, x[0])+'</div></td></tr>';
+      h += '</tbody>'; });
+    h += '<tbody><tr class="total"><td>Totalt enligt offert</td>'+(showU?'<td class="n">'+kr(U.tot)+'</td>':'')+tot.map(function(v){ return '<td class="n">'+kr(v)+'</td>'; }).join('')+'</tr>';
+    if(cols.some(function(c){return c.s.tillval;})) h += '<tr class="sub"><td>varav tillval</td>'+uc+cols.map(function(c){ return '<td class="n">'+(c.s.tillval?kr(c.s.tillval):'–')+'</td>'; }).join('')+'</tr>';
+    if(cols.length>1) h += '<tr class="sub"><td>Jämförbart: bara poster som alla har ('+common.length+' st)</td>'+uc+cmp.map(function(v){ return '<td class="n">'+kr(v)+'</td>'; }).join('')+'</tr>';
+    if(cols.length>1) h += '<tr class="sub"><td>Skillnad mot '+esc(cols[0].o.leverantor+' '+cols[0].o.namn.toLowerCase())+', jämförbart</td>'+uc+cmp.map(function(v,i){ return '<td class="n">'+(i===0?'–':diffSpan(v-cmp[0]))+'</td>'; }).join('')+'</tr>';
+    if(showU){
+      var pmin = Math.min.apply(null, cols.map(function(c){ return c.p.tot; }));
+      h += '<tr class="total offprogrow"><td>Prognos slutlig kostnad<span class="desc">utfall hittills + det offerten säger återstår, före ROT</span></td><td class="n">'+kr(U.tot)+'</td>'+cols.map(function(c){ return '<td class="n"><span class="num'+(cols.length>1&&Math.abs(c.p.tot-pmin)<0.5?' offmin':'')+'">'+kr(c.p.tot)+'</span><span class="desc">'+(c.p.omf==='hela'?'högst av utfall och offert per post':'utfall + offert')+'</span></td>'; }).join('')+'</tr>';
+      if(totRot) h += '<tr class="sub"><td>Efter beviljat ROT hittills (−'+kr(totRot)+')</td><td class="n">'+kr(U.tot-totRot)+'</td>'+cols.map(function(c){ return '<td class="n">'+kr(c.p.tot-totRot)+'</td>'; }).join('')+'</tr>';
+    }
     h += '</tbody></table></div>';
-    h += '<p class="faint" style="margin:0;font-size:12.5px">Lägst belopp per post är markerat. "Ingår ej" betyder att offerten saknar posten, inte att den är gratis. Jämför därför helst raden "Jämförbart". Klicka på en post för att se raderna.</p></div>';
+    h += '<p class="faint" style="margin:0;font-size:12.5px">Lägst belopp per post är markerat. "Ingår ej" betyder att offerten saknar posten, inte att den är gratis. Jämför därför helst raden "Jämförbart". Klicka på en post för att se raderna'+(showU?' och fakturaraderna i utfallet':'')+'.'+
+      (showU?' <b>Prognosen</b>: för en offert som omfattar hela projektet blir varje post det högsta av utfall och offert, eftersom det fakturerade redan ingår i offerten. För en offert som bara gäller återstående arbete läggs offerten till utfallet. Poster som en offert saknar räknas bara med sitt utfall, så kontrollera "Ingår inte" nedan.':'')+'</p></div>';
     // alternatives and options
     cols.forEach(function(c){ if(c.egen) return; var o = c.o, G = offGroups(o), tv = o.rader.filter(function(r){ return r.tillval && !r.grupp; });
       var gk = Object.keys(G); if(!gk.length && !tv.length) return;
@@ -2675,8 +2741,16 @@ tr.qcur td{background:var(--accent-soft)}
       h += '<div class="card offcard"><b>'+esc(offLabel(o))+'</b>'+(o.anm?'<p class="muted" style="margin:0;font-size:13px">'+esc(o.anm)+'</p>':'')+(o.ingarEj.length?'<ul class="offul">'+o.ingarEj.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>':'<span class="faint">Inga undantag angivna.</span>')+'</div>'; });
     return h + '</div></div>';
   }
+  function offUtfBlock(U, kat){
+    var R = (U.rader[kat]||[]).slice().sort(function(a,b){ return b.r.amount*b.w - a.r.amount*a.w; });
+    var h = '<div class="offdetb offutf"><div class="offdeth"><span><b>Utfall hittills</b> <span class="faint">fakturerade rader inkl. moms</span></span><b class="num">'+kr(U.kat[kat]||0)+'</b></div>';
+    if(!R.length) return h + '<p class="faint" style="margin:0">Inget fakturerat på posten.</p></div>';
+    h += '<table class="offdett"><thead><tr><th>Rad</th><th>Faktura</th><th class="n">Antal</th><th class="n">Belopp</th></tr></thead><tbody>';
+    R.forEach(function(x){ var r = x.r; h += '<tr><td>'+esc(r.text)+'<span class="desc">'+esc(r.source)+(r.paslag?' · påslag':'')+(x.w<0.999?' · '+fmt0.format(Math.round(x.w*100))+' % av raden':'')+'</span></td><td class="faint">'+esc(r.nr||r.inv||'')+'</td><td class="n">'+(r.qty!=null&&!r.paslag?fmt2.format(r.qty).replace(/,00$/,'')+' '+esc(r.unit||''):'')+'</td><td class="n">'+kr(r.amount*1.25*x.w)+'</td></tr>'; });
+    return h + '</tbody></table></div>';
+  }
   function offDetBlock(c, kat){
-    var o = c.o, h = '<div class="offdetb"><div class="offdeth"><span><b>'+esc(o.leverantor)+'</b> <span class="faint">'+esc(o.namn)+'</span></span><b class="num">'+((c.s.kat[kat]||0)>0.5 ? kr(c.s.kat[kat]) : 'ingår ej')+'</b></div>';
+    var o = c.o, h = '<div class="offdetb"><div class="offdeth"><span><b>'+esc(o.leverantor)+'</b> <span class="faint">'+esc(o.namn)+'</span></span><b class="num">'+((c.s.kat[kat]||0)>0.5 ? kr(c.s.kat[kat]) : 'ingår ej')+(c.p && offSt.visaUtfall!==false && (c.p.kat[kat]||0)>0.5 && Math.abs((c.p.kat[kat]||0)-(c.s.kat[kat]||0))>0.5 ? '<span class="desc">slutligt '+kr(c.p.kat[kat])+'</span>' : '')+'</b></div>';
     var qty = function(r){ return r.antal!=null ? fmt2.format(r.antal).replace(/,00$/,'')+' '+esc(r.enhet||'') : ''; };
     if(c.egen){
       var E = o.lines.filter(function(l){ return l.kat===kat; });
@@ -2791,6 +2865,8 @@ tr.qcur td{background:var(--accent-soft)}
       l.push({id:id, namn:'Egen offert '+(l.length+1), bas: cur ? cur.bas : '', per:{}, visa:true}); offSt.egenAktiv = id; offChanged(); });
     view.querySelectorAll('[data-offopt]').forEach(function(d){ d.addEventListener('toggle', function(){ offOptOpen[d.dataset.offopt] = d.open; }); });
     view.querySelectorAll('[data-offkat]').forEach(function(b){ b.addEventListener('click', function(){ var k = b.dataset.offkat; offOpenKat[k] = !offOpenKat[k]; offRender(); }); });
+    var uf = view.querySelector('[data-offutf]'); if(uf) uf.addEventListener('click', function(){ offSt.visaUtfall = offSt.visaUtfall===false; offChanged(); });
+    view.querySelectorAll('[data-offomf]').forEach(function(s){ s.addEventListener('change', function(){ offSet(s.dataset.offomf).omf = s.value; offChanged(); }); });
     view.querySelectorAll('[data-offniva]').forEach(function(s){ s.addEventListener('change', function(){ if(!s.value) return; var st = offSet(s.dataset.offniva); st.niva = s.value; delete st.grupper; offChanged(); }); });
     view.querySelectorAll('[data-offgrpr]').forEach(function(c){ c.addEventListener('change', function(){ var p = c.dataset.offgrpr.split('|'), st = offSet(p[0]); st.grupper = st.grupper || {}; st.grupper[p[1]] = p[2]; offChanged(); }); });
     var ao = document.getElementById('off-allopen'); if(ao) ao.addEventListener('click', function(){ var cols = offCols(), ks = OKAT.filter(function(k){ return cols.some(function(c){ return c.s.has[k.id]; }); }), all = ks.every(function(k){ return offOpenKat[k.id]; }); ks.forEach(function(k){ offOpenKat[k.id] = !all; }); offRender(); });
@@ -2958,12 +3034,16 @@ tr.qcur td{background:var(--accent-soft)}
     'När du delar upp: säg kort hur du delade upp. Kontrollera i raderPerDel att inget hamnat fel och kör om med bättre regler om det behövs. Säg också vilka rader som gäller flera delar samtidigt, till exempel en rivningsrad för både kök och wc.',
     'Att en post saknas i en offert betyder att den inte ingår, inte att den är gratis. Säg alltid vad som saknas när du jämför. Thesséns offerter innehåller redan utfört och fakturerat arbete. FL:s offert gäller bara det som återstår.',
     'Peka ut stora poster utan specifikation och belopp som är uppskattningar.',
+    'UTFALL OCH PROGNOS: utfallHittills är det som redan fakturerats. prognosSlutligKostnad per offert = för offerter som omfattar hela projektet det högsta av utfall och offert per post, för offerter som gäller återstående arbete utfall + offert, plus arkitekt och konstruktör utanför offerterna och ÄTA 1 (löpande räkning utan belopp i någon offert). Använd prognosen när frågan gäller vad det slutligen kostar, och säg att poster som offerten saknar bara räknas med sitt utfall.',
     'Formatera med korta stycken, punktlistor som börjar med "- " och fetstil med **. För jämförelser mellan offerter får du använda en enkel tabell med | mellan kolumnerna, en rubrikrad och högst 8 rader. Inga rubriker. Högst cirka 250 ord.'
   ].join('\n');
   function offAskContext(){
+    var U = offUtfall(), uk = {}; Object.keys(U.kat).forEach(function(k){ uk[k] = r0(U.kat[k]); });
     return { kostnadsposter: OKAT.map(function(k){ return {id:k.id, namn:k.namn}; }),
-      offerter: offCols().map(function(c){ var o = c.o, pk = {}; Object.keys(c.s.kat).forEach(function(k){ pk[k] = r0(c.s.kat[k]); });
-        return {offert: offLabel(o), nr:o.nr, datum:o.datum, egenOffert: !!c.egen, totaltInklMoms: r0(c.s.tot), varavTillval: r0(c.s.tillval), perKostnadspost: pk, villkor: o.anm, ingarInte: o.ingarEj}; }),
+      utfallHittills: {totalt: r0(U.tot), perKostnadspost: uk, utanforOfferterna_ute: r0(U.ute), ata1LopandeUtanOffert_ata1: r0(U.ata1), rotBeviljatHittills: r0(totRot)},
+      offerter: offCols().map(function(c){ var o = c.o, pk = {}, pp = {}, P = offProg(c, U); Object.keys(c.s.kat).forEach(function(k){ pk[k] = r0(c.s.kat[k]); }); Object.keys(P.kat).forEach(function(k){ pp[k] = r0(P.kat[k]); });
+        return {offert: offLabel(o), nr:o.nr, datum:o.datum, egenOffert: !!c.egen, totaltInklMoms: r0(c.s.tot), varavTillval: r0(c.s.tillval), perKostnadspost: pk,
+          omfattning: P.omf==='hela' ? 'hela projektet, utfallet ingår' : 'återstående arbete, utfallet läggs till', prognosSlutligKostnad: r0(P.tot), prognosPerKostnadspost: pp, villkor: o.anm, ingarInte: o.ingarEj}; }),
       fakturaratAvThessen: r0(D.invoices.filter(function(i){return i.supplier==='thessen';}).reduce(function(a,i){return a+i.total;},0)) };
   }
   function offAskPrompt(){
