@@ -3095,13 +3095,14 @@ tr.qcur td{background:var(--accent-soft)}
     offDoc.onSnapshot(function(snap){
       if(snap.metadata && snap.metadata.hasPendingWrites) return;
       if(offTimer || offSaving) return;
-      var d = snap.exists ? snap.data() : null;
+      // Snapshot data is frozen: work on a deep copy, or later edits to choices and own offers silently fail
+      var d = snap.exists ? clone(snap.data()) : null;
       if(d){ var had = !Array.isArray(d.egna) && d.egen; offSt = offMigrate(Object.assign(offBlank(), d)); delete offSt.updatedAt; if(had && offDoc){ offStatus = 'db'; offSave(); } }
       else if(offStatus==='local' && Object.keys(offSt.val||{}).length + (offSt.egna||[]).length > 0) { offStatus = 'db'; offSave(); return; }
       offStatus = 'db'; if(!offTyping()) offRender(); else offSetStatus();
     }, function(){ offStatus = 'local'; offSetStatus(); });
     db.collection('offerter').onSnapshot(function(snap){
-      offAdded = snap.docs.map(function(d){ return offNorm(Object.assign({}, d.data(), {id:'x-'+d.id, docId:d.id, fast:false})); });
+      offAdded = snap.docs.map(function(d){ return offNorm(Object.assign(clone(d.data()), {id:'x-'+d.id, docId:d.id, fast:false})); });
       if(!offTyping()) offRender();
     }, function(){});
   }
@@ -3658,11 +3659,11 @@ tr.qcur td{background:var(--accent-soft)}
       db.doc('installningar/fakturor').onSnapshot(function(snap){
         if(snap.metadata && snap.metadata.hasPendingWrites) return;
         var d = snap.exists ? snap.data() : null; hiddenBase = (d && Array.isArray(d.dolda)) ? d.dolda.filter(function(x){return typeof x==='string';}) : [];
-        dupOv = (d && d.dubbletter && typeof d.dubbletter==='object') ? d.dubbletter : {};
+        dupOv = (d && d.dubbletter && typeof d.dubbletter==='object') ? clone(d.dubbletter) : {};
         onAddedChange();
       }, function(){});
       db.collection('fakturor').onSnapshot(function(snap){
-        added = snap.docs.map(function(d){ return Object.assign({_id:d.id}, d.data()); });
+        added = snap.docs.map(function(d){ return Object.assign({_id:d.id}, clone(d.data())); });
         onAddedChange();
       }, function(){ invState = 'off'; addRender(); });
       addRender();
