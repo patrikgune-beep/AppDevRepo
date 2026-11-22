@@ -244,20 +244,40 @@ function pickMulti(parts, prev) {
   return ids;
 }
 const partChips = (sel, action, disabled) => `<div class="row" role="group" aria-label="Kroppsdelar" style="gap:6px">${PARTS.map(([k, n]) => `<button data-a="${action}" data-v="${k}" aria-pressed="${sel.includes(k)}" ${disabled ? 'disabled' : ''} style="padding:6px 12px;min-height:38px">${n}</button>`).join('')}</div>`;
-function pickOne(parts, prev) {
-  const pool = parts.length ? partCats(parts).flatMap(c => EX_CAT[c]) : Object.keys(EX);
-  const c = pool.filter(i => i !== prev);
-  return rnd(c.length ? c : pool);
+// Upp till 20 slumpade övningar; poolen cyklas om den är mindre än antalet, utan att samma övning står två gånger i rad
+function pickMany(parts, n, prev) {
+  const pool = parts.length ? [...new Set(partCats(parts).flatMap(c => EX_CAT[c]))] : Object.keys(EX);
+  const mk = () => {
+    const out = [];
+    while (out.length < n) {
+      const batch = shuffled(pool);
+      if (out.length && batch[0] === out[out.length - 1]) batch.push(batch.shift());
+      out.push(...batch);
+    }
+    return out.slice(0, n);
+  };
+  let ids = mk();
+  for (let i = 0; i < 8 && prev && ids.join() === prev.join(); i++) ids = mk();
+  return ids;
 }
 const logDate = () => ui.date <= today() ? ui.date : today();
 const curLevel = () => levelFor(logDate());
 function buildOne() {
-  const ex = EX[ui.one.id][curLevel()];
-  return { title: 'Extraövning', segs: [{ t: 'work', sec: 60, name: ex[0], how: ex[1], label: 'Extraövning · 1 min' }] };
+  const lv = curLevel(), ids = ui.one.ids, n = ids.length, [work, rest] = WORKREST[lv];
+  if (n === 1) { const ex = EX[ids[0]][lv]; return { title: 'Extraövning', segs: [{ t: 'work', sec: 60, name: ex[0], how: ex[1], label: 'Extraövning · 1 min' }] }; }
+  const segs = [];
+  ids.forEach((id, i) => {
+    const ex = EX[id][lv], last = i === n - 1, nx = last ? null : EX[ids[i + 1]][lv], label = `Övning ${i + 1}/${n}`;
+    segs.push({ t: 'work', sec: work, name: ex[0], how: ex[1], label });
+    segs.push({ t: 'rest', sec: rest, name: last ? 'Klart – andas ut' : 'Vila', how: last ? 'Skaka loss armar och ben.' : '', nextName: nx ? nx[0] : '', nextHow: nx ? nx[1] : '', label });
+  });
+  return { title: `Extraövningar · ${n} st`, segs };
 }
 function logOne() {
-  const date = logDate(), ex = EX[ui.one.id][curLevel()];
-  S.log.push({ id: uid(), date, kind: 'activity', minutes: 1, level: curLevel(), week: weekOf(date), name: 'Extraövning: ' + ex[0] });
+  const date = logDate(), lv = curLevel(), ids = ui.one.ids, n = ids.length;
+  const name = n === 1 ? 'Extraövning: ' + EX[ids[0]][lv][0] : `Slumpade extraövningar (${n} st)`;
+  S.log.push({ id: uid(), date, kind: 'activity', minutes: n, level: lv, week: weekOf(date), name });
+  ui.oneMsg = 'Loggat: ' + name; ui.one = null;
   save(); autoSaveEntry(S.log[S.log.length - 1]);
 }
 
@@ -378,17 +398,18 @@ function stats() {
 }
 
 /* ===================== UI-state ===================== */
-const ui = { tab: 'today', date: today(), act: null, hist: 10, one: null, oneParts: [], oneMsg: '', actNote: '' };
+const ui = { tab: 'today', date: today(), act: null, hist: 10, one: null, oneParts: [], oneCount: 1, oneMsg: '', actNote: '' };
 const TABS = [['today', 'Idag', '🏠'], ['plan', 'Schema', '📅'], ['act', 'Aktivitet', '🚶'], ['stats', 'Statistik', '📊'], ['set', 'Inställningar', '⚙️']];
 const $ = s => document.querySelector(s);
 const chips = (cur, action) => `<div class="chips" role="group" aria-label="Svårighetsgrad">${LV.map((n, i) => `<button data-a="${action}" data-v="${i}" aria-pressed="${cur === i}">${n}</button>`).join('')}</div>`;
 
 function oneCard() {
-  const o = ui.one, ex = o && EX[o.id] && EX[o.id][curLevel()];
-  return `<div class="card"><h2>Slumpa en extra övning</h2><p class="mute">En övning på 1 minut, utöver passet.</p>
-    <div style="margin-bottom:8px">${partChips(ui.oneParts, 'opart')}</div><p class="mute" style="margin:0 0 8px">Inget valt = valfri övning.</p><button class="primary" data-a="rollone">🎲 Slumpa</button>
-    ${ex ? `<div class="ex" style="margin-top:8px"><span class="n">★</span><div><b>${esc(ex[0])}</b><span class="mute">${esc(ex[1])}</span></div></div>
-    <div class="row"><button class="primary grow" data-a="playone">▶ Kör 1 min</button><button data-a="doneone">Markera klar</button></div>` : ui.oneMsg ? `<p style="margin-top:8px"><span class="tag ok">✓ ${esc(ui.oneMsg)}</span></p>` : ''}</div>`;
+  const o = ui.one, lv = curLevel();
+  return `<div class="card"><h2>Slumpa extraövningar</h2><p class="mute">1–20 övningar på 1 minut vardera, utöver passet.</p>
+    <div style="margin-bottom:8px">${partChips(ui.oneParts, 'opart')}</div><p class="mute" style="margin:0 0 8px">Inget valt = valfria övningar.</p>
+    <div class="row"><label for="oc" class="mute">Antal</label><select id="oc">${Array.from({ length: 20 }, (_, i) => i + 1).map(k => `<option value="${k}" ${k === ui.oneCount ? 'selected' : ''}>${k}</option>`).join('')}</select><button class="primary grow" data-a="rollone">🎲 Slumpa</button></div>
+    ${o ? `<div style="margin-top:8px">${o.ids.map((id, i) => { const ex = EX[id][lv]; return `<div class="ex"><span class="n">${i + 1}</span><div><b>${esc(ex[0])}</b><span class="mute">${esc(ex[1])}</span></div></div>`; }).join('')}</div>
+    <div class="row" style="margin-top:8px"><button class="primary grow" data-a="playone">▶ Kör ${o.ids.length} min</button><button data-a="doneone">Markera klar</button></div>` : ui.oneMsg ? `<p style="margin-top:8px"><span class="tag ok">✓ ${esc(ui.oneMsg)}</span></p>` : ''}</div>`;
 }
 function phaseRows(cw) {
   const lv = n => `<span class="lv lv${n}">${LV[n]}</span>`;
@@ -626,7 +647,7 @@ function drawPlayer() {
 }
 function finishPlayer() {
   P.finished = true; clearInterval(P.timer); beep(1200, .6);
-  if (P.kind === 'one') { logOne(); ui.oneMsg = 'Loggat: ' + EX[ui.one.id][curLevel()][0]; ui.one = null; }
+  if (P.kind === 'one') logOne();
   else if (P.date <= today()) { setDone(P.kind, P.date, true); P.entryId = entriesOn(P.date, P.kind)[0].id; }
   const el = $('#player'); el.className = 'on';
   el.innerHTML = `<div style="margin:auto;text-align:center"><div style="font-size:4rem">🎉</div><h1>Bra jobbat!</h1><p class="mute">Passet är loggat.</p><div class="row" style="justify-content:center;margin-top:16px"><button data-a="savepass">💾 Spara alla pass</button><button class="primary" data-a="quit">Klar</button></div></div>`;
@@ -679,8 +700,8 @@ document.addEventListener('click', e => {
     case 'del': if (!confirm('Ta bort posten?')) return; S.log = S.log.filter(l => l.id !== v); save(); break;
     case 'savepass': saveEntry(); return;
     case 'autosave': S.settings.autoSave = S.settings.autoSave === false; save(); break;
-    case 'rollone': ui.one = { id: pickOne(ui.oneParts, ui.one && ui.one.id) }; ui.oneMsg = ''; break;
-    case 'opart': ui.oneParts = toggle(ui.oneParts, v); ui.one = { id: pickOne(ui.oneParts, ui.one && ui.one.id) }; ui.oneMsg = ''; break;
+    case 'rollone': ui.one = { ids: pickMany(ui.oneParts, ui.oneCount, ui.one && ui.one.ids) }; ui.oneMsg = ''; break;
+    case 'opart': ui.oneParts = toggle(ui.oneParts, v); ui.one = { ids: pickMany(ui.oneParts, ui.oneCount, ui.one && ui.one.ids) }; ui.oneMsg = ''; break;
     case 'xpart': {
       const key = ui.date + '|extra', cur = shuf()[key], ps = toggle(partsOf(cur), v);
       if (!ps.length) delete shuf()[key]; else shuf()[key] = { focus: 'multi', parts: ps, ids: pickMulti(ps, cur && cur.ids) };
@@ -688,7 +709,7 @@ document.addEventListener('click', e => {
     }
     case 'apart': S.settings.actParts = toggle(validParts(S.settings.actParts), v); ui.act = null; ui.actNote = ''; save(); break;
     case 'playone': if (ui.one) startPlayer('one'); return;
-    case 'doneone': if (ui.one) { logOne(); ui.oneMsg = 'Loggat: ' + EX[ui.one.id][curLevel()][0]; ui.one = null; } break;
+    case 'doneone': if (ui.one) logOne(); break;
     case 'shuffle': {
       const key = ui.date + '|' + v, cur = shuf()[key];
       if (v === 'extra') { const ps = partsOf(cur).length ? partsOf(cur) : ['full']; shuf()[key] = { focus: 'multi', parts: ps, ids: pickMulti(ps, cur && cur.ids) }; }
@@ -726,6 +747,7 @@ document.addEventListener('click', e => {
   render();
 });
 document.addEventListener('change', e => {
+  if (e.target.id === 'oc') { ui.oneCount = Math.min(20, Math.max(1, +e.target.value || 1)); if (ui.one) ui.one = { ids: pickMany(ui.oneParts, ui.oneCount, ui.one.ids) }; render(); return; }
   if (e.target.id === 'am') { S.settings.afterMin = +e.target.value; save(); render(); return; }
   const fk = e.target.dataset && e.target.dataset.focus;
   if (fk) {
