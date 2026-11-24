@@ -111,7 +111,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 
 /* ===================== Data & lagring ===================== */
 const KEY = 'calisthenics-v1';
-const defaults = () => ({ v: 1, settings: { startDate: '', level: 0, actLevel: 0, time: '07:30', slot: 'morgon', notify: false, dismissed: -1, lastNotified: '', lastExport: '', autoSave: true, actParts: [], afterMin: 15, afterLevel: 2, lvOverride: {} }, log: [], shuffle: {} });
+const defaults = () => ({ v: 1, settings: { startDate: '', level: 0, actLevel: 0, time: '07:30', slot: 'morgon', notify: false, dismissed: -1, lastNotified: '', lastExport: '', autoSave: true, actParts: [], afterMin: 15, afterLevel: 2, lvOverride: {}, extraLevel: -1, oneLevel: -1 }, log: [], shuffle: {} });
 let S = defaults();
 function load() {
   try {
@@ -262,9 +262,17 @@ function pickMany(parts, n, prev) {
 }
 const logDate = () => ui.date <= today() ? ui.date : today();
 const curLevel = () => levelFor(logDate());
+// Egen svårighetsgrad för extrapasset och slumpade övningar; -1 = samma som dagens pass
+const lvChoice = v => typeof v === 'number' && [0, 1, 2].includes(v) ? v : -1;
+const extraLevel = date => lvChoice(S.settings.extraLevel) >= 0 ? S.settings.extraLevel : levelFor(date);
+const oneLevel = () => lvChoice(S.settings.oneLevel) >= 0 ? S.settings.oneLevel : curLevel();
+const sessLevel = (date, kind) => kind === 'extra' ? extraLevel(date) : levelFor(date);
+const levelChips4 = (cur, action) => `<div class="chips" role="group" aria-label="Svårighetsgrad"><button data-a="${action}" data-v="-1" aria-pressed="${cur < 0}">Som passet</button>${LV.map((n, i) => `<button data-a="${action}" data-v="${i}" aria-pressed="${cur === i}">${n}</button>`).join('')}</div>`;
+// Total tid för slumpade övningar: arbete + vila per övning (en enskild övning har ingen vila)
+const oneTotalSec = (n, lv) => n === 1 ? WORKREST[lv][0] : n * (WORKREST[lv][0] + WORKREST[lv][1]);
 function buildOne() {
-  const lv = curLevel(), ids = ui.one.ids, n = ids.length, [work, rest] = WORKREST[lv];
-  if (n === 1) { const ex = EX[ids[0]][lv]; return { title: 'Extraövning', segs: [{ t: 'work', sec: 60, name: ex[0], how: ex[1], label: 'Extraövning · 1 min' }] }; }
+  const lv = oneLevel(), ids = ui.one.ids, n = ids.length, [work, rest] = WORKREST[lv];
+  if (n === 1) { const ex = EX[ids[0]][lv]; return { title: 'Extraövning', segs: [{ t: 'work', sec: work, name: ex[0], how: ex[1], label: `Extraövning · ${work} s` }] }; }
   const segs = [];
   ids.forEach((id, i) => {
     const ex = EX[id][lv], last = i === n - 1, nx = last ? null : EX[ids[i + 1]][lv], label = `Övning ${i + 1}/${n}`;
@@ -274,9 +282,9 @@ function buildOne() {
   return { title: `Extraövningar · ${n} st`, segs };
 }
 function logOne() {
-  const date = logDate(), lv = curLevel(), ids = ui.one.ids, n = ids.length;
+  const date = logDate(), lv = oneLevel(), ids = ui.one.ids, n = ids.length, minutes = Math.max(1, Math.round(oneTotalSec(n, lv) / 60));
   const name = n === 1 ? 'Extraövning: ' + EX[ids[0]][lv][0] : `Slumpade extraövningar (${n} st)`;
-  S.log.push({ id: uid(), date, kind: 'activity', minutes: n, level: lv, week: weekOf(date), name });
+  S.log.push({ id: uid(), date, kind: 'activity', minutes, level: lv, week: weekOf(date), name });
   ui.oneMsg = 'Loggat: ' + name; ui.one = null;
   save(); autoSaveEntry(S.log[S.log.length - 1]);
 }
@@ -353,8 +361,8 @@ function setDone(kind, date, on) {
   S.log = S.log.filter(l => !(l.date === date && l.kind === kind));
   if (on) {
     const w = weekOf(date);
-    const s = buildSession(date, kind, levelFor(date));
-    S.log.push({ id: uid(), date, kind, minutes: s.minutes, level: levelFor(date), week: w, name: kind === 'main' ? `Pass vecka ${w}` : 'Extraövningar' });
+    const s = buildSession(date, kind, sessLevel(date, kind));
+    S.log.push({ id: uid(), date, kind, minutes: s.minutes, level: sessLevel(date, kind), week: w, name: kind === 'main' ? `Pass vecka ${w}` : 'Extraövningar' });
   }
   save();
   if (on) autoSaveEntry(S.log[S.log.length - 1]);
@@ -362,7 +370,7 @@ function setDone(kind, date, on) {
 function logPartial(kind, date, minutes) {
   S.log = S.log.filter(l => !(l.date === date && l.kind === kind));
   const w = weekOf(date);
-  S.log.push({ id: uid(), date, kind, minutes, level: levelFor(date), week: w, name: (kind === 'main' ? `Pass vecka ${w}` : 'Extraövningar') + ' (delvis)' });
+  S.log.push({ id: uid(), date, kind, minutes, level: sessLevel(date, kind), week: w, name: (kind === 'main' ? `Pass vecka ${w}` : 'Extraövningar') + ' (delvis)' });
   save();
   autoSaveEntry(S.log[S.log.length - 1]);
 }
@@ -404,12 +412,14 @@ const $ = s => document.querySelector(s);
 const chips = (cur, action) => `<div class="chips" role="group" aria-label="Svårighetsgrad">${LV.map((n, i) => `<button data-a="${action}" data-v="${i}" aria-pressed="${cur === i}">${n}</button>`).join('')}</div>`;
 
 function oneCard() {
-  const o = ui.one, lv = curLevel();
-  return `<div class="card"><h2>Slumpa extraövningar</h2><p class="mute">1–20 övningar på 1 minut vardera, utöver passet.</p>
+  const o = ui.one, lv = oneLevel(), n = o ? o.ids.length : ui.oneCount, [w, r] = WORKREST[lv];
+  return `<div class="card"><h2>Slumpa extraövningar</h2><p class="mute">1–20 övningar, utöver passet. Svårighetsgraden styr övningarna samt arbets- och vilotid.</p>
+    <div class="mute" style="margin-bottom:6px">Svårighetsgrad</div>${levelChips4(lvChoice(S.settings.oneLevel), 'olvl')}
+    <p class="mute" style="margin:4px 0 8px">${LV[lv]}: ${w} s arbete${n > 1 ? ` / ${r} s vila` : ''}</p>
     <div style="margin-bottom:8px">${partChips(ui.oneParts, 'opart')}</div><p class="mute" style="margin:0 0 8px">Inget valt = valfria övningar.</p>
     <div class="row"><label for="oc" class="mute">Antal</label><select id="oc">${Array.from({ length: 20 }, (_, i) => i + 1).map(k => `<option value="${k}" ${k === ui.oneCount ? 'selected' : ''}>${k}</option>`).join('')}</select><button class="primary grow" data-a="rollone">🎲 Slumpa</button></div>
     ${o ? `<div style="margin-top:8px">${o.ids.map((id, i) => { const ex = EX[id][lv]; return `<div class="ex"><span class="n">${i + 1}</span><div><b>${esc(ex[0])}</b><span class="mute">${esc(ex[1])}</span></div></div>`; }).join('')}</div>
-    <div class="row" style="margin-top:8px"><button class="primary grow" data-a="playone">▶ Kör ${o.ids.length} min</button><button data-a="doneone">Markera klar</button></div>` : ui.oneMsg ? `<p style="margin-top:8px"><span class="tag ok">✓ ${esc(ui.oneMsg)}</span></p>` : ''}</div>`;
+    <div class="row" style="margin-top:8px"><button class="primary grow" data-a="playone">▶ Kör (${mmss(oneTotalSec(n, lv))})</button><button data-a="doneone">Markera klar</button></div>` : ui.oneMsg ? `<p style="margin-top:8px"><span class="tag ok">✓ ${esc(ui.oneMsg)}</span></p>` : ''}</div>`;
 }
 function phaseRows(cw) {
   const lv = n => `<span class="lv lv${n}">${LV[n]}</span>`;
@@ -448,11 +458,11 @@ function viewToday() {
       <button data-a="tab" data-v="act">Föreslå en lugn aktivitet</button></div>` + oneCard();
   }
   for (const kind of ['main', 'extra']) {
-    const s = buildSession(date, kind, levelFor(date)), done = isDone(date, kind);
+    const s = buildSession(date, kind, sessLevel(date, kind)), done = isDone(date, kind);
     h += `<div class="card"><div class="row between"><h2 style="margin:0">${kind === 'main' ? s.title : 'Extraövningar +' + EXTRA_MIN + ' min'}</h2>${shuf()[date + '|' + kind] ? '<span class="tag">Slumpat</span> ' : ''}${done ? '<span class="tag ok">✓ Klart</span>' : ''}</div>
       <p class="mute">${s.items.length} övningar × ${s.rounds} ${s.rounds > 1 ? 'rundor' : 'runda'} · ${s.work} s arbete / ${s.rest} s vila${kind === 'extra' ? ' · valfritt' : ''}</p>
       ${kind === 'extra'
-        ? `<div style="margin:6px 0"><div class="mute" style="margin-bottom:6px">Välj en eller flera kroppsdelar</div>${partChips(partsOf(shuf()[date + '|extra']), 'xpart', done)}<button data-a="shuffle" data-v="extra" style="margin-top:8px" ${done ? 'disabled' : ''}>🎲 Slumpa nya</button></div>`
+        ? `<div style="margin:6px 0"><div class="mute" style="margin-bottom:6px">Svårighetsgrad för extrapasset</div>${levelChips4(lvChoice(S.settings.extraLevel), 'xlvl')}<p class="mute" style="margin:4px 0 8px">Styr övningarna samt arbets- och vilotid.</p><div class="mute" style="margin-bottom:6px">Välj en eller flera kroppsdelar</div>${partChips(partsOf(shuf()[date + '|extra']), 'xpart', done)}<button data-a="shuffle" data-v="extra" style="margin-top:8px" ${done ? 'disabled' : ''}>🎲 Slumpa nya</button></div>`
         : `<div class="row" style="margin:6px 0"><label class="sr" for="f-${kind}">Fokus</label><select id="f-${kind}" data-focus="${kind}" class="grow" ${done ? 'disabled' : ''}>${FOCI.map(([v, n]) => `<option value="${v}" ${(shuf()[date + '|' + kind] ? shuf()[date + '|' + kind].focus : 'standard') === v ? 'selected' : ''}>${n}</option>`).join('')}</select><button data-a="shuffle" data-v="${kind}" ${done ? 'disabled' : ''}>🎲 Slumpa nya</button></div>`}
       <div style="margin:6px 0 10px">${s.items.map((it, i) => `<div class="ex"><span class="n">${i + 1}</span><div><b>${esc(it.name)}</b><span class="mute">${esc(it.how)}</span></div></div>`).join('')}</div>
       <div class="row">${future ? '<span class="mute">Kan startas den dagen.</span>' : `<button class="primary grow" data-a="play" data-v="${kind}">▶ Starta med timer</button>
@@ -605,7 +615,7 @@ function beep(freq, dur) {
 }
 const mmss = s => `${Math.floor(s / 60)}:${pad(s % 60)}`;
 function startPlayer(kind) {
-  const s = kind === 'one' ? buildOne() : buildSession(ui.date, kind, levelFor(ui.date));
+  const s = kind === 'one' ? buildOne() : buildSession(ui.date, kind, sessLevel(ui.date, kind));
   const segs = [{ t: 'ready', sec: 5, name: 'Gör dig redo', how: '', nextName: s.segs[0].name, nextHow: s.segs[0].how, label: s.title }, ...s.segs];
   P = { segs, kind, date: kind === 'one' ? logDate() : ui.date, paused: false, finished: false, total: segs.reduce((a, x) => a + x.sec, 0) };
   try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l => wake = l).catch(() => { }); } catch (e) { }
@@ -700,6 +710,8 @@ document.addEventListener('click', e => {
     case 'del': if (!confirm('Ta bort posten?')) return; S.log = S.log.filter(l => l.id !== v); save(); break;
     case 'savepass': saveEntry(); return;
     case 'autosave': S.settings.autoSave = S.settings.autoSave === false; save(); break;
+    case 'xlvl': S.settings.extraLevel = +v; save(); break;
+    case 'olvl': S.settings.oneLevel = +v; save(); break;
     case 'rollone': ui.one = { ids: pickMany(ui.oneParts, ui.oneCount, ui.one && ui.one.ids) }; ui.oneMsg = ''; break;
     case 'opart': ui.oneParts = toggle(ui.oneParts, v); ui.one = { ids: pickMany(ui.oneParts, ui.oneCount, ui.one && ui.one.ids) }; ui.oneMsg = ''; break;
     case 'xpart': {
